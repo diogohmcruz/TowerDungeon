@@ -6,7 +6,7 @@
       <ol>
         @let bana = unit[1];
         @for (member of bana; track member.id) {
-          <li>{{ member.id }} - {{ member.stats }} - {{ member.currentHealth }}</li>
+          <li>{{ member.name }} - {{ member.stats }} - {{ member.currentHealth }}</li>
         }
       </ol>
     </li>

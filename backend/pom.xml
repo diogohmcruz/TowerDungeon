@@ -29,6 +29,7 @@
     <properties>
         <googleJavaFormat.version>1.27.0</googleJavaFormat.version>
         <java.version>17</java.version>
+        <datafaker.version>2.4.3</datafaker.version>
         <spotless.version>2.44.4</spotless.version>
     </properties>
 
@@ -52,6 +53,11 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-devtools</artifactId>
             <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>net.datafaker</groupId>
+            <artifactId>datafaker</artifactId>
+            <version>${datafaker.version}</version>
         </dependency>
         <dependency>
             <groupId>com.h2database</groupId>
