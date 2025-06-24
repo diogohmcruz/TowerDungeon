@@ -1,22 +1,17 @@
-import {Component, effect, inject, signal} from '@angular/core';
-import {GameStateService} from '../../services/game-state.service';
-import {GameWebSocketService} from '../../services/game-web-socket.service';
-import {DecimalPipe, LowerCasePipe} from '@angular/common';
-import {GameAction} from '../../interfaces/game-action.enum';
-import {Unit} from '../../interfaces/unit.enum';
-import {Army} from '../army/army';
-import {TowerDisplay} from '../tower/tower-display.component';
+import { Component, effect, inject, signal } from '@angular/core';
+import { GameStateService } from '../../services/game-state.service';
+import { GameWebSocketService } from '../../services/game-web-socket.service';
+import { DecimalPipe, LowerCasePipe } from '@angular/common';
+import { GameAction } from '../../interfaces/game-action.enum';
+import { Unit } from '../../interfaces/unit.enum';
+import { Army } from '../army/army';
+import { TowerDisplay } from '../tower/tower-display.component';
 
 @Component({
   selector: 'app-game-component',
   standalone: true,
-  imports: [
-    DecimalPipe,
-    LowerCasePipe,
-    Army,
-    TowerDisplay
-  ],
-  templateUrl: './game-component.html'
+  imports: [DecimalPipe, LowerCasePipe, Army, TowerDisplay],
+  templateUrl: './game-component.html',
 })
 export class GameComponent {
   readonly gameState = inject(GameStateService).state;
@@ -24,7 +19,7 @@ export class GameComponent {
   readonly units = signal(Object.entries(Unit));
 
   sendBuyAction(unitStats: Unit) {
-    const payload = {unitStats, quantity: 1};
+    const payload = { unitStats, quantity: 1 };
     this.ws.sendAction(GameAction.BUY, payload);
   }
 
@@ -32,7 +27,7 @@ export class GameComponent {
     const units = new Map();
     //units.set("unitStats", Unit.WARRIOR);
     //units.set("quantity", 1);
-    const payload = {units};
+    const payload = { units };
     this.ws.sendAction(GameAction.INVADE, payload);
   }
 

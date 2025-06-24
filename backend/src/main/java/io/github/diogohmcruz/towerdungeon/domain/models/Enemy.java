@@ -1,6 +1,7 @@
 package io.github.diogohmcruz.towerdungeon.domain.models;
 
 import java.util.concurrent.ThreadLocalRandom;
+
 import lombok.Data;
 import net.datafaker.Faker;
 
@@ -15,7 +16,7 @@ public class Enemy {
     this.id = ThreadLocalRandom.current().nextInt();
     this.name = new Faker().name().nameWithMiddle();
     this.stats = stats;
-    this.currentHealth= stats.getHealth();
+    this.currentHealth = stats.getHealth();
   }
 
   public void receiveAttack(Double attack, AttackType attackType) {

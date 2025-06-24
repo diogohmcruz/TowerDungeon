@@ -2,8 +2,8 @@ package io.github.diogohmcruz.towerdungeon.domain.models;
 
 import java.util.ArrayList;
 import java.util.List;
-
 import java.util.concurrent.ThreadLocalRandom;
+
 import lombok.Data;
 
 @Data
@@ -21,8 +21,7 @@ public class Tower {
       currentFloor++;
       enemies = new ArrayList<>();
       for (int i = 0; i < currentFloor + 1; i++) {
-        var randomEnemyStatsIndex =
-            ThreadLocalRandom.current().nextInt(EnemyStats.values().length);
+        var randomEnemyStatsIndex = ThreadLocalRandom.current().nextInt(EnemyStats.values().length);
         Enemy enemy = new Enemy(EnemyStats.values()[randomEnemyStatsIndex]);
         enemies.add(enemy);
       }

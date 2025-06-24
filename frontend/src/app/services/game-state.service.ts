@@ -1,6 +1,6 @@
-import {Injectable, Signal, signal} from '@angular/core';
-import {GameState} from '../interfaces/game-state';
-import {Unit} from '../interfaces/unit.enum';
+import { Injectable, Signal, signal } from '@angular/core';
+import { GameState } from '../interfaces/game-state';
+import { Unit } from '../interfaces/unit.enum';
 
 @Injectable({ providedIn: 'root' })
 export class GameStateService {
@@ -16,7 +16,7 @@ export class GameStateService {
       [Unit.TANK]: [],
       [Unit.ROGUE]: [],
       [Unit.NECROMANCER]: [],
-      [Unit.DRACO_METAMORPH]: []
+      [Unit.DRACO_METAMORPH]: [],
     },
     unitsOnTower: {
       [Unit.WARRIOR]: [],
@@ -26,7 +26,7 @@ export class GameStateService {
       [Unit.TANK]: [],
       [Unit.ROGUE]: [],
       [Unit.NECROMANCER]: [],
-      [Unit.DRACO_METAMORPH]: []
+      [Unit.DRACO_METAMORPH]: [],
     },
     upgrades: [],
     prestigePoints: 0,
@@ -38,10 +38,10 @@ export class GameStateService {
   }
 
   update(partial: Partial<GameState>) {
-    this._state.update(s => ({ ...s, ...partial }));
+    this._state.update((s) => ({ ...s, ...partial }));
   }
 
   addMana(amount: number) {
-    this._state.update(s => ({ ...s, mana: s.mana + amount }));
+    this._state.update((s) => ({ ...s, mana: s.mana + amount }));
   }
 }

@@ -1,9 +1,9 @@
-import {Injectable} from '@angular/core';
-import {GameStateService} from './game-state.service';
-import {GameState} from '../interfaces/game-state';
-import {GameAction} from '../interfaces/game-action.enum';
+import { Injectable } from '@angular/core';
+import { GameStateService } from './game-state.service';
+import { GameState } from '../interfaces/game-state';
+import { GameAction } from '../interfaces/game-action.enum';
 
-@Injectable({providedIn: 'root'})
+@Injectable({ providedIn: 'root' })
 export class GameWebSocketService {
   private socket = new WebSocket('ws://localhost:8080/api/ws');
 
@@ -28,8 +28,8 @@ export class GameWebSocketService {
   }
 
   sendAction(gameAction: GameAction, payload: any) {
-    const message = JSON.stringify({gameAction, payload});
-    console.log("Sending to WebSocket", message);
+    const message = JSON.stringify({ gameAction, payload });
+    console.log('Sending to WebSocket', message);
     this.socket.send(message);
   }
 }

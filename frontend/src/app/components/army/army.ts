@@ -1,15 +1,11 @@
-import {Component, computed, input, Input, signal} from '@angular/core';
-import {Squad} from '../../interfaces/game-state';
-import {KeyValuePipe} from '@angular/common';
+import { Component, computed, input } from '@angular/core';
+import { Squad } from '../../interfaces/game-state';
 
 @Component({
   selector: 'app-army',
   standalone: true,
-  imports: [
-    KeyValuePipe
-  ],
   templateUrl: './army.html',
-  styleUrl: './army.css'
+  styleUrl: './army.css',
 })
 export class Army {
   army = input<Squad>();
