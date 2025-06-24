@@ -2,6 +2,7 @@ import { Unit } from "./unit.enum";
 
 export interface Member {
   id: number;
+  name: string;
   stats: string;
   currentHealth: number;
 }
