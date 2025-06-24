@@ -1,0 +1,18 @@
+<p>Mana: {{ this.gameState().mana | number:'1.0-2' }}</p>
+<p>Mana por segundo: {{ this.gameState().manaPerSecond }}</p>
+
+<button (click)="this.upgrade()">Upgrade Spellbook</button>
+<hr>
+
+@for (unit of units(); track unit) {
+  <button (click)="this.sendBuyAction(unit[1])">Buy {{unit[0] | lowercase}}</button>
+} @empty {
+  <button>WAT</button>
+}
+<hr>
+
+<button (click)="this.sendInvadeAction()">Invade the tower</button>
+<button (click)="this.prestige()">Prestige</button>
+
+<p>Upgrades: {{ this.gameState().upgrades.join(', ') || 'Nenhum' }}</p>
+<p>Prestige Points: {{ this.gameState().prestigePoints }}</p>
