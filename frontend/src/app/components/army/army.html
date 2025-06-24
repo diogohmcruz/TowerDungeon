@@ -1,0 +1,14 @@
+<ol>
+  @for (unit of armyEntries(); track unit[0]) {
+    <li>
+      @let banana = unit[0];
+      <span>{{ banana }}</span>
+      <ol>
+        @let bana = unit[1];
+        @for (member of bana; track member.id) {
+          <li>{{ member.id }} - {{ member.stats }} - {{ member.currentHealth }}</li>
+        }
+      </ol>
+    </li>
+  }
+</ol>

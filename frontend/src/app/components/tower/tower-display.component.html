@@ -1,0 +1,9 @@
+@let towerd = tower();
+<article>
+  <p>{{ towerd?.currentFloor }} / {{ towerd?.maxFloor }}</p>
+  <ol>
+    @for (enemy of towerd?.enemies; track enemy.id) {
+      <li>{{ enemy.stats }} - {{ enemy.currentHealth }}</li>
+    }
+  </ol>
+</article>

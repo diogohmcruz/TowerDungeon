@@ -1,16 +1,20 @@
 import {Component, effect, inject, signal} from '@angular/core';
-import {GameStateService} from '../services/game-state.service';
-import {GameWebSocketService} from '../services/game-web-socket.service';
+import {GameStateService} from '../../services/game-state.service';
+import {GameWebSocketService} from '../../services/game-web-socket.service';
 import {DecimalPipe, LowerCasePipe} from '@angular/common';
-import {GameAction} from '../interfaces/game-action.enum';
-import {Unit} from '../interfaces/unit.enum';
+import {GameAction} from '../../interfaces/game-action.enum';
+import {Unit} from '../../interfaces/unit.enum';
+import {Army} from '../army/army';
+import {TowerDisplay} from '../tower/tower-display.component';
 
 @Component({
   selector: 'app-game-component',
   standalone: true,
   imports: [
     DecimalPipe,
-    LowerCasePipe
+    LowerCasePipe,
+    Army,
+    TowerDisplay
   ],
   templateUrl: './game-component.html'
 })
@@ -46,7 +50,4 @@ export class GameComponent {
       console.log('Mana atualizada:', mana);
     });
   }
-
-  protected readonly GameAction = GameAction;
-  protected readonly Unit = Unit;
 }
