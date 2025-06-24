@@ -27,9 +27,9 @@
     </distributionManagement>
 
     <properties>
+        <datafaker.version>2.4.3</datafaker.version>
         <googleJavaFormat.version>1.27.0</googleJavaFormat.version>
         <java.version>17</java.version>
-        <datafaker.version>2.4.3</datafaker.version>
         <spotless.version>2.44.4</spotless.version>
     </properties>
 

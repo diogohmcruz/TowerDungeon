@@ -1,4 +1,4 @@
-import { Unit } from "./unit.enum";
+import { Unit } from './unit.enum';
 
 export interface Member {
   id: number;

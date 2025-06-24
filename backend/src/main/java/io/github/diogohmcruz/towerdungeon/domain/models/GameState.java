@@ -4,9 +4,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Predicate;
+
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 
@@ -36,8 +36,7 @@ public class GameState {
 
   public void enlistRandom(UnitStats unitStats) {
     var currentUnits = this.units.getOrDefault(unitStats, new ArrayList<>());
-    var randomIndex = ThreadLocalRandom.current()
-            .nextInt(currentUnits.size());
+    var randomIndex = ThreadLocalRandom.current().nextInt(currentUnits.size());
     var unitToEnlist = currentUnits.get(randomIndex);
     currentUnits.remove(unitToEnlist);
     units.put(unitStats, currentUnits);
@@ -47,26 +46,29 @@ public class GameState {
   }
 
   public void removeUnit(Unit targetUnit) {
-    unitsOnTower.get(targetUnit.getStats()).removeIf(unit -> unit.getId().equals(targetUnit.getId()));
+    unitsOnTower
+        .get(targetUnit.getStats())
+        .removeIf(unit -> unit.getId().equals(targetUnit.getId()));
   }
 
   public boolean hasUnitsOnTower() {
-    return unitsOnTower.values().stream()
-        .anyMatch(Predicate.not(List::isEmpty));
+    return unitsOnTower.values().stream().anyMatch(Predicate.not(List::isEmpty));
   }
 
   public void passingTime() {
-    unitsOnTower.forEach((unitStats, unitList) -> {
-      var unitsToRemove = new ArrayList<Unit>();
-      unitList.forEach(unit -> {
-        if (unit.getCurrentHealth() <= 0) {
-          log.info("Unit {} has passed away.", unit);
-          unitsToRemove.add(unit);
-        } else {
-          unit.receiveAttack(0.01);
-        }
-      });
-      unitsToRemove.forEach(this::removeUnit);
-    });
+    unitsOnTower.forEach(
+        (unitStats, unitList) -> {
+          var unitsToRemove = new ArrayList<Unit>();
+          unitList.forEach(
+              unit -> {
+                if (unit.getCurrentHealth() <= 0) {
+                  log.info("Unit {} has passed away.", unit);
+                  unitsToRemove.add(unit);
+                } else {
+                  unit.receiveAttack(0.01);
+                }
+              });
+          unitsToRemove.forEach(this::removeUnit);
+        });
   }
 }
