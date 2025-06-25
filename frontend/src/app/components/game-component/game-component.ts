@@ -1,4 +1,4 @@
-import { Component, effect, inject, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { GameStateService } from '../../services/game-state.service';
 import { GameWebSocketService } from '../../services/game-web-socket.service';
 import { DecimalPipe, LowerCasePipe } from '@angular/common';
@@ -37,12 +37,5 @@ export class GameComponent {
 
   prestige() {
     this.ws.sendAction(GameAction.PRESTIGE, null);
-  }
-
-  constructor() {
-    effect(() => {
-      const mana = this.gameState().mana;
-      console.log('Mana atualizada:', mana);
-    });
   }
 }

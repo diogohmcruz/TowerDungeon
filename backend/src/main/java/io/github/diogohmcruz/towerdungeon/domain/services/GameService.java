@@ -24,6 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 @RequiredArgsConstructor
 public class GameService {
+  private static final long TIME_INTERVAL = 10L;
   private final Map<String, GameState> players = new ConcurrentHashMap<>();
 
   public GameState getState(String sessionId) {
@@ -88,9 +89,9 @@ public class GameService {
     players.values().forEach(this::updateInvasion);
   }
 
-  @Scheduled(fixedRate = 10)
+  @Scheduled(fixedRate = TIME_INTERVAL)
   public void invasionTimer() {
-    players.values().forEach(GameState::passingTime);
+    players.values().forEach(gameState -> gameState.passingTime(TIME_INTERVAL));
   }
 
   private void updateInvasion(GameState gameState) {

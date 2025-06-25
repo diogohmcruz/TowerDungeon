@@ -55,7 +55,8 @@ public class GameState {
     return unitsOnTower.values().stream().anyMatch(Predicate.not(List::isEmpty));
   }
 
-  public void passingTime() {
+  public void passingTime(Long interval) {
+    Double attack = Double.valueOf(interval) / 1000;
     unitsOnTower.forEach(
         (unitStats, unitList) -> {
           var unitsToRemove = new ArrayList<Unit>();
@@ -65,7 +66,7 @@ public class GameState {
                   log.info("Unit {} has passed away.", unit);
                   unitsToRemove.add(unit);
                 } else {
-                  unit.receiveAttack(0.01);
+                  unit.receiveAttack(attack);
                 }
               });
           unitsToRemove.forEach(this::removeUnit);
