@@ -17,7 +17,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.diogohmcruz.towerdungeon.api.dtos.BuyActionDTO;
 import io.github.diogohmcruz.towerdungeon.api.dtos.GameActionDTO;
 import io.github.diogohmcruz.towerdungeon.api.dtos.InvadeActionDTO;
-import io.github.diogohmcruz.towerdungeon.domain.models.GameState;
 import io.github.diogohmcruz.towerdungeon.domain.services.GameService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -41,9 +40,9 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
   }
 
   private void sendState(WebSocketSession session) {
-    GameState state = gameService.getState(session.getId());
+    var state = gameService.getState(session.getId());
     try {
-      String payload = objectMapper.writeValueAsString(state);
+      var payload = objectMapper.writeValueAsString(state);
       session.sendMessage(new TextMessage(payload));
     } catch (JsonProcessingException e) {
       log.error("Error creating the game state", e);
@@ -86,7 +85,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     sendState(session);
   }
 
-  @Scheduled(fixedRate = 1000)
+  @Scheduled(fixedRate = 100)
   public void gameLoop() {
     sessions.values().forEach(this::sendState);
   }

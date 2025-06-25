@@ -13,7 +13,6 @@ export class GameWebSocketService {
     };
 
     this.socket.onmessage = (event) => {
-      console.log(event.data);
       try {
         const parsed: GameState = JSON.parse(event.data);
         this.gameState.setState(parsed);
