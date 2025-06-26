@@ -8,9 +8,12 @@
 <hr />
 
 @for (unit of units(); track unit) {
-<button (click)="this.sendBuyAction(unit[1])">
-  Buy {{unit[0] | lowercase}}
-</button>
+<article>
+  {{ mapStringToUnit(unit[0]) | json }}
+  <button (click)="this.sendBuyAction(unit[1])">
+    Buy {{unit[0] | lowercase}}
+  </button>
+</article>
 }
 <hr />
 

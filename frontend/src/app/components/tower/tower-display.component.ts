@@ -1,9 +1,10 @@
 import { Component, input } from '@angular/core';
 import { Tower } from '../../interfaces/game-state';
+import { JsonPipe } from '@angular/common';
 
 @Component({
   selector: 'app-tower',
-  imports: [],
+  imports: [JsonPipe],
   templateUrl: './tower-display.component.html',
   styleUrl: './tower-display.component.css',
 })
