@@ -1,15 +1,13 @@
-import { Component, computed, input } from '@angular/core';
+import { Component, computed, inject, input } from '@angular/core';
 import { Squad } from '../../interfaces/game-state';
-import {DecimalPipe} from '@angular/common';
+import { DecimalPipe, JsonPipe } from '@angular/common';
 
 @Component({
   selector: 'app-army',
   standalone: true,
   templateUrl: './army.html',
   styleUrl: './army.css',
-  imports: [
-    DecimalPipe
-  ]
+  imports: [DecimalPipe],
 })
 export class Army {
   army = input<Squad>();

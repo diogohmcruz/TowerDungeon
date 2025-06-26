@@ -24,7 +24,8 @@ public class Tower {
       while (enemyCount > 0) {
         var percentageOfTowerComplete = (double) currentFloor / maxFloor;
         var maxEnemyStatsLevel = EnemyStats.values().length * percentageOfTowerComplete + 1;
-        var randomEnemyStatsIndex = Math.floor(ThreadLocalRandom.current().nextDouble(maxEnemyStatsLevel));
+        var randomEnemyStatsIndex =
+            Math.floor(ThreadLocalRandom.current().nextDouble(maxEnemyStatsLevel));
         Enemy enemy = new Enemy(EnemyStats.values()[(int) randomEnemyStatsIndex]);
         enemies.add(enemy);
         enemyCount -= enemy.getStats().getWeight();

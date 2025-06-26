@@ -1,9 +1,9 @@
-import { Unit } from './unit.enum';
+import { Unit, UnitStats } from './unit.enum';
 
 export interface Member {
   id: number;
   name: string;
-  stats: string;
+  stats: UnitStats;
   currentHealth: number;
 }
 

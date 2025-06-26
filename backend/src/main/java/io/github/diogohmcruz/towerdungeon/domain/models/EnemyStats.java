@@ -2,13 +2,19 @@ package io.github.diogohmcruz.towerdungeon.domain.models;
 
 import java.util.Map;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.ToString;
+import lombok.experimental.FieldDefaults;
 
 @Getter
 @ToString
 @RequiredArgsConstructor
+@JsonFormat(shape = JsonFormat.Shape.OBJECT)
+@FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
 public enum EnemyStats {
   SLIME(
       10.0,
@@ -65,9 +71,9 @@ public enum EnemyStats {
           AttackType.MAGIC, 0.5),
       90.0);
 
-  private final Double health;
-  private final Double damage;
-  private final AttackType attackType;
-  private final Map<AttackType, Double> weaknesses;
-  private final Double weight;
+  Double health;
+  Double damage;
+  AttackType attackType;
+  Map<AttackType, Double> weaknesses;
+  Double weight;
 }

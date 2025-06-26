@@ -4,9 +4,10 @@
     <span>{{ unit[0] }}</span>
     <ol>
       @for (member of unit[1]; track member.id) {
-        <li>
-          {{ member.name }} - {{ member.stats }} - {{ member.currentHealth | number:'1.0-3' }} HP
-        </li>
+      <li>
+        {{ member.name }} - {{ member.stats.damage }} - {{ member.currentHealth
+        | number:'1.0-3' }}/{{ member.stats.health }}
+      </li>
       }
     </ol>
   </li>

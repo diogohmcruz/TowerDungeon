@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { GameStateService } from './game-state.service';
 import { GameState } from '../interfaces/game-state';
 import { GameAction } from '../interfaces/game-action.enum';
@@ -6,11 +6,10 @@ import { GameAction } from '../interfaces/game-action.enum';
 @Injectable({ providedIn: 'root' })
 export class GameWebSocketService {
   private socket = new WebSocket('ws://localhost:8080/api/ws');
+  private gameState = inject(GameStateService);
 
-  constructor(private gameState: GameStateService) {
-    this.socket.onopen = () => {
-      console.log('[WebSocket] Connected');
-    };
+  constructor() {
+    this.socket.onopen = () => console.log('[WebSocket] Connected');
 
     this.socket.onmessage = (event) => {
       try {
@@ -21,9 +20,7 @@ export class GameWebSocketService {
       }
     };
 
-    this.socket.onerror = (err) => {
-      console.error('[WebSocket] Error', err);
-    };
+    this.socket.onerror = (err) => console.error('[WebSocket] Error', err);
   }
 
   sendAction(gameAction: GameAction, payload: any) {
