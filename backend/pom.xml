@@ -6,7 +6,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.0</version>
+        <version>3.5.3</version>
     </parent>
 
     <groupId>io.github.diogohmcruz</groupId>
@@ -29,7 +29,7 @@
     <properties>
         <datafaker.version>2.4.3</datafaker.version>
         <googleJavaFormat.version>1.27.0</googleJavaFormat.version>
-        <java.version>17</java.version>
+        <java.version>24</java.version>
         <spotless.version>2.44.4</spotless.version>
         <springdoc.version>2.8.5</springdoc.version>
     </properties>
@@ -37,12 +37,7 @@
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-websocket</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
             <exclusions>
                 <exclusion>
                     <groupId>org.springframework.boot</groupId>
@@ -83,7 +78,7 @@
 
         <dependency>
             <groupId>org.springdoc</groupId>
-            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <artifactId>springdoc-openapi-starter-webflux-ui</artifactId>
             <version>${springdoc.version}</version>
         </dependency>
     </dependencies>

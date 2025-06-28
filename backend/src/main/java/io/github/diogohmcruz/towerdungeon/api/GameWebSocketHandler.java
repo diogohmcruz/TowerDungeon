@@ -1,92 +1,110 @@
 package io.github.diogohmcruz.towerdungeon.api;
 
-import java.io.IOException;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.time.Duration;
 
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.web.socket.TextMessage;
-import org.springframework.web.socket.WebSocketSession;
-import org.springframework.web.socket.handler.TextWebSocketHandler;
+import org.springframework.web.reactive.socket.WebSocketHandler;
+import org.springframework.web.reactive.socket.WebSocketMessage;
+import org.springframework.web.reactive.socket.WebSocketSession;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.github.diogohmcruz.towerdungeon.api.dtos.BuyActionDTO;
+import io.github.diogohmcruz.towerdungeon.api.dtos.GameAction;
 import io.github.diogohmcruz.towerdungeon.api.dtos.GameActionDTO;
+import io.github.diogohmcruz.towerdungeon.api.dtos.GameActionEnvelope;
 import io.github.diogohmcruz.towerdungeon.api.dtos.InvadeActionDTO;
 import io.github.diogohmcruz.towerdungeon.domain.services.GameService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class GameWebSocketHandler extends TextWebSocketHandler {
-  private final Map<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
+public class GameWebSocketHandler implements WebSocketHandler {
   private final GameService gameService;
   private final ObjectMapper objectMapper;
 
   @Override
-  public void afterConnectionEstablished(WebSocketSession session) {
-    sessions.clear();
-    var sessionC = sessions.put(session.getId(), session);
-    if (sessionC != null) {
-      log.info("New game session established: {}", session.getId());
-      sendState(sessionC);
-    }
+  public Mono<Void> handle(WebSocketSession session) {
+    var sessionId = session.getId();
+    Mono<Void> receive = handleReceive(sessionId, session.receive());
+    Mono<Void> send = handleSend(session);
+    return Mono.zip(receive, send)
+        .doOnError(
+            err -> {
+              log.error("Receive error on session {}", sessionId, err);
+              gameService.closeSession(sessionId);
+            })
+        .doOnCancel(
+            () -> {
+              log.warn("Canceling the session {}", sessionId);
+              gameService.closeSession(sessionId);
+            })
+        .then();
   }
 
-  private void sendState(WebSocketSession session) {
-    var state = gameService.getState(session.getId());
-    try {
-      var payload = objectMapper.writeValueAsString(state);
-      session.sendMessage(new TextMessage(payload));
-    } catch (JsonProcessingException e) {
-      log.error("Error creating the game state", e);
-      throw new RuntimeException(e);
-    } catch (IOException e) {
-      log.error("Error sending state to game", e);
-      throw new RuntimeException(e);
-    }
+  private Mono<Void> handleReceive(String sessionId, Flux<WebSocketMessage> sessionReceive) {
+    return sessionReceive.doOnNext(message -> this.handleTextMessage(sessionId, message)).then();
   }
 
-  @Override
-  protected void handleTextMessage(WebSocketSession session, TextMessage message) {
+  private Mono<Void> handleSend(WebSocketSession session) {
+    var sessionId = session.getId();
+    Flux<WebSocketMessage> pingMessages =
+        Flux.interval(Duration.ofMillis(100))
+            .map(_ -> gameService.getState(sessionId))
+            .<String>handle(
+                (gameState, sink) -> {
+                  try {
+                    sink.next(objectMapper.writeValueAsString(gameState));
+                  } catch (JsonProcessingException e) {
+                    log.error("Error creating the game state", e);
+                    sink.error(new RuntimeException(e));
+                  }
+                })
+            .map(session::textMessage);
+
+    return session
+        .send(pingMessages)
+        .doOnError(err -> log.error("Failed to send state to session {}", sessionId, err));
+  }
+
+  protected void handleTextMessage(String sessionId, WebSocketMessage message) {
+    var payload = message.getPayloadAsText();
     try {
-      var gameAction = objectMapper.readValue(message.getPayload(), GameActionDTO.class);
+      GameActionEnvelope gameAction = objectMapper.readValue(payload, GameActionEnvelope.class);
       if (gameAction.gameAction() == null) {
-        var errorMessage = String.format("Invalid game action received: %s", gameAction);
-        log.error(errorMessage);
+        log.error("Invalid game action received: {}", gameAction);
         return;
       }
-      log.info("Received game action: {}", gameAction);
-      switch (gameAction.gameAction()) {
-        case BUY -> {
-          var dto =
-              objectMapper.readValue(
-                  message.getPayload(), new TypeReference<GameActionDTO<BuyActionDTO>>() {});
-          gameService.handleMessage(session.getId(), dto.payload());
-        }
-        case INVADE -> {
-          var dto =
-              objectMapper.readValue(
-                  message.getPayload(), new TypeReference<GameActionDTO<InvadeActionDTO>>() {});
-          gameService.handleMessage(session.getId(), dto.payload());
-        }
-        default ->
-            throw new RuntimeException(String.format("Unknown game action type: %s", gameAction));
-      }
-    } catch (JsonProcessingException e) {
-      throw new RuntimeException(e);
+      handleGameAction(sessionId, payload, gameAction.gameAction());
+    } catch (JsonProcessingException err) {
+      log.error("Invalid message received from session {}", sessionId, err);
     }
-    sendState(session);
   }
 
-  @Scheduled(fixedRate = 100)
-  public void gameLoop() {
-    sessions.values().forEach(this::sendState);
+  private <T> void handleGameAction(String sessionId, String message, GameAction gameAction)
+      throws JsonProcessingException {
+    log.info("Received from session {} game action: {}", sessionId, gameAction);
+    switch (gameAction) {
+      case BUY -> handleBuyAction(sessionId, message);
+      case INVADE -> handleInvadeAction(sessionId, message);
+      default -> log.error("Invalid game action {} from session {}", gameAction, sessionId);
+    }
+  }
+
+  private void handleBuyAction(String sessionId, String message) throws JsonProcessingException {
+    var dto = objectMapper.readValue(message, new TypeReference<GameActionDTO<BuyActionDTO>>() {});
+    gameService.handleMessage(sessionId, dto.payload());
+  }
+
+  private void handleInvadeAction(String sessionId, String message) throws JsonProcessingException {
+    var dto =
+        objectMapper.readValue(message, new TypeReference<GameActionDTO<InvadeActionDTO>>() {});
+    gameService.handleMessage(sessionId, dto.payload());
   }
 }
