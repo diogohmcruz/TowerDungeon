@@ -107,26 +107,25 @@ public class GameService {
     var unitsOnTower = new HashMap<>(gameState.getUnitsOnTower());
     var enemiesInCurrentFloor = tower.getEnemies();
     unitsOnTower.forEach(
-        (unit, value) -> {
-          value.forEach(
-              currentUnit -> {
-                if (enemiesInCurrentFloor.isEmpty()) {
-                  log.info("No enemies left on the current floor. Skipping attack.");
-                  return;
-                }
-                var randomKeyIndex =
-                    ThreadLocalRandom.current().nextInt(enemiesInCurrentFloor.size());
-                var targetEnemy = enemiesInCurrentFloor.get(randomKeyIndex);
-                targetEnemy.receiveAttack(unit.getDamage(), unit.getAttackType());
-                if (targetEnemy.getCurrentHealth() <= 0) {
-                  log.info(
-                      "Enemy {} has been defeated by unit {}",
-                      targetEnemy.getId(),
-                      currentUnit.getId());
-                  tower.removeEnemy(targetEnemy);
-                }
-              });
-        });
+        (unit, value) ->
+            value.forEach(
+                currentUnit -> {
+                  if (enemiesInCurrentFloor.isEmpty()) {
+                    log.info("No enemies left on the current floor. Skipping attack.");
+                    return;
+                  }
+                  var randomKeyIndex =
+                      ThreadLocalRandom.current().nextInt(enemiesInCurrentFloor.size());
+                  var targetEnemy = enemiesInCurrentFloor.get(randomKeyIndex);
+                  targetEnemy.receiveAttack(unit.getDamage(), unit.getAttackType());
+                  if (targetEnemy.getCurrentHealth() <= 0) {
+                    log.info(
+                        "Enemy {} has been defeated by unit {}",
+                        targetEnemy.getId(),
+                        currentUnit.getId());
+                    tower.removeEnemy(targetEnemy);
+                  }
+                }));
     if (enemiesInCurrentFloor.isEmpty()) {
       gameState.addCredit(tower.getCurrentFloor() * 10.0);
       tower.moveToNextFloor();
@@ -141,7 +140,7 @@ public class GameService {
         currentEnemy -> {
           var unitStatsKeys = new ArrayList<>(unitsOnTower.keySet());
           Collections.shuffle(unitStatsKeys);
-          var targetUnit = unitsOnTower.get(unitStatsKeys.get(0));
+          var targetUnit = unitsOnTower.get(unitStatsKeys.getFirst());
           if (targetUnit.isEmpty()) {
             log.info(
                 "No units available to attack enemy {}. Skipping attack.", currentEnemy.getId());
@@ -156,5 +155,9 @@ public class GameService {
             gameState.removeUnit(targetUnitElement);
           }
         });
+  }
+
+  public void closeSession(String id) {
+    players.remove(id);
   }
 }
