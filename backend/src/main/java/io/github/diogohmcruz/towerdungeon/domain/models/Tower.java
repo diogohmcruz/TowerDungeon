@@ -1,8 +1,7 @@
 package io.github.diogohmcruz.towerdungeon.domain.models;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.HashMap;
+import java.util.Map;
 
 import lombok.Data;
 
@@ -10,26 +9,23 @@ import lombok.Data;
 public class Tower {
   private Integer currentFloor = 0;
   private final Integer maxFloor = 100;
-  private List<Enemy> enemies = new ArrayList<>();
-
-  public void removeEnemy(Enemy targetEnemy) {
-    enemies.removeIf(enemy -> enemy.getId().equals(targetEnemy.getId()));
-  }
+  private Map<Integer, TowerFloor> floors = new HashMap<>();
 
   public void moveToNextFloor() {
     if (currentFloor < maxFloor) {
       currentFloor++;
-      enemies = new ArrayList<>();
-      int enemyCount = currentFloor;
-      while (enemyCount > 0) {
-        var percentageOfTowerComplete = (double) currentFloor / maxFloor;
-        var maxEnemyStatsLevel = EnemyStats.values().length * percentageOfTowerComplete + 1;
-        var randomEnemyStatsIndex =
-            Math.floor(ThreadLocalRandom.current().nextDouble(maxEnemyStatsLevel));
-        Enemy enemy = new Enemy(EnemyStats.values()[(int) randomEnemyStatsIndex]);
-        enemies.add(enemy);
-        enemyCount -= enemy.getStats().getWeight();
-      }
+      var percentageOfTowerComplete = (double) currentFloor / maxFloor;
+      var maxEnemyStatsLevel = EnemyStats.values().length * percentageOfTowerComplete + 1;
+      var towerFloor =
+          TowerFloor.builder().id(currentFloor).difficulty((int) maxEnemyStatsLevel).build();
+      towerFloor.populateEnemies();
+      floors.put(currentFloor, towerFloor);
+    } else {
+      throw new IllegalStateException("You have reached the maximum floor of the tower.");
     }
+  }
+
+  public TowerFloor getCurrentTowerFloor() {
+    return floors.get(currentFloor);
   }
 }

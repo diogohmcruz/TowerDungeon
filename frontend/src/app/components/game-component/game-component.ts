@@ -14,7 +14,7 @@ import { UnitStatsService } from '../../services/unit-stats.service';
   standalone: true,
   imports: [DecimalPipe, LowerCasePipe, Army, TowerDisplay, JsonPipe],
   templateUrl: './game-component.html',
-  styleUrls: ['./game-component.scss']
+  styleUrls: ['./game-component.scss'],
 })
 export class GameComponent {
   readonly gameState = inject(GameStateService).state;

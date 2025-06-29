@@ -1,6 +1,6 @@
 import { Component, computed, inject, input } from '@angular/core';
 import { Squad } from '../../interfaces/game-state';
-import { DecimalPipe, JsonPipe } from '@angular/common';
+import { DecimalPipe } from '@angular/common';
 
 @Component({
   selector: 'app-army',
