@@ -87,10 +87,11 @@ public class GameWebSocketHandler implements WebSocketHandler {
     }
   }
 
-  private <T> void handleGameAction(String sessionId, String message, GameAction gameAction)
+  private void handleGameAction(String sessionId, String message, GameAction gameAction)
       throws JsonProcessingException {
     switch (gameAction) {
       case BUY -> handleBuyAction(sessionId, message);
+      case BUY_VILLAGERS -> gameService.handleBuyVillagersAction(sessionId);
       case INVADE -> handleInvadeAction(sessionId, message);
       default -> log.error("Invalid game action {} from session {}", gameAction, sessionId);
     }

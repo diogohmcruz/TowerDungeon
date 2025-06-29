@@ -5,7 +5,7 @@
   <button (click)="this.upgrade()">Upgrade Spellbook</button>
   <hr />
 
-  <p>Credits: {{ this.gameState().credit }}</p>
+  <app-village-management />
   <hr />
 
   @for (unit of units(); track unit) {

@@ -28,6 +28,10 @@ export class GameStateService {
       [Unit.NECROMANCER]: [],
       [Unit.DRACO_METAMORPH]: [],
     },
+    village: {
+      food: 0,
+      villagersCount: 0,
+    },
     upgrades: [],
     prestigePoints: 0,
   });

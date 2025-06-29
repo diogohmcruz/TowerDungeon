@@ -19,11 +19,25 @@ public class GameState {
   private Map<UnitStats, List<Unit>> units = new HashMap<>();
   private Map<UnitStats, List<Unit>> unitsOnTower = new HashMap<>();
   private Tower tower;
+  private Village village = new Village();
   private List<String> upgrades = new ArrayList<>();
   private Integer prestigePoints = 0;
 
-  public void updateMana() {
+  public void triggerLifecycle() {
     mana += manaPerSecond;
+    var allUnits = units.values().stream().flatMap(List::stream).toList();
+    if (allUnits.isEmpty() && village.getVillagersCount() <= 0) {
+      log.error("GAME OVER!");
+      return;
+    }
+    var isStarving = village.triggerLifecycle(allUnits.size());
+    if (isStarving) {
+      village.starve();
+      var randomIndex = ThreadLocalRandom.current().nextInt(allUnits.size());
+      var unitToRemove = allUnits.get(randomIndex);
+      units.get(unitToRemove.getStats()).remove(unitToRemove);
+      log.warn("Village is starving! Unit {} starved!", unitToRemove);
+    }
   }
 
   public void addCredit(Double amount) {
@@ -31,7 +45,15 @@ public class GameState {
   }
 
   public void addUnits(UnitStats unitStats, List<Unit> newUnits) {
-    units.computeIfAbsent(unitStats, k -> new ArrayList<>()).addAll(newUnits);
+    units.computeIfAbsent(unitStats, _ -> new ArrayList<>()).addAll(newUnits);
+  }
+
+  public Integer buyVillager() {
+    var villagersCount = village.getVillagersCount();
+    while (village.getVillagersCount() < credit) {
+      credit = village.buyVillager(credit);
+    }
+    return villagersCount;
   }
 
   public void enlistRandom(UnitStats unitStats) {
@@ -57,19 +79,21 @@ public class GameState {
 
   public void passingTime(Long interval) {
     Double attack = Double.valueOf(interval) / 1000;
-    unitsOnTower.forEach(
-        (unitStats, unitList) -> {
-          var unitsToRemove = new ArrayList<Unit>();
-          unitList.forEach(
-              unit -> {
-                if (unit.getCurrentHealth() <= 0) {
-                  log.info("Unit {} has passed away.", unit);
-                  unitsToRemove.add(unit);
-                } else {
-                  unit.receiveAttack(attack);
-                }
-              });
-          unitsToRemove.forEach(this::removeUnit);
-        });
+    unitsOnTower
+        .values()
+        .forEach(
+            unitList -> {
+              var unitsToRemove = new ArrayList<Unit>();
+              unitList.forEach(
+                  unit -> {
+                    if (unit.getCurrentHealth() <= 0) {
+                      log.info("Unit {} passed away.", unit);
+                      unitsToRemove.add(unit);
+                    } else {
+                      unit.receiveAttack(attack);
+                    }
+                  });
+              unitsToRemove.forEach(this::removeUnit);
+            });
   }
 }

@@ -1,7 +1,7 @@
 <div class="enemies">
   <p>{{ currentFloor() }} / {{ maxFloor() }}</p>
   <ol>
-    @for (enemy of currentTowerFloor().enemies; track enemy.id) {
+    @for (enemy of currentTowerFloorEnemies(); track enemy.id) {
       <li>{{ enemy.stats | json }} - {{ enemy.currentHealth }}</li>
     }
   </ol>
@@ -26,9 +26,7 @@
                 .keys();
               track window
             ) {
-              @if (randomWindowCount()) {
-                <div class="window" [style.background]="'#e0e0e0'"></div>
-              }
+              <div class="window" [style.background]="'#e0e0e0'"></div>
             }
           </div>
           <div class="floor-label">Floor {{ floor[0] }}</div>
