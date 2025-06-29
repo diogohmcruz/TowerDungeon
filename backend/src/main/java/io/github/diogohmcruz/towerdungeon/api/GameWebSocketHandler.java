@@ -92,6 +92,7 @@ public class GameWebSocketHandler implements WebSocketHandler {
     switch (gameAction) {
       case BUY -> handleBuyAction(sessionId, message);
       case BUY_VILLAGERS -> gameService.handleBuyVillagersAction(sessionId);
+      case SELL_FOOD -> gameService.handleSellFoodAction(sessionId);
       case INVADE -> handleInvadeAction(sessionId, message);
       default -> log.error("Invalid game action {} from session {}", gameAction, sessionId);
     }

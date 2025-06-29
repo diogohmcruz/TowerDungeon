@@ -23,4 +23,8 @@ export class VillageManagement {
   onClickBuyVillager() {
     this.ws.sendAction(GameAction.BUY_VILLAGERS);
   }
+
+  onClickSellFood() {
+    this.ws.sendAction(GameAction.SELL_FOOD);
+  }
 }
