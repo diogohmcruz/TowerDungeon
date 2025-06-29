@@ -17,6 +17,7 @@ import io.github.diogohmcruz.towerdungeon.domain.exceptions.InvalidInvasion;
 import io.github.diogohmcruz.towerdungeon.domain.models.GameState;
 import io.github.diogohmcruz.towerdungeon.domain.models.Tower;
 import io.github.diogohmcruz.towerdungeon.domain.models.Unit;
+import io.github.diogohmcruz.towerdungeon.domain.models.UnitStats;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -28,7 +29,7 @@ public class GameService {
   private final Map<String, GameState> players = new ConcurrentHashMap<>();
 
   public GameState getState(String sessionId) {
-    return players.computeIfAbsent(sessionId, id -> new GameState());
+    return players.computeIfAbsent(sessionId, _ -> new GameState());
   }
 
   public void handleMessage(String sessionId, BuyActionDTO buyActionDTO) {
@@ -47,40 +48,55 @@ public class GameService {
     var gameState = players.get(sessionId);
     var units = gameState.getUnits();
     final var unitsOnTower = gameState.getUnitsOnTower();
-    if (invadeActionDTO.units().isEmpty()) {
-      var unitsTemp = new HashMap<>(units);
-      unitsOnTower.forEach(
-          (key, value) ->
-              unitsTemp.merge(
-                  key,
-                  value,
-                  (a, b) -> {
-                    a.addAll(b);
-                    return a;
-                  }));
-      units.clear();
-      unitsOnTower.clear();
-      unitsOnTower.putAll(unitsTemp);
+    var invadeUnits = invadeActionDTO.units();
+    if (invadeUnits.isEmpty()) {
+      sendAllToTower(units, unitsOnTower);
     } else {
-      invadeActionDTO
-          .units()
-          .forEach(
-              (unit, quantity) -> {
-                List<Unit> currentUnits = units.getOrDefault(unit, new ArrayList<>());
-                var currentUnitsCount = currentUnits.size();
-                var quantityOnBase = currentUnitsCount - quantity;
-                if (quantityOnBase < 0) {
-                  throw new InvalidInvasion(unit, quantity, currentUnitsCount);
-                }
-                while (quantity > 0) {
-                  gameState.enlistRandom(unit);
-                  quantity--;
-                }
-              });
+      sendToTower(units, invadeUnits, gameState);
     }
     gameState.setUnits(units);
     gameState.setUnitsOnTower(unitsOnTower);
     gameState.setTower(new Tower());
+  }
+
+  private static void sendAllToTower(
+      Map<UnitStats, List<Unit>> units, Map<UnitStats, List<Unit>> unitsOnTower) {
+    var unitsTemp = mergeAllArmy(units, unitsOnTower);
+    units.clear();
+    unitsOnTower.clear();
+    unitsOnTower.putAll(unitsTemp);
+  }
+
+  private static void sendToTower(
+      Map<UnitStats, List<Unit>> units, Map<UnitStats, Integer> invadeUnits, GameState gameState) {
+    invadeUnits.forEach(
+        (unit, quantity) -> {
+          List<Unit> currentUnits = units.getOrDefault(unit, new ArrayList<>());
+          var currentUnitsCount = currentUnits.size();
+          var quantityOnBase = currentUnitsCount - quantity;
+          if (quantityOnBase < 0) {
+            throw new InvalidInvasion(unit, quantity, currentUnitsCount);
+          }
+          while (quantity > 0) {
+            gameState.enlistRandom(unit);
+            quantity--;
+          }
+        });
+  }
+
+  private static HashMap<UnitStats, List<Unit>> mergeAllArmy(
+      Map<UnitStats, List<Unit>> units, Map<UnitStats, List<Unit>> unitsOnTower) {
+    var unitsTemp = new HashMap<>(units);
+    unitsOnTower.forEach(
+        (key, value) ->
+            unitsTemp.merge(
+                key,
+                value,
+                (a, b) -> {
+                  a.addAll(b);
+                  return a;
+                }));
+    return unitsTemp;
   }
 
   @Scheduled(fixedRate = 1000)
@@ -105,28 +121,8 @@ public class GameService {
       return;
     }
     var unitsOnTower = new HashMap<>(gameState.getUnitsOnTower());
-    var enemiesInCurrentFloor = tower.getEnemies();
-    unitsOnTower.forEach(
-        (unit, value) ->
-            value.forEach(
-                currentUnit -> {
-                  if (enemiesInCurrentFloor.isEmpty()) {
-                    log.info("No enemies left on the current floor. Skipping attack.");
-                    return;
-                  }
-                  var randomKeyIndex =
-                      ThreadLocalRandom.current().nextInt(enemiesInCurrentFloor.size());
-                  var targetEnemy = enemiesInCurrentFloor.get(randomKeyIndex);
-                  targetEnemy.receiveAttack(unit.getDamage(), unit.getAttackType());
-                  if (targetEnemy.getCurrentHealth() <= 0) {
-                    log.info(
-                        "Enemy {} has been defeated by unit {}",
-                        targetEnemy.getId(),
-                        currentUnit.getId());
-                    tower.removeEnemy(targetEnemy);
-                  }
-                }));
-    if (enemiesInCurrentFloor.isEmpty()) {
+    var currentTowerFloor = tower.getCurrentTowerFloor();
+    if (currentTowerFloor == null || currentTowerFloor.getEnemies().isEmpty()) {
       gameState.addCredit(tower.getCurrentFloor() * 10.0);
       tower.moveToNextFloor();
       if (tower.getMaxFloor().equals(tower.getCurrentFloor())) {
@@ -136,14 +132,33 @@ public class GameService {
       log.info("Beat the floor {}!", tower.getCurrentFloor());
       return;
     }
-    enemiesInCurrentFloor.forEach(
+    var currentEnemies = currentTowerFloor.getEnemies();
+    unitsOnTower.forEach(
+        (unit, value) ->
+            value.forEach(
+                currentUnit -> {
+                  if (currentEnemies.isEmpty()) {
+                    log.info(
+                        "No enemies left for unit {} to attack in the current floor. Skipping"
+                            + " attack.",
+                        currentUnit);
+                    return;
+                  }
+                  var randomKeyIndex = ThreadLocalRandom.current().nextInt(currentEnemies.size());
+                  var targetEnemy = currentEnemies.get(randomKeyIndex);
+                  targetEnemy.receiveAttack(unit.getDamage(), unit.getAttackType());
+                  if (targetEnemy.getCurrentHealth() <= 0) {
+                    log.info("Unit {} defeated enemy {}", currentUnit, targetEnemy);
+                    currentTowerFloor.removeEnemy(targetEnemy);
+                  }
+                }));
+    currentEnemies.forEach(
         currentEnemy -> {
           var unitStatsKeys = new ArrayList<>(unitsOnTower.keySet());
           Collections.shuffle(unitStatsKeys);
           var targetUnit = unitsOnTower.get(unitStatsKeys.getFirst());
           if (targetUnit.isEmpty()) {
-            log.info(
-                "No units available to attack enemy {}. Skipping attack.", currentEnemy.getId());
+            log.info("No units available for enemy {} to attack. Skipping attack.", currentEnemy);
             return;
           }
           var randomUnitOnTowerIndex = ThreadLocalRandom.current().nextInt(targetUnit.size());
@@ -151,7 +166,7 @@ public class GameService {
           targetUnitElement.receiveAttack(currentEnemy.getStats().getDamage());
 
           if (targetUnitElement.getCurrentHealth() <= 0) {
-            log.info("Enemy {} defeated unit {}", currentEnemy.getId(), targetUnitElement.getId());
+            log.info("Enemy {} defeated unit {}", currentEnemy, targetUnitElement);
             gameState.removeUnit(targetUnitElement);
           }
         });

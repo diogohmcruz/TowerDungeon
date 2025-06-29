@@ -1,21 +1,10 @@
-import { Unit, UnitStats } from './unit.enum';
-
-export interface Member {
-  id: number;
-  name: string;
-  stats: UnitStats;
-  currentHealth: number;
-}
+import { Unit } from './unit.enum';
+import { Tower } from './tower';
+import { Member } from './member';
 
 export type Squad = {
   [unit in Unit]: Member[];
 };
-
-export interface Tower {
-  currentFloor: number;
-  maxFloor: number;
-  enemies: Member[];
-}
 
 export interface GameState {
   mana: number;

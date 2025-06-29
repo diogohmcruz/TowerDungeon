@@ -1,36 +1,40 @@
-@let towerd = tower();
-<article>
-  <p>{{ towerd?.currentFloor }} / {{ towerd?.maxFloor }}</p>
+<div class="enemies">
+  <p>{{ currentFloor() }} / {{ maxFloor() }}</p>
   <ol>
-    @for (enemy of towerd?.enemies; track enemy.id) {
+    @for (enemy of currentTowerFloor().enemies; track enemy.id) {
       <li>{{ enemy.stats | json }} - {{ enemy.currentHealth }}</li>
     }
   </ol>
-</article>
+</div>
 
 <div class="tower-dungeon-wrapper">
   <div class="tower-dungeon">
     <div class="tower-body">
-      @for (floor of arrayCreator.from({length: towerd?.currentFloor ?? 0}).keys(); track floor) {
+      @for (floor of towerFloorsEntries(); track floor[0]) {
         <div
           class="tower-floor"
           [style.border-bottom-color]="
-          floor < (towerd?.currentFloor ?? 0) - 1
-            ? '2px solid #bdbdbd'
-            : '4px solid #bdbdbd'
-        "
+            +floor[0] < currentFloor() - 1
+              ? '2px solid #bdbdbd'
+              : '4px solid #bdbdbd'
+          "
         >
           <div class="windows">
-            @for (window of arrayCreator.from({length: 3}).keys(); track window) {
+            @for (
+              window of arrayCreator
+                .from({ length: floor[1].difficulty })
+                .keys();
+              track window
+            ) {
               @if (randomWindowCount()) {
                 <div class="window" [style.background]="'#e0e0e0'"></div>
               }
             }
           </div>
-          <div class="floor-label">Floor {{ floor + 1 }}</div>
+          <div class="floor-label">Floor {{ floor[0] }}</div>
         </div>
       }
-      @if ((towerd?.currentFloor ?? 0) < (towerd?.maxFloor ?? 0)) {
+      @if (currentFloor() < maxFloor()) {
         <div class="cloud-cover">
           <div class="cloud cloud1"></div>
           <div class="cloud cloud2"></div>

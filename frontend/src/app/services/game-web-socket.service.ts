@@ -14,6 +14,7 @@ export class GameWebSocketService {
     this.socket.onmessage = (event) => {
       try {
         const parsed: GameState = JSON.parse(event.data);
+        console.warn(parsed);
         this.gameState.setState(parsed);
       } catch (e) {
         console.error('Invalid game state received:', event.data);
