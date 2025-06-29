@@ -6,7 +6,7 @@ import { GameComponent } from './components/game-component/game-component';
   selector: 'app-root',
   imports: [RouterOutlet, GameComponent],
   templateUrl: './app.html',
-  styleUrl: './app.css',
+  styleUrl: './app.scss',
 })
 export class App {
   protected title = 'Tower Dungeon';
