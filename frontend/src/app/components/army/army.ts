@@ -6,7 +6,7 @@ import { DecimalPipe, JsonPipe } from '@angular/common';
   selector: 'app-army',
   standalone: true,
   templateUrl: './army.html',
-  styleUrl: './army.css',
+  styleUrl: './army.scss',
   imports: [DecimalPipe],
 })
 export class Army {
