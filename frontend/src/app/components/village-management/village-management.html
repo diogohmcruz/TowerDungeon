@@ -1,0 +1,5 @@
+<p>Credits: {{ this.gameState().credit | number:'1.0-2' }}</p>
+<p>Food: {{ this.food() | number:'1.0-2' }}</p>
+<p>Villagers: {{ this.villagersCount() | number:'1.0-2' }}</p>
+
+<button (click)="this.onClickBuyVillager()">Buy villagers</button>

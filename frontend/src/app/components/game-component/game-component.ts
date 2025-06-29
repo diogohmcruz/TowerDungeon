@@ -8,11 +8,19 @@ import { Army } from '../army/army';
 import { TowerDisplay } from '../tower/tower-display.component';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { UnitStatsService } from '../../services/unit-stats.service';
+import { VillageManagement } from '../village-management/village-management';
 
 @Component({
   selector: 'app-game-component',
   standalone: true,
-  imports: [DecimalPipe, LowerCasePipe, Army, TowerDisplay, JsonPipe],
+  imports: [
+    DecimalPipe,
+    LowerCasePipe,
+    Army,
+    TowerDisplay,
+    JsonPipe,
+    VillageManagement,
+  ],
   templateUrl: './game-component.html',
   styleUrls: ['./game-component.scss'],
 })

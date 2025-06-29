@@ -14,7 +14,6 @@ export class GameWebSocketService {
     this.socket.onmessage = (event) => {
       try {
         const parsed: GameState = JSON.parse(event.data);
-        console.warn(parsed);
         this.gameState.setState(parsed);
       } catch (e) {
         console.error('Invalid game state received:', event.data);
@@ -24,7 +23,7 @@ export class GameWebSocketService {
     this.socket.onerror = (err) => console.error('[WebSocket] Error', err);
   }
 
-  sendAction(gameAction: GameAction, payload: any) {
+  sendAction(gameAction: GameAction, payload?: any) {
     const message = JSON.stringify({ gameAction, payload });
     console.log('Sending to WebSocket', message);
     this.socket.send(message);

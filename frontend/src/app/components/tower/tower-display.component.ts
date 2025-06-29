@@ -19,9 +19,6 @@ export class TowerDisplay {
   currentTowerFloor = computed(
     () => this.towerFloors()?.[this.currentFloor() ?? 0],
   );
+  currentTowerFloorEnemies = computed(() => this.currentTowerFloor()?.enemies);
   arrayCreator = Array;
-
-  randomWindowCount(): boolean {
-    return Math.random() > 0.5;
-  }
 }

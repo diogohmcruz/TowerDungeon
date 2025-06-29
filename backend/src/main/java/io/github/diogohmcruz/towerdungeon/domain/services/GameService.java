@@ -43,6 +43,12 @@ public class GameService {
     gameState.addUnits(buyActionDTO.unitStats(), newUnits);
   }
 
+  public void handleBuyVillagersAction(String sessionId) {
+    var gameState = players.get(sessionId);
+    var villagersCount = gameState.buyVillager();
+    log.info("Player[{}] total villagers: {}", sessionId, villagersCount);
+  }
+
   public void handleMessage(String sessionId, InvadeActionDTO invadeActionDTO) {
     log.info("Received invade action from session [{}] {}", sessionId, invadeActionDTO);
     var gameState = players.get(sessionId);
@@ -101,7 +107,7 @@ public class GameService {
 
   @Scheduled(fixedRate = 1000)
   public void gameLoop() {
-    players.values().forEach(GameState::updateMana);
+    players.values().forEach(GameState::triggerLifecycle);
     players.values().forEach(this::updateInvasion);
   }
 
