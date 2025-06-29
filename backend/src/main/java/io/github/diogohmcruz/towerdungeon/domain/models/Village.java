@@ -41,6 +41,14 @@ public class Village {
     return credits;
   }
 
+  public boolean sellFood() {
+    if (food > 1) {
+      setFood(food - 1);
+      return true;
+    }
+    return false;
+  }
+
   private boolean checkStarvation() {
     return this.food <= 0;
   }

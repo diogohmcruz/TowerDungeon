@@ -56,6 +56,15 @@ public class GameState {
     return villagersCount;
   }
 
+  public Double sellFood() {
+    var profit = 0d;
+    while (village.sellFood()) {
+      profit += 1;
+    }
+    this.credit += profit;
+    return credit;
+  }
+
   public void enlistRandom(UnitStats unitStats) {
     var currentUnits = this.units.getOrDefault(unitStats, new ArrayList<>());
     var randomIndex = ThreadLocalRandom.current().nextInt(currentUnits.size());

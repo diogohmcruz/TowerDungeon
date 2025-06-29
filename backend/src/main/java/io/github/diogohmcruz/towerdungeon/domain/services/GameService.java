@@ -49,6 +49,12 @@ public class GameService {
     log.info("Player[{}] total villagers: {}", sessionId, villagersCount);
   }
 
+  public void handleSellFoodAction(String sessionId) {
+    var gameState = players.get(sessionId);
+    var credits = gameState.sellFood();
+    log.info("Player[{}] sold food for credits: {}", sessionId, credits);
+  }
+
   public void handleMessage(String sessionId, InvadeActionDTO invadeActionDTO) {
     log.info("Received invade action from session [{}] {}", sessionId, invadeActionDTO);
     var gameState = players.get(sessionId);
