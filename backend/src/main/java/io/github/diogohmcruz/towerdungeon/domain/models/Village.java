@@ -12,7 +12,7 @@ public class Village {
   private Double food = 0.1d;
 
   @Setter(AccessLevel.NONE)
-  private Integer villagersCount = 1;
+  private Integer villagersCount = 20;
 
   private final Double VILLAGER_FOOD_PRODUCTION = 0.01;
   private final Double FOOD_CONSUMPTION = 0.01;

@@ -14,8 +14,11 @@ import org.springframework.stereotype.Service;
 import io.github.diogohmcruz.towerdungeon.api.dtos.BuyActionDTO;
 import io.github.diogohmcruz.towerdungeon.api.dtos.InvadeActionDTO;
 import io.github.diogohmcruz.towerdungeon.domain.exceptions.InvalidInvasion;
+import io.github.diogohmcruz.towerdungeon.domain.models.AttackType;
+import io.github.diogohmcruz.towerdungeon.domain.models.Enemy;
 import io.github.diogohmcruz.towerdungeon.domain.models.GameState;
 import io.github.diogohmcruz.towerdungeon.domain.models.Tower;
+import io.github.diogohmcruz.towerdungeon.domain.models.TowerFloor;
 import io.github.diogohmcruz.towerdungeon.domain.models.Unit;
 import io.github.diogohmcruz.towerdungeon.domain.models.UnitStats;
 import lombok.RequiredArgsConstructor;
@@ -33,14 +36,17 @@ public class GameService {
   }
 
   public void handleMessage(String sessionId, BuyActionDTO buyActionDTO) {
-    log.info("Received buy action from session [{}] {}", sessionId, buyActionDTO);
     var gameState = players.get(sessionId);
     var newUnits = new ArrayList<Unit>();
-    for (int i = 0; i < buyActionDTO.quantity(); i++) {
+    var quantity = buyActionDTO.quantity();
+    while (gameState.getCredit() > buyActionDTO.unitStats().getCost() && quantity > 0) {
+      gameState.setCredit(gameState.getCredit() - buyActionDTO.unitStats().getCost());
       var unit = new Unit(buyActionDTO.unitStats());
       newUnits.add(unit);
+      quantity--;
     }
     gameState.addUnits(buyActionDTO.unitStats(), newUnits);
+    log.info("Received buy action from session [{}]. New units: {}", sessionId, newUnits);
   }
 
   public void handleBuyVillagersAction(String sessionId) {
@@ -145,6 +151,29 @@ public class GameService {
       return;
     }
     var currentEnemies = currentTowerFloor.getEnemies();
+    unitsAttack(unitsOnTower, currentEnemies, currentTowerFloor);
+    enemiesAttack(gameState, currentEnemies, unitsOnTower);
+  }
+
+  // FIXME: The dead units are still attacking and healing.
+  private static void unitsAttack(
+      Map<UnitStats, List<Unit>> unitsOnTower,
+      List<Enemy> currentEnemies,
+      TowerFloor currentTowerFloor) {
+    unitsOnTower.entrySet().stream()
+        .filter(entry -> !AttackType.HEAL.equals(entry.getKey().getAttackType()))
+        .flatMap(entry -> entry.getValue().stream())
+        .forEach(
+            healerUnit -> {
+              var otherUnitsOnTower =
+                  unitsOnTower.values().stream()
+                      .flatMap(List::stream)
+                      .filter(unit -> healerUnit.getId().equals(unit.getId()))
+                      .toList();
+              var randomKeyIndex = ThreadLocalRandom.current().nextInt(otherUnitsOnTower.size());
+              var targetUnit = otherUnitsOnTower.get(randomKeyIndex);
+              targetUnit.receiveAttack(healerUnit.getStats().getDamage(), AttackType.HEAL);
+            });
     unitsOnTower.forEach(
         (unit, value) ->
             value.forEach(
@@ -164,6 +193,10 @@ public class GameService {
                     currentTowerFloor.removeEnemy(targetEnemy);
                   }
                 }));
+  }
+
+  private static void enemiesAttack(
+      GameState gameState, List<Enemy> currentEnemies, Map<UnitStats, List<Unit>> unitsOnTower) {
     currentEnemies.forEach(
         currentEnemy -> {
           var unitStatsKeys = new ArrayList<>(unitsOnTower.keySet());
@@ -175,7 +208,8 @@ public class GameService {
           }
           var randomUnitOnTowerIndex = ThreadLocalRandom.current().nextInt(targetUnit.size());
           var targetUnitElement = targetUnit.get(randomUnitOnTowerIndex);
-          targetUnitElement.receiveAttack(currentEnemy.getStats().getDamage());
+          targetUnitElement.receiveAttack(
+              currentEnemy.getStats().getDamage(), currentEnemy.getStats().getAttackType());
 
           if (targetUnitElement.getCurrentHealth() <= 0) {
             log.info("Enemy {} defeated unit {}", currentEnemy, targetUnitElement);
