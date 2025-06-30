@@ -11,13 +11,11 @@ import lombok.experimental.FieldDefaults;
 @Getter
 @ToString
 @RequiredArgsConstructor
-@JsonFormat(shape = JsonFormat.Shape.OBJECT)
+@JsonFormat(shape = JsonFormat.Shape.STRING)
 @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
 public enum AttackType {
-  MELEE(1.0),
-  RANGED(1.2),
-  MAGIC(1.5),
-  HEAL(0.5);
-
-  Double multiplier;
+  MELEE,
+  RANGED,
+  MAGIC,
+  HEAL;
 }

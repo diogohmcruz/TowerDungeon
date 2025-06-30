@@ -77,9 +77,16 @@ public class GameState {
   }
 
   public void removeUnit(Unit targetUnit) {
-    unitsOnTower
-        .get(targetUnit.getStats())
-        .removeIf(unit -> unit.getId().equals(targetUnit.getId()));
+    var currentUnits = unitsOnTower.get(targetUnit.getStats());
+    var isRemoved = currentUnits.remove(targetUnit);
+    if (isRemoved) {
+      unitsOnTower.put(targetUnit.getStats(), currentUnits);
+      if (currentUnits.isEmpty()) {
+        unitsOnTower.remove(targetUnit.getStats());
+      }
+    } else {
+      log.warn("Unit {} not found on tower. Failed to remove.", targetUnit);
+    }
   }
 
   public boolean hasUnitsOnTower() {
@@ -88,21 +95,12 @@ public class GameState {
 
   public void passingTime(Long interval) {
     Double attack = Double.valueOf(interval) / 1000;
-    unitsOnTower
-        .values()
-        .forEach(
-            unitList -> {
-              var unitsToRemove = new ArrayList<Unit>();
-              unitList.forEach(
-                  unit -> {
-                    if (unit.getCurrentHealth() <= 0) {
-                      log.info("Unit {} passed away.", unit);
-                      unitsToRemove.add(unit);
-                    } else {
-                      unit.receiveAttack(attack, null);
-                    }
-                  });
-              unitsToRemove.forEach(this::removeUnit);
-            });
+    var unitsToRemove =
+        unitsOnTower.values().stream()
+            .flatMap(List::stream)
+            .peek(unit -> unit.receiveAttack(attack, null))
+            .filter(BaseUnit::isDead)
+            .toList();
+    unitsToRemove.forEach(this::removeUnit);
   }
 }

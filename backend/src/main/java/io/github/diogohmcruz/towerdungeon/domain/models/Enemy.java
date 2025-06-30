@@ -19,16 +19,16 @@ public class Enemy extends BaseUnit {
   }
 
   public void receiveAttack(Double attack, AttackType attackType) {
-    var attackTotal =
-        attack
-            * (attackType == null
-                ? 1.0
-                : this.getStats().getWeaknesses().getOrDefault(attackType, 1.0));
+    double attackTypeOrTrueDamage =
+        attackType == null ? 1.0 : this.getStats().getWeaknesses().getOrDefault(attackType, 1.0);
+    var attackTotal = attack * attackTypeOrTrueDamage;
     super.receiveAttack(attackTotal);
   }
 
   @Override
   public String toString() {
-    return this.getName() + "[" + this.getStats().name() + "]";
+    return String.format(
+        "%s[%s][%.1f/%.1f]",
+        this.getName(), this.stats.name(), this.getCurrentHealth(), this.getStats().getHealth());
   }
 }

@@ -21,6 +21,10 @@ public class BaseUnit {
   }
 
   public void receiveAttack(Double attack) {
-    currentHealth -= attack;
+    setCurrentHealth(currentHealth - attack);
+  }
+
+  public boolean isDead() {
+    return currentHealth <= 0;
   }
 }

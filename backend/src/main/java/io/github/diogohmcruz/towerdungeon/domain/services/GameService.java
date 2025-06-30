@@ -1,10 +1,12 @@
 package io.github.diogohmcruz.towerdungeon.domain.services;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -155,44 +157,45 @@ public class GameService {
     enemiesAttack(gameState, currentEnemies, unitsOnTower);
   }
 
-  // FIXME: The dead units are still attacking and healing.
   private static void unitsAttack(
       Map<UnitStats, List<Unit>> unitsOnTower,
       List<Enemy> currentEnemies,
       TowerFloor currentTowerFloor) {
     unitsOnTower.entrySet().stream()
-        .filter(entry -> !AttackType.HEAL.equals(entry.getKey().getAttackType()))
-        .flatMap(entry -> entry.getValue().stream())
+        .filter(entry -> AttackType.HEAL.equals(entry.getKey().getAttackType()))
+        .map(Entry::getValue)
+        .flatMap(Collection::stream)
         .forEach(
             healerUnit -> {
               var otherUnitsOnTower =
                   unitsOnTower.values().stream()
                       .flatMap(List::stream)
-                      .filter(unit -> healerUnit.getId().equals(unit.getId()))
+                      .filter(unit -> !healerUnit.getId().equals(unit.getId()))
                       .toList();
               var randomKeyIndex = ThreadLocalRandom.current().nextInt(otherUnitsOnTower.size());
               var targetUnit = otherUnitsOnTower.get(randomKeyIndex);
               targetUnit.receiveAttack(healerUnit.getStats().getDamage(), AttackType.HEAL);
             });
-    unitsOnTower.forEach(
-        (unit, value) ->
-            value.forEach(
-                currentUnit -> {
-                  if (currentEnemies.isEmpty()) {
-                    log.info(
-                        "No enemies left for unit {} to attack in the current floor. Skipping"
-                            + " attack.",
-                        currentUnit);
-                    return;
-                  }
-                  var randomKeyIndex = ThreadLocalRandom.current().nextInt(currentEnemies.size());
-                  var targetEnemy = currentEnemies.get(randomKeyIndex);
-                  targetEnemy.receiveAttack(unit.getDamage(), unit.getAttackType());
-                  if (targetEnemy.getCurrentHealth() <= 0) {
-                    log.info("Unit {} defeated enemy {}", currentUnit, targetEnemy);
-                    currentTowerFloor.removeEnemy(targetEnemy);
-                  }
-                }));
+    unitsOnTower.values().stream()
+        .flatMap(List::stream)
+        .forEach(
+            currentUnit -> {
+              if (currentEnemies.isEmpty()) {
+                log.info(
+                    "No enemies left for unit {} to attack in the current floor. Skipping"
+                        + " attack.",
+                    currentUnit);
+                return;
+              }
+              var randomKeyIndex = ThreadLocalRandom.current().nextInt(currentEnemies.size());
+              var targetEnemy = currentEnemies.get(randomKeyIndex);
+              targetEnemy.receiveAttack(
+                  currentUnit.getStats().getDamage(), currentUnit.getStats().getAttackType());
+              if (targetEnemy.isDead()) {
+                log.info("Unit {} defeated enemy {}", currentUnit, targetEnemy);
+                currentTowerFloor.removeEnemy(targetEnemy);
+              }
+            });
   }
 
   private static void enemiesAttack(
