@@ -16,6 +16,10 @@ public class BaseUnit {
     this.name = new Faker().greekPhilosopher().name();
   }
 
+  public void setCurrentHealth(Double currentHealth) {
+    this.currentHealth = Math.max(0, currentHealth);
+  }
+
   public void receiveAttack(Double attack) {
     currentHealth -= attack;
   }

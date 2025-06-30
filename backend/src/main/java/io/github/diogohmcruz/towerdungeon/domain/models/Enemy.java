@@ -14,10 +14,17 @@ public class Enemy extends BaseUnit {
     this.setCurrentHealth(stats.getHealth());
   }
 
+  public void setCurrentHealth(Double currentHealth) {
+    super.setCurrentHealth(Math.min(currentHealth, stats.getHealth()));
+  }
+
   public void receiveAttack(Double attack, AttackType attackType) {
-    setCurrentHealth(
-        getCurrentHealth()
-            - (attack * this.getStats().getWeaknesses().getOrDefault(attackType, 1.0)));
+    var attackTotal =
+        attack
+            * (attackType == null
+                ? 1.0
+                : this.getStats().getWeaknesses().getOrDefault(attackType, 1.0));
+    super.receiveAttack(attackTotal);
   }
 
   @Override

@@ -15,7 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 public class GameState {
   private Double mana = 0d;
   private Double manaPerSecond = 1d;
-  private Double credit = 0d;
+  private Double credit = 10d;
   private Map<UnitStats, List<Unit>> units = new HashMap<>();
   private Map<UnitStats, List<Unit>> unitsOnTower = new HashMap<>();
   private Tower tower;
@@ -99,7 +99,7 @@ public class GameState {
                       log.info("Unit {} passed away.", unit);
                       unitsToRemove.add(unit);
                     } else {
-                      unit.receiveAttack(attack);
+                      unit.receiveAttack(attack, null);
                     }
                   });
               unitsToRemove.forEach(this::removeUnit);
