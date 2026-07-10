@@ -1,5 +1,10 @@
 <div class="enemies">
-  <h4>Floor {{ currentFloor() }} / {{ maxFloor() }}</h4>
+  <h4>
+    Floor {{ currentFloor() }} / {{ maxFloor() }}
+    @if (currentFloorIsBoss()) {
+      <span class="boss-flag">⚔ Guardian floor</span>
+    }
+  </h4>
   @if (enemyCount() === 0) {
     <p class="cleared">No enemies here — advancing…</p>
   }
@@ -16,6 +21,7 @@
       @for (floor of towerFloorsEntries(); track floor[0]) {
         <div
           class="tower-floor"
+          [class.boss-floor]="floor[1].boss"
           [style.border-bottom-color]="
             +floor[0] < currentFloor() - 1
               ? '2px solid #bdbdbd'
@@ -29,10 +35,16 @@
                 .keys();
               track window
             ) {
-              <div class="window" [style.background]="'#e0e0e0'"></div>
+              <div
+                class="window"
+                [style.background]="floor[1].boss ? '#d4a24c' : '#e0e0e0'"
+              ></div>
             }
           </div>
-          <div class="floor-label">Floor {{ floor[0] }}</div>
+          <div class="floor-label">
+            Floor {{ floor[0] }}
+            @if (floor[1].boss) { <span class="floor-boss">⚔</span> }
+          </div>
         </div>
       }
       @if (currentFloor() < maxFloor()) {

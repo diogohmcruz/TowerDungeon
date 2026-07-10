@@ -12,8 +12,10 @@ import { Card } from '../card/card';
 })
 export class EnemyCard {
   enemy = input.required<Member>();
+  maxHealth = computed(() => this.enemy().maxHealth ?? this.enemy().stats.health);
   healthPct = computed(() => {
-    const e = this.enemy();
-    return e.stats.health ? (e.currentHealth / e.stats.health) * 100 : 0;
+    const max = this.maxHealth();
+    return max ? (this.enemy().currentHealth / max) * 100 : 0;
   });
+  isBoss = computed(() => this.enemy().boss === true);
 }

@@ -12,6 +12,7 @@ import java.util.function.Predicate;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
+import io.github.diogohmcruz.towerdungeon.config.GameProperties;
 import io.github.diogohmcruz.towerdungeon.domain.models.healing.FoodDistributionStrategy;
 import io.github.diogohmcruz.towerdungeon.domain.models.healing.FoodHealingConfig;
 import io.github.diogohmcruz.towerdungeon.domain.models.healing.RoundRobinFoodDistributionStrategy;
@@ -28,18 +29,18 @@ import lombok.extern.slf4j.Slf4j;
 @Data
 public class GameState {
   private Double mana = 0d;
-  private Double manaPerSecond = 1d;
-  private Double credit = 10d;
+  private Double manaPerSecond;
+  private Double credit;
   private Map<UnitStats, List<Unit>> units = new HashMap<>();
   private Map<UnitStats, List<Unit>> unitsOnTower = new HashMap<>();
   private Tower tower;
-  private Village village = new Village();
+  private Village village;
   private List<String> upgrades = new ArrayList<>();
   private Integer prestigePoints = 0;
   private Map<ResourceType, Double> resources = ResourceType.emptyWallet();
   private Map<ResourceType, Double> carriedLoot = ResourceType.emptyWallet();
   private Double supplies = 0d;
-  private Double maxSupplies = BASE_MAX_SUPPLIES;
+  private Double maxSupplies;
   private Double lastFoodReturned = 0d;
 
   @JsonIgnore
@@ -60,9 +61,19 @@ public class GameState {
   private FoodDistributionStrategy foodDistributionStrategy =
       new RoundRobinFoodDistributionStrategy();
 
-  private static final double BASE_MAX_SUPPLIES = 100d;
-  private static final double HEAL_SUPPLY_COST_PER_HP = 1.0;
-  private static final double FOOD_HEAL_HP_PER_TICK = 5.0;
+  @JsonIgnore
+  @ToString.Exclude
+  @EqualsAndHashCode.Exclude
+  private GameProperties config;
+
+  public GameState(GameProperties config) {
+    this.config = config;
+    this.credit = config.getStart().getCredit();
+    this.manaPerSecond = config.getStart().getManaPerSecond();
+    this.maxSupplies = config.getSupply().getBaseMax();
+    this.village = new Village(config.getVillage());
+  }
+
 
   /**
    * Starts an expedition. Food is a single shared resource: the party draws food out of the village
@@ -87,7 +98,7 @@ public class GameState {
         unitsOnTower.entrySet().stream()
             .mapToDouble(entry -> entry.getKey().getSupplyBonus() * entry.getValue().size())
             .sum();
-    return BASE_MAX_SUPPLIES + getSupplyCapacityBonus() + supplyBonus;
+    return config.getSupply().getBaseMax() + getSupplyCapacityBonus() + supplyBonus;
   }
 
   /**
@@ -125,7 +136,10 @@ public class GameState {
   public void healHomePartyWithFood() {
     var homeUnits = units.values().stream().flatMap(List::stream).toList();
     foodDistributionStrategy.distribute(
-        homeUnits, village, new FoodHealingConfig(HEAL_SUPPLY_COST_PER_HP, FOOD_HEAL_HP_PER_TICK));
+        homeUnits,
+        village,
+        new FoodHealingConfig(
+            config.getHealing().getCostPerHp(), config.getHealing().getHpPerTick()));
   }
 
   /** Total missing health across the units resting at home (the ones the village feeds/heals). */
@@ -145,7 +159,7 @@ public class GameState {
 
   /** Health restored per lifecycle tick when the village has food to spare. */
   public double getFoodHealRate() {
-    return FOOD_HEAL_HP_PER_TICK;
+    return config.getHealing().getHpPerTick();
   }
 
   /** Number of idle units back home (excludes those on an expedition). */
