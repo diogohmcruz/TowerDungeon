@@ -5,9 +5,29 @@
 
 .enemies {
   display: inline-block;
-  max-height: 200px;
-  max-width: 300px;
+  max-height: 240px;
+  max-width: 320px;
   overflow: auto;
+
+  h4 {
+    margin: 0 0 6px;
+    font-size: 0.95em;
+  }
+
+  .cleared {
+    font-style: italic;
+    opacity: 0.6;
+    margin: 4px 0;
+  }
+
+  .enemy-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
 }
 
 .tower-dungeon-wrapper {

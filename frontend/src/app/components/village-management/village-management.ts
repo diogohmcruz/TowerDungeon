@@ -19,6 +19,10 @@ export class VillageManagement {
   readonly villagersCount = computed(
     () => this.gameState().village.villagersCount,
   );
+  readonly production = computed(() => this.gameState().village.productionRate);
+  readonly upkeep = computed(() => this.gameState().foodUpkeep);
+  readonly netFood = computed(() => this.gameState().netFoodPerSecond);
+  readonly homeUnits = computed(() => this.gameState().homeUnitCount);
 
   onClickBuyVillager() {
     this.ws.sendAction(GameAction.BUY_VILLAGERS);
