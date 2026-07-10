@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 
 import io.github.diogohmcruz.towerdungeon.api.dtos.BuyActionDTO;
 import io.github.diogohmcruz.towerdungeon.api.dtos.InvadeActionDTO;
+import io.github.diogohmcruz.towerdungeon.api.dtos.UpgradeActionDTO;
 import io.github.diogohmcruz.towerdungeon.domain.exceptions.InvalidInvasion;
 import io.github.diogohmcruz.towerdungeon.domain.models.AttackType;
 import io.github.diogohmcruz.towerdungeon.domain.models.BaseUnit;
@@ -25,6 +26,7 @@ import io.github.diogohmcruz.towerdungeon.domain.models.Tower;
 import io.github.diogohmcruz.towerdungeon.domain.models.TowerFloor;
 import io.github.diogohmcruz.towerdungeon.domain.models.Unit;
 import io.github.diogohmcruz.towerdungeon.domain.models.UnitStats;
+import io.github.diogohmcruz.towerdungeon.domain.models.upgrade.UpgradeType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -45,6 +47,13 @@ public class GameService {
 
   public void handleMessage(String sessionId, BuyActionDTO buyActionDTO) {
     var gameState = players.get(sessionId);
+    if (!gameState.isUnitUnlocked(buyActionDTO.unitStats())) {
+      log.warn(
+          "Player[{}] tried to recruit locked unit {}. Ignoring.",
+          sessionId,
+          buyActionDTO.unitStats());
+      return;
+    }
     var newUnits = new ArrayList<Unit>();
     var quantity = buyActionDTO.quantity();
     while (gameState.getCredit() > buyActionDTO.unitStats().getCost() && quantity > 0) {
@@ -67,6 +76,20 @@ public class GameService {
     var gameState = players.get(sessionId);
     var credits = gameState.sellFood();
     log.info("Player[{}] sold food for credits: {}", sessionId, credits);
+  }
+
+  public void handleUpgradeAction(String sessionId, UpgradeActionDTO upgradeActionDTO) {
+    var gameState = players.get(sessionId);
+    UpgradeType type;
+    try {
+      type = UpgradeType.valueOf(upgradeActionDTO.upgradeId());
+    } catch (IllegalArgumentException | NullPointerException e) {
+      log.warn("Player[{}] requested unknown upgrade {}.", sessionId, upgradeActionDTO.upgradeId());
+      return;
+    }
+    var applied = gameState.applyUpgrade(type);
+    log.info(
+        "Player[{}] upgrade {} -> {}", sessionId, type, applied ? "purchased" : "rejected");
   }
 
   public void handleMessage(String sessionId, InvadeActionDTO invadeActionDTO) {
@@ -104,6 +127,7 @@ public class GameService {
     gameState.returnPartyHome();
     gameState.bankLoot();
     gameState.setTower(null);
+    gameState.completeExpedition();
     log.info(
         "Player[{}] extracted. Leftover food returned to village, loot banked, party returned home"
             + " to recover on the village's food.",
@@ -187,6 +211,7 @@ public class GameService {
       gameState.addCredit(clearedFloor * 10.0);
       gatherFloorLoot(gameState, clearedFloor);
       tower.moveToNextFloor();
+      gameState.recordFloorReached(tower.getCurrentFloor());
       if (tower.getMaxFloor().equals(tower.getCurrentFloor())) {
         log.info("WIN! Player has reached the top of the tower!");
         return;
@@ -195,7 +220,7 @@ public class GameService {
       return;
     }
     var currentEnemies = currentTowerFloor.getEnemies();
-    unitsAttack(unitsOnTower, currentEnemies, currentTowerFloor);
+    unitsAttack(unitsOnTower, currentEnemies, currentTowerFloor, gameState.getDamageMultiplier());
     enemiesAttack(gameState, currentEnemies, unitsOnTower);
   }
 
@@ -221,12 +246,14 @@ public class GameService {
     gameState.setTower(null);
     gameState.setSupplies(0d);
     gameState.getUnitsOnTower().clear();
+    gameState.completeExpedition();
   }
 
   private static void unitsAttack(
       Map<UnitStats, List<Unit>> unitsOnTower,
       List<Enemy> currentEnemies,
-      TowerFloor currentTowerFloor) {
+      TowerFloor currentTowerFloor,
+      double damageMultiplier) {
     unitsOnTower.entrySet().stream()
         .filter(entry -> AttackType.HEAL.equals(entry.getKey().getAttackType()))
         .map(Entry::getValue)
@@ -256,7 +283,8 @@ public class GameService {
               var randomKeyIndex = ThreadLocalRandom.current().nextInt(currentEnemies.size());
               var targetEnemy = currentEnemies.get(randomKeyIndex);
               targetEnemy.receiveAttack(
-                  currentUnit.getStats().getDamage(), currentUnit.getStats().getAttackType());
+                  currentUnit.getStats().getDamage() * damageMultiplier,
+                  currentUnit.getStats().getAttackType());
               if (targetEnemy.isDead()) {
                 log.info("Unit {} defeated enemy {}", currentUnit, targetEnemy);
                 currentTowerFloor.removeEnemy(targetEnemy);

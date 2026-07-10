@@ -1,11 +1,9 @@
-<div class="enemy">
-  <div class="enemy-head">
-    <span class="enemy-type">{{ enemy().stats.type ?? enemy().name }}</span>
-    <span class="enemy-hp">
-      {{ enemy().currentHealth | number: '1.0-0' }} /
-      {{ enemy().stats.health | number: '1.0-0' }}
-    </span>
-  </div>
+<app-card>
+  <span card-title class="enemy-type">{{ enemy().stats.type ?? enemy().name }}</span>
+  <span card-badge class="enemy-hp">
+    {{ enemy().currentHealth | number: '1.0-0' }} /
+    {{ enemy().stats.health | number: '1.0-0' }}
+  </span>
   <div class="hp-bar">
     <div class="hp-fill" [style.width.%]="healthPct()"></div>
   </div>
@@ -13,4 +11,4 @@
     <span class="tag">{{ enemy().stats.attackType }}</span>
     <span class="tag">⚔ {{ enemy().stats.damage | number: '1.0-1' }}</span>
   </div>
-</div>
+</app-card>

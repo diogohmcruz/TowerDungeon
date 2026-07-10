@@ -1,7 +1,7 @@
-import { Component, inject, Signal, signal } from '@angular/core';
+import { Component, computed, inject, Signal } from '@angular/core';
 import { GameStateService } from '../../services/game-state.service';
 import { GameWebSocketService } from '../../services/game-web-socket.service';
-import { DecimalPipe, LowerCasePipe } from '@angular/common';
+import { DecimalPipe } from '@angular/common';
 import { GameAction } from '../../interfaces/game-action.enum';
 import { Unit, UnitStats } from '../../interfaces/unit.enum';
 import { Army } from '../army/army';
@@ -9,16 +9,21 @@ import { TowerDisplay } from '../tower/tower-display.component';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { UnitStatsService } from '../../services/unit-stats.service';
 import { VillageManagement } from '../village-management/village-management';
+import { UnitCard } from '../unit-card/unit-card';
+import { UpgradeCard } from '../upgrade-card/upgrade-card';
+import { MilestoneCard } from '../milestone-card/milestone-card';
 
 @Component({
   selector: 'app-game-component',
   standalone: true,
   imports: [
     DecimalPipe,
-    LowerCasePipe,
     Army,
     TowerDisplay,
     VillageManagement,
+    UnitCard,
+    UpgradeCard,
+    MilestoneCard,
   ],
   templateUrl: './game-component.html',
   styleUrls: ['./game-component.scss'],
@@ -28,13 +33,17 @@ export class GameComponent {
   private ws = inject(GameWebSocketService);
   private unitStatsService = inject(UnitStatsService);
 
-  readonly units = signal(Object.entries(Unit));
+  readonly units = computed(() =>
+    (this.gameState().unlockedUnitTypes ?? []).map(
+      (type) => [type, type] as [string, string],
+    ),
+  );
   unitStats: Signal<Map<Unit, UnitStats>> = toSignal(
     this.unitStatsService.getUnitStats(),
     { initialValue: new Map<Unit, UnitStats>() },
   );
 
-  sendBuyAction(unitStats: Unit) {
+  sendBuyAction(unitStats: string) {
     const payload = { unitStats, quantity: 1 };
     this.ws.sendAction(GameAction.BUY, payload);
   }
@@ -55,8 +64,16 @@ export class GameComponent {
     this.ws.sendAction(GameAction.EXTRACT, null);
   }
 
-  upgrade() {
-    this.ws.sendAction(GameAction.UPGRADE, null);
+  buyUpgrade(upgradeId: string) {
+    this.ws.sendAction(GameAction.UPGRADE, { upgradeId });
+  }
+
+  canAfford(cost: { MATERIALS?: number; RELICS?: number }): boolean {
+    const banked = this.gameState().resources;
+    return (
+      (cost.MATERIALS ?? 0) <= banked.MATERIALS &&
+      (cost.RELICS ?? 0) <= banked.RELICS
+    );
   }
 
   prestige() {
