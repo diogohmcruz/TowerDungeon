@@ -1,0 +1,49 @@
+:host {
+  display: block;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--card-gap, 6px);
+  padding: var(--card-pad, 8px 10px);
+  background: var(--card-bg, #f7f9fc);
+  border: 1px solid var(--card-border, #e2e8f2);
+  border-left: var(--card-accent-width, 1px) solid
+    var(--card-accent, var(--card-border, #e2e8f2));
+  border-radius: var(--card-radius, 10px);
+  box-shadow: var(--card-shadow, 0 1px 3px rgba(60, 70, 90, 0.06));
+
+  &--muted {
+    opacity: 0.7;
+  }
+}
+
+.card__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.card__title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-weight: var(--card-title-weight, 700);
+  font-size: var(--card-title-size, 0.86em);
+  color: var(--card-title-color, #2b3a55);
+}
+
+.card__badge {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  font-size: var(--card-badge-size, 0.74em);
+  color: var(--card-badge-color, #6b7688);
+}
+
+.card__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--card-gap, 6px);
+}

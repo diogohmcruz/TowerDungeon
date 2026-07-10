@@ -1,0 +1,76 @@
+:host {
+  display: block;
+  --card-bg: #f6f8fc;
+  --card-border: #dfe6f1;
+  --card-shadow: 0 1px 3px rgba(60, 80, 120, 0.06);
+  --card-pad: 10px 12px;
+  --card-title-size: 0.86em;
+  --card-title-color: #384768;
+}
+
+app-card.is-unlock {
+  --card-bg: #f3f0fb;
+  --card-border: #e0d6f3;
+}
+
+.upgrade-level {
+  background: #e6ebf3;
+  border-radius: 4px;
+  padding: 1px 6px;
+
+  &.owned {
+    color: #2f8f5b;
+    background: #e2f4ea;
+  }
+}
+
+.upgrade-desc {
+  margin: 0;
+  font-size: 0.76em;
+  color: #5a6b86;
+}
+
+.upgrade-cost {
+  flex-direction: row;
+  flex-wrap: wrap;
+  display: flex;
+  gap: 6px;
+
+  .cost {
+    font-size: 0.72em;
+    border-radius: 4px;
+    padding: 1px 6px;
+  }
+
+  .cost.mat {
+    background: #eaf1e6;
+    color: #4c7a3a;
+  }
+
+  .cost.rel {
+    background: #f5e7f0;
+    color: #9a3b7a;
+  }
+}
+
+button {
+  margin-top: auto;
+  cursor: pointer;
+  border: none;
+  border-radius: 8px;
+  padding: 5px 8px;
+  font-size: 0.78em;
+  font-weight: 600;
+  color: #fff;
+  background: #4c7dc0;
+  transition: background 0.2s ease;
+
+  &:hover {
+    background: #3a6bad;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}

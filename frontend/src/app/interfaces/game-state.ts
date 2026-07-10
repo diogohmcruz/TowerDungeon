@@ -12,6 +12,25 @@ export type ResourceWallet = {
   RELICS: number;
 };
 
+export interface UpgradeOffer {
+  id: string;
+  name: string;
+  description: string;
+  level: number;
+  maxed: boolean;
+  repeatable: boolean;
+  unlockUnit: string | null;
+  nextCost: Partial<ResourceWallet>;
+}
+
+export interface MilestoneOffer {
+  id: string;
+  name: string;
+  description: string;
+  trigger: string;
+  achieved: boolean;
+}
+
 export interface GameState {
   mana: number;
   manaPerSecond: number;
@@ -32,4 +51,11 @@ export interface GameState {
   homeUnitCount: number;
   foodUpkeep: number;
   netFoodPerSecond: number;
+  unlockedUnitTypes: string[];
+  availableUpgrades: UpgradeOffer[];
+  damageMultiplier: number;
+  supplyCapacityBonus: number;
+  deepestFloor: number;
+  expeditionsCompleted: number;
+  milestones: MilestoneOffer[];
 }
