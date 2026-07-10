@@ -1,6 +1,12 @@
 <p>Credits: {{ this.gameState().credit | number:'1.0-2' }}</p>
-<p>Food: {{ this.food() | number:'1.0-2' }}</p>
-<p>Villagers: {{ this.villagersCount() | number:'1.0-2' }}</p>
+<p>Food (pantry): {{ this.food() | number:'1.0-1' }}</p>
+<p class="food-rate" [class.food-negative]="this.netFood() < 0">
+  {{ this.netFood() >= 0 ? '+' : '' }}{{ this.netFood() | number:'1.0-1' }} food/s
+  (grow +{{ this.production() | number:'1.0-1' }}, {{ this.homeUnits() }} idle units eat
+  −{{ this.upkeep() | number:'1.0-1' }})
+</p>
+<p class="food-note">Villagers grow food; idle units eat it on standby, and expeditions carry it as supplies. Buy more villagers to stay ahead.</p>
+<p>Villagers: {{ this.villagersCount() | number:'1.0-0' }}</p>
 
 <button (click)="this.onClickBuyVillager()">Buy villagers</button>
 <button (click)="this.onClickSellFood()">Sell food</button>

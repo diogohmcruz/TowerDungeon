@@ -1,7 +1,7 @@
 import { Component, inject, Signal, signal } from '@angular/core';
 import { GameStateService } from '../../services/game-state.service';
 import { GameWebSocketService } from '../../services/game-web-socket.service';
-import { DecimalPipe, JsonPipe, LowerCasePipe } from '@angular/common';
+import { DecimalPipe, LowerCasePipe } from '@angular/common';
 import { GameAction } from '../../interfaces/game-action.enum';
 import { Unit, UnitStats } from '../../interfaces/unit.enum';
 import { Army } from '../army/army';
@@ -18,7 +18,6 @@ import { VillageManagement } from '../village-management/village-management';
     LowerCasePipe,
     Army,
     TowerDisplay,
-    JsonPipe,
     VillageManagement,
   ],
   templateUrl: './game-component.html',
@@ -50,6 +49,10 @@ export class GameComponent {
     //units.set("quantity", 1);
     const payload = { units };
     this.ws.sendAction(GameAction.INVADE, payload);
+  }
+
+  extract() {
+    this.ws.sendAction(GameAction.EXTRACT, null);
   }
 
   upgrade() {

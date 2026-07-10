@@ -17,6 +17,7 @@ export class GameStateService {
       [Unit.ROGUE]: [],
       [Unit.NECROMANCER]: [],
       [Unit.DRACO_METAMORPH]: [],
+      [Unit.PORTER]: [],
     },
     unitsOnTower: {
       [Unit.WARRIOR]: [],
@@ -27,13 +28,25 @@ export class GameStateService {
       [Unit.ROGUE]: [],
       [Unit.NECROMANCER]: [],
       [Unit.DRACO_METAMORPH]: [],
+      [Unit.PORTER]: [],
     },
     village: {
       food: 0,
       villagersCount: 0,
+      productionRate: 0,
     },
     upgrades: [],
     prestigePoints: 0,
+    resources: { MATERIALS: 0, RELICS: 0 },
+    carriedLoot: { MATERIALS: 0, RELICS: 0 },
+    supplies: 0,
+    maxSupplies: 100,
+    lastFoodReturned: 0,
+    homePartyWounds: 0,
+    foodHealRate: 0,
+    homeUnitCount: 0,
+    foodUpkeep: 0,
+    netFoodPerSecond: 0,
   });
   readonly state: Signal<GameState> = this._state.asReadonly();
 

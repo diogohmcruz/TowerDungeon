@@ -1,10 +1,13 @@
 <div class="enemies">
-  <p>{{ currentFloor() }} / {{ maxFloor() }}</p>
-  <ol>
+  <h4>Floor {{ currentFloor() }} / {{ maxFloor() }}</h4>
+  @if (enemyCount() === 0) {
+    <p class="cleared">No enemies here — advancing…</p>
+  }
+  <div class="enemy-list">
     @for (enemy of currentTowerFloorEnemies(); track enemy.id) {
-      <li>{{ enemy.stats | json }} - {{ enemy.currentHealth }}</li>
+      <app-enemy-card [enemy]="enemy" />
     }
-  </ol>
+  </div>
 </div>
 
 <div class="tower-dungeon-wrapper">

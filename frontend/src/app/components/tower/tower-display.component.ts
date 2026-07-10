@@ -1,10 +1,10 @@
 import { Component, computed, input } from '@angular/core';
-import { JsonPipe } from '@angular/common';
 import { Tower } from '../../interfaces/tower';
+import { EnemyCard } from '../enemy-card/enemy-card';
 
 @Component({
   selector: 'app-tower',
-  imports: [JsonPipe],
+  imports: [EnemyCard],
   templateUrl: './tower-display.component.html',
   styleUrl: './tower-display.component.scss',
 })
@@ -20,5 +20,6 @@ export class TowerDisplay {
     () => this.towerFloors()?.[this.currentFloor() ?? 0],
   );
   currentTowerFloorEnemies = computed(() => this.currentTowerFloor()?.enemies);
+  enemyCount = computed(() => this.currentTowerFloorEnemies()?.length ?? 0);
   arrayCreator = Array;
 }

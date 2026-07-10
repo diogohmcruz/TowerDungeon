@@ -8,18 +8,83 @@
   <app-village-management />
   <hr />
 
-  @for (unit of units(); track unit) {
-  <article>
-    {{ mapStringToUnit(unit[0]) | json }}
-    <button (click)="this.sendBuyAction(unit[1])">
-      Buy {{ unit[0] | lowercase }}
-    </button>
-  </article>
+  <section class="hire-list">
+  @for (unit of units(); track unit[0]) {
+    @let stats = mapStringToUnit(unit[0]);
+    <article class="hire-card">
+      <header class="hire-head">
+        <span class="hire-type">{{ unit[0] | lowercase }}</span>
+        @if (stats?.cost != null) {
+          <span class="hire-cost">{{ stats?.cost }}c</span>
+        }
+      </header>
+      @if (stats) {
+        <ul class="stat-list">
+          <li><span>HP</span><b>{{ stats.health | number: '1.0-0' }}</b></li>
+          <li><span>DMG</span><b>{{ stats.damage | number: '1.0-1' }}</b></li>
+          <li><span>ATK</span><b>{{ stats.attackType }}</b></li>
+          @if (stats.supplyBonus) {
+            <li>
+              <span>Supply</span><b>+{{ stats.supplyBonus | number: '1.0-0' }}</b>
+            </li>
+          }
+        </ul>
+      }
+      <button (click)="this.sendBuyAction(unit[1])">
+        Buy {{ unit[0] | lowercase }}
+      </button>
+    </article>
   }
+  </section>
   <hr />
 
-  <button (click)="this.sendInvadeAction()">Invade the tower</button>
+  <button (click)="this.sendInvadeAction()" [disabled]="!!gameState().tower">
+    Invade the tower
+  </button>
+  <button (click)="this.extract()" [disabled]="!gameState().tower">
+    Extract party
+  </button>
   <button (click)="this.prestige()">Prestige</button>
+
+  @if (gameState().tower) {
+  <section class="run-hud">
+    <p>Depth: floor {{ gameState().tower?.currentFloor }}</p>
+    <p>
+      Food carried: {{ gameState().supplies | number: '1.0-0' }} / {{
+      gameState().maxSupplies | number: '1.0-0' }} (capacity)
+    </p>
+    <p>
+      Carried loot — Materials: {{ gameState().carriedLoot.MATERIALS | number:
+      '1.0-0' }}, Relics: {{ gameState().carriedLoot.RELICS | number: '1.0-0' }}
+    </p>
+    <p class="heal-hint">
+      Food is drawn from the village pantry for the run. On <b>Extract</b>,
+      leftover food is returned to the village. Wounded units then recover at
+      home over time, fed from the village's food.
+    </p>
+  </section>
+  } @else if (gameState().lastFoodReturned > 0) {
+  <section class="run-hud">
+    <p class="heal-summary">
+      Last extraction returned
+      <b>{{ gameState().lastFoodReturned | number: '1.0-0' }} food</b>
+      to the village.
+    </p>
+  </section>
+  }
+
+  @if (gameState().homePartyWounds > 0) {
+  <p class="home-heal">
+    Home party recovering: {{ gameState().homePartyWounds | number: '1.0-0' }} HP
+    to heal · ~{{ gameState().foodHealRate | number: '1.0-0' }} HP/s from village
+    food (round-robin).
+  </p>
+  }
+
+  <p>
+    Banked — Materials: {{ gameState().resources.MATERIALS | number: '1.0-0' }},
+    Relics: {{ gameState().resources.RELICS | number: '1.0-0' }}
+  </p>
 
   <p>Upgrades: {{ this.gameState().upgrades.join(', ') || 'Nenhum' }}</p>
   <p>Prestige Points: {{ this.gameState().prestigePoints }}</p>
