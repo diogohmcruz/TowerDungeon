@@ -1,9 +1,12 @@
 package io.github.diogohmcruz.towerdungeon.domain.models;
 
 import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Predicate;
 
@@ -12,6 +15,10 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.github.diogohmcruz.towerdungeon.domain.models.healing.FoodDistributionStrategy;
 import io.github.diogohmcruz.towerdungeon.domain.models.healing.FoodHealingConfig;
 import io.github.diogohmcruz.towerdungeon.domain.models.healing.RoundRobinFoodDistributionStrategy;
+import io.github.diogohmcruz.towerdungeon.domain.models.milestone.MilestoneOffer;
+import io.github.diogohmcruz.towerdungeon.domain.models.milestone.MilestoneType;
+import io.github.diogohmcruz.towerdungeon.domain.models.upgrade.UpgradeOffer;
+import io.github.diogohmcruz.towerdungeon.domain.models.upgrade.UpgradeType;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -34,6 +41,18 @@ public class GameState {
   private Double supplies = 0d;
   private Double maxSupplies = BASE_MAX_SUPPLIES;
   private Double lastFoodReturned = 0d;
+
+  @JsonIgnore
+  private Set<UnitStats> unlockedUnits =
+      EnumSet.of(UnitStats.WARRIOR, UnitStats.ARCHER, UnitStats.PORTER);
+
+  @JsonIgnore private Map<UpgradeType, Integer> purchasedUpgrades = new EnumMap<>(UpgradeType.class);
+
+  private int deepestFloor = 0;
+  private int expeditionsCompleted = 0;
+
+  @JsonIgnore
+  private Set<MilestoneType> achievedMilestones = EnumSet.noneOf(MilestoneType.class);
 
   @JsonIgnore
   @ToString.Exclude
@@ -68,7 +87,7 @@ public class GameState {
         unitsOnTower.entrySet().stream()
             .mapToDouble(entry -> entry.getKey().getSupplyBonus() * entry.getValue().size())
             .sum();
-    return BASE_MAX_SUPPLIES + supplyBonus;
+    return BASE_MAX_SUPPLIES + getSupplyCapacityBonus() + supplyBonus;
   }
 
   /**
@@ -196,6 +215,149 @@ public class GameState {
 
   public void addUnits(UnitStats unitStats, List<Unit> newUnits) {
     units.computeIfAbsent(unitStats, _ -> new ArrayList<>()).addAll(newUnits);
+  }
+
+  /** Whether the given unit type has been unlocked and can be recruited. */
+  public boolean isUnitUnlocked(UnitStats unitStats) {
+    return unlockedUnits.contains(unitStats);
+  }
+
+  /** Names of the unit types the player has unlocked so far, for the frontend hire list. */
+  public List<String> getUnlockedUnitTypes() {
+    return unlockedUnits.stream().map(UnitStats::name).sorted().toList();
+  }
+
+  private int upgradeLevel(UpgradeType type) {
+    return purchasedUpgrades.getOrDefault(type, 0);
+  }
+
+  /** Extra carrying capacity granted by the SUPPLY_LINES upgrade and any capacity milestones. */
+  public double getSupplyCapacityBonus() {
+    var upgradeBonus =
+        upgradeLevel(UpgradeType.SUPPLY_LINES) * UpgradeType.SUPPLY_LINES.getCapacityPerLevel();
+    var milestoneBonus =
+        achievedMilestones.stream().mapToDouble(MilestoneType::getCapacityBonus).sum();
+    return upgradeBonus + milestoneBonus;
+  }
+
+  /**
+   * Multiplier applied to party damage, from the SHARPENED_ARMS upgrade and any damage milestones
+   * (1.0 = no bonus).
+   */
+  public double getDamageMultiplier() {
+    var upgradeBonus =
+        upgradeLevel(UpgradeType.SHARPENED_ARMS)
+            * UpgradeType.SHARPENED_ARMS.getDamageBonusPerLevel();
+    var milestoneBonus =
+        achievedMilestones.stream().mapToDouble(MilestoneType::getDamageBonus).sum();
+    return 1.0 + upgradeBonus + milestoneBonus;
+  }
+
+  private boolean canAfford(Map<ResourceType, Double> cost) {
+    return cost.entrySet().stream()
+        .allMatch(entry -> resources.getOrDefault(entry.getKey(), 0d) >= entry.getValue());
+  }
+
+  private void spend(Map<ResourceType, Double> cost) {
+    cost.forEach((type, amount) -> resources.merge(type, -amount, Double::sum));
+  }
+
+  /**
+   * Attempts to buy the next level of an upgrade using banked resources. Returns {@code true} on
+   * success. Unit-unlock upgrades add the unit to the roster; repeatable upgrades bump their level
+   * (and their bonuses) and grow more expensive.
+   */
+  public boolean applyUpgrade(UpgradeType type) {
+    var level = upgradeLevel(type);
+    if (!type.isAvailableAt(level)) {
+      return false;
+    }
+    var cost = type.costAtLevel(level);
+    if (!canAfford(cost)) {
+      return false;
+    }
+    spend(cost);
+    purchasedUpgrades.put(type, level + 1);
+    if (type.getUnlockUnit() != null) {
+      unlockedUnits.add(type.getUnlockUnit());
+    }
+    if (tower != null) {
+      recalculateSupplyCapacity();
+    } else {
+      this.maxSupplies = computeSupplyCapacity();
+    }
+    return true;
+  }
+
+  /** Live catalog of upgrades with current level and next-purchase cost, streamed to the client. */
+  public List<UpgradeOffer> getAvailableUpgrades() {
+    var offers = new ArrayList<UpgradeOffer>();
+    for (UpgradeType type : UpgradeType.values()) {
+      var level = upgradeLevel(type);
+      var maxed = !type.isAvailableAt(level);
+      offers.add(
+          new UpgradeOffer(
+              type.name(),
+              type.getDisplayName(),
+              type.getDescription(),
+              level,
+              maxed,
+              type.isRepeatable(),
+              type.getUnlockUnit() == null ? null : type.getUnlockUnit().name(),
+              maxed ? Map.of() : type.costAtLevel(level)));
+    }
+    return offers;
+  }
+
+  /** Records the deepest floor the party has reached and grants any newly earned milestones. */
+  public void recordFloorReached(int floor) {
+    if (floor > deepestFloor) {
+      deepestFloor = floor;
+    }
+    checkMilestones();
+  }
+
+  /** Marks an expedition as finished (extract or wipe) and grants any newly earned milestones. */
+  public void completeExpedition() {
+    expeditionsCompleted++;
+    checkMilestones();
+  }
+
+  /**
+   * Grants every milestone whose condition is now satisfied. Story-unit milestones add the companion
+   * to the roster; buff milestones take effect immediately via the capacity/damage getters.
+   */
+  private void checkMilestones() {
+    for (MilestoneType milestone : MilestoneType.values()) {
+      if (achievedMilestones.contains(milestone)) {
+        continue;
+      }
+      if (milestone.isSatisfied(deepestFloor, expeditionsCompleted)) {
+        achievedMilestones.add(milestone);
+        if (milestone.getUnlockUnit() != null) {
+          unlockedUnits.add(milestone.getUnlockUnit());
+        }
+        log.info("Milestone reached: {}", milestone.getDisplayName());
+      }
+    }
+    if (tower != null) {
+      recalculateSupplyCapacity();
+    }
+  }
+
+  /** Story milestones with their unlock condition and whether they have been achieved. */
+  public List<MilestoneOffer> getMilestones() {
+    var offers = new ArrayList<MilestoneOffer>();
+    for (MilestoneType milestone : MilestoneType.values()) {
+      offers.add(
+          new MilestoneOffer(
+              milestone.name(),
+              milestone.getDisplayName(),
+              milestone.getDescription(),
+              milestone.getTriggerLabel(),
+              achievedMilestones.contains(milestone)));
+    }
+    return offers;
   }
 
   public Integer buyVillager() {

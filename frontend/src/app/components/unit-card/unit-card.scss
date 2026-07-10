@@ -1,0 +1,53 @@
+:host {
+  display: block;
+  --card-radius: 10px;
+  --card-title-size: 0.9em;
+}
+
+.unit-type {
+  text-transform: capitalize;
+}
+
+.unit-cost {
+  background: #eef2f8;
+  border-radius: 10px;
+  padding: 1px 8px;
+}
+
+.stat-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  li {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.74em;
+    color: #46516a;
+
+    b {
+      color: #2b3a55;
+    }
+  }
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  border-radius: 8px;
+  padding: 5px 8px;
+  font-size: 0.78em;
+  font-weight: 600;
+  text-transform: capitalize;
+  overflow-wrap: anywhere;
+  color: #fff;
+  background: #4c7dc0;
+  transition: background 0.2s ease;
+
+  &:hover {
+    background: #3a6bad;
+  }
+}

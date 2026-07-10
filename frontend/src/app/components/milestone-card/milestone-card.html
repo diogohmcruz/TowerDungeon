@@ -1,0 +1,7 @@
+<app-card [class.achieved]="milestone().achieved">
+  <span card-title class="milestone-name">{{ milestone().name }}</span>
+  <span card-badge class="milestone-status">
+    {{ milestone().achieved ? '✓ joined' : milestone().trigger }}
+  </span>
+  <p class="milestone-desc">{{ milestone().description }}</p>
+</app-card>

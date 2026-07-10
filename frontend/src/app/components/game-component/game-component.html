@@ -1,8 +1,6 @@
 <article class="flex-wrapper">
   <p>Mana: {{ this.gameState().mana | number:'1.0-2' }}</p>
   <p>Mana por segundo: {{ this.gameState().manaPerSecond }}</p>
-
-  <button (click)="this.upgrade()">Upgrade Spellbook</button>
   <hr />
 
   <app-village-management />
@@ -10,30 +8,11 @@
 
   <section class="hire-list">
   @for (unit of units(); track unit[0]) {
-    @let stats = mapStringToUnit(unit[0]);
-    <article class="hire-card">
-      <header class="hire-head">
-        <span class="hire-type">{{ unit[0] | lowercase }}</span>
-        @if (stats?.cost != null) {
-          <span class="hire-cost">{{ stats?.cost }}c</span>
-        }
-      </header>
-      @if (stats) {
-        <ul class="stat-list">
-          <li><span>HP</span><b>{{ stats.health | number: '1.0-0' }}</b></li>
-          <li><span>DMG</span><b>{{ stats.damage | number: '1.0-1' }}</b></li>
-          <li><span>ATK</span><b>{{ stats.attackType }}</b></li>
-          @if (stats.supplyBonus) {
-            <li>
-              <span>Supply</span><b>+{{ stats.supplyBonus | number: '1.0-0' }}</b>
-            </li>
-          }
-        </ul>
-      }
-      <button (click)="this.sendBuyAction(unit[1])">
-        Buy {{ unit[0] | lowercase }}
-      </button>
-    </article>
+    <app-unit-card
+      [type]="unit[0]"
+      [stats]="mapStringToUnit(unit[0])"
+      (buy)="sendBuyAction($event)"
+    />
   }
   </section>
   <hr />
@@ -86,7 +65,34 @@
     Relics: {{ gameState().resources.RELICS | number: '1.0-0' }}
   </p>
 
-  <p>Upgrades: {{ this.gameState().upgrades.join(', ') || 'Nenhum' }}</p>
+  <section class="upgrade-panel">
+    <h3>Upgrades — recruit new characters &amp; empower the party</h3>
+    <div class="upgrade-list">
+      @for (up of gameState().availableUpgrades; track up.id) {
+        <app-upgrade-card
+          [offer]="up"
+          [affordable]="canAfford(up.nextCost)"
+          (buy)="buyUpgrade($event)"
+        />
+      }
+    </div>
+  </section>
+
+  <section class="milestone-panel">
+    <h3>
+      Campaign milestones — companions join &amp; the party hardens
+      <span class="progress-note">
+        deepest floor {{ gameState().deepestFloor }} ·
+        {{ gameState().expeditionsCompleted }} expeditions
+      </span>
+    </h3>
+    <div class="milestone-list">
+      @for (ms of gameState().milestones; track ms.id) {
+        <app-milestone-card [milestone]="ms" />
+      }
+    </div>
+  </section>
+
   <p>Prestige Points: {{ this.gameState().prestigePoints }}</p>
   <hr />
 

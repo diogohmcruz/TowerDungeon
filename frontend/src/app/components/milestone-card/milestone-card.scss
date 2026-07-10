@@ -1,0 +1,32 @@
+:host {
+  display: block;
+  --card-bg: #fbfaf6;
+  --card-border: #ece7d8;
+  --card-accent: #cdbf98;
+  --card-accent-width: 3px;
+  --card-shadow: none;
+  --card-pad: 10px 12px;
+  --card-gap: 5px;
+  --card-title-size: 0.84em;
+  --card-title-color: #4a4130;
+  --card-badge-size: 0.7em;
+  --card-badge-color: #8a7d5c;
+}
+
+app-card.achieved {
+  --card-bg: #eef7f0;
+  --card-border: #cfe9d6;
+  --card-accent: #4caf7d;
+  --card-title-color: #2f6a45;
+  --card-badge-color: #2f8f5b;
+}
+
+app-card.achieved .milestone-status {
+  font-weight: 700;
+}
+
+.milestone-desc {
+  margin: 0;
+  font-size: 0.76em;
+  color: #6b6350;
+}

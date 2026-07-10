@@ -47,6 +47,13 @@ export class GameStateService {
     homeUnitCount: 0,
     foodUpkeep: 0,
     netFoodPerSecond: 0,
+    unlockedUnitTypes: [Unit.WARRIOR, Unit.ARCHER, Unit.PORTER],
+    availableUpgrades: [],
+    damageMultiplier: 1,
+    supplyCapacityBonus: 0,
+    deepestFloor: 0,
+    expeditionsCompleted: 0,
+    milestones: [],
   });
   readonly state: Signal<GameState> = this._state.asReadonly();
 

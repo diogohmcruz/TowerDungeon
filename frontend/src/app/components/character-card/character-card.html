@@ -1,12 +1,10 @@
-<div class="member">
-  <div class="member-head">
-    <span class="member-name">{{ member().name }}</span>
-    <span class="member-hp">
-      {{ member().currentHealth | number: '1.0-0' }} /
-      {{ member().stats.health | number: '1.0-0' }}
-    </span>
-  </div>
+<app-card>
+  <span card-title class="member-name">{{ member().name }}</span>
+  <span card-badge class="member-hp">
+    {{ member().currentHealth | number: '1.0-0' }} /
+    {{ member().stats.health | number: '1.0-0' }}
+  </span>
   <div class="hp-bar">
     <div class="hp-fill" [style.width.%]="healthPct()"></div>
   </div>
-</div>
+</app-card>

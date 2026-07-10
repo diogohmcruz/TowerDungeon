@@ -1,0 +1,25 @@
+<app-card
+  [muted]="offer().maxed"
+  [class.is-unlock]="offer().unlockUnit"
+>
+  <span card-title class="upgrade-name">{{ offer().name }}</span>
+  @if (offer().repeatable && offer().level > 0) {
+    <span card-badge class="upgrade-level">Lv {{ offer().level }}</span>
+  } @else if (offer().maxed) {
+    <span card-badge class="upgrade-level owned">owned</span>
+  }
+  <p class="upgrade-desc">{{ offer().description }}</p>
+  @if (!offer().maxed) {
+    <div class="upgrade-cost">
+      @if (offer().nextCost.MATERIALS) {
+        <span class="cost mat">{{ offer().nextCost.MATERIALS | number: '1.0-0' }} Materials</span>
+      }
+      @if (offer().nextCost.RELICS) {
+        <span class="cost rel">{{ offer().nextCost.RELICS | number: '1.0-0' }} Relics</span>
+      }
+    </div>
+    <button (click)="buy.emit(offer().id)" [disabled]="!affordable()">
+      {{ offer().unlockUnit ? 'Recruit' : 'Upgrade' }}
+    </button>
+  }
+</app-card>
