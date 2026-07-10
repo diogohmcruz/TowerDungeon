@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
+import io.github.diogohmcruz.towerdungeon.config.GameProperties;
 import lombok.Builder;
 import lombok.Data;
 
@@ -12,6 +13,8 @@ import lombok.Data;
 public class TowerFloor {
   private final Integer id;
   private final Integer difficulty;
+
+  @Builder.Default private final boolean boss = false;
   private final List<Enemy> enemies = new ArrayList<>();
 
   public void populateEnemies() {
@@ -22,6 +25,15 @@ public class TowerFloor {
       enemies.add(enemy);
       enemyCount -= enemy.getStats().getWeight();
     }
+  }
+
+  public void populateBoss(GameProperties.Boss bossConfig) {
+    var values = EnemyStats.values();
+    int archetypeIndex = Math.min(difficulty, values.length - 1);
+    var bossStats = values[archetypeIndex];
+    double healthMultiplier =
+        bossConfig.getHealthBaseMultiplier() + bossConfig.getHealthMultiplierPerFloor() * id;
+    enemies.add(new Enemy(bossStats, healthMultiplier, bossConfig.getDamageMultiplier(), true));
   }
 
   public void removeEnemy(Enemy targetEnemy) {

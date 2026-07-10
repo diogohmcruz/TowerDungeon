@@ -12,8 +12,9 @@ import { Card } from '../card/card';
 })
 export class CharacterCard {
   member = input.required<Member>();
+  maxHealth = computed(() => this.member().maxHealth ?? this.member().stats.health);
   healthPct = computed(() => {
-    const m = this.member();
-    return m.stats.health ? (m.currentHealth / m.stats.health) * 100 : 0;
+    const max = this.maxHealth();
+    return max ? (this.member().currentHealth / max) * 100 : 0;
   });
 }

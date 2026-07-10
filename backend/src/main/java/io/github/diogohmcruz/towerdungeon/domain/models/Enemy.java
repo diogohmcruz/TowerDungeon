@@ -1,21 +1,39 @@
 package io.github.diogohmcruz.towerdungeon.domain.models;
 
+import lombok.AccessLevel;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.Getter;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
 public class Enemy extends BaseUnit {
   private final EnemyStats stats;
 
+  @Getter(AccessLevel.NONE)
+  private final double healthMultiplier;
+
+  @Getter(AccessLevel.NONE)
+  private final double damageMultiplier;
+
+  private final boolean boss;
+
   public Enemy(EnemyStats stats) {
-    super();
-    this.stats = stats;
-    this.setCurrentHealth(stats.getHealth());
+    this(stats, 1.0, 1.0, false);
   }
 
-  public void setCurrentHealth(Double currentHealth) {
-    super.setCurrentHealth(Math.min(currentHealth, stats.getHealth()));
+  public Enemy(EnemyStats stats, double healthMultiplier, double damageMultiplier, boolean boss) {
+    super();
+    this.stats = stats;
+    this.healthMultiplier = healthMultiplier;
+    this.damageMultiplier = damageMultiplier;
+    this.boss = boss;
+    this.setMaxHealth(stats.getHealth() * healthMultiplier);
+    this.setCurrentHealth(this.getMaxHealth());
+  }
+
+  public double getEffectiveDamage() {
+    return stats.getDamage() * damageMultiplier;
   }
 
   public void receiveAttack(Double attack, AttackType attackType) {
@@ -28,7 +46,11 @@ public class Enemy extends BaseUnit {
   @Override
   public String toString() {
     return String.format(
-        "%s[%s][%.1f/%.1f]",
-        this.getName(), this.stats.name(), this.getCurrentHealth(), this.getStats().getHealth());
+        "%s%s[%s][%.1f/%.1f]",
+        boss ? "BOSS " : "",
+        this.getName(),
+        this.stats.name(),
+        this.getCurrentHealth(),
+        this.getMaxHealth());
   }
 }

@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import io.github.diogohmcruz.towerdungeon.api.dtos.BuyActionDTO;
 import io.github.diogohmcruz.towerdungeon.api.dtos.InvadeActionDTO;
 import io.github.diogohmcruz.towerdungeon.api.dtos.UpgradeActionDTO;
+import io.github.diogohmcruz.towerdungeon.config.GameProperties;
 import io.github.diogohmcruz.towerdungeon.domain.exceptions.InvalidInvasion;
 import io.github.diogohmcruz.towerdungeon.domain.models.AttackType;
 import io.github.diogohmcruz.towerdungeon.domain.models.BaseUnit;
@@ -34,15 +35,11 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 @RequiredArgsConstructor
 public class GameService {
-  private static final long TIME_INTERVAL = 10L;
-  private static final double SUPPLY_DRAIN_PER_UNIT = 1.5;
-  private static final double STARVATION_DAMAGE = 5.0;
-  private static final double MATERIALS_PER_FLOOR = 5.0;
-  private static final int RELIC_DEPTH_THRESHOLD = 10;
+  private final GameProperties config;
   private final Map<String, GameState> players = new ConcurrentHashMap<>();
 
   public GameState getState(String sessionId) {
-    return players.computeIfAbsent(sessionId, _ -> new GameState());
+    return players.computeIfAbsent(sessionId, _ -> new GameState(config));
   }
 
   public void handleMessage(String sessionId, BuyActionDTO buyActionDTO) {
@@ -113,7 +110,7 @@ public class GameService {
       log.warn("Player[{}] tried to invade with no available units. Ignoring.", sessionId);
       return;
     }
-    gameState.setTower(new Tower());
+    gameState.setTower(new Tower(config.getBoss()));
     gameState.startRun();
   }
 
@@ -174,15 +171,16 @@ public class GameService {
     return unitsTemp;
   }
 
-  @Scheduled(fixedRate = 1000)
+  @Scheduled(fixedRateString = "${game.loop.lifecycle-ms}")
   public void gameLoop() {
     players.values().forEach(GameState::triggerLifecycle);
     players.values().forEach(this::updateInvasion);
   }
 
-  @Scheduled(fixedRate = TIME_INTERVAL)
+  @Scheduled(fixedRateString = "${game.loop.invasion-tick-ms}")
   public void invasionTimer() {
-    players.values().forEach(gameState -> gameState.passingTime(TIME_INTERVAL));
+    var tick = config.getLoop().getInvasionTickMs();
+    players.values().forEach(gameState -> gameState.passingTime(tick));
   }
 
   private void updateInvasion(GameState gameState) {
@@ -195,7 +193,8 @@ public class GameService {
       endRunOnWipe(gameState);
       return;
     }
-    gameState.drainSupplies(gameState.getTowerPartySize() * SUPPLY_DRAIN_PER_UNIT);
+    gameState.drainSupplies(
+        gameState.getTowerPartySize() * config.getLoop().getSupplyDrainPerUnit());
     if (!gameState.hasSupplies()) {
       applyStarvation(gameState);
       if (!gameState.hasUnitsOnTower()) {
@@ -208,13 +207,19 @@ public class GameService {
     var currentTowerFloor = tower.getCurrentTowerFloor();
     if (currentTowerFloor == null || currentTowerFloor.getEnemies().isEmpty()) {
       var clearedFloor = tower.getCurrentFloor();
-      gameState.addCredit(clearedFloor * 10.0);
-      gatherFloorLoot(gameState, clearedFloor);
+      var bossCleared = currentTowerFloor != null && currentTowerFloor.isBoss();
+      var reward = config.getReward();
+      var rewardMultiplier = bossCleared ? reward.getBossRewardMultiplier() : 1.0;
+      gameState.addCredit(clearedFloor * reward.getCreditPerFloor() * rewardMultiplier);
+      gatherFloorLoot(gameState, clearedFloor, rewardMultiplier);
       tower.moveToNextFloor();
       gameState.recordFloorReached(tower.getCurrentFloor());
       if (tower.getMaxFloor().equals(tower.getCurrentFloor())) {
         log.info("WIN! Player has reached the top of the tower!");
         return;
+      }
+      if (bossCleared) {
+        log.info("Defeated the guardian of floor {}!", clearedFloor);
       }
       log.info("Beat the floor {}!", tower.getCurrentFloor());
       return;
@@ -224,20 +229,24 @@ public class GameService {
     enemiesAttack(gameState, currentEnemies, unitsOnTower);
   }
 
-  private static void gatherFloorLoot(GameState gameState, int clearedFloor) {
+  private void gatherFloorLoot(GameState gameState, int clearedFloor, double rewardMultiplier) {
     if (clearedFloor <= 0) {
       return;
     }
-    gameState.gatherLoot(ResourceType.MATERIALS, clearedFloor * MATERIALS_PER_FLOOR);
-    if (clearedFloor >= RELIC_DEPTH_THRESHOLD) {
-      gameState.gatherLoot(ResourceType.RELICS, (double) (clearedFloor / RELIC_DEPTH_THRESHOLD));
+    var reward = config.getReward();
+    gameState.gatherLoot(
+        ResourceType.MATERIALS, clearedFloor * reward.getMaterialsPerFloor() * rewardMultiplier);
+    if (clearedFloor >= reward.getRelicDepthThreshold()) {
+      gameState.gatherLoot(
+          ResourceType.RELICS,
+          (clearedFloor / (double) reward.getRelicDepthThreshold()) * rewardMultiplier);
     }
   }
 
-  private static void applyStarvation(GameState gameState) {
+  private void applyStarvation(GameState gameState) {
     var starving =
         gameState.getUnitsOnTower().values().stream().flatMap(Collection::stream).toList();
-    starving.forEach(unit -> unit.receiveAttack(STARVATION_DAMAGE, null));
+    starving.forEach(unit -> unit.receiveAttack(config.getLoop().getStarvationDamage(), null));
     starving.stream().filter(BaseUnit::isDead).toList().forEach(gameState::removeUnit);
   }
 
@@ -306,7 +315,7 @@ public class GameService {
           var randomUnitOnTowerIndex = ThreadLocalRandom.current().nextInt(targetUnit.size());
           var targetUnitElement = targetUnit.get(randomUnitOnTowerIndex);
           targetUnitElement.receiveAttack(
-              currentEnemy.getStats().getDamage(), currentEnemy.getStats().getAttackType());
+              currentEnemy.getEffectiveDamage(), currentEnemy.getStats().getAttackType());
 
           if (targetUnitElement.getCurrentHealth() <= 0) {
             log.info("Enemy {} defeated unit {}", currentEnemy, targetUnitElement);

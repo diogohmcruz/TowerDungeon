@@ -20,6 +20,7 @@ export class TowerDisplay {
     () => this.towerFloors()?.[this.currentFloor() ?? 0],
   );
   currentTowerFloorEnemies = computed(() => this.currentTowerFloor()?.enemies);
+  currentFloorIsBoss = computed(() => this.currentTowerFloor()?.boss === true);
   enemyCount = computed(() => this.currentTowerFloorEnemies()?.length ?? 0);
   arrayCreator = Array;
 }

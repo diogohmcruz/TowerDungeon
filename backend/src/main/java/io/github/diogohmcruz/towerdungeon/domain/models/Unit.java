@@ -11,11 +11,8 @@ public class Unit extends BaseUnit {
   public Unit(UnitStats stats) {
     super();
     this.stats = stats;
+    this.setMaxHealth(stats.getHealth());
     this.setCurrentHealth(stats.getHealth());
-  }
-
-  public void setCurrentHealth(Double currentHealth) {
-    super.setCurrentHealth(Math.min(currentHealth, stats.getHealth()));
   }
 
   public void receiveAttack(Double attack, AttackType attackType) {

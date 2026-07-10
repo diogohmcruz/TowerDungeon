@@ -20,3 +20,33 @@ server:
   http2:
     enabled: true
   port: 8080
+
+game:
+  start:
+    credit: 10.0
+    mana-per-second: 1.0
+  loop:
+    lifecycle-ms: 1000
+    invasion-tick-ms: 10
+    supply-drain-per-unit: 1.5
+    starvation-damage: 5.0
+  reward:
+    credit-per-floor: 10.0
+    materials-per-floor: 5.0
+    relic-depth-threshold: 10
+    boss-reward-multiplier: 3.0
+  boss:
+    interval: 10
+    health-base-multiplier: 3.0
+    health-multiplier-per-floor: 0.05
+    damage-multiplier: 1.25
+  supply:
+    base-max: 100.0
+  healing:
+    cost-per-hp: 1.0
+    hp-per-tick: 5.0
+  village:
+    starting-food: 100.0
+    starting-villagers: 20
+    villager-food-production: 0.5
+    unit-food-consumption: 1.0

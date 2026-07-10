@@ -10,4 +10,5 @@ export interface TowerFloor {
   id: number;
   difficulty: number;
   enemies: Member[];
+  boss?: boolean;
 }

@@ -5,4 +5,6 @@ export interface Member {
   name: string;
   stats: UnitStats;
   currentHealth: number;
+  maxHealth?: number;
+  boss?: boolean;
 }

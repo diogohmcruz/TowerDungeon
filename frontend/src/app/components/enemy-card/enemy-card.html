@@ -1,13 +1,17 @@
-<app-card>
-  <span card-title class="enemy-type">{{ enemy().stats.type ?? enemy().name }}</span>
+<app-card [class.boss]="isBoss()">
+  <span card-title class="enemy-type">
+    @if (isBoss()) { <span class="boss-crown">♛</span> }
+    {{ enemy().stats.type ?? enemy().name }}
+  </span>
   <span card-badge class="enemy-hp">
     {{ enemy().currentHealth | number: '1.0-0' }} /
-    {{ enemy().stats.health | number: '1.0-0' }}
+    {{ maxHealth() | number: '1.0-0' }}
   </span>
   <div class="hp-bar">
     <div class="hp-fill" [style.width.%]="healthPct()"></div>
   </div>
   <div class="enemy-meta">
+    @if (isBoss()) { <span class="tag boss-tag">GUARDIAN</span> }
     <span class="tag">{{ enemy().stats.attackType }}</span>
     <span class="tag">⚔ {{ enemy().stats.damage | number: '1.0-1' }}</span>
   </div>
