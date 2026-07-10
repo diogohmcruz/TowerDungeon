@@ -1,5 +1,8 @@
 package io.github.diogohmcruz.towerdungeon.domain.models;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
+import io.github.diogohmcruz.towerdungeon.config.GameProperties;
 import lombok.AccessLevel;
 import lombok.Data;
 import lombok.Setter;
@@ -9,13 +12,20 @@ import lombok.extern.slf4j.Slf4j;
 @Data
 public class Village {
   @Setter(AccessLevel.NONE)
-  private Double food = 100d;
+  private Double food;
 
   @Setter(AccessLevel.NONE)
-  private Integer villagersCount = 20;
+  private Integer villagersCount;
 
-  private final Double VILLAGER_FOOD_PRODUCTION = 0.5;
-  private final Double UNIT_FOOD_CONSUMPTION = 1.0;
+  @JsonIgnore private double villagerFoodProduction;
+  @JsonIgnore private double unitFoodConsumption;
+
+  public Village(GameProperties.Village config) {
+    this.food = config.getStartingFood();
+    this.villagersCount = config.getStartingVillagers();
+    this.villagerFoodProduction = config.getVillagerFoodProduction();
+    this.unitFoodConsumption = config.getUnitFoodConsumption();
+  }
 
   private void setFood(Double food) {
     this.food = Math.max(0, food);
@@ -32,12 +42,12 @@ public class Village {
 
   /** Food the villagers grow each tick. */
   public double getProductionRate() {
-    return villagersCount * VILLAGER_FOOD_PRODUCTION;
+    return villagersCount * villagerFoodProduction;
   }
 
   /** Food eaten each tick by {@code unitCount} idle (standby) units back home. */
   public double upkeepFor(int unitCount) {
-    return unitCount * UNIT_FOOD_CONSUMPTION;
+    return unitCount * unitFoodConsumption;
   }
 
   /** Removes up to {@code amount} of food from the pantry for an expedition to carry. */

@@ -11,9 +11,23 @@
   --card-badge-color: #7a6b6b;
 }
 
+app-card.boss {
+  --card-bg: #2e2230;
+  --card-border: #7a3b6b;
+  --card-accent: #d4a24c;
+  --card-accent-width: 3px;
+  --card-shadow: 0 2px 8px rgba(60, 20, 50, 0.35);
+  --card-title-color: #f5d98c;
+  --card-badge-color: #d9b8c8;
+}
+
 .enemy-type {
   letter-spacing: 0.02em;
   text-transform: capitalize;
+}
+
+.boss-crown {
+  color: #e7c063;
 }
 
 .hp-bar {
@@ -30,9 +44,18 @@
   }
 }
 
+app-card.boss .hp-bar {
+  background: #4a3548;
+
+  .hp-fill {
+    background: linear-gradient(90deg, #c9457f, #e7c063);
+  }
+}
+
 .enemy-meta {
   flex-direction: row;
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
 
   .tag {
@@ -41,5 +64,12 @@
     color: #8a5a50;
     border-radius: 4px;
     padding: 1px 6px;
+  }
+
+  .boss-tag {
+    background: #d4a24c;
+    color: #2e2230;
+    font-weight: 700;
+    letter-spacing: 0.05em;
   }
 }

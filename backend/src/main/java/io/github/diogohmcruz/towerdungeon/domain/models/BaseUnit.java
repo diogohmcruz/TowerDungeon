@@ -10,6 +10,7 @@ public class BaseUnit {
   private final Integer id;
   private final String name;
   private Double currentHealth = 0.0;
+  private Double maxHealth = 0.0;
 
   public BaseUnit() {
     this.id = ThreadLocalRandom.current().nextInt();
@@ -17,7 +18,9 @@ public class BaseUnit {
   }
 
   public void setCurrentHealth(Double currentHealth) {
-    this.currentHealth = Math.max(0, currentHealth);
+    var capped =
+        maxHealth != null && maxHealth > 0 ? Math.min(currentHealth, maxHealth) : currentHealth;
+    this.currentHealth = Math.max(0, capped);
   }
 
   public void receiveAttack(Double attack) {
