@@ -4,5 +4,6 @@ public enum GameAction {
   BUY,
   BUY_VILLAGERS,
   SELL_FOOD,
-  INVADE
+  INVADE,
+  EXTRACT
 }

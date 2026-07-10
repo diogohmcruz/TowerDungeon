@@ -1,0 +1,61 @@
+:host {
+  display: block;
+}
+
+.enemy {
+  background: #fef6f4;
+  color: #3a2b2b;
+  border: 1px solid #f3d9d2;
+  border-radius: 8px;
+  padding: 6px 8px;
+  box-shadow: 0 1px 3px rgba(120, 60, 60, 0.08);
+
+  .enemy-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  .enemy-type {
+    font-weight: 700;
+    font-size: 0.85em;
+    letter-spacing: 0.02em;
+    text-transform: capitalize;
+    color: #a23b2d;
+  }
+
+  .enemy-hp {
+    font-size: 0.75em;
+    color: #7a6b6b;
+    white-space: nowrap;
+  }
+
+  .hp-bar {
+    margin: 4px 0;
+    height: 7px;
+    width: 100%;
+    background: #f0e2df;
+    border-radius: 4px;
+    overflow: hidden;
+
+    .hp-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #ff7a6b, #ffbf7a);
+      transition: width 0.25s ease;
+    }
+  }
+
+  .enemy-meta {
+    display: flex;
+    gap: 6px;
+
+    .tag {
+      font-size: 0.68em;
+      background: #f6e7e3;
+      color: #8a5a50;
+      border-radius: 4px;
+      padding: 1px 6px;
+    }
+  }
+}

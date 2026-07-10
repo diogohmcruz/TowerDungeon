@@ -1,0 +1,56 @@
+.army {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 0;
+
+  .empty {
+    font-style: italic;
+    opacity: 0.6;
+    margin: 4px 0;
+  }
+
+  .unit-group {
+    background: #f7f9fc;
+    border: 1px solid #e2e8f2;
+    border-radius: 10px;
+    padding: 8px 10px;
+    box-shadow: 0 1px 3px rgba(60, 70, 90, 0.06);
+
+    .group-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 6px;
+      margin-bottom: 6px;
+
+      .unit-type {
+        flex: 1 1 auto;
+        min-width: 0;
+        overflow-wrap: anywhere;
+        font-weight: 700;
+        font-size: 0.85em;
+        text-transform: capitalize;
+        color: #2b3a55;
+      }
+
+      .unit-count {
+        flex: 0 0 auto;
+        font-size: 0.78em;
+        color: #6b7688;
+        background: #eef2f8;
+        border-radius: 10px;
+        padding: 1px 8px;
+      }
+    }
+
+    .member-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+  }
+}

@@ -82,4 +82,8 @@ public enum EnemyStats {
   AttackType attackType;
   Map<AttackType, Double> weaknesses;
   Double weight;
+
+  public String getType() {
+    return name();
+  }
 }

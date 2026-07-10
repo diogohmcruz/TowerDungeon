@@ -3,6 +3,7 @@ export enum GameAction {
   BUY_VILLAGERS = 'BUY_VILLAGERS',
   SELL_FOOD = 'SELL_FOOD',
   INVADE = 'INVADE',
+  EXTRACT = 'EXTRACT',
   UPGRADE = 'UPGRADE',
   PRESTIGE = 'PRESTIGE',
 }

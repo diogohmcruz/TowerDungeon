@@ -10,12 +10,14 @@ export type Weakness = {
 };
 
 export interface UnitStats {
+  type?: string;
   cost?: number;
   health: number;
   damage: number;
   attackType: AttackType;
   weight?: number;
   weaknesses?: Weakness[];
+  supplyBonus?: number;
 }
 
 export enum Unit {
@@ -27,4 +29,5 @@ export enum Unit {
   ROGUE = 'ROGUE',
   NECROMANCER = 'NECROMANCER',
   DRACO_METAMORPH = 'DRACO_METAMORPH',
+  PORTER = 'PORTER',
 }

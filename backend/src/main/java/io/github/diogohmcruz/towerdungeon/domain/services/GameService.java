@@ -17,8 +17,10 @@ import io.github.diogohmcruz.towerdungeon.api.dtos.BuyActionDTO;
 import io.github.diogohmcruz.towerdungeon.api.dtos.InvadeActionDTO;
 import io.github.diogohmcruz.towerdungeon.domain.exceptions.InvalidInvasion;
 import io.github.diogohmcruz.towerdungeon.domain.models.AttackType;
+import io.github.diogohmcruz.towerdungeon.domain.models.BaseUnit;
 import io.github.diogohmcruz.towerdungeon.domain.models.Enemy;
 import io.github.diogohmcruz.towerdungeon.domain.models.GameState;
+import io.github.diogohmcruz.towerdungeon.domain.models.ResourceType;
 import io.github.diogohmcruz.towerdungeon.domain.models.Tower;
 import io.github.diogohmcruz.towerdungeon.domain.models.TowerFloor;
 import io.github.diogohmcruz.towerdungeon.domain.models.Unit;
@@ -31,6 +33,10 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class GameService {
   private static final long TIME_INTERVAL = 10L;
+  private static final double SUPPLY_DRAIN_PER_UNIT = 1.5;
+  private static final double STARVATION_DAMAGE = 5.0;
+  private static final double MATERIALS_PER_FLOOR = 5.0;
+  private static final int RELIC_DEPTH_THRESHOLD = 10;
   private final Map<String, GameState> players = new ConcurrentHashMap<>();
 
   public GameState getState(String sessionId) {
@@ -66,6 +72,10 @@ public class GameService {
   public void handleMessage(String sessionId, InvadeActionDTO invadeActionDTO) {
     log.info("Received invade action from session [{}] {}", sessionId, invadeActionDTO);
     var gameState = players.get(sessionId);
+    if (gameState.getTower() != null) {
+      log.warn("Player[{}] tried to invade while a run is already active. Ignoring.", sessionId);
+      return;
+    }
     var units = gameState.getUnits();
     final var unitsOnTower = gameState.getUnitsOnTower();
     var invadeUnits = invadeActionDTO.units();
@@ -76,7 +86,28 @@ public class GameService {
     }
     gameState.setUnits(units);
     gameState.setUnitsOnTower(unitsOnTower);
+    if (!gameState.hasUnitsOnTower()) {
+      log.warn("Player[{}] tried to invade with no available units. Ignoring.", sessionId);
+      return;
+    }
     gameState.setTower(new Tower());
+    gameState.startRun();
+  }
+
+  public void handleExtractAction(String sessionId) {
+    var gameState = players.get(sessionId);
+    if (gameState.getTower() == null) {
+      log.warn("Player[{}] tried to extract with no active run.", sessionId);
+      return;
+    }
+    gameState.returnLeftoverSuppliesToVillage();
+    gameState.returnPartyHome();
+    gameState.bankLoot();
+    gameState.setTower(null);
+    log.info(
+        "Player[{}] extracted. Leftover food returned to village, loot banked, party returned home"
+            + " to recover on the village's food.",
+        sessionId);
   }
 
   private static void sendAllToTower(
@@ -137,13 +168,24 @@ public class GameService {
     }
     if (gameState.getUnitsOnTower() == null || !gameState.hasUnitsOnTower()) {
       log.warn("No units on tower. Invasion ended.");
-      gameState.setTower(null);
+      endRunOnWipe(gameState);
       return;
+    }
+    gameState.drainSupplies(gameState.getTowerPartySize() * SUPPLY_DRAIN_PER_UNIT);
+    if (!gameState.hasSupplies()) {
+      applyStarvation(gameState);
+      if (!gameState.hasUnitsOnTower()) {
+        log.warn("Party starved to death. Run lost, all carried loot forfeited.");
+        endRunOnWipe(gameState);
+        return;
+      }
     }
     var unitsOnTower = new HashMap<>(gameState.getUnitsOnTower());
     var currentTowerFloor = tower.getCurrentTowerFloor();
     if (currentTowerFloor == null || currentTowerFloor.getEnemies().isEmpty()) {
-      gameState.addCredit(tower.getCurrentFloor() * 10.0);
+      var clearedFloor = tower.getCurrentFloor();
+      gameState.addCredit(clearedFloor * 10.0);
+      gatherFloorLoot(gameState, clearedFloor);
       tower.moveToNextFloor();
       if (tower.getMaxFloor().equals(tower.getCurrentFloor())) {
         log.info("WIN! Player has reached the top of the tower!");
@@ -155,6 +197,30 @@ public class GameService {
     var currentEnemies = currentTowerFloor.getEnemies();
     unitsAttack(unitsOnTower, currentEnemies, currentTowerFloor);
     enemiesAttack(gameState, currentEnemies, unitsOnTower);
+  }
+
+  private static void gatherFloorLoot(GameState gameState, int clearedFloor) {
+    if (clearedFloor <= 0) {
+      return;
+    }
+    gameState.gatherLoot(ResourceType.MATERIALS, clearedFloor * MATERIALS_PER_FLOOR);
+    if (clearedFloor >= RELIC_DEPTH_THRESHOLD) {
+      gameState.gatherLoot(ResourceType.RELICS, (double) (clearedFloor / RELIC_DEPTH_THRESHOLD));
+    }
+  }
+
+  private static void applyStarvation(GameState gameState) {
+    var starving =
+        gameState.getUnitsOnTower().values().stream().flatMap(Collection::stream).toList();
+    starving.forEach(unit -> unit.receiveAttack(STARVATION_DAMAGE, null));
+    starving.stream().filter(BaseUnit::isDead).toList().forEach(gameState::removeUnit);
+  }
+
+  private static void endRunOnWipe(GameState gameState) {
+    gameState.forfeitLoot();
+    gameState.setTower(null);
+    gameState.setSupplies(0d);
+    gameState.getUnitsOnTower().clear();
   }
 
   private static void unitsAttack(

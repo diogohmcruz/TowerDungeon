@@ -7,6 +7,11 @@ export type Squad = {
   [unit in Unit]: Member[];
 };
 
+export type ResourceWallet = {
+  MATERIALS: number;
+  RELICS: number;
+};
+
 export interface GameState {
   mana: number;
   manaPerSecond: number;
@@ -17,4 +22,14 @@ export interface GameState {
   tower?: Tower;
   upgrades: string[];
   prestigePoints: number;
+  resources: ResourceWallet;
+  carriedLoot: ResourceWallet;
+  supplies: number;
+  maxSupplies: number;
+  lastFoodReturned: number;
+  homePartyWounds: number;
+  foodHealRate: number;
+  homeUnitCount: number;
+  foodUpkeep: number;
+  netFoodPerSecond: number;
 }

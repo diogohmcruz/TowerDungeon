@@ -25,7 +25,8 @@ public enum UnitStats {
           AttackType.RANGED, 0.5,
           AttackType.MAGIC, 1.0,
           AttackType.HEAL, -1.5),
-      3),
+      3,
+      0.0),
   ARCHER(
       10.0,
       1.5,
@@ -35,7 +36,8 @@ public enum UnitStats {
           AttackType.RANGED, 0.5,
           AttackType.MAGIC, 1.0,
           AttackType.HEAL, -1.0),
-      5),
+      5,
+      0.0),
   MAGE(
       10.0,
       1.5,
@@ -45,7 +47,8 @@ public enum UnitStats {
           AttackType.RANGED, 1.0,
           AttackType.MAGIC, 0.5,
           AttackType.HEAL, -1.0),
-      9),
+      9,
+      0.0),
   HEALER(
       30.0,
       1.5,
@@ -55,7 +58,8 @@ public enum UnitStats {
           AttackType.RANGED, 1.5,
           AttackType.MAGIC, 1.5,
           AttackType.HEAL, -1.0),
-      7),
+      7,
+      0.0),
   CAPTAIN(
       30.0,
       3.0,
@@ -65,7 +69,8 @@ public enum UnitStats {
           AttackType.RANGED, 0.5,
           AttackType.MAGIC, 0.5,
           AttackType.HEAL, -1.0),
-      10),
+      10,
+      0.0),
   TANK(
       50.0,
       1.0,
@@ -75,7 +80,8 @@ public enum UnitStats {
           AttackType.RANGED, 0.25,
           AttackType.MAGIC, 0.5,
           AttackType.HEAL, -2.0),
-      11),
+      11,
+      0.0),
   ROGUE(
       10.0,
       5.0,
@@ -85,7 +91,8 @@ public enum UnitStats {
           AttackType.RANGED, 0.25,
           AttackType.MAGIC, 0.25,
           AttackType.HEAL, -5.0),
-      12),
+      12,
+      0.0),
   NECROMANCER(
       20.0,
       3.5,
@@ -95,7 +102,8 @@ public enum UnitStats {
           AttackType.RANGED, 0.25,
           AttackType.MAGIC, 0.0,
           AttackType.HEAL, -1.0),
-      15),
+      15,
+      0.0),
   DRACO_METAMORPH(
       100.0,
       10.0,
@@ -105,11 +113,28 @@ public enum UnitStats {
           AttackType.RANGED, 0.5,
           AttackType.MAGIC, 0.5,
           AttackType.HEAL, -0.5),
-      30);
+      30,
+      0.0),
+  PORTER(
+      25.0,
+      0.5,
+      AttackType.MELEE,
+      Map.of(
+          AttackType.MELEE, 1.0,
+          AttackType.RANGED, 1.0,
+          AttackType.MAGIC, 1.0,
+          AttackType.HEAL, -1.0),
+      6,
+      60.0);
 
   Double health;
   Double damage;
   AttackType attackType;
   Map<AttackType, Double> weaknesses;
   Integer cost;
+  Double supplyBonus;
+
+  public String getType() {
+    return name();
+  }
 }
