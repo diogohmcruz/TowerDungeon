@@ -1,0 +1,32 @@
+:host {
+  display: block;
+  --card-bg: var(--surface-2);
+  --card-border: var(--border);
+  --card-accent: var(--gold);
+  --card-accent-width: 3px;
+  --card-shadow: none;
+  --card-pad: 10px 12px;
+  --card-gap: 5px;
+  --card-title-size: 0.84em;
+  --card-title-color: var(--text-strong);
+  --card-badge-size: 0.7em;
+  --card-badge-color: var(--text-muted);
+}
+
+app-card.unlocked {
+  --card-bg: var(--positive-bg);
+  --card-border: var(--positive);
+  --card-accent: var(--positive);
+  --card-title-color: var(--positive);
+  --card-badge-color: var(--positive);
+}
+
+app-card.unlocked .shortcut-status {
+  font-weight: 700;
+}
+
+.shortcut-desc {
+  margin: 0;
+  font-size: 0.76em;
+  color: var(--text-muted);
+}

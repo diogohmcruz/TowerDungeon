@@ -1,0 +1,8 @@
+<app-card [class.unlocked]="shortcut().unlocked">
+  <span card-title class="shortcut-name">{{ shortcut().name }}</span>
+  <span card-badge class="shortcut-status">
+    {{ shortcut().unlocked ? '✓ open · Floor ' + shortcut().floor :
+    shortcut().trigger }}
+  </span>
+  <p class="shortcut-desc">{{ shortcut().description }}</p>
+</app-card>

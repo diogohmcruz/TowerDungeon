@@ -17,6 +17,32 @@
   </section>
   <hr />
 
+  <section class="expedition-start">
+    <h3>Choose where to begin the climb</h3>
+    <label class="start-option">
+      <input
+        type="radio"
+        name="startFloor"
+        [checked]="selectedStartFloor() === 0"
+        (change)="selectStartFloor(0)"
+        [disabled]="gameState().expeditionActive"
+      />
+      Base of the tower — begin at Floor 1
+    </label>
+    @for (sc of openShortcuts(); track sc.id) {
+    <label class="start-option">
+      <input
+        type="radio"
+        name="startFloor"
+        [checked]="selectedStartFloor() === sc.floor"
+        (change)="selectStartFloor(sc.floor)"
+        [disabled]="gameState().expeditionActive"
+      />
+      {{ sc.name }} — begin at Floor {{ sc.floor }}
+    </label>
+    }
+  </section>
+
   <button
     (click)="this.sendInvadeAction()"
     [disabled]="gameState().expeditionActive"
@@ -76,6 +102,25 @@
     <div class="milestone-list">
       @for (ms of gameState().milestones; track ms.id) {
       <app-milestone-card [milestone]="ms" />
+      }
+    </div>
+  </section>
+
+  <section class="shortcut-panel">
+    <h3>
+      Shortcuts — footholds carved into the tower
+      <span class="progress-note">
+        {{ gameState().enemiesDefeated }} enemies defeated · {{
+        gameState().expeditionsCompleted }} expeditions
+      </span>
+    </h3>
+    <p class="shortcut-hint">
+      Secure the tower's lower halls to open lifts and camps that let a fresh
+      expedition start deeper. Pick an open shortcut above before you invade.
+    </p>
+    <div class="shortcut-list">
+      @for (sc of gameState().shortcuts; track sc.id) {
+      <app-shortcut-card [shortcut]="sc" />
       }
     </div>
   </section>
