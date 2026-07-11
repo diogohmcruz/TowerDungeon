@@ -7,4 +7,9 @@
   <div class="hp-bar">
     <div class="hp-fill" [style.width.%]="healthPct()"></div>
   </div>
+  @if (maxMana() > 0) {
+    <div class="mana-bar" [title]="'Mana ' + (member().currentMana | number: '1.0-1') + ' / ' + (maxMana() | number: '1.0-1')">
+      <div class="mana-fill" [style.width.%]="manaPct()"></div>
+    </div>
+  }
 </app-card>

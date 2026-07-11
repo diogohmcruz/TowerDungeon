@@ -24,7 +24,6 @@ server:
 game:
   start:
     credit: 10.0
-    mana-per-second: 1.0
   loop:
     lifecycle-ms: 1000
     invasion-tick-ms: 10
@@ -57,6 +56,11 @@ game:
     min-budget: 1.0
   supply:
     base-max: 100.0
+  magic:
+    max-mana: 5.0
+    cost-per-cast: 1.0
+    recharge-per-tick: 0.25
+    tower-recharge-per-tick: 0.05
   healing:
     cost-per-hp: 1.0
     hp-per-tick: 5.0

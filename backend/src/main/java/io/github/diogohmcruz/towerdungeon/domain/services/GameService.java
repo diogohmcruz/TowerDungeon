@@ -96,7 +96,7 @@ public class GameService {
           var cost = buyActionDTO.unitStats().getCost();
           while (gameState.getSpendableCredit() > cost && quantity > 0) {
             gameState.spendCredit(cost);
-            var unit = new Unit(buyActionDTO.unitStats());
+            var unit = gameState.recruit(buyActionDTO.unitStats());
             newUnits.add(unit);
             quantity--;
           }
@@ -302,6 +302,7 @@ public class GameService {
     }
     gameState.drainSupplies(
         gameState.getTowerPartySize() * config.getLoop().getSupplyDrainPerUnit());
+    gameState.rechargeTowerCasters();
     if (!gameState.hasSupplies()) {
       applyStarvation(gameState);
       if (!gameState.hasUnitsOnTower()) {
@@ -391,20 +392,28 @@ public class GameService {
       TowerFloor currentTowerFloor,
       GameState gameState) {
     var damageMultiplier = gameState.getDamageMultiplier();
+    var manaCost = gameState.getConfig().getMagic().getCostPerCast();
     unitsOnTower.entrySet().stream()
         .filter(entry -> AttackType.HEAL.equals(entry.getKey().getAttackType()))
         .map(Entry::getValue)
         .flatMap(Collection::stream)
         .forEach(
             healerUnit -> {
+              if (!healerUnit.canCast(manaCost)) {
+                return;
+              }
               var otherUnitsOnTower =
                   unitsOnTower.values().stream()
                       .flatMap(List::stream)
                       .filter(unit -> !healerUnit.getId().equals(unit.getId()))
                       .toList();
+              if (otherUnitsOnTower.isEmpty()) {
+                return;
+              }
               var randomKeyIndex = ThreadLocalRandom.current().nextInt(otherUnitsOnTower.size());
               var targetUnit = otherUnitsOnTower.get(randomKeyIndex);
               targetUnit.receiveAttack(healerUnit.getStats().getDamage(), AttackType.HEAL);
+              healerUnit.spendMana(manaCost);
             });
     unitsOnTower.values().stream()
         .flatMap(List::stream)
@@ -417,11 +426,17 @@ public class GameService {
                     currentUnit);
                 return;
               }
+              if (currentUnit.isCaster() && !currentUnit.canCast(manaCost)) {
+                return;
+              }
               var randomKeyIndex = ThreadLocalRandom.current().nextInt(currentEnemies.size());
               var targetEnemy = currentEnemies.get(randomKeyIndex);
               targetEnemy.receiveAttack(
                   currentUnit.getStats().getDamage() * damageMultiplier,
                   currentUnit.getStats().getAttackType());
+              if (currentUnit.isCaster()) {
+                currentUnit.spendMana(manaCost);
+              }
               if (targetEnemy.isDead()) {
                 log.info("Unit {} defeated enemy {}", currentUnit, targetEnemy);
                 currentTowerFloor.removeEnemy(targetEnemy);
