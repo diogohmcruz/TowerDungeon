@@ -1,6 +1,7 @@
 package io.github.diogohmcruz.towerdungeon.domain.models;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -18,6 +19,8 @@ import io.github.diogohmcruz.towerdungeon.domain.models.healing.FoodHealingConfi
 import io.github.diogohmcruz.towerdungeon.domain.models.healing.RoundRobinFoodDistributionStrategy;
 import io.github.diogohmcruz.towerdungeon.domain.models.milestone.MilestoneOffer;
 import io.github.diogohmcruz.towerdungeon.domain.models.milestone.MilestoneType;
+import io.github.diogohmcruz.towerdungeon.domain.models.shortcut.ShortcutOffer;
+import io.github.diogohmcruz.towerdungeon.domain.models.shortcut.ShortcutType;
 import io.github.diogohmcruz.towerdungeon.domain.models.upgrade.UpgradeOffer;
 import io.github.diogohmcruz.towerdungeon.domain.models.upgrade.UpgradeType;
 import lombok.Data;
@@ -54,6 +57,7 @@ public class GameState {
 
   private int deepestFloor = 0;
   private int expeditionsCompleted = 0;
+  private int enemiesDefeated = 0;
 
   @JsonIgnore private Set<MilestoneType> achievedMilestones = EnumSet.noneOf(MilestoneType.class);
 
@@ -441,6 +445,42 @@ public class GameState {
               achievedMilestones.contains(milestone)));
     }
     return offers;
+  }
+
+  /** Records a defeated tower enemy; drives the kill-based shortcut unlocks. */
+  public void recordEnemyKill() {
+    enemiesDefeated++;
+  }
+
+  /** Tower shortcuts with their target floor, lore, unlock condition and whether they are open. */
+  public List<ShortcutOffer> getShortcuts() {
+    var offers = new ArrayList<ShortcutOffer>();
+    for (ShortcutType shortcut : ShortcutType.values()) {
+      offers.add(
+          new ShortcutOffer(
+              shortcut.name(),
+              shortcut.getDisplayName(),
+              shortcut.getDescription(),
+              shortcut.getTriggerLabel(),
+              shortcut.getFloor(),
+              shortcut.isUnlocked(expeditionsCompleted, enemiesDefeated)));
+    }
+    return offers;
+  }
+
+  /**
+   * Whether the party may legally begin an expedition on {@code requestedFloor}: either the base of
+   * the tower (a non-positive floor) or a floor whose shortcut the campaign has already unlocked.
+   */
+  public boolean isStartFloorUnlocked(int requestedFloor) {
+    if (requestedFloor <= 0) {
+      return true;
+    }
+    return Arrays.stream(ShortcutType.values())
+        .anyMatch(
+            shortcut ->
+                shortcut.getFloor() == requestedFloor
+                    && shortcut.isUnlocked(expeditionsCompleted, enemiesDefeated));
   }
 
   public Integer buyVillager() {

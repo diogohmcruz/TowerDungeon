@@ -55,7 +55,9 @@ export class GameStateService {
     supplyCapacityBonus: 0,
     deepestFloor: 0,
     expeditionsCompleted: 0,
+    enemiesDefeated: 0,
     milestones: [],
+    shortcuts: [],
   });
   readonly state: Signal<GameState> = this._state.asReadonly();
 
