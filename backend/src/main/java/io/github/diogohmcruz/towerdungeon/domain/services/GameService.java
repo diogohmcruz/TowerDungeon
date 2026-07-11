@@ -193,7 +193,7 @@ public class GameService {
             return;
           }
           if (gameState.getTower() == null) {
-            gameState.setTower(new Tower(config.getBoss()));
+            gameState.setTower(new Tower(config.getBoss(), config.getEnemies()));
           }
           gameState.getTower().startNewRunAt(requestedFloor);
           gameState.startRun();
@@ -314,7 +314,10 @@ public class GameService {
         return;
       }
       if (bossCleared) {
-        log.info("Defeated the guardian of floor {}!", clearedFloor);
+        tower.markBossCleared(clearedFloor);
+        log.info(
+            "Defeated the guardian of floor {}! The lesser floors below it grow easier.",
+            clearedFloor);
       }
       log.info("Beat the floor {}!", tower.getCurrentFloor());
       return;
