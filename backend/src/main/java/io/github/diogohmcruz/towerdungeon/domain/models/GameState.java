@@ -34,6 +34,7 @@ public class GameState {
   private Map<UnitStats, List<Unit>> units = new HashMap<>();
   private Map<UnitStats, List<Unit>> unitsOnTower = new HashMap<>();
   private Tower tower;
+  private boolean expeditionActive = false;
   private Village village;
   private List<String> upgrades = new ArrayList<>();
   private Integer prestigePoints = 0;
@@ -91,6 +92,7 @@ public class GameState {
    * then healed using the village's food.
    */
   public void startRun() {
+    this.expeditionActive = true;
     this.maxSupplies = computeSupplyCapacity();
     this.supplies = village.takeFood(this.maxSupplies);
     this.carriedLoot = ResourceType.emptyWallet();
@@ -116,7 +118,7 @@ public class GameState {
    * any food that can no longer be carried — the dead porter's load is lost with them.
    */
   public void recalculateSupplyCapacity() {
-    if (tower == null) {
+    if (!expeditionActive) {
       return;
     }
     this.maxSupplies = computeSupplyCapacity();
@@ -228,7 +230,9 @@ public class GameState {
     this.carriedCredits = 0d;
   }
 
-  /** Sells every banked unit of {@code type} at {@code unitPrice} credits each. Returns the take. */
+  /**
+   * Sells every banked unit of {@code type} at {@code unitPrice} credits each. Returns the take.
+   */
   private double sellAll(ResourceType type, double unitPrice) {
     var stock = resources.getOrDefault(type, 0d);
     var profit = stock * unitPrice;
@@ -276,8 +280,9 @@ public class GameState {
 
   /**
    * Credits the player can spend right now: the treasury plus whatever the party is carrying on the
-   * tower. Carried credits are only banked on extract, but they are still "in the party's hands" and
-   * can fund recruiting village reserves mid-expedition (spent before they could be lost to a wipe).
+   * tower. Carried credits are only banked on extract, but they are still "in the party's hands"
+   * and can fund recruiting village reserves mid-expedition (spent before they could be lost to a
+   * wipe).
    */
   public double getSpendableCredit() {
     return credit + carriedCredits;
@@ -358,7 +363,7 @@ public class GameState {
     if (type.getUnlockUnit() != null) {
       unlockedUnits.add(type.getUnlockUnit());
     }
-    if (tower != null) {
+    if (expeditionActive) {
       recalculateSupplyCapacity();
     } else {
       this.maxSupplies = computeSupplyCapacity();
@@ -418,7 +423,7 @@ public class GameState {
         log.info("Milestone reached: {}", milestone.getDisplayName());
       }
     }
-    if (tower != null) {
+    if (expeditionActive) {
       recalculateSupplyCapacity();
     }
   }

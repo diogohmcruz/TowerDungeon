@@ -164,7 +164,7 @@ public class GameService {
     withPlayer(
         sessionId,
         gameState -> {
-          if (gameState.getTower() != null) {
+          if (gameState.isExpeditionActive()) {
             log.warn(
                 "Player[{}] tried to invade while a run is already active. Ignoring.", sessionId);
             return;
@@ -183,7 +183,11 @@ public class GameService {
             log.warn("Player[{}] tried to invade with no available units. Ignoring.", sessionId);
             return;
           }
-          gameState.setTower(new Tower(config.getBoss()));
+          if (gameState.getTower() == null) {
+            gameState.setTower(new Tower(config.getBoss()));
+          } else {
+            gameState.getTower().startNewRun();
+          }
           gameState.startRun();
         });
   }
@@ -192,14 +196,14 @@ public class GameService {
     withPlayer(
         sessionId,
         gameState -> {
-          if (gameState.getTower() == null) {
+          if (!gameState.isExpeditionActive()) {
             log.warn("Player[{}] tried to extract with no active run.", sessionId);
             return;
           }
           gameState.returnLeftoverSuppliesToVillage();
           gameState.returnPartyHome();
           gameState.bankLoot();
-          gameState.setTower(null);
+          gameState.setExpeditionActive(false);
           gameState.completeExpedition();
           log.info(
               "Player[{}] extracted. Leftover food returned to village, loot banked, party returned"
@@ -264,10 +268,10 @@ public class GameService {
   }
 
   private void updateInvasion(GameState gameState) {
-    var tower = gameState.getTower();
-    if (tower == null) {
+    if (!gameState.isExpeditionActive()) {
       return;
     }
+    var tower = gameState.getTower();
     if (gameState.getUnitsOnTower() == null || !gameState.hasUnitsOnTower()) {
       log.warn("No units on tower. Invasion ended.");
       endRunOnWipe(gameState);
@@ -333,7 +337,7 @@ public class GameService {
 
   private static void endRunOnWipe(GameState gameState) {
     gameState.forfeitLoot();
-    gameState.setTower(null);
+    gameState.setExpeditionActive(false);
     gameState.setSupplies(0d);
     gameState.getUnitsOnTower().clear();
     gameState.completeExpedition();

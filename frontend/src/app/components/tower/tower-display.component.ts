@@ -21,7 +21,7 @@ export class TowerDisplay {
   maxSupplies = input<number>(0);
   carriedLoot = input<ResourceWallet | undefined>();
   carriedCredits = input<number>(0);
-  active = computed(() => !!this.tower());
+  active = input<boolean>(false);
   towerFloors = computed(() => this.tower()?.floors ?? {});
   towerFloorsEntries = computed(() =>
     Object.entries(this.tower()?.floors ?? {}),

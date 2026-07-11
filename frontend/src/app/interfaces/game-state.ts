@@ -41,6 +41,7 @@ export interface GameState {
   tower?: Tower;
   upgrades: string[];
   prestigePoints: number;
+  expeditionActive: boolean;
   resources: ResourceWallet;
   carriedLoot: ResourceWallet;
   carriedCredits: number;

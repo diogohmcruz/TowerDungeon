@@ -33,24 +33,26 @@
       <app-army [army]="party()" />
     </section>
   }
-  @if (enemyCount() === 0) {
-    <p class="cleared">No enemies here — advancing…</p>
-  }
-  <div class="enemy-groups">
-    @for (group of groupedEnemyEntries(); track group[0]) {
-      <section class="enemy-group">
-        <header class="group-head">
-          <span class="enemy-type">{{ group[0] | lowercase }}</span>
-          <span class="enemy-count">×{{ group[1].length }}</span>
-        </header>
-        <div class="member-list">
-          @for (enemy of group[1]; track enemy.id) {
-            <app-enemy-card [enemy]="enemy" />
-          }
-        </div>
-      </section>
+  @if (active()) {
+    @if (enemyCount() === 0) {
+      <p class="cleared">No enemies here — advancing…</p>
     }
-  </div>
+    <div class="enemy-groups">
+      @for (group of groupedEnemyEntries(); track group[0]) {
+        <section class="enemy-group">
+          <header class="group-head">
+            <span class="enemy-type">{{ group[0] | lowercase }}</span>
+            <span class="enemy-count">×{{ group[1].length }}</span>
+          </header>
+          <div class="member-list">
+            @for (enemy of group[1]; track enemy.id) {
+              <app-enemy-card [enemy]="enemy" />
+            }
+          </div>
+        </section>
+      }
+    </div>
+  }
 </div>
 
 <div class="tower-dungeon-wrapper">
@@ -78,7 +80,7 @@
               <span class="floor-boss">Guardian</span>
             }
           </div>
-          @if (+floor[0] === currentFloor()) {
+          @if (+floor[0] === currentFloor() && active()) {
             <span class="floor-flag" aria-label="party position">
               <i class="flag-cloth"></i>
             </span>
