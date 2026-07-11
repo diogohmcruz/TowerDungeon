@@ -17,15 +17,18 @@
   </section>
   <hr />
 
-  <button (click)="this.sendInvadeAction()" [disabled]="!!gameState().tower">
+  <button
+    (click)="this.sendInvadeAction()"
+    [disabled]="gameState().expeditionActive"
+  >
     Invade the tower
   </button>
-  <button (click)="this.extract()" [disabled]="!gameState().tower">
+  <button (click)="this.extract()" [disabled]="!gameState().expeditionActive">
     Extract party
   </button>
   <button (click)="this.prestige()">Prestige</button>
 
-  @if (gameState().tower) {
+  @if (gameState().expeditionActive) {
   <section class="run-hud">
     <p class="heal-hint">
       Food is drawn from the village pantry for the run. On <b>Extract</b>,
@@ -48,11 +51,6 @@
     village food (round-robin).
   </p>
   }
-
-  <p>
-    Banked — Materials: {{ gameState().resources.MATERIALS | number: '1.0-0' }},
-    Relics: {{ gameState().resources.RELICS | number: '1.0-0' }}
-  </p>
 
   <section class="upgrade-panel">
     <h3>Upgrades — recruit new characters &amp; empower the party</h3>
@@ -91,6 +89,7 @@
 <app-tower
   class="tower"
   [tower]="gameState().tower"
+  [active]="gameState().expeditionActive"
   [party]="gameState().unitsOnTower"
   [supplies]="gameState().supplies"
   [maxSupplies]="gameState().maxSupplies"

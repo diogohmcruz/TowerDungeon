@@ -43,4 +43,14 @@ public class Tower {
   public TowerFloor getCurrentTowerFloor() {
     return floors.get(currentFloor);
   }
+
+  /**
+   * Starts a fresh expedition on the same tower: the party drops back to the base and climbs again,
+   * but every floor discovered on previous runs stays in {@link #floors} so the tower keeps its
+   * full height on screen. Re-cleared floors are repopulated with new defenders as the party
+   * reaches them.
+   */
+  public void startNewRun() {
+    this.currentFloor = 0;
+  }
 }
