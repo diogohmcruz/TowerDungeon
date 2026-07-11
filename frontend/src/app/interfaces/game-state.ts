@@ -31,6 +31,15 @@ export interface MilestoneOffer {
   achieved: boolean;
 }
 
+export interface ShortcutOffer {
+  id: string;
+  name: string;
+  description: string;
+  trigger: string;
+  floor: number;
+  unlocked: boolean;
+}
+
 export interface GameState {
   mana: number;
   manaPerSecond: number;
@@ -59,5 +68,7 @@ export interface GameState {
   supplyCapacityBonus: number;
   deepestFloor: number;
   expeditionsCompleted: number;
+  enemiesDefeated: number;
   milestones: MilestoneOffer[];
+  shortcuts: ShortcutOffer[];
 }

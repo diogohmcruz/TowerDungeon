@@ -19,25 +19,29 @@ public class Tower {
   public void moveToNextFloor() {
     if (currentFloor < maxFloor) {
       currentFloor++;
-      var percentageOfTowerComplete = (double) currentFloor / maxFloor;
-      var maxEnemyStatsLevel = EnemyStats.values().length * percentageOfTowerComplete + 1;
-      var isBossFloor =
-          currentFloor % bossConfig.getInterval() == 0 || currentFloor.equals(maxFloor);
-      var towerFloor =
-          TowerFloor.builder()
-              .id(currentFloor)
-              .difficulty((int) maxEnemyStatsLevel)
-              .boss(isBossFloor)
-              .build();
-      if (isBossFloor) {
-        towerFloor.populateBoss(bossConfig);
-      } else {
-        towerFloor.populateEnemies();
-      }
-      floors.put(currentFloor, towerFloor);
+      floors.put(currentFloor, buildFloor(currentFloor));
     } else {
       throw new IllegalStateException("You have reached the maximum floor of the tower.");
     }
+  }
+
+  /** Builds a fully populated floor (enemies or boss) for the given depth. */
+  private TowerFloor buildFloor(int floor) {
+    var percentageOfTowerComplete = (double) floor / maxFloor;
+    var maxEnemyStatsLevel = EnemyStats.values().length * percentageOfTowerComplete + 1;
+    var isBossFloor = floor % bossConfig.getInterval() == 0 || floor == maxFloor;
+    var towerFloor =
+        TowerFloor.builder()
+            .id(floor)
+            .difficulty((int) maxEnemyStatsLevel)
+            .boss(isBossFloor)
+            .build();
+    if (isBossFloor) {
+      towerFloor.populateBoss(bossConfig);
+    } else {
+      towerFloor.populateEnemies();
+    }
+    return towerFloor;
   }
 
   public TowerFloor getCurrentTowerFloor() {
@@ -52,5 +56,20 @@ public class Tower {
    */
   public void startNewRun() {
     this.currentFloor = 0;
+  }
+
+  /**
+   * Starts a fresh expedition partway up the tower via an unlocked shortcut. The party is deposited
+   * on {@code startFloor}, which is (re)populated with defenders so combat begins there instead of
+   * at the base. A non-positive floor falls back to a base-floor climb.
+   */
+  public void startNewRunAt(int startFloor) {
+    if (startFloor <= 0) {
+      startNewRun();
+      return;
+    }
+    var floor = Math.min(startFloor, maxFloor);
+    this.currentFloor = floor;
+    floors.put(floor, buildFloor(floor));
   }
 }

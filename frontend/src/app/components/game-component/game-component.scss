@@ -113,3 +113,65 @@
     max-width: 20em;
   }
 }
+
+.expedition-start {
+  margin: 10px 0;
+
+  h3 {
+    font-size: 0.95em;
+    color: var(--text);
+    margin: 0 0 8px;
+  }
+
+  .start-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85em;
+    color: var(--text);
+    padding: 4px 0;
+    cursor: pointer;
+  }
+
+  .start-option input {
+    cursor: pointer;
+  }
+}
+
+.shortcut-panel {
+  margin: 10px 0;
+
+  h3 {
+    font-size: 0.95em;
+    color: var(--text);
+    margin: 0 0 8px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  .progress-note {
+    font-size: 0.72em;
+    font-weight: 500;
+    color: var(--text-muted);
+  }
+
+  .shortcut-hint {
+    font-size: 0.78em;
+    color: var(--text-muted);
+    margin: 0 0 8px;
+  }
+
+  .shortcut-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  app-shortcut-card {
+    flex: 1 1 220px;
+    min-width: 0;
+    max-width: 20em;
+  }
+}

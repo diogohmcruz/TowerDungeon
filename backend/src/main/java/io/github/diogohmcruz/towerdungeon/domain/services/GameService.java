@@ -169,6 +169,15 @@ public class GameService {
                 "Player[{}] tried to invade while a run is already active. Ignoring.", sessionId);
             return;
           }
+          var requestedFloor =
+              invadeActionDTO.startFloor() == null ? 0 : invadeActionDTO.startFloor();
+          if (!gameState.isStartFloorUnlocked(requestedFloor)) {
+            log.warn(
+                "Player[{}] tried to start on floor {} without an open shortcut. Ignoring.",
+                sessionId,
+                requestedFloor);
+            return;
+          }
           var units = gameState.getUnits();
           final var unitsOnTower = gameState.getUnitsOnTower();
           var invadeUnits = invadeActionDTO.units();
@@ -185,10 +194,12 @@ public class GameService {
           }
           if (gameState.getTower() == null) {
             gameState.setTower(new Tower(config.getBoss()));
-          } else {
-            gameState.getTower().startNewRun();
           }
+          gameState.getTower().startNewRunAt(requestedFloor);
           gameState.startRun();
+          if (requestedFloor > 0) {
+            gameState.recordFloorReached(requestedFloor);
+          }
         });
   }
 
@@ -309,7 +320,7 @@ public class GameService {
       return;
     }
     var currentEnemies = currentTowerFloor.getEnemies();
-    unitsAttack(unitsOnTower, currentEnemies, currentTowerFloor, gameState.getDamageMultiplier());
+    unitsAttack(unitsOnTower, currentEnemies, currentTowerFloor, gameState);
     enemiesAttack(gameState, currentEnemies, unitsOnTower);
   }
 
@@ -347,7 +358,8 @@ public class GameService {
       Map<UnitStats, List<Unit>> unitsOnTower,
       List<Enemy> currentEnemies,
       TowerFloor currentTowerFloor,
-      double damageMultiplier) {
+      GameState gameState) {
+    var damageMultiplier = gameState.getDamageMultiplier();
     unitsOnTower.entrySet().stream()
         .filter(entry -> AttackType.HEAL.equals(entry.getKey().getAttackType()))
         .map(Entry::getValue)
@@ -382,6 +394,7 @@ public class GameService {
               if (targetEnemy.isDead()) {
                 log.info("Unit {} defeated enemy {}", currentUnit, targetEnemy);
                 currentTowerFloor.removeEnemy(targetEnemy);
+                gameState.recordEnemyKill();
               }
             });
   }
