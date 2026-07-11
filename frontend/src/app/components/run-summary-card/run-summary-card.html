@@ -1,7 +1,5 @@
-<app-card [class.wiped]="wiped()">
-  <span card-title class="run-title">
-    {{ wiped() ? 'Party Wiped' : 'Extraction Complete' }}
-  </span>
+<app-card [class.wiped]="wiped()" [class.victory]="victory()">
+  <span card-title class="run-title"> {{ titleText() }} </span>
   <span card-badge class="run-outcome">
     Floor {{ summary().startFloor }} → {{ summary().deepestFloor }}
   </span>

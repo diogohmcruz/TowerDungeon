@@ -24,6 +24,7 @@ import io.github.diogohmcruz.towerdungeon.domain.exceptions.InvalidInvasion;
 import io.github.diogohmcruz.towerdungeon.domain.models.AttackType;
 import io.github.diogohmcruz.towerdungeon.domain.models.BaseUnit;
 import io.github.diogohmcruz.towerdungeon.domain.models.Enemy;
+import io.github.diogohmcruz.towerdungeon.domain.models.GameOutcome;
 import io.github.diogohmcruz.towerdungeon.domain.models.GameState;
 import io.github.diogohmcruz.towerdungeon.domain.models.ResourceType;
 import io.github.diogohmcruz.towerdungeon.domain.models.RunSummary;
@@ -170,6 +171,13 @@ public class GameService {
                 "Player[{}] tried to invade while a run is already active. Ignoring.", sessionId);
             return;
           }
+          if (gameState.getGameOutcome() != GameOutcome.PLAYING) {
+            log.warn(
+                "Player[{}] tried to invade after the campaign ended ({}). Ignoring.",
+                sessionId,
+                gameState.getGameOutcome());
+            return;
+          }
           var requestedFloor =
               invadeActionDTO.startFloor() == null ? 0 : invadeActionDTO.startFloor();
           if (!gameState.isStartFloorUnlocked(requestedFloor)) {
@@ -194,7 +202,8 @@ public class GameService {
             return;
           }
           if (gameState.getTower() == null) {
-            gameState.setTower(new Tower(config.getBoss(), config.getEnemies()));
+            gameState.setTower(
+                new Tower(config.getTower().getMaxFloor(), config.getBoss(), config.getEnemies()));
           }
           gameState.getTower().startNewRunAt(requestedFloor);
           gameState.setRunStartFloor(requestedFloor > 0 ? requestedFloor : 0);
@@ -310,18 +319,19 @@ public class GameService {
       var rewardMultiplier = bossCleared ? reward.getBossRewardMultiplier() : 1.0;
       gameState.gatherCredits(clearedFloor * reward.getCreditPerFloor() * rewardMultiplier);
       gatherFloorLoot(gameState, clearedFloor, rewardMultiplier);
-      tower.moveToNextFloor();
-      gameState.recordFloorReached(tower.getCurrentFloor());
-      if (tower.getMaxFloor().equals(tower.getCurrentFloor())) {
-        log.info("WIN! Player has reached the top of the tower!");
-        return;
-      }
       if (bossCleared) {
         tower.markBossCleared(clearedFloor);
         log.info(
             "Defeated the guardian of floor {}! The lesser floors below it grow easier.",
             clearedFloor);
       }
+      if (clearedFloor >= tower.getMaxFloor()) {
+        log.info("VICTORY! Player conquered the summit of the tower on floor {}!", clearedFloor);
+        endRunOnVictory(gameState);
+        return;
+      }
+      tower.moveToNextFloor();
+      gameState.recordFloorReached(tower.getCurrentFloor());
       log.info("Beat the floor {}!", tower.getCurrentFloor());
       return;
     }
@@ -359,6 +369,20 @@ public class GameService {
     gameState.setSupplies(0d);
     gameState.getUnitsOnTower().clear();
     gameState.completeExpedition();
+  }
+
+  /**
+   * Ends the campaign in triumph: the summit is conquered, so the party banks its full haul and
+   * marches home victorious, and the game is marked won.
+   */
+  private static void endRunOnVictory(GameState gameState) {
+    gameState.buildRunSummary(RunSummary.VICTORY);
+    gameState.returnLeftoverSuppliesToVillage();
+    gameState.returnPartyHome();
+    gameState.bankLoot();
+    gameState.setExpeditionActive(false);
+    gameState.completeExpedition();
+    gameState.winCampaign();
   }
 
   private static void unitsAttack(

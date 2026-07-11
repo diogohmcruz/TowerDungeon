@@ -38,6 +38,7 @@ public class GameState {
   private Map<UnitStats, List<Unit>> unitsOnTower = new HashMap<>();
   private Tower tower;
   private boolean expeditionActive = false;
+  private GameOutcome gameOutcome = GameOutcome.PLAYING;
   private Village village;
   private List<String> upgrades = new ArrayList<>();
   private Integer prestigePoints = 0;
@@ -197,6 +198,45 @@ public class GameState {
     return (int) units.values().stream().flatMap(List::stream).count();
   }
 
+  /** Whether the player has any soldier left at all, whether idle at home or up on the tower. */
+  public boolean hasAnyUnits() {
+    return getHomeUnitCount() > 0 || getTowerPartySize() > 0;
+  }
+
+  /**
+   * Whether the player still has any economic means to field another soldier: coin to recruit or
+   * hire a villager, sellable loot, or spare food to sell. When this is false and every unit and
+   * villager is gone, the campaign is a genuine dead end.
+   */
+  private boolean canRecover() {
+    return credit > 0
+        || resources.getOrDefault(ResourceType.MATERIALS, 0d) > 0
+        || resources.getOrDefault(ResourceType.RELICS, 0d) > 0
+        || village.getFood() > 1;
+  }
+
+  /**
+   * Ends the campaign in defeat once the tower has consumed everything: no units remain anywhere,
+   * the village is depopulated, and there is no coin, loot, or food left to raise another party.
+   * Returns true if the game has (now or already) ended in defeat.
+   */
+  public boolean checkGameOver() {
+    if (gameOutcome != GameOutcome.PLAYING) {
+      return gameOutcome == GameOutcome.DEFEAT;
+    }
+    if (!hasAnyUnits() && village.getVillagersCount() <= 0 && !canRecover()) {
+      gameOutcome = GameOutcome.DEFEAT;
+      log.error("GAME OVER — the village is spent and the tower has taken everyone.");
+      return true;
+    }
+    return false;
+  }
+
+  /** Records that the party conquered the tower's summit — the campaign is won. */
+  public void winCampaign() {
+    this.gameOutcome = GameOutcome.VICTORY;
+  }
+
   /** Food eaten per tick by idle units standing by at home. */
   public double getFoodUpkeep() {
     return village.upkeepFor(getHomeUnitCount());
@@ -275,19 +315,20 @@ public class GameState {
   }
 
   public void triggerLifecycle() {
-    mana += manaPerSecond;
-    var allUnits = units.values().stream().flatMap(List::stream).toList();
-    if (allUnits.isEmpty() && village.getVillagersCount() <= 0) {
-      log.error("GAME OVER!");
+    if (checkGameOver()) {
       return;
     }
+    mana += manaPerSecond;
+    var allUnits = units.values().stream().flatMap(List::stream).toList();
     var isStarving = village.triggerLifecycle(allUnits.size());
     if (isStarving) {
       village.starve();
-      var randomIndex = ThreadLocalRandom.current().nextInt(allUnits.size());
-      var unitToRemove = allUnits.get(randomIndex);
-      units.get(unitToRemove.getStats()).remove(unitToRemove);
-      log.warn("Village is starving! Unit {} starved!", unitToRemove);
+      if (!allUnits.isEmpty()) {
+        var randomIndex = ThreadLocalRandom.current().nextInt(allUnits.size());
+        var unitToRemove = allUnits.get(randomIndex);
+        units.get(unitToRemove.getStats()).remove(unitToRemove);
+        log.warn("Village is starving! Unit {} starved!", unitToRemove);
+      }
     }
     healHomePartyWithFood();
   }

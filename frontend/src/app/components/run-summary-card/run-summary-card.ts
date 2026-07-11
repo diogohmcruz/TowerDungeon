@@ -14,4 +14,15 @@ export class RunSummaryCard {
   summary = input.required<RunSummary>();
 
   wiped = computed(() => this.summary().outcome === 'WIPED');
+  victory = computed(() => this.summary().outcome === 'VICTORY');
+  titleText = computed(() => {
+    switch (this.summary().outcome) {
+      case 'WIPED':
+        return 'Party Wiped';
+      case 'VICTORY':
+        return 'Tower Conquered';
+      default:
+        return 'Extraction Complete';
+    }
+  });
 }

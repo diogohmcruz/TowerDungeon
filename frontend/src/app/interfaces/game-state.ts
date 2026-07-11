@@ -64,6 +64,7 @@ export interface GameState {
   upgrades: string[];
   prestigePoints: number;
   expeditionActive: boolean;
+  gameOutcome: string;
   resources: ResourceWallet;
   carriedLoot: ResourceWallet;
   carriedCredits: number;

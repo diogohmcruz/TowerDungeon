@@ -38,6 +38,7 @@ export class GameStateService {
     upgrades: [],
     prestigePoints: 0,
     expeditionActive: false,
+    gameOutcome: 'PLAYING',
     resources: { MATERIALS: 0, RELICS: 0 },
     carriedLoot: { MATERIALS: 0, RELICS: 0 },
     carriedCredits: 0,
