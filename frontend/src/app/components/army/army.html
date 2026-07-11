@@ -1,20 +1,17 @@
 <div class="army">
   @if (totalMembers() === 0) {
-    <p class="empty">No units.</p>
-  }
-  @for (unit of armyEntries(); track unit[0]) {
-    @if (unit[1].length) {
-      <section class="unit-group">
-        <header class="group-head">
-          <span class="unit-type">{{ unit[0] | lowercase }}</span>
-          <span class="unit-count">×{{ unit[1].length }}</span>
-        </header>
-        <div class="member-list">
-          @for (member of unit[1]; track member.id) {
-            <app-character-card [member]="member" />
-          }
-        </div>
-      </section>
-    }
-  }
+  <p class="empty">No units.</p>
+  } @for (unit of armyEntries(); track unit[0]) { @if (unit[1].length) {
+  <section class="unit-group">
+    <header class="group-head">
+      <span class="unit-type">{{ unit[0] | lowercase }}</span>
+      <span class="unit-count">×{{ unit[1].length }}</span>
+    </header>
+    <div class="member-list">
+      @for (member of unit[1]; track member.id) {
+      <app-character-card [member]="member" />
+      }
+    </div>
+  </section>
+  } }
 </div>

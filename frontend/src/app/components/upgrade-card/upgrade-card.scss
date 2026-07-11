@@ -1,33 +1,33 @@
 :host {
   display: block;
-  --card-bg: #f6f8fc;
-  --card-border: #dfe6f1;
-  --card-shadow: 0 1px 3px rgba(60, 80, 120, 0.06);
+  --card-bg: var(--surface-2);
+  --card-border: var(--border);
+  --card-shadow: var(--shadow-sm);
   --card-pad: 10px 12px;
   --card-title-size: 0.86em;
-  --card-title-color: #384768;
+  --card-title-color: var(--text-strong);
 }
 
 app-card.is-unlock {
-  --card-bg: #f3f0fb;
-  --card-border: #e0d6f3;
+  --card-bg: var(--surface-3);
+  --card-border: var(--border);
 }
 
 .upgrade-level {
-  background: #e6ebf3;
+  background: var(--chip-bg);
   border-radius: 4px;
   padding: 1px 6px;
 
   &.owned {
-    color: #2f8f5b;
-    background: #e2f4ea;
+    color: var(--positive);
+    background: var(--positive-bg);
   }
 }
 
 .upgrade-desc {
   margin: 0;
   font-size: 0.76em;
-  color: #5a6b86;
+  color: var(--text-muted);
 }
 
 .upgrade-cost {
@@ -43,13 +43,13 @@ app-card.is-unlock {
   }
 
   .cost.mat {
-    background: #eaf1e6;
-    color: #4c7a3a;
+    background: var(--materials-bg);
+    color: var(--materials);
   }
 
   .cost.rel {
-    background: #f5e7f0;
-    color: #9a3b7a;
+    background: var(--relics-bg);
+    color: var(--relics);
   }
 }
 
@@ -61,12 +61,12 @@ button {
   padding: 5px 8px;
   font-size: 0.78em;
   font-weight: 600;
-  color: #fff;
-  background: #4c7dc0;
+  color: var(--on-accent);
+  background: var(--accent);
   transition: background 0.2s ease;
 
   &:hover {
-    background: #3a6bad;
+    background: var(--accent-hover);
   }
 
   &:disabled {
