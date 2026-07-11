@@ -32,6 +32,20 @@
         >
       </div>
     </div>
+
+    <div class="stat-tile materials">
+      <div class="stat-body">
+        <span class="stat-label">Materials</span>
+        <span class="stat-value">{{ this.materials() | number: '1.0-0' }}</span>
+      </div>
+    </div>
+
+    <div class="stat-tile relics">
+      <div class="stat-body">
+        <span class="stat-label">Relics</span>
+        <span class="stat-value">{{ this.relics() | number: '1.0-0' }}</span>
+      </div>
+    </div>
   </div>
 
   <p class="food-breakdown">
@@ -50,6 +64,20 @@
     </button>
     <button class="btn btn-ghost" (click)="this.onClickSellFood()">
       Sell food
+    </button>
+    <button
+      class="btn btn-ghost"
+      [disabled]="this.materials() <= 0"
+      (click)="this.onClickSellMaterials()"
+    >
+      Sell materials
+    </button>
+    <button
+      class="btn btn-ghost"
+      [disabled]="this.relics() <= 0"
+      (click)="this.onClickSellRelics()"
+    >
+      Sell relics
     </button>
   </div>
 </section>

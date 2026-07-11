@@ -37,13 +37,16 @@ public class GameProperties {
     private double starvationDamage = 5.0;
   }
 
-  /** Credit and loot granted for clearing floors. */
+  /** Credit and loot granted for clearing floors, and vault sell prices back in the village. */
   @Data
   public static class Reward {
-    private double creditPerFloor = 10.0;
+    private double creditPerFloor = 2.0;
     private double materialsPerFloor = 5.0;
+    private double suppliesPerFloor = 3.0;
     private int relicDepthThreshold = 10;
     private double bossRewardMultiplier = 3.0;
+    private double materialsSellPrice = 2.0;
+    private double relicsSellPrice = 25.0;
   }
 
   /** Guardian (boss) floor cadence and scaling. */

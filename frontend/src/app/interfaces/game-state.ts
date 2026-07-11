@@ -43,6 +43,7 @@ export interface GameState {
   prestigePoints: number;
   resources: ResourceWallet;
   carriedLoot: ResourceWallet;
+  carriedCredits: number;
   supplies: number;
   maxSupplies: number;
   lastFoodReturned: number;

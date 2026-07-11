@@ -1,0 +1,18 @@
+<section class="expedition-loot">
+  <header class="panel-head">Expedition loot</header>
+  <div class="loot-grid">
+    <span class="loot-chip credits">
+      <span class="loot-label">Credits</span>
+      <span class="loot-value">{{ credits() | number: '1.0-0' }}</span>
+    </span>
+    <span class="loot-chip materials">
+      <span class="loot-label">Materials</span>
+      <span class="loot-value">{{ materials() | number: '1.0-0' }}</span>
+    </span>
+    <span class="loot-chip relics">
+      <span class="loot-label">Relics</span>
+      <span class="loot-value">{{ relics() | number: '1.0-0' }}</span>
+    </span>
+  </div>
+  <p class="loot-note">Loot is lost on a wipe — extract to keep it.</p>
+</section>

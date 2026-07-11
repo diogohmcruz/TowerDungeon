@@ -103,6 +103,18 @@
   border-left-color: var(--accent);
 }
 
+.stat-tile.materials {
+  background: var(--surface-2);
+  border-color: var(--border);
+  border-left-color: var(--gold);
+}
+
+.stat-tile.relics {
+  background: var(--surface-2);
+  border-color: var(--border);
+  border-left-color: var(--gold-bright);
+}
+
 .food-breakdown {
   font-size: 0.76rem;
   color: var(--text-muted);
@@ -173,4 +185,11 @@
   &:hover {
     background: var(--surface-2);
   }
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+  filter: none;
 }

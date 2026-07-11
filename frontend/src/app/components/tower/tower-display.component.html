@@ -16,6 +16,23 @@
       ></div>
     </div>
   </div>
+  @if (active()) {
+    <app-expedition-loot
+      class="exp-block"
+      [credits]="carriedCredits()"
+      [materials]="carriedLoot()?.MATERIALS ?? 0"
+      [relics]="carriedLoot()?.RELICS ?? 0"
+    />
+    <app-supplies
+      class="exp-block"
+      [supplies]="supplies()"
+      [maxSupplies]="maxSupplies()"
+    />
+    <section class="expedition-party">
+      <header class="exp-head">Party on the tower</header>
+      <app-army [army]="party()" />
+    </section>
+  }
   @if (enemyCount() === 0) {
     <p class="cleared">No enemies here — advancing…</p>
   }

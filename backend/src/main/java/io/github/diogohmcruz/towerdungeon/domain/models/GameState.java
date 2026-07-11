@@ -39,6 +39,7 @@ public class GameState {
   private Integer prestigePoints = 0;
   private Map<ResourceType, Double> resources = ResourceType.emptyWallet();
   private Map<ResourceType, Double> carriedLoot = ResourceType.emptyWallet();
+  private Double carriedCredits = 0d;
   private Double supplies = 0d;
   private Double maxSupplies;
   private Double lastFoodReturned = 0d;
@@ -93,6 +94,7 @@ public class GameState {
     this.maxSupplies = computeSupplyCapacity();
     this.supplies = village.takeFood(this.maxSupplies);
     this.carriedLoot = ResourceType.emptyWallet();
+    this.carriedCredits = 0d;
     this.lastFoodReturned = 0d;
   }
 
@@ -189,6 +191,23 @@ public class GameState {
     carriedLoot.merge(type, amount, Double::sum);
   }
 
+  /**
+   * Adds credits found on a cleared floor to the party's carried purse. Like other loot these
+   * credits are only kept if the party extracts; a wipe forfeits them.
+   */
+  public void gatherCredits(Double amount) {
+    carriedCredits += amount;
+  }
+
+  /**
+   * Adds supplies (food) found on a cleared floor to what the party is carrying, capped at its
+   * current carrying capacity. Unlike banked loot these are immediately usable to keep the party
+   * alive deeper into the current expedition.
+   */
+  public void gatherSupplies(Double amount) {
+    this.supplies = Math.min(this.maxSupplies, this.supplies + Math.max(0d, amount));
+  }
+
   public void drainSupplies(Double amount) {
     this.supplies = Math.max(0d, this.supplies - amount);
   }
@@ -200,10 +219,30 @@ public class GameState {
   public void bankLoot() {
     carriedLoot.forEach((type, amount) -> resources.merge(type, amount, Double::sum));
     this.carriedLoot = ResourceType.emptyWallet();
+    this.credit += this.carriedCredits;
+    this.carriedCredits = 0d;
   }
 
   public void forfeitLoot() {
     this.carriedLoot = ResourceType.emptyWallet();
+    this.carriedCredits = 0d;
+  }
+
+  /** Sells every banked unit of {@code type} at {@code unitPrice} credits each. Returns the take. */
+  private double sellAll(ResourceType type, double unitPrice) {
+    var stock = resources.getOrDefault(type, 0d);
+    var profit = stock * unitPrice;
+    resources.put(type, 0d);
+    this.credit += profit;
+    return profit;
+  }
+
+  public double sellAllMaterials() {
+    return sellAll(ResourceType.MATERIALS, config.getReward().getMaterialsSellPrice());
+  }
+
+  public double sellAllRelics() {
+    return sellAll(ResourceType.RELICS, config.getReward().getRelicsSellPrice());
   }
 
   public void returnPartyHome() {
@@ -233,6 +272,22 @@ public class GameState {
 
   public void addCredit(Double amount) {
     credit += amount;
+  }
+
+  /**
+   * Credits the player can spend right now: the treasury plus whatever the party is carrying on the
+   * tower. Carried credits are only banked on extract, but they are still "in the party's hands" and
+   * can fund recruiting village reserves mid-expedition (spent before they could be lost to a wipe).
+   */
+  public double getSpendableCredit() {
+    return credit + carriedCredits;
+  }
+
+  /** Spends {@code amount} of credit, drawing from carried loot first, then the treasury. */
+  public void spendCredit(double amount) {
+    var fromCarried = Math.min(carriedCredits, amount);
+    carriedCredits -= fromCarried;
+    credit -= (amount - fromCarried);
   }
 
   public void addUnits(UnitStats unitStats, List<Unit> newUnits) {

@@ -31,10 +31,13 @@ game:
     supply-drain-per-unit: 1.5
     starvation-damage: 5.0
   reward:
-    credit-per-floor: 10.0
+    credit-per-floor: 2.0
     materials-per-floor: 5.0
+    supplies-per-floor: 3.0
     relic-depth-threshold: 10
     boss-reward-multiplier: 3.0
+    materials-sell-price: 2.0
+    relics-sell-price: 25.0
   boss:
     interval: 10
     health-base-multiplier: 3.0
