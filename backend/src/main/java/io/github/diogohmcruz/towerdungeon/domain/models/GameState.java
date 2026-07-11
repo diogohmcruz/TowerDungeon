@@ -47,24 +47,33 @@ public class GameState {
   private Set<UnitStats> unlockedUnits =
       EnumSet.of(UnitStats.WARRIOR, UnitStats.ARCHER, UnitStats.PORTER);
 
-  @JsonIgnore private Map<UpgradeType, Integer> purchasedUpgrades = new EnumMap<>(UpgradeType.class);
+  @JsonIgnore
+  private Map<UpgradeType, Integer> purchasedUpgrades = new EnumMap<>(UpgradeType.class);
 
   private int deepestFloor = 0;
   private int expeditionsCompleted = 0;
 
-  @JsonIgnore
-  private Set<MilestoneType> achievedMilestones = EnumSet.noneOf(MilestoneType.class);
+  @JsonIgnore private Set<MilestoneType> achievedMilestones = EnumSet.noneOf(MilestoneType.class);
 
-  @JsonIgnore
-  @ToString.Exclude
-  @EqualsAndHashCode.Exclude
+  @JsonIgnore @ToString.Exclude @EqualsAndHashCode.Exclude
   private FoodDistributionStrategy foodDistributionStrategy =
       new RoundRobinFoodDistributionStrategy();
 
-  @JsonIgnore
-  @ToString.Exclude
-  @EqualsAndHashCode.Exclude
-  private GameProperties config;
+  @JsonIgnore @ToString.Exclude @EqualsAndHashCode.Exclude private GameProperties config;
+
+  @FunctionalInterface
+  public interface LockedCall<T> {
+    T call() throws Exception;
+  }
+
+  /**
+   * Runs {@code action} while holding this state's intrinsic monitor and returns its result. All
+   * mutations (scheduled game loops and user actions) and the outbound serialization funnel through
+   * this single method, so the reactive send thread never observes a half-mutated state.
+   */
+  public synchronized <T> T callLocked(LockedCall<T> action) throws Exception {
+    return action.call();
+  }
 
   public GameState(GameProperties config) {
     this.config = config;
@@ -74,12 +83,11 @@ public class GameState {
     this.village = new Village(config.getVillage());
   }
 
-
   /**
    * Starts an expedition. Food is a single shared resource: the party draws food out of the village
-   * pantry (up to its carrying capacity, which the PORTER unit increases) and carries it as supplies.
-   * On extraction the leftovers are poured back into the pantry and the survivors are then healed
-   * using the village's food.
+   * pantry (up to its carrying capacity, which the PORTER unit increases) and carries it as
+   * supplies. On extraction the leftovers are poured back into the pantry and the survivors are
+   * then healed using the village's food.
    */
   public void startRun() {
     this.maxSupplies = computeSupplyCapacity();
@@ -90,8 +98,8 @@ public class GameState {
 
   /**
    * Carrying capacity of the party currently on the tower: a base amount plus the supply bonus of
-   * every PORTER in the party. Because it is derived from the live party, capacity shrinks as soon as
-   * a porter dies.
+   * every PORTER in the party. Because it is derived from the live party, capacity shrinks as soon
+   * as a porter dies.
    */
   private double computeSupplyCapacity() {
     var supplyBonus =
@@ -130,8 +138,8 @@ public class GameState {
   /**
    * Heals the wounded units resting at home, spending the village's food. Runs every lifecycle tick
    * and delegates the actual "who gets fed" decision to the configured {@link
-   * FoodDistributionStrategy}, so different policies (round-robin, proportional, most-wounded-first,
-   * …) can be swapped in without changing the game loop.
+   * FoodDistributionStrategy}, so different policies (round-robin, proportional,
+   * most-wounded-first, …) can be swapped in without changing the game loop.
    */
   public void healHomePartyWithFood() {
     var homeUnits = units.values().stream().flatMap(List::stream).toList();
@@ -338,8 +346,9 @@ public class GameState {
   }
 
   /**
-   * Grants every milestone whose condition is now satisfied. Story-unit milestones add the companion
-   * to the roster; buff milestones take effect immediately via the capacity/damage getters.
+   * Grants every milestone whose condition is now satisfied. Story-unit milestones add the
+   * companion to the roster; buff milestones take effect immediately via the capacity/damage
+   * getters.
    */
   private void checkMilestones() {
     for (MilestoneType milestone : MilestoneType.values()) {

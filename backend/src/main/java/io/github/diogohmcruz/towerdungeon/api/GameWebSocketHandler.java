@@ -57,12 +57,12 @@ public class GameWebSocketHandler implements WebSocketHandler {
     var sessionId = session.getId();
     Flux<WebSocketMessage> pingMessages =
         Flux.interval(Duration.ofMillis(100))
-            .map(_ -> gameService.getState(sessionId))
+            .onBackpressureLatest()
             .<String>handle(
-                (gameState, sink) -> {
+                (_, sink) -> {
                   try {
-                    sink.next(objectMapper.writeValueAsString(gameState));
-                  } catch (JsonProcessingException e) {
+                    sink.next(gameService.renderState(sessionId));
+                  } catch (Exception e) {
                     log.error("Error creating the game state", e);
                     sink.error(new RuntimeException(e));
                   }
