@@ -14,7 +14,7 @@ import lombok.Data;
 @Data
 public class Tower {
   private Integer currentFloor = 0;
-  private final Integer maxFloor = 100;
+  private final Integer maxFloor;
   private Map<Integer, TowerFloor> floors = new HashMap<>();
 
   /** Guardian floors already slain this campaign; thins the garrisons of the floors below them. */

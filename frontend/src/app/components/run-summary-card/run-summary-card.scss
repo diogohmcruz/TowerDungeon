@@ -21,6 +21,14 @@ app-card.wiped {
   --card-title-color: var(--negative);
 }
 
+app-card.victory {
+  --card-bg: var(--gold-bg, rgba(212, 175, 55, 0.14));
+  --card-border: var(--gold);
+  --card-accent: var(--gold);
+  --card-accent-width: 4px;
+  --card-title-color: var(--gold);
+}
+
 .run-title {
   font-weight: 700;
 }

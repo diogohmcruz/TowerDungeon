@@ -26,6 +26,43 @@
   }
 }
 
+.campaign-banner {
+  border-radius: 12px;
+  padding: 14px 18px;
+  margin: 0 0 10px;
+  border: 2px solid var(--border-strong);
+  text-align: center;
+
+  h2 {
+    margin: 0 0 6px;
+    font-size: 1.2em;
+  }
+
+  p {
+    margin: 0;
+    font-size: 0.86em;
+    color: var(--text);
+  }
+
+  &.victory {
+    background: var(--gold-bg, rgba(212, 175, 55, 0.16));
+    border-color: var(--gold);
+
+    h2 {
+      color: var(--gold);
+    }
+  }
+
+  &.defeat {
+    background: var(--negative-bg, rgba(200, 60, 60, 0.14));
+    border-color: var(--negative);
+
+    h2 {
+      color: var(--negative);
+    }
+  }
+}
+
 .run-hud {
   background: var(--surface-3);
   border: 1px solid var(--border-strong);
