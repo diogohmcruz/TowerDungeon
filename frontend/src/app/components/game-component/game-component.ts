@@ -13,6 +13,7 @@ import { UnitCard } from '../unit-card/unit-card';
 import { UpgradeCard } from '../upgrade-card/upgrade-card';
 import { MilestoneCard } from '../milestone-card/milestone-card';
 import { ShortcutCard } from '../shortcut-card/shortcut-card';
+import { RunSummaryCard } from '../run-summary-card/run-summary-card';
 
 @Component({
   selector: 'app-game-component',
@@ -26,6 +27,7 @@ import { ShortcutCard } from '../shortcut-card/shortcut-card';
     UpgradeCard,
     MilestoneCard,
     ShortcutCard,
+    RunSummaryCard,
   ],
   templateUrl: './game-component.html',
   styleUrls: ['./game-component.scss'],

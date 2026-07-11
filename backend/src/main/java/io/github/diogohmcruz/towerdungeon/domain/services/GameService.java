@@ -26,6 +26,7 @@ import io.github.diogohmcruz.towerdungeon.domain.models.BaseUnit;
 import io.github.diogohmcruz.towerdungeon.domain.models.Enemy;
 import io.github.diogohmcruz.towerdungeon.domain.models.GameState;
 import io.github.diogohmcruz.towerdungeon.domain.models.ResourceType;
+import io.github.diogohmcruz.towerdungeon.domain.models.RunSummary;
 import io.github.diogohmcruz.towerdungeon.domain.models.Tower;
 import io.github.diogohmcruz.towerdungeon.domain.models.TowerFloor;
 import io.github.diogohmcruz.towerdungeon.domain.models.Unit;
@@ -196,6 +197,7 @@ public class GameService {
             gameState.setTower(new Tower(config.getBoss(), config.getEnemies()));
           }
           gameState.getTower().startNewRunAt(requestedFloor);
+          gameState.setRunStartFloor(requestedFloor > 0 ? requestedFloor : 0);
           gameState.startRun();
           if (requestedFloor > 0) {
             gameState.recordFloorReached(requestedFloor);
@@ -211,6 +213,7 @@ public class GameService {
             log.warn("Player[{}] tried to extract with no active run.", sessionId);
             return;
           }
+          gameState.buildRunSummary(RunSummary.EXTRACTED);
           gameState.returnLeftoverSuppliesToVillage();
           gameState.returnPartyHome();
           gameState.bankLoot();
@@ -350,6 +353,7 @@ public class GameService {
   }
 
   private static void endRunOnWipe(GameState gameState) {
+    gameState.buildRunSummary(RunSummary.WIPED);
     gameState.forfeitLoot();
     gameState.setExpeditionActive(false);
     gameState.setSupplies(0d);

@@ -58,6 +58,7 @@ export class GameStateService {
     enemiesDefeated: 0,
     milestones: [],
     shortcuts: [],
+    lastRunSummary: null,
   });
   readonly state: Signal<GameState> = this._state.asReadonly();
 

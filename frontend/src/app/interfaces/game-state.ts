@@ -40,6 +40,19 @@ export interface ShortcutOffer {
   unlocked: boolean;
 }
 
+export interface RunSummary {
+  outcome: string;
+  startFloor: number;
+  deepestFloor: number;
+  floorsCleared: number;
+  enemiesDefeated: number;
+  creditsGained: number;
+  materialsGained: number;
+  relicsGained: number;
+  unitsLost: number;
+  survivors: number;
+}
+
 export interface GameState {
   mana: number;
   manaPerSecond: number;
@@ -71,4 +84,5 @@ export interface GameState {
   enemiesDefeated: number;
   milestones: MilestoneOffer[];
   shortcuts: ShortcutOffer[];
+  lastRunSummary: RunSummary | null;
 }
