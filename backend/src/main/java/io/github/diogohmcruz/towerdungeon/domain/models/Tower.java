@@ -1,7 +1,10 @@
 package io.github.diogohmcruz.towerdungeon.domain.models;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ThreadLocalRandom;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
@@ -14,7 +17,11 @@ public class Tower {
   private final Integer maxFloor = 100;
   private Map<Integer, TowerFloor> floors = new HashMap<>();
 
+  /** Guardian floors already slain this campaign; thins the garrisons of the floors below them. */
+  @JsonIgnore private final Set<Integer> clearedBosses = new HashSet<>();
+
   @JsonIgnore private final GameProperties.Boss bossConfig;
+  @JsonIgnore private final GameProperties.Enemies enemiesConfig;
 
   public void moveToNextFloor() {
     if (currentFloor < maxFloor) {
@@ -25,23 +32,59 @@ public class Tower {
     }
   }
 
+  /** Records that the guardian on {@code bossFloor} has been defeated. */
+  public void markBossCleared(int bossFloor) {
+    clearedBosses.add(bossFloor);
+  }
+
+  /** Number of cleared guardians standing above {@code floor} — the floor's "easing" pressure. */
+  private int easingStepsFor(int floor) {
+    return (int) clearedBosses.stream().filter(bossFloor -> bossFloor > floor).count();
+  }
+
   /** Builds a fully populated floor (enemies or boss) for the given depth. */
   private TowerFloor buildFloor(int floor) {
     var percentageOfTowerComplete = (double) floor / maxFloor;
-    var maxEnemyStatsLevel = EnemyStats.values().length * percentageOfTowerComplete + 1;
+    var baseDifficulty = EnemyStats.values().length * percentageOfTowerComplete + 1;
     var isBossFloor = floor % bossConfig.getInterval() == 0 || floor == maxFloor;
+
+    var easingSteps = easingStepsFor(floor);
+    var difficulty =
+        (int)
+            Math.clamp(
+                baseDifficulty - (double) enemiesConfig.getEaseDifficultyPerBoss() * easingSteps,
+                1,
+                EnemyStats.values().length);
+
     var towerFloor =
-        TowerFloor.builder()
-            .id(floor)
-            .difficulty((int) maxEnemyStatsLevel)
-            .boss(isBossFloor)
-            .build();
+        TowerFloor.builder().id(floor).difficulty(difficulty).boss(isBossFloor).build();
     if (isBossFloor) {
       towerFloor.populateBoss(bossConfig);
     } else {
-      towerFloor.populateEnemies();
+      towerFloor.populateEnemies(enemyBudget(floor, easingSteps));
     }
     return towerFloor;
+  }
+
+  /**
+   * Weighted garrison budget for a regular floor: a base plus linear and quadratic growth with
+   * depth, boosted on periodic "surge" floors, swung randomly, then thinned once for every cleared
+   * guardian above it.
+   */
+  private double enemyBudget(int floor, int easingSteps) {
+    var e = enemiesConfig;
+    var budget =
+        e.getBaseBudget()
+            + floor * e.getBudgetPerFloor()
+            + (double) floor * floor * e.getQuadraticPerFloor();
+    if (e.getSurgeInterval() > 0 && floor % e.getSurgeInterval() == 0) {
+      budget *= e.getSurgeMultiplier();
+    }
+    if (e.getVariance() > 0) {
+      budget *= 1 + ThreadLocalRandom.current().nextDouble(-e.getVariance(), e.getVariance());
+    }
+    budget *= Math.pow(1 - e.getEaseBudgetPerBoss(), easingSteps);
+    return Math.max(e.getMinBudget(), budget);
   }
 
   public TowerFloor getCurrentTowerFloor() {

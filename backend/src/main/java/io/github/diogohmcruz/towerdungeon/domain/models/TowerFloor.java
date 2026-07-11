@@ -17,13 +17,18 @@ public class TowerFloor {
   @Builder.Default private final boolean boss = false;
   private final List<Enemy> enemies = new ArrayList<>();
 
-  public void populateEnemies() {
-    int enemyCount = id;
-    while (enemyCount > 0) {
+  /**
+   * Fills the floor with a weighted horde until the given budget is spent. Heavier archetypes cost
+   * more of the budget, so a floor's headcount depends on both its budget and which tiers can spawn
+   * at its difficulty.
+   */
+  public void populateEnemies(double budget) {
+    double remaining = budget;
+    while (remaining > 0) {
       var randomEnemyStatsIndex = Math.floor(ThreadLocalRandom.current().nextDouble(difficulty));
       Enemy enemy = new Enemy(EnemyStats.values()[(int) randomEnemyStatsIndex]);
       enemies.add(enemy);
-      enemyCount -= enemy.getStats().getWeight();
+      remaining -= enemy.getStats().getWeight();
     }
   }
 
