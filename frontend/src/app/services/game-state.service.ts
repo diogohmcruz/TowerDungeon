@@ -5,8 +5,6 @@ import { Unit } from '../interfaces/unit.enum';
 @Injectable({ providedIn: 'root' })
 export class GameStateService {
   private _state = signal<GameState>({
-    mana: 0,
-    manaPerSecond: 1,
     credit: 0,
     units: {
       [Unit.WARRIOR]: [],
@@ -69,9 +67,5 @@ export class GameStateService {
 
   update(partial: Partial<GameState>) {
     this._state.update((s) => ({ ...s, ...partial }));
-  }
-
-  addMana(amount: number) {
-    this._state.update((s) => ({ ...s, mana: s.mana + amount }));
   }
 }

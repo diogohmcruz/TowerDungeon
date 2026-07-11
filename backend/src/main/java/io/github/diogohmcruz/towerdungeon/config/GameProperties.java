@@ -19,6 +19,7 @@ public class GameProperties {
   private final Tower tower = new Tower();
   private final Boss boss = new Boss();
   private final Enemies enemies = new Enemies();
+  private final Magic magic = new Magic();
   private final Supply supply = new Supply();
   private final Healing healing = new Healing();
   private final Village village = new Village();
@@ -27,7 +28,6 @@ public class GameProperties {
   @Data
   public static class Start {
     private double credit = 10.0;
-    private double manaPerSecond = 1.0;
   }
 
   /** Game-loop cadence and per-tick expedition costs. */
@@ -106,6 +106,30 @@ public class GameProperties {
   @Data
   public static class Supply {
     private double baseMax = 100.0;
+  }
+
+  /**
+   * Scarce, precious magic (manga-accurate). Every magic-capable player unit (any MAGIC/HEAL
+   * archetype) carries a finite personal mana reserve that is spent each time it casts and can only
+   * be refilled slowly back at the village — magic power must be husbanded and rotated home, never
+   * spammed.
+   */
+  @Data
+  public static class Magic {
+    /** Full mana reserve a caster is recruited with and recharges toward at home. */
+    private double maxMana = 5.0;
+
+    /** Mana spent per cast (one magic attack or one heal). */
+    private double costPerCast = 1.0;
+
+    /** Mana a caster regains per lifecycle tick while standing by at home (the fast, safe refill). */
+    private double rechargePerTick = 0.25;
+
+    /**
+     * Mana a caster slowly regains per tick even while delving on the tower — innate trickle, much
+     * weaker than the village refill, so a deep run still drains reserves faster than they recover.
+     */
+    private double towerRechargePerTick = 0.05;
   }
 
   /** Home-party healing fed from the village pantry. */

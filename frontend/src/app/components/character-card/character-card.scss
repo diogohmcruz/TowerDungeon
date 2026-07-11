@@ -25,3 +25,18 @@
     transition: width 0.25s ease;
   }
 }
+
+.mana-bar {
+  height: 4px;
+  width: 100%;
+  margin-top: 2px;
+  background: var(--chip-bg);
+  border-radius: 4px;
+  overflow: hidden;
+
+  .mana-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #3a6ea5, #6fb1ff);
+    transition: width 0.25s ease;
+  }
+}

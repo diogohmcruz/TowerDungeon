@@ -6,5 +6,7 @@ export interface Member {
   stats: UnitStats;
   currentHealth: number;
   maxHealth?: number;
+  maxMana?: number;
+  currentMana?: number;
   boss?: boolean;
 }

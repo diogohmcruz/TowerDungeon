@@ -54,8 +54,6 @@ export interface RunSummary {
 }
 
 export interface GameState {
-  mana: number;
-  manaPerSecond: number;
   credit: number;
   units: Squad;
   unitsOnTower: Squad;

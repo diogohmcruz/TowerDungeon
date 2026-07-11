@@ -31,8 +31,6 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Data
 public class GameState {
-  private Double mana = 0d;
-  private Double manaPerSecond;
   private Double credit;
   private Map<UnitStats, List<Unit>> units = new HashMap<>();
   private Map<UnitStats, List<Unit>> unitsOnTower = new HashMap<>();
@@ -90,7 +88,6 @@ public class GameState {
   public GameState(GameProperties config) {
     this.config = config;
     this.credit = config.getStart().getCredit();
-    this.manaPerSecond = config.getStart().getManaPerSecond();
     this.maxSupplies = config.getSupply().getBaseMax();
     this.village = new Village(config.getVillage());
   }
@@ -318,7 +315,6 @@ public class GameState {
     if (checkGameOver()) {
       return;
     }
-    mana += manaPerSecond;
     var allUnits = units.values().stream().flatMap(List::stream).toList();
     var isStarving = village.triggerLifecycle(allUnits.size());
     if (isStarving) {
@@ -331,6 +327,38 @@ public class GameState {
       }
     }
     healHomePartyWithFood();
+    rechargeHomeCasters();
+  }
+
+  /**
+   * Refills the mana of casters standing by at home, a little each tick. This is the fast, safe
+   * refill — the reason spent mages are rotated back to the village.
+   */
+  private void rechargeHomeCasters() {
+    var rate = config.getMagic().getRechargePerTick();
+    units.values().stream().flatMap(List::stream).forEach(unit -> unit.rechargeMana(rate));
+  }
+
+  /**
+   * Slowly trickles mana back into casters currently delving on the tower — an innate regeneration,
+   * far weaker than the village refill, so a hard-pressed party still burns mana faster than it
+   * recovers but is never permanently dry.
+   */
+  public void rechargeTowerCasters() {
+    var rate = config.getMagic().getTowerRechargePerTick();
+    unitsOnTower.values().stream().flatMap(List::stream).forEach(unit -> unit.rechargeMana(rate));
+  }
+
+  /**
+   * Raises a fresh unit at the village. Casters march out with a full mana reserve (drawn from
+   * config); other units carry none.
+   */
+  public Unit recruit(UnitStats unitStats) {
+    var unit = new Unit(unitStats);
+    if (unit.isCaster()) {
+      unit.chargeToFull(config.getMagic().getMaxMana());
+    }
+    return unit;
   }
 
   public void addCredit(Double amount) {
