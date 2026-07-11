@@ -9,9 +9,12 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.Consumer;
 
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.github.diogohmcruz.towerdungeon.api.dtos.BuyActionDTO;
 import io.github.diogohmcruz.towerdungeon.api.dtos.InvadeActionDTO;
@@ -36,99 +39,154 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class GameService {
   private final GameProperties config;
+  private final ObjectMapper objectMapper;
   private final Map<String, GameState> players = new ConcurrentHashMap<>();
 
-  public GameState getState(String sessionId) {
-    return players.computeIfAbsent(sessionId, _ -> new GameState(config));
+  private <T> T access(String sessionId, StateFn<T> body) {
+    var gameState = players.computeIfAbsent(sessionId, _ -> new GameState(config));
+    try {
+      return gameState.callLocked(() -> body.apply(gameState));
+    } catch (RuntimeException e) {
+      throw e;
+    } catch (Exception e) {
+      throw new IllegalStateException("Failed to access game state for session " + sessionId, e);
+    }
+  }
+
+  /** Mutates one player's state under its lock. Delegates to the {@link #access} gateway. */
+  private void withPlayer(String sessionId, Consumer<GameState> action) {
+    access(
+        sessionId,
+        gameState -> {
+          action.accept(gameState);
+          return null;
+        });
+  }
+
+  /** Mutates every player's state, each under its own lock via the {@link #access} gateway. */
+  private void forEachPlayer(java.util.function.Consumer<GameState> action) {
+    players.keySet().forEach(sessionId -> withPlayer(sessionId, action));
+  }
+
+  /**
+   * Serializes a consistent snapshot of a player's state to JSON under its lock, so the reactive
+   * send thread never observes a half-mutated graph (which previously surfaced as {@code
+   * IndexOutOfBounds} / {@code ConcurrentModificationException} during serialization). The live
+   * {@link GameState} is never handed to the transport layer — only its rendered JSON.
+   */
+  public String renderState(String sessionId) {
+    return access(sessionId, objectMapper::writeValueAsString);
   }
 
   public void handleMessage(String sessionId, BuyActionDTO buyActionDTO) {
-    var gameState = players.get(sessionId);
-    if (!gameState.isUnitUnlocked(buyActionDTO.unitStats())) {
-      log.warn(
-          "Player[{}] tried to recruit locked unit {}. Ignoring.",
-          sessionId,
-          buyActionDTO.unitStats());
-      return;
-    }
-    var newUnits = new ArrayList<Unit>();
-    var quantity = buyActionDTO.quantity();
-    while (gameState.getCredit() > buyActionDTO.unitStats().getCost() && quantity > 0) {
-      gameState.setCredit(gameState.getCredit() - buyActionDTO.unitStats().getCost());
-      var unit = new Unit(buyActionDTO.unitStats());
-      newUnits.add(unit);
-      quantity--;
-    }
-    gameState.addUnits(buyActionDTO.unitStats(), newUnits);
-    log.info("Received buy action from session [{}]. New units: {}", sessionId, newUnits);
+    withPlayer(
+        sessionId,
+        gameState -> {
+          if (!gameState.isUnitUnlocked(buyActionDTO.unitStats())) {
+            log.warn(
+                "Player[{}] tried to recruit locked unit {}. Ignoring.",
+                sessionId,
+                buyActionDTO.unitStats());
+            return;
+          }
+          var newUnits = new ArrayList<Unit>();
+          var quantity = buyActionDTO.quantity();
+          while (gameState.getCredit() > buyActionDTO.unitStats().getCost() && quantity > 0) {
+            gameState.setCredit(gameState.getCredit() - buyActionDTO.unitStats().getCost());
+            var unit = new Unit(buyActionDTO.unitStats());
+            newUnits.add(unit);
+            quantity--;
+          }
+          gameState.addUnits(buyActionDTO.unitStats(), newUnits);
+          log.info("Received buy action from session [{}]. New units: {}", sessionId, newUnits);
+        });
   }
 
   public void handleBuyVillagersAction(String sessionId) {
-    var gameState = players.get(sessionId);
-    var villagersCount = gameState.buyVillager();
-    log.info("Player[{}] total villagers: {}", sessionId, villagersCount);
+    withPlayer(
+        sessionId,
+        gameState -> {
+          var villagersCount = gameState.buyVillager();
+          log.info("Player[{}] total villagers: {}", sessionId, villagersCount);
+        });
   }
 
   public void handleSellFoodAction(String sessionId) {
-    var gameState = players.get(sessionId);
-    var credits = gameState.sellFood();
-    log.info("Player[{}] sold food for credits: {}", sessionId, credits);
+    withPlayer(
+        sessionId,
+        gameState -> {
+          var credits = gameState.sellFood();
+          log.info("Player[{}] sold food for credits: {}", sessionId, credits);
+        });
   }
 
   public void handleUpgradeAction(String sessionId, UpgradeActionDTO upgradeActionDTO) {
-    var gameState = players.get(sessionId);
-    UpgradeType type;
-    try {
-      type = UpgradeType.valueOf(upgradeActionDTO.upgradeId());
-    } catch (IllegalArgumentException | NullPointerException e) {
-      log.warn("Player[{}] requested unknown upgrade {}.", sessionId, upgradeActionDTO.upgradeId());
-      return;
-    }
-    var applied = gameState.applyUpgrade(type);
-    log.info(
-        "Player[{}] upgrade {} -> {}", sessionId, type, applied ? "purchased" : "rejected");
+    withPlayer(
+        sessionId,
+        gameState -> {
+          UpgradeType type;
+          try {
+            type = UpgradeType.valueOf(upgradeActionDTO.upgradeId());
+          } catch (IllegalArgumentException | NullPointerException e) {
+            log.warn(
+                "Player[{}] requested unknown upgrade {}.",
+                sessionId,
+                upgradeActionDTO.upgradeId());
+            return;
+          }
+          var applied = gameState.applyUpgrade(type);
+          log.info(
+              "Player[{}] upgrade {} -> {}", sessionId, type, applied ? "purchased" : "rejected");
+        });
   }
 
   public void handleMessage(String sessionId, InvadeActionDTO invadeActionDTO) {
     log.info("Received invade action from session [{}] {}", sessionId, invadeActionDTO);
-    var gameState = players.get(sessionId);
-    if (gameState.getTower() != null) {
-      log.warn("Player[{}] tried to invade while a run is already active. Ignoring.", sessionId);
-      return;
-    }
-    var units = gameState.getUnits();
-    final var unitsOnTower = gameState.getUnitsOnTower();
-    var invadeUnits = invadeActionDTO.units();
-    if (invadeUnits.isEmpty()) {
-      sendAllToTower(units, unitsOnTower);
-    } else {
-      sendToTower(units, invadeUnits, gameState);
-    }
-    gameState.setUnits(units);
-    gameState.setUnitsOnTower(unitsOnTower);
-    if (!gameState.hasUnitsOnTower()) {
-      log.warn("Player[{}] tried to invade with no available units. Ignoring.", sessionId);
-      return;
-    }
-    gameState.setTower(new Tower(config.getBoss()));
-    gameState.startRun();
+    withPlayer(
+        sessionId,
+        gameState -> {
+          if (gameState.getTower() != null) {
+            log.warn(
+                "Player[{}] tried to invade while a run is already active. Ignoring.", sessionId);
+            return;
+          }
+          var units = gameState.getUnits();
+          final var unitsOnTower = gameState.getUnitsOnTower();
+          var invadeUnits = invadeActionDTO.units();
+          if (invadeUnits.isEmpty()) {
+            sendAllToTower(units, unitsOnTower);
+          } else {
+            sendToTower(units, invadeUnits, gameState);
+          }
+          gameState.setUnits(units);
+          gameState.setUnitsOnTower(unitsOnTower);
+          if (!gameState.hasUnitsOnTower()) {
+            log.warn("Player[{}] tried to invade with no available units. Ignoring.", sessionId);
+            return;
+          }
+          gameState.setTower(new Tower(config.getBoss()));
+          gameState.startRun();
+        });
   }
 
   public void handleExtractAction(String sessionId) {
-    var gameState = players.get(sessionId);
-    if (gameState.getTower() == null) {
-      log.warn("Player[{}] tried to extract with no active run.", sessionId);
-      return;
-    }
-    gameState.returnLeftoverSuppliesToVillage();
-    gameState.returnPartyHome();
-    gameState.bankLoot();
-    gameState.setTower(null);
-    gameState.completeExpedition();
-    log.info(
-        "Player[{}] extracted. Leftover food returned to village, loot banked, party returned home"
-            + " to recover on the village's food.",
-        sessionId);
+    withPlayer(
+        sessionId,
+        gameState -> {
+          if (gameState.getTower() == null) {
+            log.warn("Player[{}] tried to extract with no active run.", sessionId);
+            return;
+          }
+          gameState.returnLeftoverSuppliesToVillage();
+          gameState.returnPartyHome();
+          gameState.bankLoot();
+          gameState.setTower(null);
+          gameState.completeExpedition();
+          log.info(
+              "Player[{}] extracted. Leftover food returned to village, loot banked, party returned"
+                  + " home to recover on the village's food.",
+              sessionId);
+        });
   }
 
   private static void sendAllToTower(
@@ -173,14 +231,17 @@ public class GameService {
 
   @Scheduled(fixedRateString = "${game.loop.lifecycle-ms}")
   public void gameLoop() {
-    players.values().forEach(GameState::triggerLifecycle);
-    players.values().forEach(this::updateInvasion);
+    forEachPlayer(
+        gameState -> {
+          gameState.triggerLifecycle();
+          updateInvasion(gameState);
+        });
   }
 
   @Scheduled(fixedRateString = "${game.loop.invasion-tick-ms}")
   public void invasionTimer() {
     var tick = config.getLoop().getInvasionTickMs();
-    players.values().forEach(gameState -> gameState.passingTime(tick));
+    forEachPlayer(gameState -> gameState.passingTime(tick));
   }
 
   private void updateInvasion(GameState gameState) {
@@ -326,5 +387,12 @@ public class GameService {
 
   public void closeSession(String id) {
     players.remove(id);
+  }
+
+  /** A body that reads or mutates a locked {@link GameState} and produces a result; may throw. */
+  @FunctionalInterface
+  private interface StateFn<T> {
+
+    T apply(GameState state) throws Exception;
   }
 }
