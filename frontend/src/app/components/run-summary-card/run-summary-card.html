@@ -1,0 +1,46 @@
+<app-card [class.wiped]="wiped()">
+  <span card-title class="run-title">
+    {{ wiped() ? 'Party Wiped' : 'Extraction Complete' }}
+  </span>
+  <span card-badge class="run-outcome">
+    Floor {{ summary().startFloor }} → {{ summary().deepestFloor }}
+  </span>
+  <div class="run-stats">
+    <div class="stat">
+      <span class="stat-label">Floors cleared</span>
+      <span class="stat-value">{{ summary().floorsCleared }}</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Enemies slain</span>
+      <span class="stat-value">{{ summary().enemiesDefeated }}</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Survivors</span>
+      <span class="stat-value">{{ summary().survivors }}</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Units lost</span>
+      <span class="stat-value">{{ summary().unitsLost }}</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">{{ wiped() ? 'Credits lost' : 'Credits' }}</span>
+      <span class="stat-value"
+        >{{ summary().creditsGained | number: '1.0-0' }}</span
+      >
+    </div>
+    <div class="stat">
+      <span class="stat-label"
+        >{{ wiped() ? 'Materials lost' : 'Materials' }}</span
+      >
+      <span class="stat-value"
+        >{{ summary().materialsGained | number: '1.0-0' }}</span
+      >
+    </div>
+    <div class="stat">
+      <span class="stat-label">{{ wiped() ? 'Relics lost' : 'Relics' }}</span>
+      <span class="stat-value"
+        >{{ summary().relicsGained | number: '1.0-0' }}</span
+      >
+    </div>
+  </div>
+</app-card>

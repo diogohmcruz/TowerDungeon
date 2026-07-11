@@ -70,6 +70,8 @@
       to the village.
     </p>
   </section>
+  } @if (!gameState().expeditionActive && gameState().lastRunSummary) {
+  <app-run-summary-card [summary]="gameState().lastRunSummary!" />
   } @if (gameState().homePartyWounds > 0) {
   <p class="home-heal">
     Home party recovering: {{ gameState().homePartyWounds | number: '1.0-0' }}

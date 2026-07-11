@@ -36,6 +36,26 @@ public enum EnemyStats {
           AttackType.RANGED, 1.0,
           AttackType.HEAL, 10.0),
       1.0),
+  TOWER_BEAST(
+      40.0,
+      12.0,
+      AttackType.MELEE,
+      Map.of(
+          AttackType.MELEE, 1.0,
+          AttackType.RANGED, 1.5,
+          AttackType.MAGIC, 0.75,
+          AttackType.HEAL, 1.0),
+      2.0),
+  CHIMERA(
+      70.0,
+      25.0,
+      AttackType.MAGIC,
+      Map.of(
+          AttackType.MELEE, 0.75,
+          AttackType.RANGED, 0.75,
+          AttackType.MAGIC, 1.5,
+          AttackType.HEAL, 1.0),
+      3.0),
   CHYMUS_INSECT(
       100.0,
       100.0,
@@ -46,6 +66,16 @@ public enum EnemyStats {
           AttackType.MAGIC, 0.5,
           AttackType.HEAL, -1.0),
       10.0),
+  STONE_GOLEM(
+      300.0,
+      30.0,
+      AttackType.MELEE,
+      Map.of(
+          AttackType.MELEE, 0.25,
+          AttackType.RANGED, 0.25,
+          AttackType.MAGIC, 2.0,
+          AttackType.HEAL, 0.0),
+      8.0),
   NECROMANCER(
       200.0,
       100.0,

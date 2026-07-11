@@ -33,13 +33,29 @@ public class Enemy extends BaseUnit {
     this.setCurrentHealth(this.getMaxHealth());
   }
 
+  private static final String[] GOLEM_MATERIALS = {
+    "Granite", "Basalt", "Obsidian", "Marble", "Slate", "Iron", "Bronze", "Onyx"
+  };
+
   private static String nameFor(EnemyStats stats) {
     var faker = new Faker();
-    if (stats == EnemyStats.SLIME) {
-      String color = faker.color().name();
-      return Character.toUpperCase(color.charAt(0)) + color.substring(1) + " Slime";
+    return switch (stats) {
+      case SLIME -> capitalize(faker.color().name()) + " Slime";
+      case TOWER_BEAST -> "Tower " + capitalize(faker.animal().name());
+      case CHIMERA -> capitalize(faker.animal().name()) + " Chimera";
+      case STONE_GOLEM ->
+          GOLEM_MATERIALS[
+                  java.util.concurrent.ThreadLocalRandom.current().nextInt(GOLEM_MATERIALS.length)]
+              + " Golem";
+      default -> faker.greekPhilosopher().name();
+    };
+  }
+
+  private static String capitalize(String value) {
+    if (value == null || value.isEmpty()) {
+      return value;
     }
-    return faker.greekPhilosopher().name();
+    return Character.toUpperCase(value.charAt(0)) + value.substring(1);
   }
 
   public double getEffectiveDamage() {

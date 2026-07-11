@@ -59,6 +59,11 @@ public class GameState {
   private int expeditionsCompleted = 0;
   private int enemiesDefeated = 0;
 
+  private int runStartFloor = 0;
+  private int runEnemiesDefeated = 0;
+  private int runUnitsLost = 0;
+  private RunSummary lastRunSummary;
+
   @JsonIgnore private Set<MilestoneType> achievedMilestones = EnumSet.noneOf(MilestoneType.class);
 
   @JsonIgnore @ToString.Exclude @EqualsAndHashCode.Exclude
@@ -102,6 +107,15 @@ public class GameState {
     this.carriedLoot = ResourceType.emptyWallet();
     this.carriedCredits = 0d;
     this.lastFoodReturned = 0d;
+    this.runEnemiesDefeated = 0;
+    this.runUnitsLost = 0;
+  }
+
+  /**
+   * Records the floor the current expedition set out from (base or a shortcut), for its summary.
+   */
+  public void setRunStartFloor(int startFloor) {
+    this.runStartFloor = Math.max(0, startFloor);
   }
 
   /**
@@ -410,6 +424,29 @@ public class GameState {
   }
 
   /**
+   * Snapshots how the current run went into {@link #lastRunSummary}. Must be called while the run
+   * data is still intact — before survivors are sent home and before loot is banked (extract) or
+   * forfeited (wipe) — so the carried haul and party losses are reported accurately.
+   */
+  public void buildRunSummary(String outcome) {
+    var deepest = tower == null ? runStartFloor : tower.getCurrentFloor();
+    var floorsCleared = Math.max(0, deepest - runStartFloor);
+    var survivors = RunSummary.WIPED.equals(outcome) ? 0 : getTowerPartySize();
+    this.lastRunSummary =
+        new RunSummary(
+            outcome,
+            runStartFloor,
+            deepest,
+            floorsCleared,
+            runEnemiesDefeated,
+            carriedCredits,
+            carriedLoot.getOrDefault(ResourceType.MATERIALS, 0d),
+            carriedLoot.getOrDefault(ResourceType.RELICS, 0d),
+            runUnitsLost,
+            survivors);
+  }
+
+  /**
    * Grants every milestone whose condition is now satisfied. Story-unit milestones add the
    * companion to the roster; buff milestones take effect immediately via the capacity/damage
    * getters.
@@ -450,6 +487,7 @@ public class GameState {
   /** Records a defeated tower enemy; drives the kill-based shortcut unlocks. */
   public void recordEnemyKill() {
     enemiesDefeated++;
+    runEnemiesDefeated++;
   }
 
   /** Tower shortcuts with their target floor, lore, unlock condition and whether they are open. */
@@ -519,6 +557,7 @@ public class GameState {
       if (currentUnits.isEmpty()) {
         unitsOnTower.remove(targetUnit.getStats());
       }
+      runUnitsLost++;
       recalculateSupplyCapacity();
     } else {
       log.warn("Unit {} not found on tower. Failed to remove.", targetUnit);
