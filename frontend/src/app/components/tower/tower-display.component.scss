@@ -19,18 +19,18 @@
     align-items: baseline;
     gap: 4px;
     font-weight: 700;
-    color: #33415c;
+    color: var(--text-strong);
 
     .depth-current {
       font-size: 1.05rem;
     }
 
     .depth-sep {
-      color: #a7b1c2;
+      color: var(--text-muted);
     }
 
     .depth-max {
-      color: #7a879c;
+      color: var(--text-muted);
       font-size: 0.85rem;
     }
   }
@@ -39,7 +39,7 @@
     margin-top: 5px;
     height: 7px;
     border-radius: 5px;
-    background: #e4e9f1;
+    background: var(--chip-bg);
     overflow: hidden;
     box-shadow: inset 0 1px 2px rgba(60, 80, 120, 0.12);
   }
@@ -82,11 +82,11 @@
   }
 
   .enemy-group {
-    background: #fbf6f4;
-    border: 1px solid #f0dcd6;
+    background: var(--enemy-surface);
+    border: 1px solid var(--enemy-border);
     border-radius: 10px;
     padding: 8px 10px;
-    box-shadow: 0 1px 3px rgba(90, 60, 60, 0.06);
+    box-shadow: var(--shadow-sm);
 
     .group-head {
       display: flex;
@@ -102,14 +102,14 @@
         font-weight: 700;
         font-size: 0.85em;
         text-transform: capitalize;
-        color: #6b2f2a;
+        color: var(--enemy-title);
       }
 
       .enemy-count {
         flex: 0 0 auto;
         font-size: 0.78em;
-        color: #8a5148;
-        background: #f4e2dd;
+        color: var(--enemy-chip-text);
+        background: var(--enemy-chip-bg);
         border-radius: 10px;
         padding: 1px 8px;
       }
@@ -136,16 +136,63 @@
   position: relative;
   overflow-x: hidden;
   overflow-y: auto;
+  background: var(--sky);
+}
+
+.tower-dungeon-wrapper::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: var(--star-opacity);
+  transition: opacity 0.3s ease;
   background:
     radial-gradient(
-        1.5px 1.5px at 20% 12%,
-        rgba(255, 255, 255, 0.9) 50%,
-        transparent 51%
-      ),
-    radial-gradient(1.5px 1.5px at 65% 8%, rgba(255, 255, 255, 0.8) 50%, transparent 51%),
-    radial-gradient(1.5px 1.5px at 82% 18%, rgba(255, 255, 255, 0.85) 50%, transparent 51%),
-    radial-gradient(1.5px 1.5px at 40% 6%, rgba(255, 255, 255, 0.7) 50%, transparent 51%),
-    linear-gradient(to top, #dfe7f2 0%, #cdd9ec 32%, #b9c9e6 58%, #9fb4dd 100%);
+      1.6px 1.6px at 20% 12%,
+      var(--star-color) 50%,
+      transparent 51%
+    ),
+    radial-gradient(
+      1.4px 1.4px at 65% 8%,
+      var(--star-color) 50%,
+      transparent 51%
+    ),
+    radial-gradient(
+      1.5px 1.5px at 82% 18%,
+      var(--star-color) 50%,
+      transparent 51%
+    ),
+    radial-gradient(
+      1.3px 1.3px at 40% 6%,
+      var(--star-color) 50%,
+      transparent 51%
+    ),
+    radial-gradient(
+      1.5px 1.5px at 30% 22%,
+      var(--star-color) 50%,
+      transparent 51%
+    ),
+    radial-gradient(
+      1.2px 1.2px at 74% 30%,
+      var(--star-color) 50%,
+      transparent 51%
+    ),
+    radial-gradient(
+      1.6px 1.6px at 52% 15%,
+      var(--star-color) 50%,
+      transparent 51%
+    ),
+    radial-gradient(
+      1.3px 1.3px at 12% 34%,
+      var(--star-color) 50%,
+      transparent 51%
+    ),
+    radial-gradient(
+      1.4px 1.4px at 88% 42%,
+      var(--star-color) 50%,
+      transparent 51%
+    );
 }
 
 .tower-dungeon {
@@ -181,13 +228,49 @@
       background 0.3s,
       filter 0.3s,
       opacity 0.3s;
-    background: linear-gradient(180deg, #9a9a9a 0%, #808080 100%);
-    border-left: 5px solid #7c7c7c;
-    border-right: 5px solid #7c7c7c;
-    border-bottom: 3px solid #6c6c6c;
+    background:
+      repeating-linear-gradient(
+        90deg,
+        transparent 0 22px,
+        var(--mortar) 22px 23px
+      ),
+      linear-gradient(180deg, var(--stone-top) 0%, var(--stone-bottom) 100%);
+    border-top: 2px solid color-mix(in srgb, var(--stone-top) 70%, #ffffff 30%);
+    border-left: 5px solid var(--stone-edge);
+    border-right: 5px solid var(--stone-edge);
+    border-bottom: 3px solid var(--stone-edge-dark);
     border-radius: 0 0 12px 12px;
     box-sizing: border-box;
-    box-shadow: 0 2px 8px 0 rgba(70, 70, 70, 0.09);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.12),
+      inset 0 -6px 8px -6px rgba(0, 0, 0, 0.35),
+      0 2px 8px 0 rgba(20, 20, 20, 0.14);
+
+    &::before,
+    &::after {
+      content: "";
+      position: absolute;
+      bottom: 4px;
+      width: 3px;
+      height: 7px;
+      background: linear-gradient(180deg, #fff6d8 0%, #ffcf6e 100%);
+      border-radius: 1px 1px 0 0;
+      opacity: var(--candle-opacity);
+      box-shadow:
+        0 -4px 6px 1px rgba(255, 190, 90, 0.9),
+        0 -2px 2px 0 rgba(255, 240, 200, 0.95),
+        0 0 4px rgba(255, 207, 110, 0.8);
+      transition: opacity 0.3s ease;
+      z-index: 11;
+    }
+
+    &::before {
+      left: 7px;
+    }
+
+    &::after {
+      right: 7px;
+    }
 
     &.current-floor {
       border-left-color: #d8b24c;
@@ -286,8 +369,12 @@
         position: relative;
         width: 9px;
         height: 15px;
-        background: linear-gradient(180deg, #2f3646 0%, #262c3a 100%);
-        border: 1.5px solid #6b6b6b;
+        background: linear-gradient(
+          180deg,
+          var(--window-glass-top) 0%,
+          var(--window-glass-bottom) 100%
+        );
+        border: 1.5px solid var(--window-frame);
         border-radius: 50% 50% 2px 2px / 62% 62% 6% 6%;
         box-shadow:
           inset 0 1px 2px rgba(0, 0, 0, 0.55),
@@ -305,7 +392,7 @@
           bottom: 1px;
           width: 1px;
           transform: translateX(-50%);
-          background: rgba(120, 120, 120, 0.6);
+          background: var(--mortar);
         }
 
         &::after {
@@ -315,13 +402,13 @@
           right: 1px;
           top: 58%;
           height: 1px;
-          background: rgba(120, 120, 120, 0.5);
+          background: var(--mortar);
         }
       }
     }
 
     .floor-label {
-      color: #282828;
+      color: var(--floor-label);
       font-size: 0.85em;
       font-weight: bold;
       bottom: 3px;
@@ -330,9 +417,7 @@
       pointer-events: none;
       user-select: none;
       z-index: 12;
-      text-shadow:
-        0 0 2px #fff,
-        0 2px 2px #bbb;
+      text-shadow: var(--floor-label-shadow);
     }
   }
 
@@ -351,14 +436,14 @@
       position: absolute;
       background: radial-gradient(
         circle at 50% 38%,
-        #ffffff 0%,
-        #f4f7fc 68%,
-        #e6edf7 100%
+        var(--cloud-1) 0%,
+        var(--cloud-2) 68%,
+        var(--cloud-3) 100%
       );
       border-radius: 50%;
       filter: blur(1px);
-      box-shadow: 0 6px 14px rgba(150, 165, 190, 0.32);
-      opacity: 0.97;
+      box-shadow: 0 6px 14px rgba(40, 50, 80, 0.28);
+      opacity: var(--cloud-opacity);
     }
 
     .cloud1 {
@@ -434,8 +519,13 @@
     width: 132%;
     height: 26px;
     margin-top: -2px;
-    background: linear-gradient(180deg, #8f8f8f 0%, #6f6f6f 46%, #545454 100%);
-    border: 2px solid #5c5c5c;
+    background: linear-gradient(
+      180deg,
+      var(--base-top) 0%,
+      var(--base-mid) 46%,
+      var(--base-bottom) 100%
+    );
+    border: 2px solid var(--stone-edge);
     border-radius: 6px 6px 4px 4px;
     box-shadow:
       inset 0 2px 0 rgba(255, 255, 255, 0.16),
@@ -449,8 +539,12 @@
       right: -9%;
       bottom: -9px;
       height: 13px;
-      background: linear-gradient(180deg, #7a7a7a 0%, #4a4a4a 100%);
-      border: 2px solid #565656;
+      background: linear-gradient(
+        180deg,
+        var(--base-mid) 0%,
+        var(--base-bottom) 100%
+      );
+      border: 2px solid var(--stone-edge);
       border-radius: 5px;
       z-index: -1;
     }

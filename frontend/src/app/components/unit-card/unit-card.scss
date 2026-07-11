@@ -9,7 +9,7 @@
 }
 
 .unit-cost {
-  background: #eef2f8;
+  background: var(--chip-bg);
   border-radius: 10px;
   padding: 1px 8px;
 }
@@ -26,10 +26,10 @@
     display: flex;
     justify-content: space-between;
     font-size: 0.74em;
-    color: #46516a;
+    color: var(--text);
 
     b {
-      color: #2b3a55;
+      color: var(--text-strong);
     }
   }
 }
@@ -43,11 +43,11 @@ button {
   font-weight: 600;
   text-transform: capitalize;
   overflow-wrap: anywhere;
-  color: #fff;
-  background: #4c7dc0;
+  color: var(--on-accent);
+  background: var(--accent);
   transition: background 0.2s ease;
 
   &:hover {
-    background: #3a6bad;
+    background: var(--accent-hover);
   }
 }

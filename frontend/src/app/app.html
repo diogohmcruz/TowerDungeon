@@ -1,4 +1,13 @@
 <main class="main">
+  <button
+    type="button"
+    class="theme-toggle"
+    (click)="toggleTheme()"
+    [attr.aria-label]="theme() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
+  >
+    <span class="toggle-dot"></span>
+    {{ theme() === 'dark' ? 'Night' : 'Day' }}
+  </button>
   <div class="content">
     <app-game-component></app-game-component>
   </div>
