@@ -13,8 +13,12 @@ public class BaseUnit {
   private Double maxHealth = 0.0;
 
   public BaseUnit() {
+    this(new Faker().greekPhilosopher().name());
+  }
+
+  public BaseUnit(String name) {
     this.id = ThreadLocalRandom.current().nextInt();
-    this.name = new Faker().greekPhilosopher().name();
+    this.name = name;
   }
 
   public void setCurrentHealth(Double currentHealth) {
