@@ -19,4 +19,9 @@ export class CharacterCard {
     const max = this.maxHealth();
     return max ? (this.member().currentHealth / max) * 100 : 0;
   });
+  maxMana = computed(() => this.member().maxMana ?? 0);
+  manaPct = computed(() => {
+    const max = this.maxMana();
+    return max ? ((this.member().currentMana ?? 0) / max) * 100 : 0;
+  });
 }
