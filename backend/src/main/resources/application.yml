@@ -43,6 +43,16 @@ game:
     health-base-multiplier: 3.0
     health-multiplier-per-floor: 0.05
     damage-multiplier: 1.25
+  enemies:
+    base-budget: 3.0
+    budget-per-floor: 0.8
+    quadratic-per-floor: 0.04
+    variance: 0.25
+    surge-interval: 5
+    surge-multiplier: 1.5
+    ease-budget-per-boss: 0.15
+    ease-difficulty-per-boss: 1
+    min-budget: 1.0
   supply:
     base-max: 100.0
   healing:

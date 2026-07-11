@@ -17,6 +17,7 @@ public class GameProperties {
   private final Loop loop = new Loop();
   private final Reward reward = new Reward();
   private final Boss boss = new Boss();
+  private final Enemies enemies = new Enemies();
   private final Supply supply = new Supply();
   private final Healing healing = new Healing();
   private final Village village = new Village();
@@ -56,6 +57,41 @@ public class GameProperties {
     private double healthBaseMultiplier = 3.0;
     private double healthMultiplierPerFloor = 0.05;
     private double damageMultiplier = 1.25;
+  }
+
+  /**
+   * How a floor's defending horde is sized. Instead of "one enemy per floor number" the garrison is
+   * a weighted budget that grows non-linearly, surges on periodic floors and swings randomly, then
+   * is thinned once the guardians above have been slain.
+   */
+  @Data
+  public static class Enemies {
+    /** Flat garrison budget every floor starts with. */
+    private double baseBudget = 3.0;
+
+    /** Additional budget per floor of depth (linear term). */
+    private double budgetPerFloor = 0.8;
+
+    /** Additional budget per floor squared (gentle non-linear ramp). */
+    private double quadraticPerFloor = 0.04;
+
+    /** Random swing applied to the budget, e.g. 0.25 = ±25%. */
+    private double variance = 0.25;
+
+    /** Every Nth floor is a denser "surge" floor (0 disables surges). */
+    private int surgeInterval = 5;
+
+    /** Budget multiplier applied on surge floors. */
+    private double surgeMultiplier = 1.5;
+
+    /** Fraction of the garrison removed for each cleared guardian standing above a floor. */
+    private double easeBudgetPerBoss = 0.15;
+
+    /** Reduction to a floor's max enemy tier for each cleared guardian above it. */
+    private int easeDifficultyPerBoss = 1;
+
+    /** Floor is never emptier than this (keeps at least a token defender). */
+    private double minBudget = 1.0;
   }
 
   /** Expedition food-carrying capacity. */
