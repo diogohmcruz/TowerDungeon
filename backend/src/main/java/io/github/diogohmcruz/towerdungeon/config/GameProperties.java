@@ -16,6 +16,7 @@ public class GameProperties {
   private final Start start = new Start();
   private final Loop loop = new Loop();
   private final Reward reward = new Reward();
+  private final Tower tower = new Tower();
   private final Boss boss = new Boss();
   private final Enemies enemies = new Enemies();
   private final Supply supply = new Supply();
@@ -48,6 +49,13 @@ public class GameProperties {
     private double bossRewardMultiplier = 3.0;
     private double materialsSellPrice = 2.0;
     private double relicsSellPrice = 25.0;
+  }
+
+  /** The tower structure the party climbs. */
+  @Data
+  public static class Tower {
+    /** Height of the tower: the summit floor whose guardian must fall to win the campaign. */
+    private int maxFloor = 100;
   }
 
   /** Guardian (boss) floor cadence and scaling. */

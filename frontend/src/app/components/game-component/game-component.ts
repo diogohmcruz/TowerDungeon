@@ -49,6 +49,10 @@ export class GameComponent {
   readonly openShortcuts = computed(() =>
     (this.gameState().shortcuts ?? []).filter((s) => s.unlocked),
   );
+
+  readonly gameWon = computed(() => this.gameState().gameOutcome === 'VICTORY');
+  readonly gameLost = computed(() => this.gameState().gameOutcome === 'DEFEAT');
+  readonly gameOver = computed(() => this.gameWon() || this.gameLost());
   unitStats: Signal<Map<Unit, UnitStats>> = toSignal(
     this.unitStatsService.getUnitStats(),
     { initialValue: new Map<Unit, UnitStats>() },

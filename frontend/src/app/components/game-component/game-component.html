@@ -1,4 +1,27 @@
 <article class="flex-wrapper">
+  @if (gameOver()) {
+  <section
+    class="campaign-banner"
+    [class.victory]="gameWon()"
+    [class.defeat]="gameLost()"
+  >
+    @if (gameWon()) {
+    <h2>The Tower is Conquered</h2>
+    <p>
+      Your party has clawed its way to the summit and cast down the tower's
+      final guardian. The dragon's reign over the village is broken — and
+      Ignelia is free. Prestige to raise a new tower and climb again.
+    </p>
+    } @else {
+    <h2>The Village has Fallen</h2>
+    <p>
+      No soldiers remain, the last villager is gone, and there is nothing left
+      to raise another party. The tower has swallowed everyone. Prestige to
+      begin anew.
+    </p>
+    }
+  </section>
+  }
   <p>Mana: {{ this.gameState().mana | number:'1.0-2' }}</p>
   <p>Mana por segundo: {{ this.gameState().manaPerSecond }}</p>
   <hr />
@@ -45,7 +68,7 @@
 
   <button
     (click)="this.sendInvadeAction()"
-    [disabled]="gameState().expeditionActive"
+    [disabled]="gameState().expeditionActive || gameOver()"
   >
     Invade the tower
   </button>

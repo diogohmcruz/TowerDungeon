@@ -19,4 +19,5 @@ public record RunSummary(
 
   public static final String EXTRACTED = "EXTRACTED";
   public static final String WIPED = "WIPED";
+  public static final String VICTORY = "VICTORY";
 }
