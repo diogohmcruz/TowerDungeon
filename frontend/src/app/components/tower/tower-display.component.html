@@ -57,7 +57,9 @@
           </div>
           <div class="floor-label">
             Floor {{ floor[0] }}
-            @if (floor[1].boss) { <span class="floor-boss">Guardian</span> }
+            @if (floor[1].boss) {
+              <span class="floor-boss">Guardian</span>
+            }
           </div>
           @if (+floor[0] === currentFloor()) {
             <span class="floor-flag" aria-label="party position">

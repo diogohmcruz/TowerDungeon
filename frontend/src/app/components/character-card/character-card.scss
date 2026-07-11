@@ -7,15 +7,15 @@
   --card-gap: 3px;
   --card-title-size: 0.76em;
   --card-title-weight: 600;
-  --card-title-color: #46516a;
+  --card-title-color: var(--text);
   --card-badge-size: 0.76em;
-  --card-badge-color: #6b7688;
+  --card-badge-color: var(--text-muted);
 }
 
 .hp-bar {
   height: 6px;
   width: 100%;
-  background: #e6ebf3;
+  background: var(--chip-bg);
   border-radius: 4px;
   overflow: hidden;
 

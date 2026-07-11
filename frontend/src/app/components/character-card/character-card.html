@@ -1,8 +1,8 @@
 <app-card>
   <span card-title class="member-name">{{ member().name }}</span>
   <span card-badge class="member-hp">
-    {{ member().currentHealth | number: '1.0-0' }} /
-    {{ maxHealth() | number: '1.0-0' }}
+    {{ member().currentHealth | number: '1.0-0' }} / {{ maxHealth() | number:
+    '1.0-0' }}
   </span>
   <div class="hp-bar">
     <div class="hp-fill" [style.width.%]="healthPct()"></div>

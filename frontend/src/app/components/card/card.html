@@ -1,9 +1,13 @@
 <div class="card" [class.card--muted]="muted()">
   @if (showHead()) {
-    <header class="card__head">
-      <div class="card__title"><ng-content select="[card-title]"></ng-content></div>
-      <div class="card__badge"><ng-content select="[card-badge]"></ng-content></div>
-    </header>
+  <header class="card__head">
+    <div class="card__title">
+      <ng-content select="[card-title]"></ng-content>
+    </div>
+    <div class="card__badge">
+      <ng-content select="[card-badge]"></ng-content>
+    </div>
+  </header>
   }
   <div class="card__body">
     <ng-content></ng-content>

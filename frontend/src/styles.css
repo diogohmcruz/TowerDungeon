@@ -1,0 +1,207 @@
+:root {
+  color-scheme: light;
+
+  --bg: #eef2f8;
+  --text: #33415c;
+  --text-strong: #2b3750;
+  --text-muted: #7a879c;
+
+  --surface: #ffffff;
+  --surface-2: #f7f9fc;
+  --surface-3: #f2f7ff;
+
+  --border: #e2e8f2;
+  --border-strong: #d9e4f2;
+  --chip-bg: #eef2f8;
+
+  --accent: #4c7dc0;
+  --accent-hover: #3a6bad;
+  --on-accent: #ffffff;
+
+  --gold: #d4a24c;
+  --gold-bright: #e7c063;
+
+  --positive: #2f8f5b;
+  --positive-bg: #e2f4ea;
+  --negative: #c0564c;
+
+  --enemy-title: #a23b2d;
+  --enemy-surface: #fef6f4;
+  --enemy-border: #f3d9d2;
+  --enemy-chip-bg: #f6e7e3;
+  --enemy-chip-text: #8a5a50;
+  --enemy-track: #f0e2df;
+
+  --materials: #4c7a3a;
+  --materials-bg: #eaf1e6;
+  --relics: #9a3b7a;
+  --relics-bg: #f5e7f0;
+
+  --shadow-sm: 0 1px 3px rgba(60, 70, 90, 0.06);
+  --shadow-md: 0 2px 8px rgba(60, 70, 90, 0.12);
+
+  /* Tower scene - day */
+  --sky: linear-gradient(
+    to top,
+    #dfe7f2 0%,
+    #cdd9ec 32%,
+    #b9c9e6 58%,
+    #9fb4dd 100%
+  );
+  --star-color: rgba(255, 255, 255, 0.85);
+  --star-opacity: 0.35;
+  --stone-top: #9a9a9a;
+  --stone-bottom: #808080;
+  --stone-edge: #7c7c7c;
+  --stone-edge-dark: #6c6c6c;
+  --mortar: rgba(0, 0, 0, 0.14);
+  --window-glass-top: #2f3646;
+  --window-glass-bottom: #262c3a;
+  --window-frame: #6b6b6b;
+  --floor-label: #282828;
+  --floor-label-shadow: 0 0 2px #fff, 0 2px 2px #bbb;
+  --cloud-opacity: 0.97;
+  --base-top: #8f8f8f;
+  --base-mid: #6f6f6f;
+  --base-bottom: #545454;
+  --cloud-1: #ffffff;
+  --cloud-2: #f4f7fc;
+  --cloud-3: #e6edf7;
+  --candle-opacity: 0;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg: #10131c;
+  --text: #c2cbe0;
+  --text-strong: #e8edf8;
+  --text-muted: #8892a6;
+
+  --surface: #1a1e2a;
+  --surface-2: #202636;
+  --surface-3: #1d2536;
+
+  --border: #2e3546;
+  --border-strong: #384259;
+  --chip-bg: #2a3245;
+
+  --accent: #5c86c8;
+  --accent-hover: #7099d8;
+  --on-accent: #0f1420;
+
+  --gold: #d9ab57;
+  --gold-bright: #f0cf74;
+
+  --positive: #52c088;
+  --positive-bg: #17352a;
+  --negative: #e0847a;
+
+  --enemy-title: #ec9284;
+  --enemy-surface: #271b1f;
+  --enemy-border: #482e31;
+  --enemy-chip-bg: #382528;
+  --enemy-chip-text: #d6a49b;
+  --enemy-track: #3d2a2c;
+
+  --materials: #8fc46f;
+  --materials-bg: #24331d;
+  --relics: #d987bd;
+  --relics-bg: #351f2e;
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 3px 10px rgba(0, 0, 0, 0.5);
+
+  /* Tower scene - night */
+  --sky: linear-gradient(
+    to top,
+    #1a2038 0%,
+    #171d33 34%,
+    #12172a 62%,
+    #0c1020 100%
+  );
+  --star-color: rgba(255, 255, 255, 0.95);
+  --star-opacity: 1;
+  --stone-top: #3a3f4d;
+  --stone-bottom: #2c303c;
+  --stone-edge: #24272f;
+  --stone-edge-dark: #1a1c22;
+  --mortar: rgba(0, 0, 0, 0.45);
+  --window-glass-top: #ffcf7a;
+  --window-glass-bottom: #f0a63e;
+  --window-frame: #2a2d36;
+  --floor-label: #cdd3e0;
+  --floor-label-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+  --cloud-opacity: 0.55;
+  --base-top: #2f333f;
+  --base-mid: #232733;
+  --base-bottom: #15181f;
+  --cloud-1: #6b7595;
+  --cloud-2: #565f7d;
+  --cloud-3: #454d68;
+  --candle-opacity: 1;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
+}
+
+hr {
+  border: none;
+  border-top: 1px solid var(--border);
+}
+
+.theme-toggle {
+  position: fixed;
+  top: 12px;
+  right: 14px;
+  z-index: 1000;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.theme-toggle:hover {
+  border-color: var(--accent);
+}
+
+.theme-toggle .toggle-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 0 0 6px var(--gold-bright);
+}

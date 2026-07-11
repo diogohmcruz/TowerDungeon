@@ -7,13 +7,13 @@
   <hr />
 
   <section class="hire-list">
-  @for (unit of units(); track unit[0]) {
+    @for (unit of units(); track unit[0]) {
     <app-unit-card
       [type]="unit[0]"
       [stats]="mapStringToUnit(unit[0])"
       (buy)="sendBuyAction($event)"
     />
-  }
+    }
   </section>
   <hr />
 
@@ -50,13 +50,11 @@
       to the village.
     </p>
   </section>
-  }
-
-  @if (gameState().homePartyWounds > 0) {
+  } @if (gameState().homePartyWounds > 0) {
   <p class="home-heal">
-    Home party recovering: {{ gameState().homePartyWounds | number: '1.0-0' }} HP
-    to heal · ~{{ gameState().foodHealRate | number: '1.0-0' }} HP/s from village
-    food (round-robin).
+    Home party recovering: {{ gameState().homePartyWounds | number: '1.0-0' }}
+    HP to heal · ~{{ gameState().foodHealRate | number: '1.0-0' }} HP/s from
+    village food (round-robin).
   </p>
   }
 
@@ -69,11 +67,11 @@
     <h3>Upgrades — recruit new characters &amp; empower the party</h3>
     <div class="upgrade-list">
       @for (up of gameState().availableUpgrades; track up.id) {
-        <app-upgrade-card
-          [offer]="up"
-          [affordable]="canAfford(up.nextCost)"
-          (buy)="buyUpgrade($event)"
-        />
+      <app-upgrade-card
+        [offer]="up"
+        [affordable]="canAfford(up.nextCost)"
+        (buy)="buyUpgrade($event)"
+      />
       }
     </div>
   </section>
@@ -82,13 +80,13 @@
     <h3>
       Campaign milestones — companions join &amp; the party hardens
       <span class="progress-note">
-        deepest floor {{ gameState().deepestFloor }} ·
-        {{ gameState().expeditionsCompleted }} expeditions
+        deepest floor {{ gameState().deepestFloor }} · {{
+        gameState().expeditionsCompleted }} expeditions
       </span>
     </h3>
     <div class="milestone-list">
       @for (ms of gameState().milestones; track ms.id) {
-        <app-milestone-card [milestone]="ms" />
+      <app-milestone-card [milestone]="ms" />
       }
     </div>
   </section>

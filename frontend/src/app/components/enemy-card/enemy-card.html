@@ -1,11 +1,10 @@
 <app-card [class.boss]="isBoss()">
   <span card-title class="enemy-type">
-    @if (isBoss()) { <span class="boss-crown">♛</span> }
-    {{ enemy().name }}
+    @if (isBoss()) { <span class="boss-crown">♛</span> } {{ enemy().name }}
   </span>
   <span card-badge class="enemy-hp">
-    {{ enemy().currentHealth | number: '1.0-0' }} /
-    {{ maxHealth() | number: '1.0-0' }}
+    {{ enemy().currentHealth | number: '1.0-0' }} / {{ maxHealth() | number:
+    '1.0-0' }}
   </span>
   <div class="hp-bar">
     <div class="hp-fill" [style.width.%]="healthPct()"></div>
