@@ -23,6 +23,8 @@ export class VillageManagement {
   readonly upkeep = computed(() => this.gameState().foodUpkeep);
   readonly netFood = computed(() => this.gameState().netFoodPerSecond);
   readonly homeUnits = computed(() => this.gameState().homeUnitCount);
+  readonly materials = computed(() => this.gameState().resources.MATERIALS);
+  readonly relics = computed(() => this.gameState().resources.RELICS);
 
   onClickBuyVillager() {
     this.ws.sendAction(GameAction.BUY_VILLAGERS);
@@ -30,5 +32,13 @@ export class VillageManagement {
 
   onClickSellFood() {
     this.ws.sendAction(GameAction.SELL_FOOD);
+  }
+
+  onClickSellMaterials() {
+    this.ws.sendAction(GameAction.SELL_MATERIALS);
+  }
+
+  onClickSellRelics() {
+    this.ws.sendAction(GameAction.SELL_RELICS);
   }
 }

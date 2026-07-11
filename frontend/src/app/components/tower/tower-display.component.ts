@@ -2,16 +2,26 @@ import { Component, computed, input } from '@angular/core';
 import { LowerCasePipe } from '@angular/common';
 import { Tower } from '../../interfaces/tower';
 import { Member } from '../../interfaces/member';
+import { ResourceWallet, Squad } from '../../interfaces/game-state';
 import { EnemyCard } from '../enemy-card/enemy-card';
+import { Army } from '../army/army';
+import { ExpeditionLoot } from '../expedition-loot/expedition-loot';
+import { Supplies } from '../supplies/supplies';
 
 @Component({
   selector: 'app-tower',
-  imports: [EnemyCard, LowerCasePipe],
+  imports: [EnemyCard, Army, ExpeditionLoot, Supplies, LowerCasePipe],
   templateUrl: './tower-display.component.html',
   styleUrl: './tower-display.component.scss',
 })
 export class TowerDisplay {
   tower = input<Tower | undefined>();
+  party = input<Squad>();
+  supplies = input<number>(0);
+  maxSupplies = input<number>(0);
+  carriedLoot = input<ResourceWallet | undefined>();
+  carriedCredits = input<number>(0);
+  active = computed(() => !!this.tower());
   towerFloors = computed(() => this.tower()?.floors ?? {});
   towerFloorsEntries = computed(() =>
     Object.entries(this.tower()?.floors ?? {}),
