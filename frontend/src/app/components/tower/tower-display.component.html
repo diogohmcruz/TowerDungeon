@@ -1,16 +1,37 @@
 <div class="enemies">
-  <h4>
-    Floor {{ currentFloor() }} / {{ maxFloor() }}
-    @if (currentFloorIsBoss()) {
-      <span class="boss-flag">⚔ Guardian floor</span>
-    }
-  </h4>
+  <div class="depth-header">
+    <div class="depth-title">
+      <span class="depth-current">Floor {{ currentFloor() }}</span>
+      <span class="depth-sep">/</span>
+      <span class="depth-max">{{ maxFloor() }}</span>
+      @if (currentFloorIsBoss()) {
+        <span class="boss-flag">GUARDIAN</span>
+      }
+    </div>
+    <div class="depth-bar">
+      <div
+        class="depth-fill"
+        [class.boss]="currentFloorIsBoss()"
+        [style.width.%]="depthPercent()"
+      ></div>
+    </div>
+  </div>
   @if (enemyCount() === 0) {
     <p class="cleared">No enemies here — advancing…</p>
   }
-  <div class="enemy-list">
-    @for (enemy of currentTowerFloorEnemies(); track enemy.id) {
-      <app-enemy-card [enemy]="enemy" />
+  <div class="enemy-groups">
+    @for (group of groupedEnemyEntries(); track group[0]) {
+      <section class="enemy-group">
+        <header class="group-head">
+          <span class="enemy-type">{{ group[0] | lowercase }}</span>
+          <span class="enemy-count">×{{ group[1].length }}</span>
+        </header>
+        <div class="member-list">
+          @for (enemy of group[1]; track enemy.id) {
+            <app-enemy-card [enemy]="enemy" />
+          }
+        </div>
+      </section>
     }
   </div>
 </div>
@@ -22,11 +43,7 @@
         <div
           class="tower-floor"
           [class.boss-floor]="floor[1].boss"
-          [style.border-bottom-color]="
-            +floor[0] < currentFloor() - 1
-              ? '2px solid #bdbdbd'
-              : '4px solid #bdbdbd'
-          "
+          [class.current-floor]="+floor[0] === currentFloor()"
         >
           <div class="windows">
             @for (
@@ -35,16 +52,18 @@
                 .keys();
               track window
             ) {
-              <div
-                class="window"
-                [style.background]="floor[1].boss ? '#d4a24c' : '#e0e0e0'"
-              ></div>
+              <div class="window"></div>
             }
           </div>
           <div class="floor-label">
             Floor {{ floor[0] }}
-            @if (floor[1].boss) { <span class="floor-boss">⚔</span> }
+            @if (floor[1].boss) { <span class="floor-boss">Guardian</span> }
           </div>
+          @if (+floor[0] === currentFloor()) {
+            <span class="floor-flag" aria-label="party position">
+              <i class="flag-cloth"></i>
+            </span>
+          }
         </div>
       }
       @if (currentFloor() < maxFloor()) {

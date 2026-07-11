@@ -4,6 +4,7 @@ import lombok.AccessLevel;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
+import net.datafaker.Faker;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -23,13 +24,22 @@ public class Enemy extends BaseUnit {
   }
 
   public Enemy(EnemyStats stats, double healthMultiplier, double damageMultiplier, boolean boss) {
-    super();
+    super(nameFor(stats));
     this.stats = stats;
     this.healthMultiplier = healthMultiplier;
     this.damageMultiplier = damageMultiplier;
     this.boss = boss;
     this.setMaxHealth(stats.getHealth() * healthMultiplier);
     this.setCurrentHealth(this.getMaxHealth());
+  }
+
+  private static String nameFor(EnemyStats stats) {
+    var faker = new Faker();
+    if (stats == EnemyStats.SLIME) {
+      String color = faker.color().name();
+      return Character.toUpperCase(color.charAt(0)) + color.substring(1) + " Slime";
+    }
+    return faker.greekPhilosopher().name();
   }
 
   public double getEffectiveDamage() {
