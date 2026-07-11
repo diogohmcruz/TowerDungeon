@@ -1,12 +1,46 @@
-<p>Credits: {{ this.gameState().credit | number:'1.0-2' }}</p>
-<p>Food (pantry): {{ this.food() | number:'1.0-1' }}</p>
-<p class="food-rate" [class.food-negative]="this.netFood() < 0">
-  {{ this.netFood() >= 0 ? '+' : '' }}{{ this.netFood() | number:'1.0-1' }} food/s
-  (grow +{{ this.production() | number:'1.0-1' }}, {{ this.homeUnits() }} idle units eat
-  −{{ this.upkeep() | number:'1.0-1' }})
-</p>
-<p class="food-note">Villagers grow food; idle units eat it on standby, and expeditions carry it as supplies. Buy more villagers to stay ahead.</p>
-<p>Villagers: {{ this.villagersCount() | number:'1.0-0' }}</p>
+<section class="village-panel">
+  <header class="village-header">
+    <h3>Village</h3>
+  </header>
 
-<button (click)="this.onClickBuyVillager()">Buy villagers</button>
-<button (click)="this.onClickSellFood()">Sell food</button>
+  <div class="stat-grid">
+    <div class="stat-tile credits">
+      <div class="stat-body">
+        <span class="stat-label">Credits</span>
+        <span class="stat-value">{{ this.gameState().credit | number: '1.0-2' }}</span>
+      </div>
+    </div>
+
+    <div class="stat-tile food">
+      <div class="stat-body">
+        <span class="stat-label">Food pantry</span>
+        <span class="stat-value">{{ this.food() | number: '1.0-1' }}</span>
+        <span class="stat-rate" [class.negative]="this.netFood() < 0">
+          {{ this.netFood() >= 0 ? '+' : '' }}{{ this.netFood() | number: '1.0-1' }}/s
+        </span>
+      </div>
+    </div>
+
+    <div class="stat-tile villagers">
+      <div class="stat-body">
+        <span class="stat-label">Villagers</span>
+        <span class="stat-value">{{ this.villagersCount() | number: '1.0-0' }}</span>
+      </div>
+    </div>
+  </div>
+
+  <p class="food-breakdown">
+    Grow <b class="pos">+{{ this.production() | number: '1.0-1' }}</b>
+    · {{ this.homeUnits() }} idle units eat
+    <b class="neg">−{{ this.upkeep() | number: '1.0-1' }}</b> food/s
+  </p>
+  <p class="food-note">
+    Villagers grow food; idle units eat it on standby, and expeditions carry it as supplies. Buy more
+    villagers to stay ahead.
+  </p>
+
+  <div class="village-actions">
+    <button class="btn btn-primary" (click)="this.onClickBuyVillager()">Buy villagers</button>
+    <button class="btn btn-ghost" (click)="this.onClickSellFood()">Sell food</button>
+  </div>
+</section>

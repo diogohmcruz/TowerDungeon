@@ -1,7 +1,7 @@
 <app-card [class.boss]="isBoss()">
   <span card-title class="enemy-type">
     @if (isBoss()) { <span class="boss-crown">♛</span> }
-    {{ enemy().stats.type ?? enemy().name }}
+    {{ enemy().name }}
   </span>
   <span card-badge class="enemy-hp">
     {{ enemy().currentHealth | number: '1.0-0' }} /
