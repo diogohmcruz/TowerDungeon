@@ -91,8 +91,9 @@ public class GameService {
           }
           var newUnits = new ArrayList<Unit>();
           var quantity = buyActionDTO.quantity();
-          while (gameState.getCredit() > buyActionDTO.unitStats().getCost() && quantity > 0) {
-            gameState.setCredit(gameState.getCredit() - buyActionDTO.unitStats().getCost());
+          var cost = buyActionDTO.unitStats().getCost();
+          while (gameState.getSpendableCredit() > cost && quantity > 0) {
+            gameState.spendCredit(cost);
             var unit = new Unit(buyActionDTO.unitStats());
             newUnits.add(unit);
             quantity--;
@@ -117,6 +118,24 @@ public class GameService {
         gameState -> {
           var credits = gameState.sellFood();
           log.info("Player[{}] sold food for credits: {}", sessionId, credits);
+        });
+  }
+
+  public void handleSellMaterialsAction(String sessionId) {
+    withPlayer(
+        sessionId,
+        gameState -> {
+          var profit = gameState.sellAllMaterials();
+          log.info("Player[{}] sold all materials for {} credits", sessionId, profit);
+        });
+  }
+
+  public void handleSellRelicsAction(String sessionId) {
+    withPlayer(
+        sessionId,
+        gameState -> {
+          var profit = gameState.sellAllRelics();
+          log.info("Player[{}] sold all relics for {} credits", sessionId, profit);
         });
   }
 
@@ -271,7 +290,7 @@ public class GameService {
       var bossCleared = currentTowerFloor != null && currentTowerFloor.isBoss();
       var reward = config.getReward();
       var rewardMultiplier = bossCleared ? reward.getBossRewardMultiplier() : 1.0;
-      gameState.addCredit(clearedFloor * reward.getCreditPerFloor() * rewardMultiplier);
+      gameState.gatherCredits(clearedFloor * reward.getCreditPerFloor() * rewardMultiplier);
       gatherFloorLoot(gameState, clearedFloor, rewardMultiplier);
       tower.moveToNextFloor();
       gameState.recordFloorReached(tower.getCurrentFloor());
@@ -297,6 +316,7 @@ public class GameService {
     var reward = config.getReward();
     gameState.gatherLoot(
         ResourceType.MATERIALS, clearedFloor * reward.getMaterialsPerFloor() * rewardMultiplier);
+    gameState.gatherSupplies(reward.getSuppliesPerFloor() * rewardMultiplier);
     if (clearedFloor >= reward.getRelicDepthThreshold()) {
       gameState.gatherLoot(
           ResourceType.RELICS,

@@ -1,0 +1,11 @@
+<section class="supplies">
+  <div class="supply-row">
+    <span class="supply-label">Supplies</span>
+    <span class="supply-value">
+      {{ supplies() | number: '1.0-0' }} / {{ maxSupplies() | number: '1.0-0' }}
+    </span>
+  </div>
+  <div class="supply-bar">
+    <div class="supply-fill" [style.width.%]="percent()"></div>
+  </div>
+</section>

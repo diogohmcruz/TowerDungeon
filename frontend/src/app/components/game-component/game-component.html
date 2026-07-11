@@ -27,15 +27,6 @@
 
   @if (gameState().tower) {
   <section class="run-hud">
-    <p>Depth: floor {{ gameState().tower?.currentFloor }}</p>
-    <p>
-      Food carried: {{ gameState().supplies | number: '1.0-0' }} / {{
-      gameState().maxSupplies | number: '1.0-0' }} (capacity)
-    </p>
-    <p>
-      Carried loot — Materials: {{ gameState().carriedLoot.MATERIALS | number:
-      '1.0-0' }}, Relics: {{ gameState().carriedLoot.RELICS | number: '1.0-0' }}
-    </p>
     <p class="heal-hint">
       Food is drawn from the village pantry for the run. On <b>Extract</b>,
       leftover food is returned to the village. Wounded units then recover at
@@ -95,7 +86,14 @@
   <hr />
 
   <app-army [army]="gameState().units" />
-  <app-army [army]="gameState().unitsOnTower" />
 </article>
 
-<app-tower class="tower" [tower]="gameState().tower"></app-tower>
+<app-tower
+  class="tower"
+  [tower]="gameState().tower"
+  [party]="gameState().unitsOnTower"
+  [supplies]="gameState().supplies"
+  [maxSupplies]="gameState().maxSupplies"
+  [carriedLoot]="gameState().carriedLoot"
+  [carriedCredits]="gameState().carriedCredits"
+></app-tower>

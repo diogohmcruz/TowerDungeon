@@ -8,10 +8,27 @@
 .enemies {
   display: block;
   flex: 0 0 auto;
-  width: 200px;
+  width: 210px;
+
+  .exp-block {
+    margin: 0 0 12px;
+  }
+
+  .expedition-party {
+    margin: 0 0 12px;
+
+    .exp-head {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+  }
 
   .depth-header {
-    margin: 0 0 8px;
+    margin: 0 0 12px;
   }
 
   .depth-title {

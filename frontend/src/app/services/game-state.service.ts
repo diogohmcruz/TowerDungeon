@@ -39,6 +39,7 @@ export class GameStateService {
     prestigePoints: 0,
     resources: { MATERIALS: 0, RELICS: 0 },
     carriedLoot: { MATERIALS: 0, RELICS: 0 },
+    carriedCredits: 0,
     supplies: 0,
     maxSupplies: 100,
     lastFoodReturned: 0,
