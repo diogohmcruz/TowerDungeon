@@ -5,12 +5,17 @@
 
 .flex-wrapper {
   flex: 1 1 auto;
+  min-width: 0;
   height: inherit;
 }
 
 .tower {
-  height: inherit;
-  width: 25vw;
+  flex: 0 0 46vw;
+  min-width: 440px;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
 }
 
 .hire-list {
