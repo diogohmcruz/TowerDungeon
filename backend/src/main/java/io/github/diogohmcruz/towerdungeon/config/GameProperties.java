@@ -20,6 +20,7 @@ public class GameProperties {
   private final Boss boss = new Boss();
   private final Enemies enemies = new Enemies();
   private final Magic magic = new Magic();
+  private final Reinforcements reinforcements = new Reinforcements();
   private final Supply supply = new Supply();
   private final Healing healing = new Healing();
   private final Village village = new Village();
@@ -130,6 +131,13 @@ public class GameProperties {
      * weaker than the village refill, so a deep run still drains reserves faster than they recover.
      */
     private double towerRechargePerTick = 0.05;
+  }
+
+  /** Follow-up waves the player sends up mid-run to resupply and reinforce an active delve. */
+  @Data
+  public static class Reinforcements {
+    /** Floors a climbing wave ascends per invasion tick as it chases the party up the tower. */
+    private double climbFloorsPerTick = 1.0;
   }
 
   /** Home-party healing fed from the village pantry. */

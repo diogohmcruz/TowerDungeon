@@ -61,6 +61,8 @@ game:
     cost-per-cast: 1.0
     recharge-per-tick: 0.25
     tower-recharge-per-tick: 0.05
+  reinforcements:
+    climb-floors-per-tick: 1.0
   healing:
     cost-per-hp: 1.0
     hp-per-tick: 5.0

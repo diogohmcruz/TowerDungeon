@@ -89,6 +89,22 @@
   .heal-summary {
     color: var(--text);
   }
+
+  .reinforcements {
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px dashed var(--border-strong);
+
+    h4 {
+      margin: 0 0 4px;
+      font-size: 0.82em;
+      color: var(--gold, #d4af37);
+    }
+
+    .reinforcement-line b {
+      color: var(--gold, #d4af37);
+    }
+  }
 }
 
 .home-heal {
