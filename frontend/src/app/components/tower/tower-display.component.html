@@ -55,67 +55,11 @@
   }
 </div>
 
-<div class="tower-dungeon-wrapper">
-  <div class="tower-dungeon">
-    <div class="tower-body">
-      @for (floor of towerFloorsEntries(); track floor[0]) {
-        <div
-          class="tower-floor"
-          [class.boss-floor]="floor[1].boss"
-          [class.current-floor]="+floor[0] === currentFloor()"
-        >
-          <div class="windows">
-            @for (
-              window of arrayCreator
-                .from({ length: floor[1].difficulty })
-                .keys();
-              track window
-            ) {
-              <div class="window"></div>
-            }
-          </div>
-          <div class="floor-label">
-            Floor {{ floor[0] }}
-            @if (floor[1].boss) {
-              <span class="floor-boss">Guardian</span>
-            }
-          </div>
-          @if (+floor[0] === currentFloor() && active()) {
-            <span class="floor-flag" aria-label="party position">
-              <i class="flag-cloth"></i>
-            </span>
-          }
-          @if (active() && markersForFloor(+floor[0]).length > 0) {
-            <div class="reinforcement-markers">
-              @for (marker of markersForFloor(+floor[0]); track marker.index) {
-                <span
-                  class="reinforcement-marker"
-                  [style.background]="marker.color"
-                  [style.border-color]="marker.color"
-                  [title]="
-                    'Reinforcement wave of ' + marker.size + ' climbing'
-                  "
-                >
-                  <i class="marker-dot"></i>+{{ marker.size }}
-                </span>
-              }
-            </div>
-          }
-        </div>
-      }
-      @if (currentFloor() < maxFloor()) {
-        <div class="cloud-cover">
-          <div class="cloud cloud1"></div>
-          <div class="cloud cloud2"></div>
-          <div class="cloud cloud3"></div>
-          <div class="cloud cloud4"></div>
-          <div class="cloud cloud6"></div>
-          <div class="cloud cloud5"></div>
-          <div class="cloud cloud7"></div>
-          <div class="tower-floor"></div>
-        </div>
-      }
-    </div>
-    <div class="tower-base"></div>
-  </div>
+<div class="tower-scene-host">
+  <app-tower-scene
+    [tower]="tower()"
+    [party]="party()"
+    [active]="active()"
+    [reinforcements]="reinforcements()"
+  />
 </div>
