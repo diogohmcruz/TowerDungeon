@@ -46,6 +46,7 @@ public class GameState {
   private Double supplies = 0d;
   private Double maxSupplies;
   private Double lastFoodReturned = 0d;
+  private List<Reinforcement> reinforcements = new ArrayList<>();
 
   @JsonIgnore
   private Set<UnitStats> unlockedUnits =
@@ -309,6 +310,123 @@ public class GameState {
         (stats, survivors) ->
             units.computeIfAbsent(stats, _ -> new ArrayList<>()).addAll(survivors));
     unitsOnTower.clear();
+  }
+
+  /**
+   * Musters a follow-up wave from the units resting at home and sends it up after the active party.
+   * An empty selection sends everyone currently home; otherwise the requested counts are pulled (and
+   * clamped to what is actually available). The wave draws its own rations from the village pantry up
+   * to its carrying capacity, then sets out from the base to climb after the party.
+   */
+  public void sendReinforcement(Map<UnitStats, Integer> selection) {
+    Map<UnitStats, List<Unit>> waveUnits = new HashMap<>();
+    if (selection == null || selection.isEmpty()) {
+      units.forEach(
+          (stats, homeList) -> {
+            if (!homeList.isEmpty()) {
+              waveUnits.put(stats, new ArrayList<>(homeList));
+              homeList.clear();
+            }
+          });
+    } else {
+      selection.forEach(
+          (stats, requested) -> {
+            var homeList = units.getOrDefault(stats, new ArrayList<>());
+            var take = Math.min(requested == null ? 0 : requested, homeList.size());
+            if (take > 0) {
+              var moved = new ArrayList<>(homeList.subList(0, take));
+              homeList.removeAll(moved);
+              waveUnits.put(stats, moved);
+            }
+          });
+    }
+    if (waveUnits.values().stream().allMatch(List::isEmpty)) {
+      return;
+    }
+    var porterBonus =
+        waveUnits.entrySet().stream()
+            .mapToDouble(entry -> entry.getKey().getSupplyBonus() * entry.getValue().size())
+            .sum();
+    var capacity = config.getSupply().getBaseMax() + getSupplyCapacityBonus() + porterBonus;
+    var food = village.takeFood(capacity);
+    reinforcements.add(new Reinforcement(waveUnits, food, capacity));
+    log.info(
+        "Mustered a reinforcement wave of {} carrying {} food.",
+        waveUnits.values().stream().mapToInt(List::size).sum(),
+        food);
+  }
+
+  /**
+   * Advances every in-transit reinforcement wave one tick: each drains rations for its size (starving
+   * climbers if the reserve is dry), climbs toward the party, and — once it reaches the party's
+   * current floor — merges its survivors and any leftover food into the delving party.
+   */
+  public void advanceReinforcements() {
+    if (reinforcements.isEmpty()) {
+      return;
+    }
+    var partyFloor = tower == null ? 0 : tower.getCurrentFloor();
+    var drainPerUnit = config.getLoop().getSupplyDrainPerUnit();
+    var starvationDamage = config.getLoop().getStarvationDamage();
+    var climb = config.getReinforcements().getClimbFloorsPerTick();
+    var iterator = reinforcements.iterator();
+    while (iterator.hasNext()) {
+      var wave = iterator.next();
+      wave.drainSupplies(wave.size() * drainPerUnit);
+      if (!wave.hasSupplies()) {
+        starveWave(wave, starvationDamage);
+      }
+      if (wave.isEmpty()) {
+        log.warn("A reinforcement wave starved to death on the stairs before reaching the party.");
+        iterator.remove();
+        continue;
+      }
+      wave.climb(climb);
+      if (wave.getCurrentFloor() >= partyFloor) {
+        mergeReinforcement(wave, partyFloor);
+        iterator.remove();
+      }
+    }
+  }
+
+  private void starveWave(Reinforcement wave, double damage) {
+    var climbers = wave.getUnits().values().stream().flatMap(List::stream).toList();
+    climbers.forEach(climber -> climber.receiveAttack(damage, null));
+    climbers.stream()
+        .filter(BaseUnit::isDead)
+        .forEach(
+            dead -> {
+              var list = wave.getUnits().get(dead.getStats());
+              if (list != null && list.remove(dead)) {
+                runUnitsLost++;
+              }
+            });
+  }
+
+  private void mergeReinforcement(Reinforcement wave, int partyFloor) {
+    wave.getUnits()
+        .forEach(
+            (stats, survivors) ->
+                unitsOnTower.computeIfAbsent(stats, _ -> new ArrayList<>()).addAll(survivors));
+    this.supplies += wave.getSupplies();
+    recalculateSupplyCapacity();
+    log.info("A reinforcement wave of {} reached the party at floor {}.", wave.size(), partyFloor);
+  }
+
+  /**
+   * Recalls any waves still climbing when the run ends — they were not at the deadly front, so their
+   * survivors march back home and their leftover rations are poured back into the pantry.
+   */
+  public void returnReinforcementsHome() {
+    reinforcements.forEach(
+        wave -> {
+          wave.getUnits()
+              .forEach(
+                  (stats, survivors) ->
+                      units.computeIfAbsent(stats, _ -> new ArrayList<>()).addAll(survivors));
+          village.addFood(wave.getSupplies());
+        });
+    reinforcements.clear();
   }
 
   public void triggerLifecycle() {

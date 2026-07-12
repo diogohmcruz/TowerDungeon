@@ -581,3 +581,50 @@
     }
   }
 }
+
+.tower-dungeon .tower-floor .reinforcement-markers {
+  position: absolute;
+  left: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  z-index: 15;
+  pointer-events: none;
+
+  .reinforcement-marker {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 1px 5px 1px 4px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    font-size: 0.62rem;
+    font-weight: 700;
+    line-height: 1.3;
+    color: #fff;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.45);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+    pointer-events: auto;
+    animation: reinforcement-bob 1.4s ease-in-out infinite;
+
+    .marker-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.9);
+      box-shadow: 0 0 4px rgba(255, 255, 255, 0.8);
+    }
+  }
+}
+
+@keyframes reinforcement-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}

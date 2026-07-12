@@ -18,6 +18,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.github.diogohmcruz.towerdungeon.api.dtos.BuyActionDTO;
 import io.github.diogohmcruz.towerdungeon.api.dtos.InvadeActionDTO;
+import io.github.diogohmcruz.towerdungeon.api.dtos.ReinforceActionDTO;
 import io.github.diogohmcruz.towerdungeon.api.dtos.UpgradeActionDTO;
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
 import io.github.diogohmcruz.towerdungeon.domain.exceptions.InvalidInvasion;
@@ -224,6 +225,7 @@ public class GameService {
           }
           gameState.buildRunSummary(RunSummary.EXTRACTED);
           gameState.returnLeftoverSuppliesToVillage();
+          gameState.returnReinforcementsHome();
           gameState.returnPartyHome();
           gameState.bankLoot();
           gameState.setExpeditionActive(false);
@@ -232,6 +234,27 @@ public class GameService {
               "Player[{}] extracted. Leftover food returned to village, loot banked, party returned"
                   + " home to recover on the village's food.",
               sessionId);
+        });
+  }
+
+  public void handleMessage(String sessionId, ReinforceActionDTO reinforceActionDTO) {
+    log.info("Received reinforce action from session [{}] {}", sessionId, reinforceActionDTO);
+    withPlayer(
+        sessionId,
+        gameState -> {
+          if (!gameState.isExpeditionActive()) {
+            log.warn(
+                "Player[{}] tried to send reinforcements with no active run. Ignoring.", sessionId);
+            return;
+          }
+          if (gameState.getGameOutcome() != GameOutcome.PLAYING) {
+            log.warn(
+                "Player[{}] tried to reinforce after the campaign ended ({}). Ignoring.",
+                sessionId,
+                gameState.getGameOutcome());
+            return;
+          }
+          gameState.sendReinforcement(reinforceActionDTO.units());
         });
   }
 
@@ -303,6 +326,7 @@ public class GameService {
     gameState.drainSupplies(
         gameState.getTowerPartySize() * config.getLoop().getSupplyDrainPerUnit());
     gameState.rechargeTowerCasters();
+    gameState.advanceReinforcements();
     if (!gameState.hasSupplies()) {
       applyStarvation(gameState);
       if (!gameState.hasUnitsOnTower()) {
@@ -366,6 +390,7 @@ public class GameService {
   private static void endRunOnWipe(GameState gameState) {
     gameState.buildRunSummary(RunSummary.WIPED);
     gameState.forfeitLoot();
+    gameState.returnReinforcementsHome();
     gameState.setExpeditionActive(false);
     gameState.setSupplies(0d);
     gameState.getUnitsOnTower().clear();
@@ -379,6 +404,7 @@ public class GameService {
   private static void endRunOnVictory(GameState gameState) {
     gameState.buildRunSummary(RunSummary.VICTORY);
     gameState.returnLeftoverSuppliesToVillage();
+    gameState.returnReinforcementsHome();
     gameState.returnPartyHome();
     gameState.bankLoot();
     gameState.setExpeditionActive(false);

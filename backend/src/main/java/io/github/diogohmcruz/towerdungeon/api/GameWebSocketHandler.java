@@ -16,7 +16,7 @@ import io.github.diogohmcruz.towerdungeon.api.dtos.GameAction;
 import io.github.diogohmcruz.towerdungeon.api.dtos.GameActionDTO;
 import io.github.diogohmcruz.towerdungeon.api.dtos.GameActionEnvelope;
 import io.github.diogohmcruz.towerdungeon.api.dtos.InvadeActionDTO;
-import io.github.diogohmcruz.towerdungeon.api.dtos.UpgradeActionDTO;
+import io.github.diogohmcruz.towerdungeon.api.dtos.ReinforceActionDTO;import io.github.diogohmcruz.towerdungeon.api.dtos.UpgradeActionDTO;
 import io.github.diogohmcruz.towerdungeon.domain.services.GameService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -98,6 +98,7 @@ public class GameWebSocketHandler implements WebSocketHandler {
       case SELL_RELICS -> gameService.handleSellRelicsAction(sessionId);
       case INVADE -> handleInvadeAction(sessionId, message);
       case EXTRACT -> gameService.handleExtractAction(sessionId);
+      case REINFORCE -> handleReinforceAction(sessionId, message);
       case UPGRADE -> handleUpgradeAction(sessionId, message);
       default -> log.error("Invalid game action {} from session {}", gameAction, sessionId);
     }
@@ -111,6 +112,13 @@ public class GameWebSocketHandler implements WebSocketHandler {
   private void handleInvadeAction(String sessionId, String message) throws JsonProcessingException {
     var dto =
         objectMapper.readValue(message, new TypeReference<GameActionDTO<InvadeActionDTO>>() {});
+    gameService.handleMessage(sessionId, dto.payload());
+  }
+
+  private void handleReinforceAction(String sessionId, String message)
+      throws JsonProcessingException {
+    var dto =
+        objectMapper.readValue(message, new TypeReference<GameActionDTO<ReinforceActionDTO>>() {});
     gameService.handleMessage(sessionId, dto.payload());
   }
 

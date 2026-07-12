@@ -6,6 +6,7 @@ export enum GameAction {
   SELL_RELICS = 'SELL_RELICS',
   INVADE = 'INVADE',
   EXTRACT = 'EXTRACT',
+  REINFORCE = 'REINFORCE',
   UPGRADE = 'UPGRADE',
   PRESTIGE = 'PRESTIGE',
 }

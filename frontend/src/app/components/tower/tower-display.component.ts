@@ -2,7 +2,7 @@ import { Component, computed, input } from '@angular/core';
 import { LowerCasePipe } from '@angular/common';
 import { Tower } from '../../interfaces/tower';
 import { Member } from '../../interfaces/member';
-import { ResourceWallet, Squad } from '../../interfaces/game-state';
+import { ResourceWallet, Squad, Reinforcement } from '../../interfaces/game-state';
 import { EnemyCard } from '../enemy-card/enemy-card';
 import { Army } from '../army/army';
 import { ExpeditionLoot } from '../expedition-loot/expedition-loot';
@@ -22,6 +22,44 @@ export class TowerDisplay {
   carriedLoot = input<ResourceWallet | undefined>();
   carriedCredits = input<number>(0);
   active = input<boolean>(false);
+  reinforcements = input<Reinforcement[]>([]);
+
+  /** A distinct, stable-per-index highlight color for each climbing wave (golden-angle hues). */
+  waveColor(index: number): string {
+    return `hsl(${(index * 137.5) % 360}, 72%, 55%)`;
+  }
+
+  private waveSize(wave: Reinforcement): number {
+    return Object.values(wave.units ?? {}).reduce(
+      (total, members) => total + (members?.length ?? 0),
+      0,
+    );
+  }
+
+  /** Groups climbing waves by the floor they are currently on, so each floor can show its markers. */
+  reinforcementMarkers = computed(() => {
+    const floorKeys = Object.keys(this.towerFloors()).map((k) => +k);
+    const minFloor = floorKeys.length ? Math.min(...floorKeys) : 0;
+    const maxFloor = floorKeys.length ? Math.max(...floorKeys) : 0;
+    const byFloor: Record<
+      number,
+      { index: number; size: number; color: string }[]
+    > = {};
+    this.reinforcements().forEach((wave, index) => {
+      const raw = Math.floor(wave.currentFloor ?? 0);
+      const floor = Math.min(maxFloor, Math.max(minFloor, raw));
+      (byFloor[floor] ??= []).push({
+        index,
+        size: this.waveSize(wave),
+        color: this.waveColor(index),
+      });
+    });
+    return byFloor;
+  });
+
+  markersForFloor(floor: number) {
+    return this.reinforcementMarkers()[floor] ?? [];
+  }
   towerFloors = computed(() => this.tower()?.floors ?? {});
   towerFloorsEntries = computed(() =>
     Object.entries(this.tower()?.floors ?? {}),

@@ -85,6 +85,22 @@
               <i class="flag-cloth"></i>
             </span>
           }
+          @if (active() && markersForFloor(+floor[0]).length > 0) {
+            <div class="reinforcement-markers">
+              @for (marker of markersForFloor(+floor[0]); track marker.index) {
+                <span
+                  class="reinforcement-marker"
+                  [style.background]="marker.color"
+                  [style.border-color]="marker.color"
+                  [title]="
+                    'Reinforcement wave of ' + marker.size + ' climbing'
+                  "
+                >
+                  <i class="marker-dot"></i>+{{ marker.size }}
+                </span>
+              }
+            </div>
+          }
         </div>
       }
       @if (currentFloor() < maxFloor()) {

@@ -14,6 +14,7 @@ import { UpgradeCard } from '../upgrade-card/upgrade-card';
 import { MilestoneCard } from '../milestone-card/milestone-card';
 import { ShortcutCard } from '../shortcut-card/shortcut-card';
 import { RunSummaryCard } from '../run-summary-card/run-summary-card';
+import { Reinforcement } from '../../interfaces/game-state';
 
 @Component({
   selector: 'app-game-component',
@@ -79,6 +80,17 @@ export class GameComponent {
 
   extract() {
     this.ws.sendAction(GameAction.EXTRACT, null);
+  }
+
+  sendReinforcements() {
+    this.ws.sendAction(GameAction.REINFORCE, { units: {} });
+  }
+
+  waveSize(wave: Reinforcement): number {
+    return Object.values(wave.units ?? {}).reduce(
+      (total, members) => total + (members?.length ?? 0),
+      0,
+    );
   }
 
   buyUpgrade(upgradeId: string) {
