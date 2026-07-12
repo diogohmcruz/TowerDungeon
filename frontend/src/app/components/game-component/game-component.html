@@ -73,6 +73,13 @@
   <button (click)="this.extract()" [disabled]="!gameState().expeditionActive">
     Extract party
   </button>
+  <button
+    (click)="this.sendReinforcements()"
+    [disabled]="!gameState().expeditionActive || gameState().homeUnitCount === 0"
+    title="Send every unit resting at home up after the party. They carry rations from the pantry and climb from the base — if the food runs out before they catch up, climbers are lost."
+  >
+    Send reinforcements
+  </button>
   <button (click)="this.prestige()">Prestige</button>
 
   @if (gameState().expeditionActive) {
@@ -82,6 +89,19 @@
       leftover food is returned to the village. Wounded units then recover at
       home over time, fed from the village's food.
     </p>
+    @if (gameState().reinforcements.length > 0) {
+    <div class="reinforcements">
+      <h4>Reinforcements climbing</h4>
+      @for (wave of gameState().reinforcements; track $index) {
+      <p class="reinforcement-line">
+        Wave of <b>{{ waveSize(wave) }}</b> — floor
+        <b>{{ wave.currentFloor | number: '1.0-0' }}</b>
+        / {{ gameState().tower?.currentFloor ?? 0 }}, carrying
+        <b>{{ wave.supplies | number: '1.0-0' }} food</b>
+      </p>
+      }
+    </div>
+    }
   </section>
   } @else if (gameState().lastFoodReturned > 0) {
   <section class="run-hud">
@@ -163,4 +183,5 @@
   [maxSupplies]="gameState().maxSupplies"
   [carriedLoot]="gameState().carriedLoot"
   [carriedCredits]="gameState().carriedCredits"
+  [reinforcements]="gameState().reinforcements"
 ></app-tower>

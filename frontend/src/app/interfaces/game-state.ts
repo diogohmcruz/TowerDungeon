@@ -53,6 +53,13 @@ export interface RunSummary {
   survivors: number;
 }
 
+export interface Reinforcement {
+  units: Squad;
+  currentFloor: number;
+  supplies: number;
+  maxSupplies: number;
+}
+
 export interface GameState {
   credit: number;
   units: Squad;
@@ -84,4 +91,5 @@ export interface GameState {
   milestones: MilestoneOffer[];
   shortcuts: ShortcutOffer[];
   lastRunSummary: RunSummary | null;
+  reinforcements: Reinforcement[];
 }
