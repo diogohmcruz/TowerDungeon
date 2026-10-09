@@ -38,7 +38,7 @@ public enum MilestoneType {
       0.10),
   RELIC_LORE(
       "Relic Lore",
-      "Ancient relics found deep in the tower teach the party to pack for the descent (+25 carry).",
+      "Ancient relics found deep in the tower teach the party to pack for the climb (+25 carry).",
       TriggerKind.FLOOR,
       10,
       null,
@@ -77,9 +77,9 @@ public enum MilestoneType {
   }
 
   /** Whether the milestone's condition is met given the campaign's progress so far. */
-  public boolean isSatisfied(int deepestFloor, int expeditionsCompleted) {
+  public boolean isSatisfied(int highestFloor, int expeditionsCompleted) {
     return switch (triggerKind) {
-      case FLOOR -> deepestFloor >= threshold;
+      case FLOOR -> highestFloor >= threshold;
       case EXPEDITIONS -> expeditionsCompleted >= threshold;
     };
   }

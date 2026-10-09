@@ -36,7 +36,7 @@ public enum ShortcutType {
   DEEP_ANCHOR(
       "Deep Anchor",
       "Veteran delvers hammer iron anchors and guide-lines into the fifteenth floor, opening a"
-          + " secured descent line the seasoned party can rappel straight down to.",
+          + " secured line the seasoned party can climb straight to.",
       TriggerKind.EXPEDITIONS,
       8,
       15);

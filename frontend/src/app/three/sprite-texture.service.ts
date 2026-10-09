@@ -8,6 +8,7 @@ const UNIT_COLORS: Record<string, string> = {
   MAGE: '#5b6bd6',
   HEALER: '#d8a12f',
   TANK: '#6b7280',
+  CAPTAIN: '#2f6f9f',
   ROGUE: '#7b3fa0',
   NECROMANCER: '#3b8a86',
   DRACO_METAMORPH: '#b5384f',
