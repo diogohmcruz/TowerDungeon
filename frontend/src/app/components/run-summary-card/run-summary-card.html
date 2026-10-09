@@ -1,7 +1,7 @@
 <app-card [class.wiped]="wiped()" [class.victory]="victory()">
   <span card-title class="run-title"> {{ titleText() }} </span>
   <span card-badge class="run-outcome">
-    Floor {{ summary().startFloor }} → {{ summary().deepestFloor }}
+    Floor {{ summary().startFloor }} → {{ summary().highestFloor }}
   </span>
   <div class="run-stats">
     <div class="stat">

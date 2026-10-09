@@ -29,6 +29,7 @@ export interface MilestoneOffer {
   description: string;
   trigger: string;
   achieved: boolean;
+  companion: boolean;
 }
 
 export interface ShortcutOffer {
@@ -43,7 +44,7 @@ export interface ShortcutOffer {
 export interface RunSummary {
   outcome: string;
   startFloor: number;
-  deepestFloor: number;
+  highestFloor: number;
   floorsCleared: number;
   enemiesDefeated: number;
   creditsGained: number;
@@ -85,7 +86,7 @@ export interface GameState {
   availableUpgrades: UpgradeOffer[];
   damageMultiplier: number;
   supplyCapacityBonus: number;
-  deepestFloor: number;
+  highestFloor: number;
   expeditionsCompleted: number;
   enemiesDefeated: number;
   milestones: MilestoneOffer[];

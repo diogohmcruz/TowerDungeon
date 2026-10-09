@@ -55,7 +55,7 @@ public class GameState {
   @JsonIgnore
   private Map<UpgradeType, Integer> purchasedUpgrades = new EnumMap<>(UpgradeType.class);
 
-  private int deepestFloor = 0;
+  private int highestFloor = 0;
   private int expeditionsCompleted = 0;
   private int enemiesDefeated = 0;
 
@@ -596,10 +596,10 @@ public class GameState {
     return offers;
   }
 
-  /** Records the deepest floor the party has reached and grants any newly earned milestones. */
+  /** Records the highest floor the party has reached and grants any newly earned milestones. */
   public void recordFloorReached(int floor) {
-    if (floor > deepestFloor) {
-      deepestFloor = floor;
+    if (floor > highestFloor) {
+      highestFloor = floor;
     }
     checkMilestones();
   }
@@ -616,14 +616,14 @@ public class GameState {
    * forfeited (wipe) — so the carried haul and party losses are reported accurately.
    */
   public void buildRunSummary(String outcome) {
-    var deepest = tower == null ? runStartFloor : tower.getCurrentFloor();
-    var floorsCleared = Math.max(0, deepest - runStartFloor);
+    var highest = tower == null ? runStartFloor : tower.getCurrentFloor();
+    var floorsCleared = Math.max(0, highest - runStartFloor);
     var survivors = RunSummary.WIPED.equals(outcome) ? 0 : getTowerPartySize();
     this.lastRunSummary =
         new RunSummary(
             outcome,
             runStartFloor,
-            deepest,
+            highest,
             floorsCleared,
             runEnemiesDefeated,
             carriedCredits,
@@ -643,7 +643,7 @@ public class GameState {
       if (achievedMilestones.contains(milestone)) {
         continue;
       }
-      if (milestone.isSatisfied(deepestFloor, expeditionsCompleted)) {
+      if (milestone.isSatisfied(highestFloor, expeditionsCompleted)) {
         achievedMilestones.add(milestone);
         if (milestone.getUnlockUnit() != null) {
           unlockedUnits.add(milestone.getUnlockUnit());
@@ -666,7 +666,8 @@ public class GameState {
               milestone.getDisplayName(),
               milestone.getDescription(),
               milestone.getTriggerLabel(),
-              achievedMilestones.contains(milestone)));
+              achievedMilestones.contains(milestone),
+              milestone.getUnlockUnit() != null));
     }
     return offers;
   }

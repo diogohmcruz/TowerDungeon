@@ -10,7 +10,7 @@ The lookup slug is the unit/enemy **type** lowercased, with non-alphanumeric
 characters collapsed to `-`.
 
 - Units: `units/{slug}.png` — e.g. `units/warrior.png`, `units/archer.png`,
-  `units/mage.png`, `units/healer.png`, `units/tank.png`, `units/rogue.png`,
+  `units/mage.png`, `units/healer.png`, `units/tank.png`, `units/captain.png`, `units/rogue.png`,
   `units/necromancer.png`, `units/draco-metamorph.png`, `units/porter.png`
 - Enemies: `enemies/{slug}.png` — keyed by the enemy's `stats.type`, e.g.
   `enemies/slime.png`, `enemies/dead-soldiers.png`, `enemies/tower-beast.png`,

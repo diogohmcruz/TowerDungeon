@@ -8,7 +8,7 @@ package io.github.diogohmcruz.towerdungeon.domain.models;
 public record RunSummary(
     String outcome,
     int startFloor,
-    int deepestFloor,
+    int highestFloor,
     int floorsCleared,
     int enemiesDefeated,
     double creditsGained,

@@ -1,4 +1,4 @@
-import { Component, input } from '@angular/core';
+import { Component, computed, input } from '@angular/core';
 import { MilestoneOffer } from '../../interfaces/game-state';
 import { Card } from '../card/card';
 
@@ -11,4 +11,12 @@ import { Card } from '../card/card';
 })
 export class MilestoneCard {
   milestone = input.required<MilestoneOffer>();
+
+  statusText = computed(() => {
+    const milestone = this.milestone();
+    if (!milestone.achieved) {
+      return milestone.trigger;
+    }
+    return milestone.companion ? '✓ joined' : '✓ earned';
+  });
 }
