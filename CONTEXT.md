@@ -19,7 +19,7 @@ The campaign outcome reached when the village has fallen: no units remain anywhe
 _Avoid_: Game over, village has fallen, loss
 
 **Prestige**:
-Starting the campaign over after it has ended, in exchange for prestige points.
+Starting the campaign over after it has ended, in exchange for prestige points. Intended but not yet built.
 _Avoid_: Reset, new game
 
 ### The tower
@@ -37,7 +37,7 @@ The foot of the tower, below the first floor, where every climb starts unless a 
 _Avoid_: Entrance, foundation, floor 0
 
 **Summit**:
-The top floor of the tower, always held by a guardian; clearing it wins the campaign.
+The top floor of the tower, always held by a guardian; clearing it wins the campaign. What truly waits there is undecided until the manga is finished; for now it is a Dragon.
 _Avoid_: Top, max floor, final floor
 
 **Highest Floor**:
@@ -145,7 +145,7 @@ A weak unit type whose purpose is to raise its party's or wave's carrying capaci
 _Avoid_: Carrier, mule
 
 **Companion**:
-A named manga character who joins the campaign through a milestone and unlocks a unit type: Captain Eliquo (Captain) and Sargan the fire mage (Mage).
+A named manga character who joins the campaign through a milestone and then makes that unit type recruitable: Captain Eliquo (Captain) and Sargan the fire mage (Mage). Milestones that only buff the party do not bring in a companion.
 _Avoid_: Story unit, hero
 
 **Enemy**:
@@ -155,6 +155,9 @@ _Avoid_: Monster, mob, creature, defender
 **Enemy Type**:
 The kind of enemy, drawn from the manga's bestiary and ordered from weakest to strongest: Slime, Dead Soldiers, Tower Beast, Chimera, Chymus Insect, Stone Golem, Necromancer, Dead Dragon, Dragon.
 _Avoid_: Enemy stats, archetype, species
+
+**Necromancer**:
+A rare figure in the world of Tower Dungeon: the manga's main villain, but also a unit type the player can recruit and an enemy type found in the tower. The three uses are deliberate.
 
 **Attack Type**:
 The kind of harm a unit or enemy deals: Melee, Ranged, Magic, or Heal.
@@ -251,7 +254,7 @@ A permanent improvement bought with materials or relics from the vault: either a
 _Avoid_: Perk, buff, tech
 
 **Unlock Upgrade**:
-A one-time upgrade that adds a new unit type to the roster (Field Medic, Ironclad, Shadow, Necromancer, Draco-Metamorph).
+A one-time upgrade that adds a new unit type to the roster (Healer, Tank, Rogue, Necromancer, Draco-Metamorph); flavour titles such as Field Medic, Ironclad and Shadow are subtitles, never the unit's name.
 _Avoid_: Recruit upgrade, character unlock
 
 **Repeatable Upgrade**:
