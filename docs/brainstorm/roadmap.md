@@ -9,6 +9,8 @@ Written 2026-10-10. Design only; nothing here is built, and `CONTEXT.md` has not
 | Architecture and visual identity | `docs/brainstorm/architecture-and-visual-identity.md` |
 | Palette per Generation (grim, contrast and colour-vision verified) | `docs/brainstorm/palette-per-generation.md` |
 | A roguelite layer (future; nothing scheduled before Prestige v2 is played) | `docs/brainstorm/roguelite-layer.md` |
+| An MCP server for agents (playtesters, developer tooling, agent players) | `docs/brainstorm/mcp-server.md` |
+| Multiplayer: climbing together and the withdraw dilemma | `docs/brainstorm/multiplayer.md` |
 | Sources | `docs/research/` (the two Nihei architecture reports there are unverified first-pass research and carry a warning header) |
 
 Decisions made by the author: Package B is the base; Trades; the Stockroom; Knowledge (not Lore); the Loadout panel; Salt and Dragon Spores; **Village Tier** written in full (not Standing); **Tally** for the counters with **Ledger** kept as the event log; **persistence and Prestige are in scope**, with a **mandatory Prestige through the Door** and **Exodus** as a third ending; exports **seal** the tower's mutations; tone is serious and dread, with Tower Wizard used for mechanics and pixel technique only; Nihei's architecture shapes the look; a **grim palette per Generation** is wanted (designed separately); a **roguelite layer** is a possible future improvement.
@@ -71,3 +73,38 @@ Numbering is by design doc; each doc lists its own recommendations.
 **Decided since:** the palette is the Tower's state, per Generation, never a reward (ADR 0004), and the indigo-tinted night ground (Generation 1 slot 0 `#080923`) is accepted pending an on-screen check in the ink spike; a roguelite Halt stops both clocks; the roguelite Cache gives back 25% as Loot in hand, provisionally, until the Wipe-losses ruling (row 8 above).
 
 **Still open from the other designs:** the roguelite document lists 19 further decisions in its section 10 and the palette document 12 in its closing section; the recommendations in each stand until you say otherwise.
+
+## 5. Added later: the MCP server and multiplayer
+
+Both designs are complete drafts, but neither is scheduled and no issue exists for them yet. Neither edits `CONTEXT.md`; the proposed ADRs 0005 and 0006 in the MCP document (section 12) are not written.
+
+**MCP server (`mcp-server.md`).** A package inside the Spring app behind an `AgentFacade` port that calls `GameService`, with the tools defined once as data so the MCP library can change underneath. Two drivers of time share one tool set: real time for a human's Campaign, and a headless **Sandbox Campaign** that advances only when a driver calls the tick methods, with seeded random streams. Agents hold a scoped, revocable grant and never the Campaign Key; lineage actions (Exodus, Roll refunds, Begin Generation) need approval in the game UI. Scripted bots come before LLM playtesters for the scaling-pass telemetry (#8). Build the Sandbox first, because today a Campaign dies with its WebSocket and only persistence (#9 to #12) lets an agent attach to a human's Campaign. A one-day spike (M0, eight checks) decides between Spring AI's stateless server and a hand-written endpoint.
+
+**Multiplayer (`multiplayer.md`).** A ladder in six stages, each already multiplayer on its own:
+
+| Stage | What exists |
+|---|---|
+| 0 | A sealed **Trial**: the same seeded tower for everyone in their own simulation, with a **Season** board (asynchronous, ordered by connected ticks). Finish Floor 20 for the first Terms. |
+| 1 | Presence: others' positions and a Ledger line when someone falls. |
+| 2 | Echoes (Risen from other players' dead), private Races at first. |
+| 3 | Aid between Parties (the first thing to cut). |
+| 4 | **Joint Guardians**: shared fights on Guardian Floors only. |
+| 5 | A shared front on every Floor, built only if Stage 4 plays well. |
+
+The withdraw dilemma is worked out with a game-theory table: a Rearguard Share when a Party leaves, an Effort ramp against passengers, a Pressed hold against withdrawing at the worst moment, a server heartbeat with a contact-lost hold. About 68 working days in total, about 60 after cutting Aid and Pacers. It needs the Campaign/Company engine split first.
+
+**Where they collide with decisions already made**
+
+| Conflict | Proposed ruling in the designs |
+|---|---|
+| Halts (roguelite) stop both clocks, which cannot pause other players | Halts are disabled whenever a Company has more than one Party. |
+| ADR 0002 (the Door) vs a race to the top | Door per Party, so the Company is cut at Floor 99. |
+| ADR 0004 (palette is the Tower's state) vs a shared tower in view | Each player keeps their own ramp; the Tower's Memory shows by numeral and base marks. |
+| ADR 0001 sends the Campaign Key as a WebSocket subprotocol | The multiplayer design recommends sending it in the first message (OWASP) and keeping the subprotocol for version negotiation. ADR 0001 would need an amendment. |
+| A Race against Prestige and the Toll | A Race pays a record line and a cosmetic mark only. No Toll bonus (it is farmable with two keys). |
+| Undertow on Boot 3 | The multiplayer design recommends moving to Reactor Netty (probably a pom-only change) and planning the Boot 4 and Jackson 3 move separately. |
+| Agent seats in a competitive race | The MCP design asks for Standing Orders (auto-Extract on a threshold) for fairness, which softens the dread of manual Extraction. Both designs label agent seats and keep them out of public human races by default. |
+
+**New glossary terms proposed, not added:** MCP: Agent Grant, Controller, Sandbox Campaign, Playtest, Approval, Standing Order, Seat. Multiplayer: Company, Gathering, Race, Terms, Trial, Season, Sprint, Board, Contender, Departure, Threshold, Effort, Joint Guardian, Rearguard Share, Lost-contact rule. Each document lists its own avoid-word choices.
+
+**Decisions only you can make** are listed at the end of each document (16 for MCP, 29 for multiplayer). The recommendations in each stand until you say otherwise. The two that change the shape of the work most: whether the MCP server is in scope now or after persistence, and whether multiplayer stops at Joint Guardians (Stage 4) or builds the shared front (Stage 5).
