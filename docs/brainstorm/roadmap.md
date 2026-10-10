@@ -1,0 +1,66 @@
+# Roadmap: reconciling the village, persistence/prestige and architecture designs
+
+Written 2026-10-10. Design only; nothing here is built, and `CONTEXT.md` has not been edited. This page does not replace the three designs. It records where they disagree, what blocks what, and a single suggested order. Read the designs for the detail.
+
+| Design | File |
+|---|---|
+| Village resources (Package B, serious/dread pass) | `docs/brainstorm/village-resources.md` |
+| Persistence and Prestige | `docs/brainstorm/prestige-and-persistence.md` |
+| Architecture and visual identity | `docs/brainstorm/architecture-and-visual-identity.md` |
+| Sources | `docs/research/` (the two Nihei architecture reports there are unverified first-pass research and carry a warning header) |
+
+Decisions made by the author: Package B is the base; Trades; the Stockroom; Knowledge (not Lore); the Loadout panel; Salt and Dragon Spores; **Village Tier** written in full (not Standing); **Tally** for the counters with **Ledger** kept as the event log; **persistence and Prestige are in scope**, with a **mandatory Prestige through the Door** and **Exodus** as a third ending; exports **seal** the tower's mutations; tone is serious and dread, with Tower Wizard used for mechanics and pixel technique only; Nihei's architecture shapes the look; a **grim palette per Generation** is wanted (designed separately); a **roguelite layer** is a possible future improvement.
+
+## 1. Conflicts between the designs, and a proposed ruling for each
+
+These are proposals. The ones marked **author** need your decision.
+
+| # | Conflict | Proposed ruling |
+|---|---|---|
+| 1 | **Tier.** `CONTEXT.md` lists "Tier" as an avoid term under Floor Difficulty. The prestige doc says bare "Tier" means Village Tier and amends that avoid line to "Enemy tier, Floor Tier, threat level". The village and architecture docs write "Village Tier" in full. | **Decided.** "Village Tier" is written in full; Floor Difficulty's avoid line now reads "Tier (on its own...), threat level" in `CONTEXT.md`. |
+| 2 | **Ledger words.** The village doc: Tally (never-spent counters) and Ledger (the event log and Expedition Summary). The prestige doc: Campaign Ledger and Lifetime Ledger (the counters). | **Decided.** Tally for the counters, Ledger for the log and the Summary. Totals across Generations: "Lifetime Tally" (proposed name; not in `CONTEXT.md` yet). |
+| 3 | **Palette per Generation.** The prestige doc's frontend step lists a palette per Generation. The architecture doc rejected a whole-scene palette swap (Package B forbade it as a reward). | **Decided in favour of a palette per Generation, kept grim.** It is the Tower's state, set at Succession, never a reward. Design: `docs/brainstorm/palette-per-generation.md` (in progress). |
+| 4 | **The dead.** Architecture dropped its Taint and Remains. The prestige doc parks the Fallen as a mechanic. The village doc has Risen (D1) in Package B and the Pall in Package C. | Only Risen in B, as the village doc defines it. Everything else waits. The Chronicle keeps up to 5 names of lost Units per Campaign. |
+| 5 | **Mutations vs Architectures.** Both change Floors. | Mutations are Prestige (per Generation, hidden until met). Architectures are the Floor's structural form. Where both loop a Floor, the Mutation's rule replaces the Architecture's. |
+| 6 | **Loot.** Architectures could have changed loot. | Excluded. The Toll's par values and the Quarry Heap both depend on the existing loot formulas. |
+| 7 | **Unreachable upper Tower.** The prestige doc shows Floors 70-100 cannot be beaten on the current numbers (Floor 80 Dragon: 35,000 hp, about 180 Rogues, 24,000 Supplies). | An enemy and Supplies scaling pass (E0) blocks Prestige par values, Highest Floor targets and the architecture gameplay levers. |
+| 8 | **Wipe consequences.** Risen plus a half Trust burn means two new losses in B. | **Author:** keep both, or only Risen. |
+
+## 2. Dependencies
+
+- **Persistence** blocks Prestige. It is also needed by the Tally, the Stockroom, Trust, The Count, the Wall of Names and Risen. Every Package B step that adds state must add its snapshot fields (P9 in the prestige doc).
+- **Test directory.** `backend/src/test` does not exist. All three designs need it first: Village tests, determinism tests for the Floor plan, snapshot field-accounting tests.
+- **Injectable random source.** Needed for Architecture plans and for Mutations.
+- **Scaling pass (E0).** Needs telemetry from the first playable Package B and Prestige v1.
+- **Architecture visuals** (the "Section" slice) depend on none of the above. They can proceed in parallel.
+- **Architecture gameplay levers** wait on the scaling pass and a balance review, and ship behind `game.architecture.enabled`.
+- **Prestige v2 (Mutations)** waits on Prestige v1 being played, to see how samey v1 feels.
+
+## 3. Suggested order
+
+| Phase | Work | Source |
+|---|---|---|
+| 0 | Glossary edits and two short ADRs (Village Tier, Tally and Ledger, Stockroom), **before** code to avoid renaming twice. Optionally read ch.24-31 and record a prose summary. | prestige doc G0; architecture step 0 |
+| 1 | Foundations: `backend/src/test`, characterisation tests for `Village`, actuator and test dependencies, injectable random, all new rates in `GameProperties`, read-only Stock panel with per-source rates. | village step 1; prestige P0 |
+| 2a | **Persistence** P1-P8: store port, snapshots, session slots, handshake and key, coordinator, Held Party, migration framework, export/import. | prestige P1-P8 |
+| 2b | **Visual "Section" slice**: panel tokens and pixel face, ink shader spike, backend `Architecture` plan (levers off), strip renderer, figures. In parallel with 2a. | architecture steps 1-5 |
+| 3 | **Package B economy**: Trades, Stockroom, Quarry Heap, Tally and Village Tier, Loadout, Salt, Dragon Spores, Trust, Risen slice. Each step adds its snapshot fields. Ship the village diorama with Trades. | village build order; architecture step 8 |
+| 4 | **Prestige v1**: Tolls, Succession, Roll, the Door, Tower Memory, Exodus. Then the **scaling pass E0**. Then playtest for sameness and fit par values from logged data. | prestige R1-R6, E0 |
+| 5 | **Easing visuals, Shortcut fixtures, camera shots**, then architecture levers family by family behind the flag after the balance review. | architecture steps 6, 9-12 |
+| 6 | **Prestige v2**: `TowerBlueprint` and rule hooks, Mutations in two slices, Omens, Pact, Atlas, then Mutation signs, the Door fixture and Generation reseed on the Tower. | prestige R7-R12; architecture step 15 |
+| 7 | Hand-drawn art for the 144 Architecture cells, quality levels, balance from telemetry. | architecture 16-17; prestige R13 |
+
+Rough weight: persistence about six M; Package B about nine M plus the diorama (L); Prestige v1 about two M, one S, one M-to-L, one L; the Section slice about three M; v2 about three L.
+
+## 4. Open decisions, collected
+
+Numbering is by design doc; each doc lists its own recommendations.
+
+1. Tier and Ledger/Tally wording (rows 1 and 2 above).
+2. Wipe-side losses in Package B (row 8).
+3. **Prestige:** is a mandatory Prestige via the Door at Floor 99 acceptable? Is Exodus a good third ending (Defeat is nearly unreachable)? Which reading of the "3-8 hour" target (the whole arc, or each Generation)?
+4. Do exports seal the Tower's Mutation data (AES-GCM, key in deployment config), or may a player read their own save?
+5. Floor 80 and the Summit: keep the Dragon unless the manga resolves the Summit; keep Floor 100 a provisional Gate.
+6. Which wiki-only manga claims may appear in UI copy as manga fact (12 pillars, Floor 14 loop, Floor 80 size, outer wooden stairs, reference pillars)? Recommendation: label them or make no claim.
+7. Whether to read ch.24-31 (or let an agent use your browser for blocked sites) to close the manga content gap, or proceed with the broad strokes.
+8. Light theme: replace the sky-blue `#9fc0e8` with an overcast ash. A single warm sound (a bell on a Wipe, off by default).

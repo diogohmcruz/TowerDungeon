@@ -18,9 +18,41 @@ _Avoid_: Win, tower conquered, game won
 The campaign outcome reached when the village has fallen: no units remain anywhere, no villagers are left, and there is nothing left to sell or spend to raise another party.
 _Avoid_: Game over, village has fallen, loss
 
+**Exodus**:
+The campaign outcome the player chooses from the village, with no expedition out, when the village leaves the tower rather than wait for defeat. Planned.
+_Avoid_: Quit, abandon, give up
+
 **Prestige**:
-Starting the campaign over after it has ended, in exchange for prestige points. Intended but not yet built.
+The passage from a campaign that has ended (by victory, defeat, or exodus) to the next generation, in exchange for legacy. Intended but not yet built.
 _Avoid_: Reset, new game
+
+**Generation**:
+One campaign in a lineage: the first campaign is generation 1, and each prestige begins the next. Planned.
+_Avoid_: Run, cycle, loop, new game plus
+
+**Toll**:
+What a campaign's tally is worth in legacy when it ends. Planned.
+_Avoid_: Prestige bar, score, XP
+
+**Legacy**:
+The currency a campaign leaves behind when it ends, spent on the roll. Planned.
+_Avoid_: Prestige points, soul, essence
+
+**Roll**:
+The permanent, finite set of inheritances that legacy buys, kept across generations. Planned.
+_Avoid_: Skill tree, blessings, perk tree
+
+**Inheritance**:
+A single permanent benefit on the roll. Planned.
+_Avoid_: Blessing, perk, talent
+
+**Succession**:
+The moment between two generations when the toll is settled, the roll is spent, and the next generation's choices are made. Planned.
+_Avoid_: Prestige screen, new game screen
+
+**Chronicle**:
+The permanent record of every ended campaign: its generation, outcome, toll, and the names of the fallen. Planned.
+_Avoid_: History, save log
 
 ### The tower
 
@@ -46,7 +78,35 @@ _Avoid_: Deepest floor, max depth, record
 
 **Floor Difficulty**:
 How many enemy types are allowed to appear on a floor; it rises with height and drops as guardians above are slain.
-_Avoid_: Tier, threat level
+_Avoid_: Tier (on its own, which means village tier), threat level
+
+**Architecture**:
+A floor's structural form (colonnade, pillar maze, stair shaft, and so on): how the floor looks and, once enabled, the small rules of the fight there. Planned.
+_Avoid_: Floor type, biome, theme, room
+
+**Reach**:
+Ten consecutive floors closed by a guardian floor. Planned.
+_Avoid_: Zone, region, chapter, band
+
+**Door**:
+The sealed way above the floor beneath the summit; until the roll holds the inheritance that opens it, the summit cannot be reached. Planned.
+_Avoid_: Gate, barrier, final lock
+
+**Tower Memory**:
+The hardening of the tower with each generation: garrisons and guardians return stronger after earlier campaigns. Planned.
+_Avoid_: Scaling, difficulty creep, new game plus
+
+**Mutation**:
+A lasting alteration to the tower for one generation, hidden until met. Planned.
+_Avoid_: Modifier, affix, curse
+
+**Omen**:
+A foretelling of a mutation offered at succession; its nature stays unknown until the mutation has been met once. Planned.
+_Avoid_: Preview, hint
+
+**Pact**:
+An omen the player accepts at succession, adding its mutation to the next generation in exchange for a larger toll. Planned.
+_Avoid_: Contract, wager
 
 **Garrison**:
 The group of ordinary enemies occupying a non-guardian floor.
@@ -97,6 +157,14 @@ _Avoid_: Party wiped, run lost, death
 **Expedition Outcome**:
 How an expedition ended: Extraction, Wipe, or Summit Conquered.
 _Avoid_: Run outcome, result
+
+**Loadout**:
+What a party takes when it sets out: its supplies and the consumables chosen in the village beforehand. Planned.
+_Avoid_: Kit, pack list, inventory
+
+**Ledger**:
+The village's plain record of what happened: each expedition summary is one entry, and losses are written down as plainly as gains. Planned.
+_Avoid_: Log, journal, history
 
 **Expedition Summary**:
 The report shown in the village after an expedition ends: start floor, highest floor reached, floors cleared, enemies slain, loot gained or lost, units lost, and survivors.
@@ -247,6 +315,30 @@ _Avoid_: Haul, expedition loot, carried loot, rewards, drops
 The village's permanent store of banked credits, materials, and relics, which only extraction can add loot to.
 _Avoid_: Treasury, wallet, resources, bank, stockpile
 
+**Trade**:
+The work a villager does in the village: tilling the fields (which grows food), cutting stone in the quarry, or copying in the scribe's study; later salting and tending spores. Every villager works one trade. Planned.
+_Avoid_: Role, job, worker class
+
+**Stockroom**:
+The village's store of goods its own villagers make (salt, dragon spores, knowledge). Unlike the vault, trades fill it and extraction does not. Planned.
+_Avoid_: Storehouse, warehouse, inventory
+
+**Quarry Heap**:
+Materials the quarry has cut but not yet delivered; extraction delivers them to the vault, and a wipe delivers none. Planned.
+_Avoid_: Stockpile, quarry stock
+
+**Knowledge**:
+What scribes produce in the scribe's study, kept in the stockroom and spent on lasting improvements to the village's trades. Planned.
+_Avoid_: Lore, research, XP
+
+**Salt**:
+A village-made good that slows supplies drain when carried as treated supplies, and that dissolves a chymus insect's mucus as a counter packed for the fight. Planned.
+_Avoid_: Preservative, rock salt
+
+**Dragon Spores**:
+A village-grown healing ingredient, made into remedies that restore a unit's health at once and into the panacea. Planned.
+_Avoid_: Herbs, mushrooms, potions
+
 ### Progression
 
 **Upgrade**:
@@ -264,3 +356,11 @@ _Avoid_: Levelled upgrade, scaling upgrade
 **Milestone**:
 A free, one-time reward granted automatically when the campaign reaches a highest floor or a number of completed expeditions; it either brings in a companion or permanently strengthens the party.
 _Avoid_: Achievement, campaign milestone, story event
+
+**Tally**:
+The never-spent counters of a campaign's deeds (food grown, loot banked, highest floor, guardians slain); they raise the village tier and fill the toll. Planned.
+_Avoid_: Lifetime ledger, stats, score
+
+**Village Tier**:
+The village's progression level, from I to IV, raised by its tally; it opens trades and buildings. Always written in full, because tier on its own is avoided. Planned.
+_Avoid_: Tier (on its own), standing, settlement tier, level
