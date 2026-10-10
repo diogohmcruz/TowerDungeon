@@ -33,6 +33,7 @@ import io.github.diogohmcruz.towerdungeon.domain.models.Tower;
 import io.github.diogohmcruz.towerdungeon.domain.models.TowerFloor;
 import io.github.diogohmcruz.towerdungeon.domain.models.Unit;
 import io.github.diogohmcruz.towerdungeon.domain.models.UnitStats;
+import io.github.diogohmcruz.towerdungeon.domain.models.architecture.ArchitecturePlan;
 import io.github.diogohmcruz.towerdungeon.domain.models.upgrade.UpgradeType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -44,6 +45,7 @@ public class GameService {
   private final GameProperties config;
   private final ObjectMapper objectMapper;
   private final RandomGenerator random;
+  private final ArchitecturePlan architecturePlan;
   private final Map<String, GameState> players = new ConcurrentHashMap<>();
 
   private <T> T access(String sessionId, StateFn<T> body) {
@@ -209,7 +211,8 @@ public class GameService {
                     config.getTower().getMaxFloor(),
                     config.getBoss(),
                     config.getEnemies(),
-                    random));
+                    random,
+                    architecturePlan));
           }
           gameState.getTower().startNewRunAt(requestedFloor);
           gameState.setRunStartFloor(requestedFloor > 0 ? requestedFloor : 0);
