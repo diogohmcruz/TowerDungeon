@@ -8,8 +8,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Consumer;
+import java.util.random.RandomGenerator;
 
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -43,6 +43,7 @@ import lombok.extern.slf4j.Slf4j;
 public class GameService {
   private final GameProperties config;
   private final ObjectMapper objectMapper;
+  private final RandomGenerator random;
   private final Map<String, GameState> players = new ConcurrentHashMap<>();
 
   private <T> T access(String sessionId, StateFn<T> body) {
@@ -204,7 +205,11 @@ public class GameService {
           }
           if (gameState.getTower() == null) {
             gameState.setTower(
-                new Tower(config.getTower().getMaxFloor(), config.getBoss(), config.getEnemies()));
+                new Tower(
+                    config.getTower().getMaxFloor(),
+                    config.getBoss(),
+                    config.getEnemies(),
+                    random));
           }
           gameState.getTower().startNewRunAt(requestedFloor);
           gameState.setRunStartFloor(requestedFloor > 0 ? requestedFloor : 0);
@@ -412,7 +417,7 @@ public class GameService {
     gameState.winCampaign();
   }
 
-  private static void unitsAttack(
+  private void unitsAttack(
       Map<UnitStats, List<Unit>> unitsOnTower,
       List<Enemy> currentEnemies,
       TowerFloor currentTowerFloor,
@@ -436,7 +441,7 @@ public class GameService {
               if (otherUnitsOnTower.isEmpty()) {
                 return;
               }
-              var randomKeyIndex = ThreadLocalRandom.current().nextInt(otherUnitsOnTower.size());
+              var randomKeyIndex = random.nextInt(otherUnitsOnTower.size());
               var targetUnit = otherUnitsOnTower.get(randomKeyIndex);
               targetUnit.receiveAttack(healerUnit.getStats().getDamage(), AttackType.HEAL);
               healerUnit.spendMana(manaCost);
@@ -455,7 +460,7 @@ public class GameService {
               if (currentUnit.isCaster() && !currentUnit.canCast(manaCost)) {
                 return;
               }
-              var randomKeyIndex = ThreadLocalRandom.current().nextInt(currentEnemies.size());
+              var randomKeyIndex = random.nextInt(currentEnemies.size());
               var targetEnemy = currentEnemies.get(randomKeyIndex);
               targetEnemy.receiveAttack(
                   currentUnit.getStats().getDamage() * damageMultiplier,
@@ -471,18 +476,18 @@ public class GameService {
             });
   }
 
-  private static void enemiesAttack(
+  private void enemiesAttack(
       GameState gameState, List<Enemy> currentEnemies, Map<UnitStats, List<Unit>> unitsOnTower) {
     currentEnemies.forEach(
         currentEnemy -> {
           var unitStatsKeys = new ArrayList<>(unitsOnTower.keySet());
-          Collections.shuffle(unitStatsKeys);
+          Collections.shuffle(unitStatsKeys, random);
           var targetUnit = unitsOnTower.get(unitStatsKeys.getFirst());
           if (targetUnit.isEmpty()) {
             log.info("No units available for enemy {} to attack. Skipping attack.", currentEnemy);
             return;
           }
-          var randomUnitOnTowerIndex = ThreadLocalRandom.current().nextInt(targetUnit.size());
+          var randomUnitOnTowerIndex = random.nextInt(targetUnit.size());
           var targetUnitElement = targetUnit.get(randomUnitOnTowerIndex);
           targetUnitElement.receiveAttack(
               currentEnemy.getEffectiveDamage(), currentEnemy.getStats().getAttackType());

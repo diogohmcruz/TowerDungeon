@@ -2,7 +2,7 @@ package io.github.diogohmcruz.towerdungeon.domain.models;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.random.RandomGenerator;
 
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
 import lombok.Builder;
@@ -22,10 +22,10 @@ public class TowerFloor {
    * more of the budget, so a floor's headcount depends on both its budget and which tiers can spawn
    * at its difficulty.
    */
-  public void populateEnemies(double budget) {
+  public void populateEnemies(double budget, RandomGenerator random) {
     double remaining = budget;
     while (remaining > 0) {
-      var randomEnemyStatsIndex = Math.floor(ThreadLocalRandom.current().nextDouble(difficulty));
+      var randomEnemyStatsIndex = Math.floor(random.nextDouble(difficulty));
       Enemy enemy = new Enemy(EnemyStats.values()[(int) randomEnemyStatsIndex]);
       enemies.add(enemy);
       remaining -= enemy.getStats().getWeight();

@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.random.RandomGenerator;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
@@ -22,6 +22,9 @@ public class Tower {
 
   @JsonIgnore private final GameProperties.Boss bossConfig;
   @JsonIgnore private final GameProperties.Enemies enemiesConfig;
+
+  /** Source of every random draw in floor generation; seed it to make a climb reproducible. */
+  @JsonIgnore private final RandomGenerator random;
 
   public void moveToNextFloor() {
     if (currentFloor < maxFloor) {
@@ -61,7 +64,7 @@ public class Tower {
     if (isBossFloor) {
       towerFloor.populateBoss(bossConfig);
     } else {
-      towerFloor.populateEnemies(enemyBudget(floor, easingSteps));
+      towerFloor.populateEnemies(enemyBudget(floor, easingSteps), random);
     }
     return towerFloor;
   }
@@ -81,7 +84,7 @@ public class Tower {
       budget *= e.getSurgeMultiplier();
     }
     if (e.getVariance() > 0) {
-      budget *= 1 + ThreadLocalRandom.current().nextDouble(-e.getVariance(), e.getVariance());
+      budget *= 1 + random.nextDouble(-e.getVariance(), e.getVariance());
     }
     budget *= Math.pow(1 - e.getEaseBudgetPerBoss(), easingSteps);
     return Math.max(e.getMinBudget(), budget);
