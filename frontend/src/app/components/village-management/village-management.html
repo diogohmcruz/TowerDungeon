@@ -49,9 +49,15 @@
   </div>
 
   <p class="food-breakdown">
-    Grow <b class="pos">+{{ this.production() | number: '1.0-1' }}</b>
-    · {{ this.homeUnits() }} idle units eat
-    <b class="neg">−{{ this.upkeep() | number: '1.0-1' }}</b> food/s
+    Fields <b class="pos">+{{ this.production() | number: '1.0-1' }}</b>
+    · Upkeep ({{ this.homeUnits() }} idle units)
+    <b class="neg">−{{ this.upkeep() | number: '1.0-1' }}</b>
+    · Recovery <b class="neg">−{{ this.recovery() | number: '1.0-1' }}</b>
+    food/s
+  </p>
+  <p class="food-hold" [class.short]="this.pantryHoldsShort()">
+    @if (this.pantryHoldSeconds() === null) { Pantry holds. Fields cover Upkeep.
+    } @else { Pantry holds {{ this.pantryHoldSeconds() }} s at current rates. }
   </p>
   <p class="food-note">
     Villagers grow food; idle units eat it on standby, and expeditions carry it

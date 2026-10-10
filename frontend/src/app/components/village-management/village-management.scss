@@ -193,3 +193,13 @@
   transform: none;
   filter: none;
 }
+
+.food-hold {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  margin: 0 0 2px;
+
+  &.short {
+    color: var(--negative);
+  }
+}

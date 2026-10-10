@@ -51,6 +51,7 @@ public class GameProperties {
     private double bossRewardMultiplier = 3.0;
     private double materialsSellPrice = 2.0;
     private double relicsSellPrice = 25.0;
+    private double foodSellPrice = 1.0;
   }
 
   /** The tower structure the party climbs. */
