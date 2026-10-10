@@ -67,3 +67,7 @@ Numbering is by design doc; each doc lists its own recommendations.
 6. Which wiki-only manga claims may appear in UI copy as manga fact (12 pillars, Floor 14 loop, Floor 80 size, outer wooden stairs, reference pillars)? Recommendation: label them or make no claim.
 7. Whether to read ch.24-31 (or let an agent use your browser for blocked sites) to close the manga content gap, or proceed with the broad strokes.
 8. Light theme: replace the sky-blue `#9fc0e8` with an overcast ash. A single warm sound (a bell on a Wipe, off by default).
+
+**Decided since:** the palette is the Tower's state, per Generation, never a reward (ADR 0004), and the indigo-tinted night ground (Generation 1 slot 0 `#080923`) is accepted pending an on-screen check in the ink spike; a roguelite Halt stops both clocks; the roguelite Cache gives back 25% as Loot in hand, provisionally, until the Wipe-losses ruling (row 8 above).
+
+**Still open from the other designs:** the roguelite document lists 19 further decisions in its section 10 and the palette document 12 in its closing section; the recommendations in each stand until you say otherwise.

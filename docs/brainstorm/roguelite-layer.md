@@ -2,6 +2,8 @@
 
 Status: design only, and a future improvement. No repository file was written or edited. Every number is a starting knob, not a measurement: `backend/src/test` does not exist, and nobody has timed a Floor.
 
+**Decisions recorded (2026-10-10):** a Halt stops both clocks, the Party's and the Village's, matching the Held Party rule; the Cache gives back 25% of a Wipe's lost Loot as Loot in hand, provisionally, until the roadmap's Wipe-losses ruling (row 8) is made; nothing is scheduled before Prestige v2 has been played.
+
 **Summary.** Prestige v1 and v2 already give Tower Dungeon the long loop of a roguelite: Generations, a finite Roll, Mutations, Omens and a Pact. What it lacks is texture inside a Campaign. Every Expedition is the same question ("how high before the Party dies?"), asked 15 to 17 times. This layer answers that with small, seeded, priced choices the player makes when the Party stops, plus a few records that make a Campaign's history matter. It is built on one primitive, the **Halt**: the Party's clock stops, one plain slab lists options with their Prices written beforehand, and the player answers. Nothing in it is timed and nothing is a gift. It has no counter of its own in the Toll; the few Loot-paying and Loot-taking cases still move the Toll's counters through the normal Extraction path, and section 2.4 bounds how far.
 
 The recommended core is eight items: the Halt with its first case (Low Supplies), Orders after a Guardian, Finds with Tells, Lessons for survivors, What the Risen Carry, a widened Atlas, the Guardian Record and Heir Candidates. 40 raw ideas were grouped into these. Section 8.3 lists what was adopted, parked and rejected.
