@@ -7,10 +7,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.SplittableRandom;
+import java.util.random.RandomGenerator;
 
 import org.junit.jupiter.api.Test;
 
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
+import io.github.diogohmcruz.towerdungeon.domain.models.AttackType;
 import io.github.diogohmcruz.towerdungeon.domain.models.Enemy;
 import io.github.diogohmcruz.towerdungeon.domain.models.EnemyStats;
 import io.github.diogohmcruz.towerdungeon.domain.models.GameState;
@@ -25,7 +27,7 @@ class PartyCombatTest {
   private final GameState state = new GameState(config);
   private final PartyCombat combat = new PartyCombat(new SplittableRandom(7));
 
-  private Unit raised(UnitStats stats) {
+  private Unit recruited(UnitStats stats) {
     return state.recruit(stats);
   }
 
@@ -34,6 +36,7 @@ class PartyCombatTest {
     return unit;
   }
 
+  /** Units in a fixed order, so a tick's sequence does not depend on hash ordering. */
   private static Map<UnitStats, List<Unit>> party(Unit... units) {
     var party = new LinkedHashMap<UnitStats, List<Unit>>();
     for (var unit : units) {
@@ -42,7 +45,7 @@ class PartyCombatTest {
     return party;
   }
 
-  private TowerFloor floorOf(Enemy... enemies) {
+  private static TowerFloor floorOf(Enemy... enemies) {
     var floor = TowerFloor.builder().id(1).difficulty(1).build();
     floor.getEnemies().addAll(List.of(enemies));
     return floor;
@@ -53,9 +56,16 @@ class PartyCombatTest {
   }
 
   @Test
+  void theSlimeIsImmuneToMelee() {
+    // Several tests rely on this: Warriors and Porters cannot hurt a Slime, so any damage to it
+    // in those tests came from a Healer's strike.
+    assertThat(EnemyStats.SLIME.getWeaknesses().get(AttackType.MELEE)).isZero();
+  }
+
+  @Test
   void aHealerWithAWoundedAllyHealsAndDoesNotStrikeInTheSameTick() {
-    var healer = raised(UnitStats.HEALER);
-    var warrior = wounded(raised(UnitStats.WARRIOR), 10);
+    var healer = recruited(UnitStats.HEALER);
+    var warrior = wounded(recruited(UnitStats.WARRIOR), 10);
     var enemy = new Enemy(EnemyStats.SLIME);
     var enemyHealth = enemy.getCurrentHealth();
     var manaBefore = healer.getCurrentMana();
@@ -69,37 +79,36 @@ class PartyCombatTest {
 
   @Test
   void aHealerWithAWoundedAllyButNoManaDoesNothing() {
-    var healer = raised(UnitStats.HEALER);
+    var healer = recruited(UnitStats.HEALER);
     healer.spendMana(healer.getCurrentMana());
-    var warrior = wounded(raised(UnitStats.WARRIOR), 10);
-    var enemy = new Enemy(EnemyStats.DEAD_SOLDIERS);
+    var warrior = wounded(recruited(UnitStats.WARRIOR), 10);
+    var enemy = new Enemy(EnemyStats.SLIME);
+    var enemyHealth = enemy.getCurrentHealth();
 
-    var floor = floorOf(enemy);
-    tick(party(healer, warrior), floor);
+    tick(party(healer, warrior), floorOf(enemy));
 
-    // A Heal hit would one-shot Dead Soldiers (x10), so the Healer did not strike.
-    assertThat(floor.getEnemies()).contains(enemy);
     assertThat(warrior.getCurrentHealth()).isEqualTo(warrior.getStats().getHealth() - 10);
+    assertThat(enemy.getCurrentHealth()).isEqualTo(enemyHealth);
     assertThat(healer.getCurrentMana()).isZero();
   }
 
   @Test
-  void aHealerNeverSpendsACastOnAnAllyAtFullHealth() {
-    var healer = raised(UnitStats.HEALER);
-    var warrior = raised(UnitStats.WARRIOR);
+  void withNobodyWoundedAHealerStrikesAndLeavesItsAlliesAlone() {
+    var healer = recruited(UnitStats.HEALER);
+    var warrior = recruited(UnitStats.WARRIOR);
     var enemy = new Enemy(EnemyStats.SLIME);
     var healthBefore = enemy.getCurrentHealth();
 
     tick(party(healer, warrior), floorOf(enemy));
 
-    // Nobody to heal, so the Healer strikes the Slime (a Heal hit harms it).
     assertThat(healer.getCurrentMana()).isEqualTo(healer.getMaxMana() - COST);
     assertThat(enemy.getCurrentHealth()).isLessThan(healthBefore);
+    assertThat(warrior.getCurrentHealth()).isEqualTo(warrior.getStats().getHealth());
   }
 
   @Test
   void aHealerAlonePartyIsNotInNeedOfItsOwnHealing() {
-    var healer = wounded(raised(UnitStats.HEALER), 10);
+    var healer = wounded(recruited(UnitStats.HEALER), 10);
     var enemy = new Enemy(EnemyStats.SLIME);
 
     tick(party(healer), floorOf(enemy));
@@ -109,8 +118,8 @@ class PartyCombatTest {
 
   @Test
   void withNoWoundedAllyAHealerOnlyStrikesEnemiesAHealHitHarms() {
-    var healer = raised(UnitStats.HEALER);
-    var warrior = raised(UnitStats.WARRIOR);
+    var healer = recruited(UnitStats.HEALER);
+    var warrior = recruited(UnitStats.WARRIOR);
     var chymus = new Enemy(EnemyStats.CHYMUS_INSECT);
     var golem = new Enemy(EnemyStats.STONE_GOLEM);
     var slime = new Enemy(EnemyStats.SLIME);
@@ -125,7 +134,7 @@ class PartyCombatTest {
 
   @Test
   void aFloorOfOnlyHealedOrImmuneEnemiesCostsTheHealerNoMana() {
-    var healer = raised(UnitStats.HEALER);
+    var healer = recruited(UnitStats.HEALER);
     var chymus = new Enemy(EnemyStats.CHYMUS_INSECT);
     var golem = new Enemy(EnemyStats.STONE_GOLEM);
     var chymusHealth = chymus.getCurrentHealth();
@@ -139,21 +148,25 @@ class PartyCombatTest {
   }
 
   @Test
-  void twoHealersJudgeNeedFromTheStartOfTheTickAndBothMayHealTheSameAlly() {
-    var first = raised(UnitStats.HEALER);
-    var second = raised(UnitStats.HEALER);
-    var warrior = wounded(raised(UnitStats.WARRIOR), 0.5);
+  void twoHealersJudgeNeedFromTheStartOfTheTickAndBothHealTheSameAlly() {
+    var first = recruited(UnitStats.HEALER);
+    var second = recruited(UnitStats.HEALER);
+    var warrior = wounded(recruited(UnitStats.WARRIOR), 10);
+    var healPerCast =
+        first.getStats().getDamage() * -UnitStats.WARRIOR.getWeaknesses().get(AttackType.HEAL);
 
     tick(party(first, second, warrior), floorOf(new Enemy(EnemyStats.SLIME)));
 
     assertThat(first.getCurrentMana()).isEqualTo(first.getMaxMana() - COST);
     assertThat(second.getCurrentMana()).isEqualTo(second.getMaxMana() - COST);
+    assertThat(warrior.getCurrentHealth())
+        .isEqualTo(warrior.getStats().getHealth() - 10 + 2 * healPerCast);
   }
 
   @Test
   void aMageStillAttacksOnceAndOtherUnitsAreUnaffected() {
-    var mage = raised(UnitStats.MAGE);
-    var warrior = raised(UnitStats.WARRIOR);
+    var mage = recruited(UnitStats.MAGE);
+    var warrior = recruited(UnitStats.WARRIOR);
     var enemy = new Enemy(EnemyStats.SLIME);
     var healthBefore = enemy.getCurrentHealth();
 
@@ -163,9 +176,29 @@ class PartyCombatTest {
     assertThat(enemy.getCurrentHealth()).isLessThan(healthBefore);
   }
 
+  /**
+   * With no Healers and no kills, the tick draws one random target per unit in party order, exactly
+   * as it did before Healers were limited to one cast; these values were captured from that draw
+   * order with seed 7 and guard against it shifting.
+   */
+  @Test
+  void aSeededTickForAPartyWithoutHealersIsPinned() {
+    var warrior = recruited(UnitStats.WARRIOR);
+    var archer = recruited(UnitStats.ARCHER);
+    var mage = recruited(UnitStats.MAGE);
+    var beast = new Enemy(EnemyStats.TOWER_BEAST);
+    var soldiers = new Enemy(EnemyStats.DEAD_SOLDIERS);
+
+    tick(party(warrior, archer, mage), floorOf(beast, soldiers));
+
+    assertThat(List.of(beast.getCurrentHealth(), soldiers.getCurrentHealth()))
+        .isEqualTo(List.of(36.75, 14.25));
+    assertThat(mage.getCurrentMana()).isEqualTo(mage.getMaxMana() - COST);
+  }
+
   @Test
   void aSlainEnemyLeavesTheFloorAndCountsAsAKill() {
-    var warrior = raised(UnitStats.WARRIOR);
+    var warrior = recruited(UnitStats.WARRIOR);
     var enemy = new Enemy(EnemyStats.DEAD_SOLDIERS);
     enemy.setCurrentHealth(0.1);
     var floor = floorOf(enemy);
@@ -178,7 +211,7 @@ class PartyCombatTest {
 
   @Test
   void enemiesStrikeAndAFallenUnitIsRemoved() {
-    var warrior = raised(UnitStats.WARRIOR);
+    var warrior = recruited(UnitStats.WARRIOR);
     warrior.setCurrentHealth(0.1);
     state.getUnitsOnTower().put(UnitStats.WARRIOR, new ArrayList<>(List.of(warrior)));
     var enemies = new ArrayList<>(List.of(new Enemy(EnemyStats.SLIME)));
@@ -193,15 +226,15 @@ class PartyCombatTest {
   @Test
   void castersTargetTheEnemiesThatWereAliveWhenTheTickBegan() {
     var alwaysFirst =
-        new java.util.random.RandomGenerator() {
+        new RandomGenerator() {
           @Override
           public long nextLong() {
             return 0;
           }
         };
     var combat = new PartyCombat(alwaysFirst);
-    var warrior = raised(UnitStats.WARRIOR);
-    var mage = raised(UnitStats.MAGE);
+    var warrior = recruited(UnitStats.WARRIOR);
+    var mage = recruited(UnitStats.MAGE);
     var dying = new Enemy(EnemyStats.DEAD_SOLDIERS);
     dying.setCurrentHealth(0.1);
     var standing = new Enemy(EnemyStats.DEAD_SOLDIERS);

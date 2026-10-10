@@ -239,6 +239,14 @@ _Avoid_: Resistance, vulnerability, modifier
 The attack type that restores health to party members instead of harming them.
 _Avoid_: Mend, cure, support
 
+**Tick**:
+One step of the game's clock, once a second, in which the party and the garrison each strike once and casters may make a cast.
+_Avoid_: Turn, round, frame
+
+**Wounded**:
+Having less health than one's maximum.
+_Avoid_: Hurt, damaged, injured
+
 ### Magic
 
 **Caster**:
