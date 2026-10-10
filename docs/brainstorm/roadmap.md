@@ -7,6 +7,8 @@ Written 2026-10-10. Design only; nothing here is built, and `CONTEXT.md` has not
 | Village resources (Package B, serious/dread pass) | `docs/brainstorm/village-resources.md` |
 | Persistence and Prestige | `docs/brainstorm/prestige-and-persistence.md` |
 | Architecture and visual identity | `docs/brainstorm/architecture-and-visual-identity.md` |
+| Palette per Generation (grim, contrast and colour-vision verified) | `docs/brainstorm/palette-per-generation.md` |
+| A roguelite layer (future; nothing scheduled before Prestige v2 is played) | `docs/brainstorm/roguelite-layer.md` |
 | Sources | `docs/research/` (the two Nihei architecture reports there are unverified first-pass research and carry a warning header) |
 
 Decisions made by the author: Package B is the base; Trades; the Stockroom; Knowledge (not Lore); the Loadout panel; Salt and Dragon Spores; **Village Tier** written in full (not Standing); **Tally** for the counters with **Ledger** kept as the event log; **persistence and Prestige are in scope**, with a **mandatory Prestige through the Door** and **Exodus** as a third ending; exports **seal** the tower's mutations; tone is serious and dread, with Tower Wizard used for mechanics and pixel technique only; Nihei's architecture shapes the look; a **grim palette per Generation** is wanted (designed separately); a **roguelite layer** is a possible future improvement.
@@ -19,7 +21,7 @@ These are proposals. The ones marked **author** need your decision.
 |---|---|---|
 | 1 | **Tier.** `CONTEXT.md` lists "Tier" as an avoid term under Floor Difficulty. The prestige doc says bare "Tier" means Village Tier and amends that avoid line to "Enemy tier, Floor Tier, threat level". The village and architecture docs write "Village Tier" in full. | **Decided.** "Village Tier" is written in full; Floor Difficulty's avoid line now reads "Tier (on its own...), threat level" in `CONTEXT.md`. |
 | 2 | **Ledger words.** The village doc: Tally (never-spent counters) and Ledger (the event log and Expedition Summary). The prestige doc: Campaign Ledger and Lifetime Ledger (the counters). | **Decided.** Tally for the counters, Ledger for the log and the Summary. Totals across Generations: "Lifetime Tally" (proposed name; not in `CONTEXT.md` yet). |
-| 3 | **Palette per Generation.** The prestige doc's frontend step lists a palette per Generation. The architecture doc rejected a whole-scene palette swap (Package B forbade it as a reward). | **Decided in favour of a palette per Generation, kept grim.** It is the Tower's state, set at Succession, never a reward. Design: `docs/brainstorm/palette-per-generation.md` (in progress). |
+| 3 | **Palette per Generation.** The prestige doc's frontend step lists a palette per Generation. The architecture doc rejected a whole-scene palette swap (Package B forbade it as a reward). | **Decided in favour of a palette per Generation, kept grim.** It is the Tower's state, set at Succession, never a reward. Design: `docs/brainstorm/palette-per-generation.md`: the ramp is a function of Tower Memory and changes only when a Generation begins. Its open decisions (a darker, indigo-tinted night ground so crimson stays visible under protanopia; which colour-distance metric gates it) need an on-screen look in the ink spike. |
 | 4 | **The dead.** Architecture dropped its Taint and Remains. The prestige doc parks the Fallen as a mechanic. The village doc has Risen (D1) in Package B and the Pall in Package C. | Only Risen in B, as the village doc defines it. Everything else waits. The Chronicle keeps up to 5 names of lost Units per Campaign. |
 | 5 | **Mutations vs Architectures.** Both change Floors. | Mutations are Prestige (per Generation, hidden until met). Architectures are the Floor's structural form. Where both loop a Floor, the Mutation's rule replaces the Architecture's. |
 | 6 | **Loot.** Architectures could have changed loot. | Excluded. The Toll's par values and the Quarry Heap both depend on the existing loot formulas. |
@@ -49,6 +51,7 @@ These are proposals. The ones marked **author** need your decision.
 | 5 | **Easing visuals, Shortcut fixtures, camera shots**, then architecture levers family by family behind the flag after the balance review. | architecture steps 6, 9-12 |
 | 6 | **Prestige v2**: `TowerBlueprint` and rule hooks, Mutations in two slices, Omens, Pact, Atlas, then Mutation signs, the Door fixture and Generation reseed on the Tower. | prestige R7-R12; architecture step 15 |
 | 7 | Hand-drawn art for the 144 Architecture cells, quality levels, balance from telemetry. | architecture 16-17; prestige R13 |
+| Later | **Roguelite layer.** Only its small enabling pieces (the single stop predicate, a keyed seed and a per-family rules object) are worth building earlier, because persistence and Prestige need them anyway. The rest waits until Prestige v2 has been played. | `docs/brainstorm/roguelite-layer.md` section 7 |
 
 Rough weight: persistence about six M; Package B about nine M plus the diorama (L); Prestige v1 about two M, one S, one M-to-L, one L; the Section slice about three M; v2 about three L.
 
