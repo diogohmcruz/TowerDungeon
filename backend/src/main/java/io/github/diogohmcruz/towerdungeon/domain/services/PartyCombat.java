@@ -42,6 +42,7 @@ public class PartyCombat {
     var manaCost = gameState.getConfig().getMagic().getCostPerCast();
     var party = unitsOnTower.values().stream().flatMap(List::stream).toList();
     var woundedAtStart = party.stream().filter(PartyCombat::isWounded).toList();
+    var enemiesAtStart = List.copyOf(currentEnemies);
     var healersThatCast = new HashSet<Integer>();
 
     party.stream()
@@ -78,19 +79,19 @@ public class PartyCombat {
               if (currentUnit.isCaster() && !currentUnit.canCast(manaCost)) {
                 return;
               }
-              var targets =
-                  isHealer(currentUnit) ? enemiesAHealHitHarms(currentEnemies) : currentEnemies;
+              var targets = targetsFor(currentUnit, currentEnemies, enemiesAtStart);
               if (targets.isEmpty()) {
                 return;
               }
               var targetEnemy = targets.get(random.nextInt(targets.size()));
+              var wasAlive = !targetEnemy.isDead();
               targetEnemy.receiveAttack(
                   currentUnit.getStats().getDamage() * damageMultiplier,
                   currentUnit.getStats().getAttackType());
               if (currentUnit.isCaster()) {
                 currentUnit.spendMana(manaCost);
               }
-              if (targetEnemy.isDead()) {
+              if (wasAlive && targetEnemy.isDead()) {
                 log.info("Unit {} defeated enemy {}", currentUnit, targetEnemy);
                 currentTowerFloor.removeEnemy(targetEnemy);
                 gameState.recordEnemyKill();
@@ -119,6 +120,15 @@ public class PartyCombat {
             gameState.removeUnit(targetUnitElement);
           }
         });
+  }
+
+  /**
+   * Casters aim at the enemies alive when the tick began, so one may spend its cast on an enemy
+   * another unit has just killed. Everyone else picks from whoever still stands.
+   */
+  private static List<Enemy> targetsFor(Unit unit, List<Enemy> standing, List<Enemy> aliveAtStart) {
+    var candidates = unit.isCaster() ? aliveAtStart : standing;
+    return isHealer(unit) ? enemiesAHealHitHarms(candidates) : candidates;
   }
 
   private static boolean isHealer(Unit unit) {
