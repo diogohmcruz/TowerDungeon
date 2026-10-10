@@ -2,11 +2,9 @@ package io.github.diogohmcruz.towerdungeon.domain.services;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.random.RandomGenerator;
@@ -22,15 +20,12 @@ import io.github.diogohmcruz.towerdungeon.api.dtos.ReinforceActionDTO;
 import io.github.diogohmcruz.towerdungeon.api.dtos.UpgradeActionDTO;
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
 import io.github.diogohmcruz.towerdungeon.domain.exceptions.InvalidInvasion;
-import io.github.diogohmcruz.towerdungeon.domain.models.AttackType;
 import io.github.diogohmcruz.towerdungeon.domain.models.BaseUnit;
-import io.github.diogohmcruz.towerdungeon.domain.models.Enemy;
 import io.github.diogohmcruz.towerdungeon.domain.models.GameOutcome;
 import io.github.diogohmcruz.towerdungeon.domain.models.GameState;
 import io.github.diogohmcruz.towerdungeon.domain.models.ResourceType;
 import io.github.diogohmcruz.towerdungeon.domain.models.RunSummary;
 import io.github.diogohmcruz.towerdungeon.domain.models.Tower;
-import io.github.diogohmcruz.towerdungeon.domain.models.TowerFloor;
 import io.github.diogohmcruz.towerdungeon.domain.models.Unit;
 import io.github.diogohmcruz.towerdungeon.domain.models.UnitStats;
 import io.github.diogohmcruz.towerdungeon.domain.models.architecture.ArchitecturePlan;
@@ -46,6 +41,7 @@ public class GameService {
   private final ObjectMapper objectMapper;
   private final RandomGenerator random;
   private final ArchitecturePlan architecturePlan;
+  private final PartyCombat partyCombat;
   private final Map<String, GameState> players = new ConcurrentHashMap<>();
 
   private <T> T access(String sessionId, StateFn<T> body) {
@@ -369,8 +365,8 @@ public class GameService {
       return;
     }
     var currentEnemies = currentTowerFloor.getEnemies();
-    unitsAttack(unitsOnTower, currentEnemies, currentTowerFloor, gameState);
-    enemiesAttack(gameState, currentEnemies, unitsOnTower);
+    partyCombat.unitsAttack(unitsOnTower, currentEnemies, currentTowerFloor, gameState);
+    partyCombat.enemiesAttack(gameState, currentEnemies, unitsOnTower);
   }
 
   private void gatherFloorLoot(GameState gameState, int clearedFloor, double rewardMultiplier) {
@@ -418,88 +414,6 @@ public class GameService {
     gameState.setExpeditionActive(false);
     gameState.completeExpedition();
     gameState.winCampaign();
-  }
-
-  private void unitsAttack(
-      Map<UnitStats, List<Unit>> unitsOnTower,
-      List<Enemy> currentEnemies,
-      TowerFloor currentTowerFloor,
-      GameState gameState) {
-    var damageMultiplier = gameState.getDamageMultiplier();
-    var manaCost = gameState.getConfig().getMagic().getCostPerCast();
-    unitsOnTower.entrySet().stream()
-        .filter(entry -> AttackType.HEAL.equals(entry.getKey().getAttackType()))
-        .map(Entry::getValue)
-        .flatMap(Collection::stream)
-        .forEach(
-            healerUnit -> {
-              if (!healerUnit.canCast(manaCost)) {
-                return;
-              }
-              var otherUnitsOnTower =
-                  unitsOnTower.values().stream()
-                      .flatMap(List::stream)
-                      .filter(unit -> !healerUnit.getId().equals(unit.getId()))
-                      .toList();
-              if (otherUnitsOnTower.isEmpty()) {
-                return;
-              }
-              var randomKeyIndex = random.nextInt(otherUnitsOnTower.size());
-              var targetUnit = otherUnitsOnTower.get(randomKeyIndex);
-              targetUnit.receiveAttack(healerUnit.getStats().getDamage(), AttackType.HEAL);
-              healerUnit.spendMana(manaCost);
-            });
-    unitsOnTower.values().stream()
-        .flatMap(List::stream)
-        .forEach(
-            currentUnit -> {
-              if (currentEnemies.isEmpty()) {
-                log.info(
-                    "No enemies left for unit {} to attack in the current floor. Skipping"
-                        + " attack.",
-                    currentUnit);
-                return;
-              }
-              if (currentUnit.isCaster() && !currentUnit.canCast(manaCost)) {
-                return;
-              }
-              var randomKeyIndex = random.nextInt(currentEnemies.size());
-              var targetEnemy = currentEnemies.get(randomKeyIndex);
-              targetEnemy.receiveAttack(
-                  currentUnit.getStats().getDamage() * damageMultiplier,
-                  currentUnit.getStats().getAttackType());
-              if (currentUnit.isCaster()) {
-                currentUnit.spendMana(manaCost);
-              }
-              if (targetEnemy.isDead()) {
-                log.info("Unit {} defeated enemy {}", currentUnit, targetEnemy);
-                currentTowerFloor.removeEnemy(targetEnemy);
-                gameState.recordEnemyKill();
-              }
-            });
-  }
-
-  private void enemiesAttack(
-      GameState gameState, List<Enemy> currentEnemies, Map<UnitStats, List<Unit>> unitsOnTower) {
-    currentEnemies.forEach(
-        currentEnemy -> {
-          var unitStatsKeys = new ArrayList<>(unitsOnTower.keySet());
-          Collections.shuffle(unitStatsKeys, random);
-          var targetUnit = unitsOnTower.get(unitStatsKeys.getFirst());
-          if (targetUnit.isEmpty()) {
-            log.info("No units available for enemy {} to attack. Skipping attack.", currentEnemy);
-            return;
-          }
-          var randomUnitOnTowerIndex = random.nextInt(targetUnit.size());
-          var targetUnitElement = targetUnit.get(randomUnitOnTowerIndex);
-          targetUnitElement.receiveAttack(
-              currentEnemy.getEffectiveDamage(), currentEnemy.getStats().getAttackType());
-
-          if (targetUnitElement.getCurrentHealth() <= 0) {
-            log.info("Enemy {} defeated unit {}", currentEnemy, targetUnitElement);
-            gameState.removeUnit(targetUnitElement);
-          }
-        });
   }
 
   public void closeSession(String id) {
