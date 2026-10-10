@@ -107,4 +107,6 @@ The withdraw dilemma is worked out with a game-theory table: a Rearguard Share w
 
 **New glossary terms proposed, not added:** MCP: Agent Grant, Controller, Sandbox Campaign, Playtest, Approval, Standing Order, Seat. Multiplayer: Company, Gathering, Race, Terms, Trial, Season, Sprint, Board, Contender, Departure, Threshold, Effort, Joint Guardian, Rearguard Share, Lost-contact rule. Each document lists its own avoid-word choices.
 
+**Decided:** the MCP server comes after persistence, starting with the Sandbox Campaign (the author agreed, 2026-10-10). **Open:** whether multiplayer stops at Joint Guardians (Stage 4) or also builds the shared front on every Floor (Stage 5); the recommendation is to stop at Stage 4 and decide after playing it.
+
 **Decisions only you can make** are listed at the end of each document (16 for MCP, 29 for multiplayer). The recommendations in each stand until you say otherwise. The two that change the shape of the work most: whether the MCP server is in scope now or after persistence, and whether multiplayer stops at Joint Guardians (Stage 4) or builds the shared front (Stage 5).
