@@ -3,7 +3,7 @@ package io.github.diogohmcruz.towerdungeon.domain.services;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.SplittableRandom;
@@ -35,7 +35,7 @@ class PartyCombatTest {
   }
 
   private static Map<UnitStats, List<Unit>> party(Unit... units) {
-    var party = new HashMap<UnitStats, List<Unit>>();
+    var party = new LinkedHashMap<UnitStats, List<Unit>>();
     for (var unit : units) {
       party.computeIfAbsent(unit.getStats(), _ -> new ArrayList<>()).add(unit);
     }
@@ -188,5 +188,33 @@ class PartyCombatTest {
     assertThat(warrior.isDead()).isTrue();
     assertThat(state.getUnitsOnTower().getOrDefault(UnitStats.WARRIOR, List.of()))
         .doesNotContain(warrior);
+  }
+
+  @Test
+  void castersTargetTheEnemiesThatWereAliveWhenTheTickBegan() {
+    var alwaysFirst =
+        new java.util.random.RandomGenerator() {
+          @Override
+          public long nextLong() {
+            return 0;
+          }
+        };
+    var combat = new PartyCombat(alwaysFirst);
+    var warrior = raised(UnitStats.WARRIOR);
+    var mage = raised(UnitStats.MAGE);
+    var dying = new Enemy(EnemyStats.DEAD_SOLDIERS);
+    dying.setCurrentHealth(0.1);
+    var standing = new Enemy(EnemyStats.DEAD_SOLDIERS);
+    var standingHealth = standing.getCurrentHealth();
+    var floor = floorOf(dying, standing);
+
+    // The Warrior acts first and kills the first enemy; the Mage still aims at the tick-start
+    // snapshot, whose first enemy is the one that just fell, and wastes its cast on it.
+    combat.unitsAttack(party(warrior, mage), floor.getEnemies(), floor, state);
+
+    assertThat(floor.getEnemies()).containsExactly(standing);
+    assertThat(standing.getCurrentHealth()).isEqualTo(standingHealth);
+    assertThat(mage.getCurrentMana()).isEqualTo(mage.getMaxMana() - COST);
+    assertThat(state.getEnemiesDefeated()).isEqualTo(1);
   }
 }

@@ -250,7 +250,7 @@ A caster's personal reserve of magic, spent on each cast and refilled by recharg
 _Avoid_: Magic points, MP, energy
 
 **Cast**:
-One mana-paying action by a caster, either an attack on an enemy or a heal on an ally; a caster makes at most one cast per tick, and one without enough mana does nothing. A Healer heals a wounded ally if there was one when the tick began (so two Healers can both spend a cast on the same last wounded ally); otherwise it strikes an enemy that a Heal hit would harm, and if there is none it does not cast.
+One mana-paying action by a caster, either an attack on an enemy or a heal on an ally; a caster makes at most one cast per tick, aims at the enemies alive when the tick began (so a cast can be wasted on one that fell earlier in the tick), and one without enough mana does nothing. A Healer heals a wounded ally if there was one when the tick began (so two Healers can both spend a cast on the same last wounded ally); otherwise it strikes an enemy that a Heal hit would harm, and if there is none it does not cast.
 _Avoid_: Spell, ability
 
 **Recharge**:
