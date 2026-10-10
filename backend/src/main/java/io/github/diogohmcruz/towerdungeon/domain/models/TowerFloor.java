@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.random.RandomGenerator;
 
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
+import io.github.diogohmcruz.towerdungeon.domain.models.architecture.Architecture;
 import lombok.Builder;
 import lombok.Data;
 
@@ -13,6 +14,10 @@ import lombok.Data;
 public class TowerFloor {
   private final Integer id;
   private final Integer difficulty;
+  private final Architecture architecture;
+
+  /** One of four cosmetic variants of the Architecture, 0 to 3. */
+  private final int variant;
 
   @Builder.Default private final boolean boss = false;
   private final List<Enemy> enemies = new ArrayList<>();

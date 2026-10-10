@@ -2,6 +2,7 @@ package io.github.diogohmcruz.towerdungeon.domain.models;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.random.RandomGenerator;
@@ -9,6 +10,7 @@ import java.util.random.RandomGenerator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
+import io.github.diogohmcruz.towerdungeon.domain.models.architecture.ArchitecturePlan;
 import lombok.Data;
 
 @Data
@@ -26,10 +28,19 @@ public class Tower {
   /** Source of every random draw in floor generation; seed it to make a climb reproducible. */
   @JsonIgnore private final RandomGenerator random;
 
+  /** Backend-only: the frontend only ever sees the Architectures of discovered floors. */
+  @JsonIgnore private final ArchitecturePlan architecturePlan;
+
+  /**
+   * Bumps whenever a floor is added or a guardian is first slain (easing changes), so the frontend
+   * knows when to redraw the tower. Re-populating a floor's enemies does not bump it.
+   */
+  private int layoutVersion = 0;
+
   public void moveToNextFloor() {
     if (currentFloor < maxFloor) {
       currentFloor++;
-      floors.put(currentFloor, buildFloor(currentFloor));
+      putFloor(currentFloor);
     } else {
       throw new IllegalStateException("You have reached the maximum floor of the tower.");
     }
@@ -37,7 +48,20 @@ public class Tower {
 
   /** Records that the guardian on {@code bossFloor} has been defeated. */
   public void markBossCleared(int bossFloor) {
-    clearedBosses.add(bossFloor);
+    if (clearedBosses.add(bossFloor)) {
+      layoutVersion++;
+    }
+  }
+
+  /** The floors of the slain guardians, lowest first. */
+  public List<Integer> getSlainGuardians() {
+    return clearedBosses.stream().sorted().toList();
+  }
+
+  private void putFloor(int floor) {
+    if (floors.put(floor, buildFloor(floor)) == null) {
+      layoutVersion++;
+    }
   }
 
   /** Number of cleared guardians standing above {@code floor} — the floor's "easing" pressure. */
@@ -60,7 +84,13 @@ public class Tower {
                 EnemyStats.values().length);
 
     var towerFloor =
-        TowerFloor.builder().id(floor).difficulty(difficulty).boss(isBossFloor).build();
+        TowerFloor.builder()
+            .id(floor)
+            .difficulty(difficulty)
+            .architecture(architecturePlan.architectureOf(floor))
+            .variant(architecturePlan.variantOf(floor))
+            .boss(isBossFloor)
+            .build();
     if (isBossFloor) {
       towerFloor.populateBoss(bossConfig);
     } else {
@@ -116,6 +146,6 @@ public class Tower {
     }
     var floor = Math.min(startFloor, maxFloor);
     this.currentFloor = floor;
-    floors.put(floor, buildFloor(floor));
+    putFloor(floor);
   }
 }

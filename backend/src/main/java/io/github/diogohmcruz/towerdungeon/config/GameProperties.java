@@ -24,6 +24,7 @@ public class GameProperties {
   private final Supply supply = new Supply();
   private final Healing healing = new Healing();
   private final Village village = new Village();
+  private final Architecture architecture = new Architecture();
 
   /** Values a freshly created player starts the game with. */
   @Data
@@ -154,5 +155,18 @@ public class GameProperties {
     private int startingVillagers = 20;
     private double villagerFoodProduction = 0.5;
     private double unitFoodConsumption = 1.0;
+  }
+
+  /** Floor Architectures: the seeded plan, and the switch for their gameplay effects. */
+  @Data
+  public static class Architecture {
+    /**
+     * Gameplay effects of Architectures (Garrison, Sightline, Attrition and so on). Off: for now an
+     * Architecture only changes how a Floor is drawn.
+     */
+    private boolean enabled = false;
+
+    /** The Tower seed; a shipped constant, so Generation 1 is the Tower the player learns. */
+    private long seed = 362108372306L;
   }
 }

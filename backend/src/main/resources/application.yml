@@ -71,3 +71,6 @@ game:
     starting-villagers: 20
     villager-food-production: 0.5
     unit-food-consumption: 1.0
+  architecture:
+    enabled: false
+    seed: 362108372306
