@@ -10,6 +10,8 @@ Written 2026-10-10. Design only. No repository file was written and `CONTEXT.md`
 
 ---
 
+> **Decided by the author (2026-10-10): stop at Stage 4.** Only huge enemies, the Guardians, make everyone fight together. Ordinary Garrisons stay private to the player who climbed that part of the Tower: the other players cannot see them and they do not attack anyone else. Stage 5 (a shared front on every Floor) is out of scope unless Stage 4 plays badly. Wherever the sections below describe Stage 5 or a shared Garrison for several Parties, read it as a deferred option. Open decisions about Stage 5 (the shared Garrison scaling, Echoes beyond Wipes on shared Floors, and the like) no longer need answers.
+
 ## 1. What the author asked for
 
 Two ideas, in the author's words:
