@@ -50,6 +50,8 @@ export class GameStateService {
     homeUnitCount: 0,
     foodUpkeep: 0,
     netFoodPerSecond: 0,
+    recoverySpend: 0,
+    pantryHoldSeconds: null,
     unlockedUnitTypes: [Unit.WARRIOR, Unit.ARCHER, Unit.PORTER],
     availableUpgrades: [],
     damageMultiplier: 1,

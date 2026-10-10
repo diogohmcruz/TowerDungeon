@@ -59,6 +59,9 @@ public class GameState {
   private int expeditionsCompleted = 0;
   private int enemiesDefeated = 0;
 
+  /** Food Recovery spent on the home party during the last lifecycle tick. */
+  private double recoverySpend = 0d;
+
   private int runStartFloor = 0;
   private int runEnemiesDefeated = 0;
   private int runUnitsLost = 0;
@@ -164,11 +167,24 @@ public class GameState {
    */
   public void healHomePartyWithFood() {
     var homeUnits = units.values().stream().flatMap(List::stream).toList();
-    foodDistributionStrategy.distribute(
-        homeUnits,
-        village,
-        new FoodHealingConfig(
-            config.getHealing().getCostPerHp(), config.getHealing().getHpPerTick()));
+    this.recoverySpend =
+        foodDistributionStrategy.distribute(
+            homeUnits,
+            village,
+            new FoodHealingConfig(
+                config.getHealing().getCostPerHp(), config.getHealing().getHpPerTick()));
+  }
+
+  /**
+   * Seconds until Starvation begins at current rates, counting Recovery at its ceiling while any
+   * home unit is wounded; null while the Fields cover Upkeep.
+   */
+  public Integer getPantryHoldSeconds() {
+    var recoveryCeiling =
+        getHomePartyWounds() > 0
+            ? config.getHealing().getHpPerTick() * config.getHealing().getCostPerHp()
+            : 0d;
+    return village.secondsUntilStarvation(getHomeUnitCount(), recoveryCeiling);
   }
 
   /** Total missing health across the units resting at home (the ones the village feeds/heals). */
@@ -720,7 +736,7 @@ public class GameState {
   public Double sellFood() {
     var profit = 0d;
     while (village.sellFood()) {
-      profit += 1;
+      profit += config.getReward().getFoodSellPrice();
     }
     this.credit += profit;
     return credit;

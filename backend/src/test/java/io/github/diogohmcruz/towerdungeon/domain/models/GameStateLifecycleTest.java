@@ -75,4 +75,58 @@ class GameStateLifecycleTest {
     assertThat(state.getHomeUnitCount()).isEqualTo(1);
     assertThat(recovery.getFirst()).hasSize(1);
   }
+
+  @Test
+  void recoverySpendIsExposedForTheTickThatSpentIt() {
+    var state = stateWith(100, 20, 1);
+    var unit = state.getUnits().get(UnitStats.WARRIOR).getFirst();
+    unit.setCurrentHealth(unit.getStats().getHealth() - 20);
+
+    state.triggerLifecycle();
+
+    assertThat(state.getRecoverySpend()).isEqualTo(5.0);
+  }
+
+  @Test
+  void recoverySpendIsZeroWhenNobodyIsWounded() {
+    var state = stateWith(100, 20, 1);
+
+    state.triggerLifecycle();
+
+    assertThat(state.getRecoverySpend()).isZero();
+  }
+
+  @Test
+  void pantryHoldIsComputedOnTheWorstCaseRecoveryCeilingWhileAnyoneIsWounded() {
+    var state = stateWith(100, 20, 14);
+    var unit = state.getUnits().get(UnitStats.WARRIOR).getFirst();
+    unit.setCurrentHealth(unit.getStats().getHealth() - 20);
+
+    assertThat(state.getPantryHoldSeconds()).isEqualTo(10);
+  }
+
+  @Test
+  void pantryHoldIgnoresRecoveryWhenNobodyIsWounded() {
+    var state = stateWith(100, 20, 14);
+
+    assertThat(state.getPantryHoldSeconds()).isEqualTo(24);
+  }
+
+  @Test
+  void pantryHoldIsAbsentWhileFieldsCoverUpkeep() {
+    var state = stateWith(100, 20, 8);
+
+    assertThat(state.getPantryHoldSeconds()).isNull();
+  }
+
+  @Test
+  void sellingFoodPaysTheConfiguredPrice() {
+    var state = stateWith(4.5, 1, 0);
+    state.getConfig().getReward().setFoodSellPrice(3.0);
+    var before = state.getCredit();
+
+    state.sellFood();
+
+    assertThat(state.getCredit()).isEqualTo(before + 4 * 3.0);
+  }
 }

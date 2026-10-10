@@ -37,6 +37,7 @@ game:
     boss-reward-multiplier: 3.0
     materials-sell-price: 2.0
     relics-sell-price: 25.0
+    food-sell-price: 1.0
   tower:
     max-floor: 100
   boss:

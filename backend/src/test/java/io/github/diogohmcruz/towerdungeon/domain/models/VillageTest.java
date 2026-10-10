@@ -102,4 +102,36 @@ class VillageTest {
     assertThat(village.takeFood(25)).isEqualTo(10);
     assertThat(village.getFood()).isZero();
   }
+
+  @Test
+  void pantryHoldsForTheTimeUntilStarvationBeginsAtCurrentRates() {
+    var village = village(100, 20);
+
+    // Fields +10, Upkeep -14, Recovery -5: (100 - 4) / (4 + 5) = 10.67, rounded down.
+    assertThat(village.secondsUntilStarvation(14, 5.0)).isEqualTo(10);
+    // Nothing wounded: (100 - 4) / 4.
+    assertThat(village.secondsUntilStarvation(14, 0.0)).isEqualTo(24);
+  }
+
+  @Test
+  void pantryHoldsIndefinitelyWhileFieldsCoverUpkeep() {
+    var village = village(100, 20);
+
+    assertThat(village.secondsUntilStarvation(8, 5.0)).isNull();
+    assertThat(village.secondsUntilStarvation(10, 5.0)).isNull();
+  }
+
+  @Test
+  void pantryHoldsZeroOnceUpkeepOutrunsWhatTheStockCanCover() {
+    var village = village(3, 20);
+
+    assertThat(village.secondsUntilStarvation(14, 5.0)).isZero();
+  }
+
+  @Test
+  void anEmptyPantryAtBreakEvenStarvesNextTick() {
+    var village = village(0, 20);
+
+    assertThat(village.secondsUntilStarvation(20, 0.0)).isZero();
+  }
 }

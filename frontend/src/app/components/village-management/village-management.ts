@@ -22,6 +22,14 @@ export class VillageManagement {
   readonly production = computed(() => this.gameState().village.productionRate);
   readonly upkeep = computed(() => this.gameState().foodUpkeep);
   readonly netFood = computed(() => this.gameState().netFoodPerSecond);
+  readonly recovery = computed(() => this.gameState().recoverySpend);
+  readonly pantryHoldSeconds = computed(
+    () => this.gameState().pantryHoldSeconds,
+  );
+  readonly pantryHoldsShort = computed(() => {
+    const seconds = this.pantryHoldSeconds();
+    return seconds !== null && seconds < 60;
+  });
   readonly homeUnits = computed(() => this.gameState().homeUnitCount);
   readonly materials = computed(() => this.gameState().resources.MATERIALS);
   readonly relics = computed(() => this.gameState().resources.RELICS);

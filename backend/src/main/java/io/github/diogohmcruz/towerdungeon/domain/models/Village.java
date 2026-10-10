@@ -76,6 +76,22 @@ public class Village {
     return false;
   }
 
+  /**
+   * Whole seconds (lifecycle ticks) the pantry holds before Starvation begins, at current rates:
+   * {@code (pantry - gap) / (gap + recoverySpend)} rounded down, where {@code gap} is the Upkeep
+   * for {@code unitCount} idle units that the Fields output does not cover. {@code recoverySpend}
+   * is what Recovery draws each tick; pass its ceiling for the worst case. Null means the Fields
+   * cover Upkeep and the pantry never runs the village into Starvation. Zero means Starvation
+   * begins on the next tick.
+   */
+  public Integer secondsUntilStarvation(int unitCount, double recoverySpend) {
+    var gap = upkeepFor(unitCount) - getProductionRate();
+    if (gap <= 0) {
+      return food + -gap <= 0 ? 0 : null;
+    }
+    return (int) Math.max(0, Math.floor((food - gap) / (gap + Math.max(0d, recoverySpend))));
+  }
+
   private boolean checkStarvation() {
     return this.food <= 0;
   }

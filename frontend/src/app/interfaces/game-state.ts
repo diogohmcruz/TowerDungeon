@@ -82,6 +82,10 @@ export interface GameState {
   homeUnitCount: number;
   foodUpkeep: number;
   netFoodPerSecond: number;
+  /** Food Recovery spent on the home party in the last tick. */
+  recoverySpend: number;
+  /** Seconds until Starvation begins at current rates; null while the Fields cover Upkeep. */
+  pantryHoldSeconds: number | null;
   unlockedUnitTypes: string[];
   availableUpgrades: UpgradeOffer[];
   damageMultiplier: number;
