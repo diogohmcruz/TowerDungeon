@@ -2,6 +2,8 @@
 
 Design only. No repository file was written or edited. Terms follow `CONTEXT.md` and `docs/brainstorm/roadmap.md` (Generation, Succession, Tower Memory, Easing, Works, the Door, Mutation). Tags: [TW §n] is `docs/research/tower-wizard.md`; [Arch §n] is `architecture-and-visual-identity.md`; [PB §n] is `village-resources.md`; [P&P §n] is `prestige-and-persistence.md`; [Invented] is original to this game. Every colour number below was recomputed from the hex values with Python (section 12), not estimated. Nothing was rendered on screen. All hex values are starting values to be confirmed in the ink spike.
 
+> **Decided by the author (2026-10-10):** the palette is the Tower's state, set by Generation, never a reward (recorded in `docs/adr/0004-the-palette-is-the-towers-state-not-a-reward.md`), and the darker, indigo-tinted night ground is accepted, so Generation 1's slot 0 becomes `#080923` (today's `#0e1424` stays as `LEGACY_INK` for the pinned round-trip test). Whether the dithered indigo shadow still reads as grim bleak stone is judged on screen in the ink spike (issue #15); the lighter CIE76-only alternative in open decision 1 is the fallback.
+
 ## 0. What the verification changed
 
 The first draft failed 12 checks (full list in the failures return). The ones that changed the design:
