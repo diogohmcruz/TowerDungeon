@@ -12,8 +12,6 @@ import java.util.random.RandomGenerator;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import io.github.diogohmcruz.towerdungeon.api.dtos.BuyActionDTO;
 import io.github.diogohmcruz.towerdungeon.api.dtos.InvadeActionDTO;
 import io.github.diogohmcruz.towerdungeon.api.dtos.ReinforceActionDTO;
@@ -32,6 +30,7 @@ import io.github.diogohmcruz.towerdungeon.domain.models.architecture.Architectur
 import io.github.diogohmcruz.towerdungeon.domain.models.upgrade.UpgradeType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import tools.jackson.databind.ObjectMapper;
 
 @Slf4j
 @Service

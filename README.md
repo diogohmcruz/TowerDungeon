@@ -36,7 +36,7 @@ For full manga reference material used by this project, see:
 
 ### Backend (`backend/`)
 
-- Built with **Spring Boot 3** using **WebFlux** and **Undertow**.
+- Built with **Spring Boot 4** using **WebFlux** and **Undertow**.
 - Keeps player sessions and game state **in memory**.
 - Core game domain is in `domain/models` (`GameState`, `Tower`, `TowerFloor`, `Unit`, `Enemy`, `Village`, etc.).
 - Main gameplay orchestration is in `domain/services/GameService`.

@@ -7,21 +7,21 @@ import org.springframework.web.reactive.socket.WebSocketHandler;
 import org.springframework.web.reactive.socket.WebSocketMessage;
 import org.springframework.web.reactive.socket.WebSocketSession;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import io.github.diogohmcruz.towerdungeon.api.dtos.BuyActionDTO;
 import io.github.diogohmcruz.towerdungeon.api.dtos.GameAction;
 import io.github.diogohmcruz.towerdungeon.api.dtos.GameActionDTO;
 import io.github.diogohmcruz.towerdungeon.api.dtos.GameActionEnvelope;
 import io.github.diogohmcruz.towerdungeon.api.dtos.InvadeActionDTO;
-import io.github.diogohmcruz.towerdungeon.api.dtos.ReinforceActionDTO;import io.github.diogohmcruz.towerdungeon.api.dtos.UpgradeActionDTO;
+import io.github.diogohmcruz.towerdungeon.api.dtos.ReinforceActionDTO;
+import io.github.diogohmcruz.towerdungeon.api.dtos.UpgradeActionDTO;
 import io.github.diogohmcruz.towerdungeon.domain.services.GameService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 
 @Slf4j
 @Component
@@ -83,13 +83,13 @@ public class GameWebSocketHandler implements WebSocketHandler {
         return;
       }
       handleGameAction(sessionId, payload, gameAction.gameAction());
-    } catch (JsonProcessingException err) {
+    } catch (JacksonException err) {
       log.error("Invalid message received from session {}", sessionId, err);
     }
   }
 
   private void handleGameAction(String sessionId, String message, GameAction gameAction)
-      throws JsonProcessingException {
+      throws JacksonException {
     switch (gameAction) {
       case BUY -> handleBuyAction(sessionId, message);
       case BUY_VILLAGERS -> gameService.handleBuyVillagersAction(sessionId);
@@ -104,26 +104,24 @@ public class GameWebSocketHandler implements WebSocketHandler {
     }
   }
 
-  private void handleBuyAction(String sessionId, String message) throws JsonProcessingException {
+  private void handleBuyAction(String sessionId, String message) throws JacksonException {
     var dto = objectMapper.readValue(message, new TypeReference<GameActionDTO<BuyActionDTO>>() {});
     gameService.handleMessage(sessionId, dto.payload());
   }
 
-  private void handleInvadeAction(String sessionId, String message) throws JsonProcessingException {
+  private void handleInvadeAction(String sessionId, String message) throws JacksonException {
     var dto =
         objectMapper.readValue(message, new TypeReference<GameActionDTO<InvadeActionDTO>>() {});
     gameService.handleMessage(sessionId, dto.payload());
   }
 
-  private void handleReinforceAction(String sessionId, String message)
-      throws JsonProcessingException {
+  private void handleReinforceAction(String sessionId, String message) throws JacksonException {
     var dto =
         objectMapper.readValue(message, new TypeReference<GameActionDTO<ReinforceActionDTO>>() {});
     gameService.handleMessage(sessionId, dto.payload());
   }
 
-  private void handleUpgradeAction(String sessionId, String message)
-      throws JsonProcessingException {
+  private void handleUpgradeAction(String sessionId, String message) throws JacksonException {
     var dto =
         objectMapper.readValue(message, new TypeReference<GameActionDTO<UpgradeActionDTO>>() {});
     gameService.handleUpgradeAction(sessionId, dto.payload());
