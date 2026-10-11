@@ -6,7 +6,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.3</version>
+        <version>4.1.1</version>
     </parent>
 
     <groupId>io.github.diogohmcruz</groupId>
@@ -27,11 +27,12 @@
     </distributionManagement>
 
     <properties>
-        <datafaker.version>2.4.3</datafaker.version>
-        <googleJavaFormat.version>1.27.0</googleJavaFormat.version>
+        <datafaker.version>2.7.0</datafaker.version>
+        <googleJavaFormat.version>1.36.0</googleJavaFormat.version>
         <java.version>24</java.version>
-        <spotless.version>2.44.4</spotless.version>
-        <springdoc.version>2.8.5</springdoc.version>
+        <spotless.version>3.10.4</spotless.version>
+        <springdoc.version>3.1.1</springdoc.version>
+        <undertow-starter.version>1.0.0.Alpha1-SNAPSHOT</undertow-starter.version>
     </properties>
 
     <dependencies>
@@ -41,13 +42,15 @@
             <exclusions>
                 <exclusion>
                     <groupId>org.springframework.boot</groupId>
-                    <artifactId>spring-boot-starter-tomcat</artifactId>
+                    <artifactId>spring-boot-starter-reactor-netty</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
+        <!-- TODO: only a locally built, WebSocket-patched 1.0.0.Alpha1-SNAPSHOT exists; switch to a release when published (see docs/adr/0005). -->
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-undertow</artifactId>
+            <groupId>io.undertow</groupId>
+            <artifactId>undertow-spring-boot-starter</artifactId>
+            <version>${undertow-starter.version}</version>
         </dependency>
 
         <dependency>
