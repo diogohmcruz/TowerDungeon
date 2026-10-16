@@ -15,7 +15,11 @@ import * as THREE from 'three';
 import { Tower, TowerFloor } from '../../interfaces/tower';
 import { Squad, Reinforcement } from '../../interfaces/game-state';
 import { Member } from '../../interfaces/member';
-import { SpriteTextureService, SpriteKind } from '../../three/sprite-texture.service';
+import {
+  SpriteTextureService,
+  SpriteKind,
+  SPRITE_ASPECT,
+} from '../../three/sprite-texture.service';
 import '../../three/catalogue';
 
 const FLOOR_HEIGHT = 2.2;
@@ -191,7 +195,9 @@ export class TowerSceneGraph {
   /** Canvas width/height ratio; drives how much the formations shrink to fit. */
   private readonly viewAspect = signal(0.6);
 
-  protected readonly bgColor = computed(() => (this.dark() ? '#0e1424' : '#9fc0e8'));
+  protected readonly bgColor = computed(() =>
+    this.dark() ? '#0e1424' : '#9fc0e8',
+  );
   protected readonly fogDensity = computed(() => (this.dark() ? 0.05 : 0.028));
   protected readonly ambient = computed(() => (this.dark() ? 0.85 : 1.1));
 
@@ -202,7 +208,9 @@ export class TowerSceneGraph {
       .sort((a, b) => a[0] - b[0]);
   });
 
-  private readonly currentFloor = computed(() => this.tower()?.currentFloor ?? 1);
+  private readonly currentFloor = computed(
+    () => this.tower()?.currentFloor ?? 1,
+  );
 
   /**
    * The floor the battle is *drawn* on. The party stands on top of a slab, so
@@ -214,7 +222,9 @@ export class TowerSceneGraph {
    * On floor 1 the party stands on the tower's base foundation (floor 0), so
    * the battle lines up exactly the same way as on every floor above it.
    */
-  private readonly anchorFloor = computed(() => Math.max(0, this.currentFloor() - 1));
+  private readonly anchorFloor = computed(() =>
+    Math.max(0, this.currentFloor() - 1),
+  );
 
   protected readonly slabs = computed<FloorSlab[]>(() => {
     const anchor = this.anchorFloor();
@@ -322,14 +332,33 @@ export class TowerSceneGraph {
     );
     const diagHalf = ((maxRows - 1) / 2) * ROW_STEP_X;
     const naturalHalf =
-      GROUP_OFFSET_X + ((maxCols - 1) * COL_STEP) / 2 + diagHalf + SPRITE_SCALE / 2;
+      GROUP_OFFSET_X +
+      ((maxCols - 1) * COL_STEP) / 2 +
+      diagHalf +
+      SPRITE_SCALE / 2;
     const visibleHalf = Math.max(1.05, 2.5 * this.viewAspect());
     const fit = Math.min(1, Math.max(0.24, (visibleHalf * 0.92) / naturalHalf));
 
     // Party formation on the left, enemies on the right of the current floor.
     // The two wedges lean opposite ways so they mirror across the centre.
-    this.layoutGroup('unit', partyMembers, -GROUP_OFFSET_X * fit, surfaceY, fit, 1, out);
-    this.layoutGroup('enemy', enemies, GROUP_OFFSET_X * fit, surfaceY, fit, -1, out);
+    this.layoutGroup(
+      'unit',
+      partyMembers,
+      -GROUP_OFFSET_X * fit,
+      surfaceY,
+      fit,
+      1,
+      out,
+    );
+    this.layoutGroup(
+      'enemy',
+      enemies,
+      GROUP_OFFSET_X * fit,
+      surfaceY,
+      fit,
+      -1,
+      out,
+    );
 
     // Reinforcement waves climbing up the front of the tower toward the party.
     const waveList = this.reinforcements();
@@ -345,7 +374,7 @@ export class TowerSceneGraph {
         texture: this.textures.get('unit', 'PORTER'),
         tint: waveColor(index),
         position: [wx, wy, SPRITE_Z + 0.4],
-        scale: [1.25, 1.25, 1],
+        scale: [1.25 * SPRITE_ASPECT, 1.25, 1],
       });
     });
 
@@ -398,7 +427,7 @@ export class TowerSceneGraph {
         texture: this.textures.get(kind, this.typeKey(kind, member)),
         tint: '#ffffff',
         position: [x, y, z],
-        scale: [spriteScale, spriteScale, 1],
+        scale: [spriteScale * SPRITE_ASPECT, spriteScale, 1],
       });
     });
   }
@@ -463,8 +492,13 @@ export class TowerSceneGraph {
 
   constructor() {
     const host = document.documentElement;
-    const observer = new MutationObserver(() => this.dark.set(this.readTheme()));
-    observer.observe(host, { attributes: true, attributeFilter: ['data-theme'] });
+    const observer = new MutationObserver(() =>
+      this.dark.set(this.readTheme()),
+    );
+    observer.observe(host, {
+      attributes: true,
+      attributeFilter: ['data-theme'],
+    });
     inject(DestroyRef).onDestroy(() => observer.disconnect());
 
     this.bindPanControls();
@@ -475,7 +509,9 @@ export class TowerSceneGraph {
 
       // Keep the panned view within the discovered tower (floor 1 → top floor).
       const floorsArr = this.floors();
-      const topFloor = floorsArr.length ? floorsArr[floorsArr.length - 1][0] : 1;
+      const topFloor = floorsArr.length
+        ? floorsArr[floorsArr.length - 1][0]
+        : 1;
       const minView = floorToY(0) - 0.5;
       const maxView = floorToY(topFloor) + 0.5;
       this.panY = THREE.MathUtils.clamp(

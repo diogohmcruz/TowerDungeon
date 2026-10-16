@@ -7,3 +7,24 @@ import { extend } from 'angular-three';
  * module for its side effect once, before any `<ngt-canvas>` is rendered.
  */
 extend(THREE);
+
+/**
+ * Slugs that have PNG art under `public/sprites/`. `SpriteTextureService`
+ * requests only these, so a type without art keeps its placeholder token and
+ * causes no 404.
+ */
+export const SPRITE_ART: Record<'unit' | 'enemy', readonly string[]> = {
+  unit: [
+    'warrior',
+    'archer',
+    'mage',
+    'healer',
+    'tank',
+    'captain',
+    'rogue',
+    'necromancer',
+    'draco-metamorph',
+    'porter',
+  ],
+  enemy: ['slime', 'dead-soldiers', 'tower-beast', 'chimera', 'stone-golem'],
+};

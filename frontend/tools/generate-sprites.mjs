@@ -1,0 +1,372 @@
+// Generates the 12 x 16 index PNGs under public/sprites/{units,enemies}.
+// Run with `npm run sprites`. Lives outside public/ and src/, so it is never
+// part of the Angular build or served to players.
+//
+// Recipe glyphs: '.' clear, '1' ramp slot 1 (line), '2' slot 2 (detail),
+// '3' slot 3 (fill). Recipes are bottom-aligned: units stand on row 15,
+// enemies on row 14 so the auto-drawn one-pixel rim fits on row 15.
+import { deflateSync } from "node:zlib";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+
+const WIDTH = 12;
+const HEIGHT = 16;
+const GREY = { ".": 0, 1: 85, 2: 170, 3: 255 };
+
+const units = {
+  warrior: [
+    ".........2..",
+    ".........2..",
+    "...222...2..",
+    "...232...2..",
+    "...222...2..",
+    "..22222..2..",
+    "1122222.222.",
+    "1122222..2..",
+    "1122222..2..",
+    "11.2222..2..",
+    "...2222.....",
+    "...2..2.....",
+    "...2..2.....",
+    "...2..2.....",
+    "...2..2.....",
+    "..22..22....",
+  ],
+  archer: [
+    "....22..1...",
+    "...2222..1..",
+    "...2322...1.",
+    "...2222...1.",
+    "....22....1.",
+    "..2222222.1.",
+    ".222222.2.1.",
+    ".2.2222...1.",
+    "...2222...1.",
+    "...2222..1..",
+    "...2222.1...",
+    "...2..2.....",
+    "...2..2.....",
+    "...2..2.....",
+    "...2..2.....",
+    "..22..22....",
+  ],
+  mage: [
+    ".....2......",
+    ".....2......",
+    "....222.....",
+    "....222.....",
+    "...22222....",
+    "..2222222...",
+    "....232.....",
+    "...22222....",
+    "..2222222..1",
+    "..2222222..1",
+    "..2222222..1",
+    "..2222222..1",
+    ".222222222.1",
+    ".222222222.1",
+    ".222222222.1",
+    ".222222222.1",
+  ],
+  healer: [
+    "....1221....",
+    "...222222...",
+    "...221322.1.",
+    "...222222111",
+    "..22222222.1",
+    ".222222222.1",
+    ".222222222.1",
+    ".222222222.1",
+    ".222222222.1",
+    ".222222222.1",
+    ".222222222.1",
+    "..22222222.1",
+    "..22222222.1",
+    "...222222..1",
+    "..22222222..",
+    "..22222222..",
+  ],
+  tank: [
+    "....2222....",
+    "....2322....",
+    "....2222....",
+    "222222222222",
+    "222222222222",
+    "22.222222.22",
+    "22.222222.22",
+    "2..222222..2",
+    "...222222...",
+    "...222222...",
+    "...222222...",
+    "...22..22...",
+    "..222..222..",
+    "..222..222..",
+    "..222..222..",
+    ".2222..2222.",
+  ],
+  captain: [
+    "....22....1.",
+    "...2222...1.",
+    "...2322.111.",
+    "...2222.11..",
+    "....22....1.",
+    "..222222..1.",
+    ".22222222.1.",
+    ".22222222.1.",
+    "..222222..1.",
+    "..222222..1.",
+    "..222222..1.",
+    "..22..22..1.",
+    "..22..22..1.",
+    "..22..22..1.",
+    "..22..22..1.",
+    ".222..222.1.",
+  ],
+  rogue: [
+    "....2222....",
+    "...222222...",
+    "...221322...",
+    "...222222...",
+    "..22222222..",
+    "1.22222222.1",
+    ".1222222221.",
+    "..22222222..",
+    "..22222222..",
+    "...222222...",
+    "...22..22...",
+    "..22....22..",
+    "..22....22..",
+    ".222....222.",
+  ],
+  necromancer: [
+    ".111...22...",
+    ".1.1..2222..",
+    ".111..2322..",
+    "..1...2222..",
+    "..1..222222.",
+    "..1.22222222",
+    "..1.22222222",
+    "..1.22222222",
+    "..1..222222.",
+    "..1..222222.",
+    "..1.22222222",
+    "..1.22222222",
+    "..1.22222222",
+    "..1..222222.",
+    "..1.22222222",
+    "..1.2.22.222",
+  ],
+  "draco-metamorph": [
+    "...2....2...",
+    "...222222...",
+    "...223222...",
+    "....2222....",
+    "1...2222...1",
+    "11.222222.11",
+    "111222222111",
+    ".1122222211.",
+    "..12222221..",
+    "...222222...",
+    "...222222...",
+    "....2222....",
+    "...22..22...",
+    "...22..22...",
+    "..222..222..",
+  ],
+  porter: [
+    "..2222......",
+    "..2322......",
+    "..2222.11111",
+    "...22.111111",
+    "..2222111111",
+    "..2222111111",
+    "..2222111111",
+    "..2222111111",
+    "..2222111111",
+    "...222.11111",
+    "...222......",
+    "...22.2.....",
+    "...22..2....",
+    "..22...22...",
+    ".22.....22..",
+  ],
+};
+
+const enemies = {
+  slime: [
+    "....3333....",
+    "...333333...",
+    "..33333333..",
+    "..32333323..",
+    ".3333333333.",
+    ".3333333333.",
+    ".3333333333.",
+    ".3333333333.",
+    ".3333333333.",
+  ],
+  "dead-soldiers": [
+    ".........3..",
+    "...333...3..",
+    "..32323..3..",
+    "...333...3..",
+    "...3.3...3..",
+    "..33333..3..",
+    "..32323..3..",
+    "..33333..3..",
+    "..32323..3..",
+    "...333...3..",
+    "...3.3...3..",
+    "...3.3...3..",
+    "...3.3...3..",
+    "...3.3......",
+    "..33.33.....",
+  ],
+  "tower-beast": [
+    ".3..........",
+    ".33.3333333.",
+    ".3333333333.",
+    ".3233333333.",
+    "..33333333..",
+    "..33333333..",
+    "..33333333..",
+    "..33.33.33..",
+    "..33.33.33..",
+    "..33.33.33..",
+  ],
+  chimera: [
+    ".3........3.",
+    "..3......3..",
+    "...3....3...",
+    "....3333....",
+    "...333333...",
+    "..32333323..",
+    "..33333333..",
+    "3.33333333.3",
+    ".3.333333.3.",
+    "3..333333..3",
+    "..3.3333.3..",
+    ".3...33...3.",
+    "3...3..3...3",
+  ],
+  "stone-golem": [
+    "...333333...",
+    "...323323...",
+    "...333333...",
+    "333333333333",
+    "333333333333",
+    "33.333333.33",
+    "33.332233.33",
+    "33.333333.33",
+    "33.333333.33",
+    ".3.333333.3.",
+    "...333333...",
+    "...33..33...",
+    "..333..333..",
+    "..333..333..",
+    ".3333..3333.",
+  ],
+};
+
+export const SPRITES = { units, enemies };
+
+/** Returns 12 x 16 grey values (0 clear, 85 / 170 / 255 for slots 1 to 3). */
+export function renderSprite(kind, recipe) {
+  const baseRow = kind === "enemies" ? HEIGHT - 2 : HEIGHT - 1;
+  if (recipe.length > baseRow + 1) throw new Error("recipe too tall");
+  const grid = Array.from({ length: HEIGHT }, () => Array(WIDTH).fill("."));
+  const top = baseRow - recipe.length + 1;
+  recipe.forEach((line, i) => {
+    if (line.length !== WIDTH) throw new Error(`bad row width: "${line}"`);
+    [...line].forEach((ch, x) => {
+      if (!(ch in GREY)) throw new Error(`bad glyph "${ch}"`);
+      grid[top + i][x] = ch;
+    });
+  });
+  if (kind === "enemies") {
+    const rim = [];
+    for (let y = 0; y < HEIGHT; y++) {
+      for (let x = 0; x < WIDTH; x++) {
+        if (grid[y][x] !== ".") continue;
+        const near = [
+          [1, 0],
+          [-1, 0],
+          [0, 1],
+          [0, -1],
+        ].some(
+          ([dx, dy]) =>
+            grid[y + dy]?.[x + dx] !== undefined &&
+            grid[y + dy][x + dx] !== "." &&
+            grid[y + dy][x + dx] !== "1",
+        );
+        if (near) rim.push([x, y]);
+      }
+    }
+    rim.forEach(([x, y]) => (grid[y][x] = "1"));
+  }
+  return grid.flat().map((ch) => GREY[ch]);
+}
+
+const crcTable = Array.from({ length: 256 }, (_, n) => {
+  let c = n;
+  for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+  return c >>> 0;
+});
+
+function crc32(buf) {
+  let c = 0xffffffff;
+  for (const b of buf) c = crcTable[(c ^ b) & 0xff] ^ (c >>> 8);
+  return (c ^ 0xffffffff) >>> 0;
+}
+
+function chunk(type, data) {
+  const out = Buffer.alloc(12 + data.length);
+  out.writeUInt32BE(data.length, 0);
+  out.write(type, 4, "latin1");
+  data.copy(out, 8);
+  out.writeUInt32BE(crc32(out.subarray(4, 8 + data.length)), 8 + data.length);
+  return out;
+}
+
+/** 8-bit grayscale + alpha PNG; a non-zero grey is opaque, zero is transparent. */
+export function encodePng(width, height, greys) {
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(width, 0);
+  ihdr.writeUInt32BE(height, 4);
+  ihdr[8] = 8;
+  ihdr[9] = 4;
+  const raw = Buffer.alloc(height * (1 + width * 2));
+  for (let y = 0; y < height; y++) {
+    const row = y * (1 + width * 2);
+    for (let x = 0; x < width; x++) {
+      const g = greys[y * width + x];
+      raw[row + 1 + x * 2] = g;
+      raw[row + 2 + x * 2] = g ? 255 : 0;
+    }
+  }
+  return Buffer.concat([
+    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
+    chunk("IHDR", ihdr),
+    chunk("IDAT", deflateSync(raw)),
+    chunk("IEND", Buffer.alloc(0)),
+  ]);
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const root = join(
+    dirname(fileURLToPath(import.meta.url)),
+    "..",
+    "public",
+    "sprites",
+  );
+  for (const [kind, set] of Object.entries(SPRITES)) {
+    mkdirSync(join(root, kind), { recursive: true });
+    for (const [slug, recipe] of Object.entries(set)) {
+      writeFileSync(
+        join(root, kind, `${slug}.png`),
+        encodePng(WIDTH, HEIGHT, renderSprite(kind, recipe)),
+      );
+    }
+  }
+  console.log("sprites written to", root);
+}
