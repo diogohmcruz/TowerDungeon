@@ -1,5 +1,7 @@
 import { Injectable } from '@angular/core';
 import * as THREE from 'three';
+import { SPRITE_ART } from './catalogue';
+import { mapRamp, RAMPS } from './sprite-ramp';
 
 /** Base colors used for placeholder billboards until real PNG art is supplied. */
 const UNIT_COLORS: Record<string, string> = {
@@ -17,6 +19,9 @@ const UNIT_COLORS: Record<string, string> = {
 
 const ENEMY_DEFAULT = '#9a3b3b';
 
+/** Width over height of every figure: 12 x 16 art, and the placeholder token matches. */
+export const SPRITE_ASPECT = 12 / 16;
+
 export type SpriteKind = 'unit' | 'enemy';
 
 /**
@@ -29,7 +34,10 @@ export type SpriteKind = 'unit' | 'enemy';
 @Injectable({ providedIn: 'root' })
 export class SpriteTextureService {
   private readonly cache = new Map<string, THREE.Texture>();
-  private readonly textCache = new Map<string, { texture: THREE.Texture; aspect: number }>();
+  private readonly textCache = new Map<
+    string,
+    { texture: THREE.Texture; aspect: number }
+  >();
   private readonly loader = new THREE.TextureLoader();
 
   get(kind: SpriteKind, typeKey: string): THREE.Texture {
@@ -57,7 +65,10 @@ export class SpriteTextureService {
    * plus the canvas aspect ratio so the caller can size the sprite without
    * distortion.
    */
-  text(content: string, opts?: { color?: string }): { texture: THREE.Texture; aspect: number } {
+  text(
+    content: string,
+    opts?: { color?: string },
+  ): { texture: THREE.Texture; aspect: number } {
     const color = opts?.color ?? '#f4ead2';
     const key = `text:${content}|${color}`;
     const cached = this.textCache.get(key);
@@ -106,40 +117,72 @@ export class SpriteTextureService {
       .replace(/^-+|-+$/g, '');
   }
 
-  private tryLoadArt(kind: SpriteKind, typeKey: string, target: THREE.Texture): void {
+  /** True when a PNG is listed in the catalogue, so the placeholder is swapped for art. */
+  hasArt(kind: SpriteKind, typeKey: string): boolean {
+    return SPRITE_ART[kind].includes(this.slug(typeKey));
+  }
+
+  private tryLoadArt(
+    kind: SpriteKind,
+    typeKey: string,
+    target: THREE.Texture,
+  ): void {
+    if (!this.hasArt(kind, typeKey)) {
+      return;
+    }
     const folder = kind === 'unit' ? 'units' : 'enemies';
     const url = `/sprites/${folder}/${this.slug(typeKey)}.png`;
     this.loader.load(
       url,
       (loaded) => {
-        target.image = loaded.image;
+        const image = loaded.image as HTMLImageElement;
+        if (!image.width || !image.height) {
+          loaded.dispose();
+          return;
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = image.width;
+        canvas.height = image.height;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
+        ctx.drawImage(image, 0, 0);
+        const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        mapRamp(pixels.data, RAMPS[kind]);
+        ctx.putImageData(pixels, 0, 0);
+
+        // The placeholder may already be on the GPU at another size; dispose so it re-uploads.
+        target.dispose();
+        target.image = canvas;
         target.colorSpace = THREE.SRGBColorSpace;
+        target.magFilter = THREE.NearestFilter;
+        target.minFilter = THREE.NearestFilter;
+        target.generateMipmaps = false;
         target.needsUpdate = true;
         loaded.dispose();
       },
       undefined,
       () => {
-        // No art yet — keep the placeholder token.
+        // Listed art failed to load — keep the placeholder token.
       },
     );
   }
 
   private makePlaceholder(kind: SpriteKind, typeKey: string): THREE.Texture {
     const size = 256;
+    const width = size * SPRITE_ASPECT;
     const canvas = document.createElement('canvas');
-    canvas.width = size;
+    canvas.width = width;
     canvas.height = size;
     const ctx = canvas.getContext('2d')!;
 
     const color = this.colorFor(kind, typeKey);
     const label = this.labelFor(typeKey);
 
-    ctx.clearRect(0, 0, size, size);
+    ctx.clearRect(0, 0, width, size);
 
     // token body
     const pad = 24;
     const radius = 40;
-    this.roundRect(ctx, pad, pad, size - pad * 2, size - pad * 2, radius);
+    this.roundRect(ctx, pad, pad, width - pad * 2, size - pad * 2, radius);
     const grad = ctx.createLinearGradient(0, pad, 0, size - pad);
     grad.addColorStop(0, this.lighten(color, 0.25));
     grad.addColorStop(1, this.darken(color, 0.2));
@@ -157,7 +200,7 @@ export class SpriteTextureService {
     ctx.textBaseline = 'middle';
     ctx.shadowColor = 'rgba(0,0,0,0.55)';
     ctx.shadowBlur = 8;
-    ctx.fillText(label, size / 2, size / 2 + 4);
+    ctx.fillText(label, width / 2, size / 2 + 4);
 
     const texture = new THREE.CanvasTexture(canvas);
     texture.colorSpace = THREE.SRGBColorSpace;
