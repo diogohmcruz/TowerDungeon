@@ -98,6 +98,10 @@ export class VillageScene {
       hands[view.trade] = view.hands;
       posts[view.trade] = view.posts;
     }
+    const upgrades: Record<string, number> = {};
+    for (const u of s.availableUpgrades ?? []) {
+      upgrades[u.id] = u.level;
+    }
     const tick = this.tick();
     return {
       food: s.village.food,
@@ -109,6 +113,7 @@ export class VillageScene {
       materials: s.resources.MATERIALS,
       relics: s.resources.RELICS,
       villageTierLevel: s.villageTierLevel,
+      upgrades,
       saltPansOpen: s.loadout?.saltPansOpen ?? false,
       salt: s.village.salt,
       shortcuts: (s.shortcuts ?? [])

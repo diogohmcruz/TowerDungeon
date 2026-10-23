@@ -7,6 +7,8 @@ import {
   EMPTY_VILLAGE,
   figureCounts,
   FRAME_WIDTH,
+  growthLevels,
+  INVISIBLE_UPGRADES,
   heapBlocks,
   LANES,
   litLamps,
@@ -18,6 +20,7 @@ import {
   SHORTCUT_MARK_ID,
   shortcutMarkHeight,
   siloFill,
+  UPGRADE_MODULES,
   VillageInput,
   villageBounds,
   vaultCrates,
@@ -402,6 +405,101 @@ describe('village layout', () => {
         const top = new THREE.Vector3(0, MAX_VILLAGE_HEIGHT, 1).project(cam);
         expect(top.y).toBeLessThan(-0.2);
       }
+    });
+  });
+
+  describe('growth', () => {
+    /** The backend's UpgradeType names (the catalogue). */
+    const CATALOGUE = [
+      'UNLOCK_HEALER',
+      'UNLOCK_TANK',
+      'UNLOCK_ROGUE',
+      'UNLOCK_NECROMANCER',
+      'UNLOCK_DRACO_METAMORPH',
+      'SUPPLY_LINES',
+      'SHARPENED_ARMS',
+    ];
+    const modules = (volumes: Volume[]) =>
+      new Set(
+        volumes
+          .filter((v) => v.id.startsWith('grow:'))
+          .map((v) => v.id.split(':').slice(0, 3).join(':')),
+      );
+    const full = Object.fromEntries(
+      Object.entries(UPGRADE_MODULES).map(([id, m]) => [id, m.cap]),
+    );
+
+    it('has a module entry, or an explicit invisible mark, for every Upgrade', () => {
+      for (const id of CATALOGUE) {
+        expect(id in UPGRADE_MODULES || INVISIBLE_UPGRADES.includes(id)).toBe(true);
+      }
+      expect(Object.keys(UPGRADE_MODULES).every((id) => CATALOGUE.includes(id))).toBe(true);
+    });
+
+    it('matches today\'s picture with no Upgrades', () => {
+      const base = buildVillage(EMPTY_VILLAGE);
+      expect(ids(base).some((i) => i.startsWith('grow:'))).toBe(false);
+      expect(buildVillage({ ...EMPTY_VILLAGE, upgrades: { SUPPLY_LINES: 0 } })).toEqual(base);
+      // Unknown ids and negative levels show nothing.
+      expect(
+        buildVillage({ ...EMPTY_VILLAGE, upgrades: { NOPE: 3, SHARPENED_ARMS: -1 } }),
+      ).toEqual(base);
+    });
+
+    it('adds exactly one module per level bought, up to the cap', () => {
+      for (const [id, m] of Object.entries(UPGRADE_MODULES)) {
+        let before = buildVillage(BUSY);
+        for (let level = 1; level <= m.cap + 2; level++) {
+          const after = buildVillage({ ...BUSY, upgrades: { [id]: level } });
+          const added = modules(after).size - modules(before).size;
+          expect(added).toBe(level <= m.cap ? 1 : 0);
+          // Everything else in the picture is untouched.
+          const rest = (vs: Volume[]) => vs.filter((v) => !v.id.startsWith('grow:'));
+          expect(rest(after)).toEqual(rest(before));
+          before = after;
+        }
+      }
+    });
+
+    it('is a pure, deterministic function of the state', () => {
+      const a = buildVillage({ ...BUSY, upgrades: full });
+      const b = buildVillage({
+        ...BUSY,
+        upgrades: Object.fromEntries(Object.entries(full).reverse()),
+      });
+      expect(b).toEqual(a);
+      expect(buildVillage({ ...BUSY, upgrades: full })).toEqual(a);
+      expect(growthLevels('SUPPLY_LINES', 99)).toBe(UPGRADE_MODULES['SUPPLY_LINES'].cap);
+      expect(growthLevels('SUPPLY_LINES', 2.9)).toBe(2);
+    });
+
+    for (const [name, base] of [
+      ['an empty village', EMPTY_VILLAGE],
+      ['a busy village', BUSY],
+    ] as const) {
+      it(`keeps ${name} with every Upgrade inside the bounds`, () => {
+        const b = villageBounds(buildVillage({ ...base, upgrades: full }));
+        expect(b.maxX - b.minX).toBeLessThanOrEqual(MAX_VILLAGE_SHARE * FRAME_WIDTH);
+        expect(b.maxY - b.minY).toBeLessThan(MAX_VILLAGE_HEIGHT);
+        expect(b.minX).toBeGreaterThanOrEqual(-FRAME_WIDTH * 0.3);
+        expect(b.maxX).toBeLessThanOrEqual(FRAME_WIDTH * 0.3);
+        expect(b.minY).toBeGreaterThanOrEqual(0);
+        // Growth never makes the Village wider or taller than it already is.
+        const plain = villageBounds(buildVillage(base));
+        expect(b.maxY).toBeLessThanOrEqual(Math.max(plain.maxY, 1.8) + 1e-9);
+      });
+    }
+
+    it('leaves Village Tier lamps and the Pans footing alone', () => {
+      const plain = buildVillage({ ...BUSY, saltPansOpen: false });
+      const grown = buildVillage({ ...BUSY, saltPansOpen: false, upgrades: full });
+      for (const id of ids(plain).filter((i) => /^(lamp|footing)/.test(i))) {
+        expect(grown.find((v) => v.id === id)).toEqual(plain.find((v) => v.id === id));
+      }
+    });
+
+    it('stays within the renderer capacity', () => {
+      expect(buildVillage({ ...BUSY, upgrades: full }).length).toBeLessThanOrEqual(512);
     });
   });
 });

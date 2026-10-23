@@ -41,6 +41,12 @@ export class VillageFixturePage {
         materials: 300,
         relics: 3,
         villageTierLevel: 2,
+        upgrades: {
+          UNLOCK_HEALER: 1,
+          UNLOCK_ROGUE: 1,
+          SUPPLY_LINES: 3,
+          SHARPENED_ARMS: 2,
+        },
         saltPansOpen: true,
         salt: 40,
         shortcuts: [

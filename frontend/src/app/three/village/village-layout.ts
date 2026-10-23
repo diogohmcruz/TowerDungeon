@@ -87,6 +87,8 @@ export interface VillageInput {
   materials: number;
   relics: number;
   villageTierLevel: number;
+  /** Levels owned per Upgrade id (the catalogue's `UpgradeType` names); absent means none. */
+  upgrades: Record<string, number>;
   saltPansOpen: boolean;
   /** Salt held, for the crust height. */
   salt: number;
@@ -112,6 +114,7 @@ export const EMPTY_VILLAGE: VillageInput = {
   materials: 0,
   relics: 0,
   villageTierLevel: 0,
+  upgrades: {},
   saltPansOpen: false,
   salt: 0,
   shortcuts: [],
@@ -405,6 +408,107 @@ function pans(out: Volume[], open: boolean, salt: number): void {
   }
 }
 
+/**
+ * Growth: what each purchased Upgrade adds to the Village. One module per
+ * level owned, up to `cap`; a module is a few boxes under ids `grow:<Upgrade>:<n>:<part>`.
+ * Modules sit inside the existing footprint (x within the Annex span, under
+ * the silo's height), so the Village grows denser, never wider or taller.
+ */
+interface GrowthModule {
+  /** Most levels shown; levels beyond this still count in the game, not in the picture. */
+  cap: number;
+  /** Draws the module for the `n`th level owned (0-based). */
+  build(out: Volume[], id: string, n: number): void;
+}
+
+/** The module table: one entry per Upgrade in the catalogue (see `INVISIBLE_UPGRADES`). */
+export const UPGRADE_MODULES: Record<string, GrowthModule> = {
+  // The Field Medic: a lean-to roof over the Fort's yard.
+  UNLOCK_HEALER: {
+    cap: 1,
+    build(out, id) {
+      const x = mid(ANNEX_X.fort);
+      box(out, `${id}:roof`, 'village', x, 0.55, 0.85, 1.2, 0.04, 0.5, VILLAGE_TONE.timber);
+      box(out, `${id}:post-a`, 'village', x - 0.55, 0, 0.7, 0.04, 0.55, 0.04, VILLAGE_TONE.timber);
+      box(out, `${id}:post-b`, 'village', x + 0.55, 0, 0.7, 0.04, 0.55, 0.04, VILLAGE_TONE.timber);
+    },
+  },
+  // The Ironclad: a stockade fence across the Fort's front.
+  UNLOCK_TANK: {
+    cap: 1,
+    build(out, id) {
+      const [x0, x1] = ANNEX_X.fort;
+      for (let i = 0; i < 6; i++) {
+        box(out, `${id}:post-${i}`, 'village', x0 + 0.1 + (i * (x1 - x0 - 0.2)) / 5, 0, 1.12, 0.05, 0.3, 0.05, VILLAGE_TONE.timber);
+      }
+      box(out, `${id}:rail`, 'village', mid(ANNEX_X.fort), 0.2, 1.12, x1 - x0 - 0.1, 0.03, 0.03, VILLAGE_TONE.timber);
+    },
+  },
+  // The Shadow: a watchtower behind the Vault.
+  UNLOCK_ROGUE: {
+    cap: 1,
+    build(out, id) {
+      box(out, `${id}:shaft`, 'village', 2.6, 0, -0.6, 0.3, 1.6, 0.3, VILLAGE_TONE.stone);
+      box(out, `${id}:cap`, 'village', 2.6, 1.6, -0.6, 0.46, 0.16, 0.46, VILLAGE_TONE.timber);
+      box(out, `${id}:slit`, 'village', 2.6, 1.2, -0.43, 0.04, 0.2, 0.02, VILLAGE_TONE.dark);
+    },
+  },
+  // The Necromancer: a lone dark obelisk behind the Quarry.
+  UNLOCK_NECROMANCER: {
+    cap: 1,
+    build(out, id) {
+      box(out, `${id}:obelisk`, 'village', 0.3, 0, -0.7, 0.16, 1.3, 0.16, VILLAGE_TONE.dark);
+      box(out, `${id}:plinth`, 'village', 0.3, 0, -0.7, 0.3, 0.1, 0.3, VILLAGE_TONE.stone);
+    },
+  },
+  // The Draco-Metamorph: a squat bone-lit brazier behind the Fields.
+  UNLOCK_DRACO_METAMORPH: {
+    cap: 1,
+    build(out, id) {
+      box(out, `${id}:bowl`, 'village', -0.7, 0, -0.7, 0.34, 0.5, 0.34, VILLAGE_TONE.stone);
+      box(out, `${id}:ember`, 'village', -0.7, 0.5, -0.7, 0.2, 0.06, 0.2, VILLAGE_TONE.lit);
+    },
+  },
+  // Supply Lines: a second silo, then crates stacked beside it.
+  SUPPLY_LINES: {
+    cap: 4,
+    build(out, id, n) {
+      if (n === 0) {
+        box(out, `${id}:silo`, 'village', -1.0, 0, SILO_Z, 0.3, 1.4, 0.3, VILLAGE_TONE.silo);
+        return;
+      }
+      box(out, `${id}:crate`, 'village', -0.7 + n * 0.17, 0, SILO_Z, 0.14, 0.14 + (n % 2) * 0.06, 0.14, VILLAGE_TONE.timber);
+    },
+  },
+  // Sharpened Arms: a spear stood in the rack before the Vault, one per level.
+  SHARPENED_ARMS: {
+    cap: 4,
+    build(out, id, n) {
+      const x = 2.2 + n * 0.22;
+      box(out, `${id}:spear`, 'village', x, 0, 1.0, 0.03, 0.8, 0.03, VILLAGE_TONE.ash);
+      box(out, `${id}:head`, 'village', x, 0.8, 1.0, 0.07, 0.1, 0.03, VILLAGE_TONE.lit);
+    },
+  },
+};
+
+/** Upgrades in the catalogue that intentionally show nothing. None today. */
+export const INVISIBLE_UPGRADES: readonly string[] = [];
+
+/** Levels of an Upgrade the picture shows: owned, whole, capped per Upgrade. */
+export function growthLevels(id: string, owned: number): number {
+  const m = UPGRADE_MODULES[id];
+  if (!m || !(owned > 0)) return 0;
+  return Math.min(m.cap, Math.floor(owned));
+}
+
+function growth(out: Volume[], upgrades: Record<string, number>): void {
+  // Table order, not the order of the state's keys, so the layout is deterministic.
+  for (const id of Object.keys(UPGRADE_MODULES)) {
+    const n = growthLevels(id, upgrades[id] ?? 0);
+    for (let i = 0; i < n; i++) UPGRADE_MODULES[id].build(out, `grow:${id}:${i}`, i);
+  }
+}
+
 function tower(out: Volume[]): void {
   // The Base slab floats above a black gap and the Tower rises behind the Village
   // into dither: dissolving alpha, not fog, so the top fades into ink.
@@ -530,6 +634,7 @@ export function buildVillage(input: VillageInput): Volume[] {
   vault(out, input.materials, input.relics);
   pans(out, input.saltPansOpen, input.salt);
   shortcutMarks(out, input.shortcuts, input.highlightedShortcut);
+  growth(out, input.upgrades ?? {});
   reserves(out, input.reserves);
   villagers(out, input.hands, input.tick, input.still);
   return out;
