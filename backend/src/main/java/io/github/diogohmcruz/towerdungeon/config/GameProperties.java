@@ -414,6 +414,9 @@ public class GameProperties {
     private final Leftover leftover = new Leftover();
     private final Bundle bundle = new Bundle();
 
+    /** Most items a floor keeps for the party to find again; the lowest rating vanish first. */
+    private int floorGearCap = 12;
+
     /** The Bundle of a cleared floor and the rolls that share it out. */
     @Data
     public static class Bundle {

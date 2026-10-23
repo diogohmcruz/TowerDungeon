@@ -564,7 +564,8 @@ public class GameService {
     }
     var currentEnemies = currentTowerFloor.getEnemies();
     partyCombat.unitsAttack(unitsOnTower, currentEnemies, currentTowerFloor, gameState);
-    partyCombat.enemiesAttack(gameState, currentEnemies, unitsOnTower);
+    gameState.dropGearOnCurrentFloor(
+        partyCombat.enemiesAttack(gameState, currentEnemies, unitsOnTower));
   }
 
   private void gatherFloorLoot(GameState gameState, int clearedFloor, double rewardMultiplier) {
@@ -585,7 +586,10 @@ public class GameService {
   private void applyStarvation(GameState gameState) {
     var starving =
         gameState.getUnitsOnTower().values().stream().flatMap(Collection::stream).toList();
-    starving.forEach(unit -> unit.receiveAttack(config.getLoop().getStarvationDamage(), null));
+    starving.forEach(
+        unit ->
+            gameState.dropGearOnCurrentFloor(
+                unit.receiveAttack(config.getLoop().getStarvationDamage(), null)));
     starving.stream().filter(BaseUnit::isDead).toList().forEach(gameState::removeUnit);
   }
 

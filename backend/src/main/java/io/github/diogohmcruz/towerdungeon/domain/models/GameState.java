@@ -2,6 +2,7 @@ package io.github.diogohmcruz.towerdungeon.domain.models;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -19,6 +20,9 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
 import io.github.diogohmcruz.towerdungeon.config.ThreadLocalRandomGenerator;
+import io.github.diogohmcruz.towerdungeon.domain.items.FloorGearStore;
+import io.github.diogohmcruz.towerdungeon.domain.items.Item;
+import io.github.diogohmcruz.towerdungeon.domain.items.ItemRating;
 import io.github.diogohmcruz.towerdungeon.domain.items.ItemTier;
 import io.github.diogohmcruz.towerdungeon.domain.models.architecture.ArchitecturePlan;
 import io.github.diogohmcruz.towerdungeon.domain.models.healing.FoodDistributionStrategy;
@@ -444,7 +448,8 @@ public class GameState {
 
   private void starveWave(Reinforcement wave, double damage) {
     var climbers = wave.getUnits().values().stream().flatMap(List::stream).toList();
-    climbers.forEach(climber -> climber.receiveAttack(damage, null));
+    var floor = (int) wave.getCurrentFloor();
+    climbers.forEach(climber -> dropGear(floor, climber.receiveAttack(damage, null)));
     climbers.stream()
         .filter(BaseUnit::isDead)
         .forEach(
@@ -452,6 +457,7 @@ public class GameState {
               var list = wave.getUnits().get(dead.getStats());
               if (list != null && list.remove(dead)) {
                 runUnitsLost++;
+                dropGear(floor, dead.dropAll());
               }
             });
   }
@@ -1000,11 +1006,46 @@ public class GameState {
         unitsOnTower.remove(targetUnit.getStats());
       }
       runUnitsLost++;
+      dropGearOnCurrentFloor(targetUnit.dropAll());
       recalculateSupplyCapacity();
       partyMembers().forEach(unit -> unit.changeSanity(-config.getSanity().getAllyDeathDrain()));
     } else {
       log.warn("Unit {} not found on tower. Failed to remove.", targetUnit);
     }
+  }
+
+  /** Leaves gear on the floor the party stands on; see {@link #dropGear}. */
+  public void dropGearOnCurrentFloor(Collection<Item> items) {
+    dropGear(tower == null ? 0 : tower.getCurrentFloor(), items);
+  }
+
+  /**
+   * Leaves gear on a floor of the tower, to be found again in that floor's Bundle. The base (floor
+   * 0) has no Bundle, so gear dropped there is lost, as is anything over the floor's cap.
+   */
+  public void dropGear(int floor, Collection<Item> items) {
+    if (tower == null || floor < 1 || items.isEmpty()) {
+      return;
+    }
+    var items0 = config.getItems();
+    tower
+        .getFloorMemory()
+        .leaveGear(floor, items, new ItemRating(items0.getWeights()), items0.getFloorGearCap());
+  }
+
+  /** The gear waiting on each floor, as the Bundle of a cleared floor reads and refills it. */
+  public FloorGearStore floorGear() {
+    return new FloorGearStore() {
+      @Override
+      public List<Item> takeAll(int floor) {
+        return tower == null ? List.of() : tower.getFloorMemory().takeGear(floor);
+      }
+
+      @Override
+      public void putBack(int floor, Collection<Item> items) {
+        dropGear(floor, items);
+      }
+    };
   }
 
   private List<Unit> partyMembers() {
@@ -1050,7 +1091,7 @@ public class GameState {
     var unitsToRemove =
         unitsOnTower.values().stream()
             .flatMap(List::stream)
-            .peek(unit -> unit.receiveAttack(attack, null))
+            .peek(unit -> dropGearOnCurrentFloor(unit.receiveAttack(attack, null)))
             .filter(BaseUnit::isDead)
             .toList();
     unitsToRemove.forEach(this::removeUnit);
@@ -1082,7 +1123,10 @@ public class GameState {
             openedShortcuts.stream().sorted().toList(),
             tower == null
                 ? null
-                : new TowerSnapshot(tower.getCurrentFloor(), tower.getSlainGuardians()),
+                : new TowerSnapshot(
+                    tower.getCurrentFloor(),
+                    tower.getSlainGuardians(),
+                    tower.getFloorMemory().gearByFloor()),
             highestFloor,
             expeditionsCompleted,
             enemiesDefeated,
@@ -1325,6 +1369,7 @@ public class GameState {
               c.highestFloor(),
               new HashSet<>(c.tower().clearedBosses()),
               garrison);
+      state.tower.getFloorMemory().restoreGear(c.tower().floorGear());
     }
     state.maxSupplies = state.computeSupplyCapacity();
     return state;

@@ -93,6 +93,7 @@ class SnapshotRoundTripTest {
     for (var i = 0; i < 3; i++) {
       tower.moveToNextFloor();
     }
+    state.dropGear(2, List.of(new LeftoverGenerator(random, config).generate(2)));
     var garrison = tower.getCurrentTowerFloor().getEnemies();
     garrison.getFirst().receiveAttack(3d, null);
     garrison.getFirst().damagePart(BodyPart.TORSO, 0.25);

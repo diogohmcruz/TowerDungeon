@@ -81,7 +81,8 @@ class FieldAccountingTest {
   private static final Map<String, String> TOWER_MAPPED =
       Map.of(
           "currentFloor", "TowerSnapshot.currentFloor",
-          "clearedBosses", "TowerSnapshot.clearedBosses");
+          "clearedBosses", "TowerSnapshot.clearedBosses",
+          "floorMemory", "TowerSnapshot.floorGear");
 
   private static final Map<String, String> TOWER_TRANSIENT =
       Map.of(

@@ -28,6 +28,9 @@ public class Tower {
   /** Source of every random draw in floor generation; seed it to make a climb reproducible. */
   @JsonIgnore private final RandomGenerator random;
 
+  /** The gear the fallen left on each floor; survives every rebuild of a floor. */
+  @JsonIgnore private final FloorMemory floorMemory = new FloorMemory();
+
   /** Backend-only: the frontend only ever sees the Architectures of discovered floors. */
   @JsonIgnore private final ArchitecturePlan architecturePlan;
 

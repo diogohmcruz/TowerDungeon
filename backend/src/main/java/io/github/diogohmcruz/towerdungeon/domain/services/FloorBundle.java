@@ -8,7 +8,6 @@ import java.util.random.RandomGenerator;
 import org.springframework.stereotype.Component;
 
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
-import io.github.diogohmcruz.towerdungeon.domain.items.FloorGearStore;
 import io.github.diogohmcruz.towerdungeon.domain.items.Item;
 import io.github.diogohmcruz.towerdungeon.domain.items.ItemRating;
 import io.github.diogohmcruz.towerdungeon.domain.items.LeftoverGenerator;
@@ -24,18 +23,13 @@ public class FloorBundle {
   private final RandomGenerator random;
   private final GameProperties.Items.Bundle config;
   private final LeftoverGenerator generator;
-  private final FloorGearStore store;
   private final ItemRating rating;
 
   public FloorBundle(
-      RandomGenerator random,
-      GameProperties properties,
-      LeftoverGenerator generator,
-      FloorGearStore store) {
+      RandomGenerator random, GameProperties properties, LeftoverGenerator generator) {
     this.random = random;
     this.config = properties.getItems().getBundle();
     this.generator = generator;
-    this.store = store;
     this.rating = new ItemRating(properties.getItems().getWeights());
   }
 
@@ -44,6 +38,7 @@ public class FloorBundle {
    * the store if they were waiting there.
    */
   public void resolve(GameState gameState, int floor, boolean guardian) {
+    var store = gameState.floorGear();
     var stored = new ArrayList<>(store.takeAll(floor));
     var pool = new ArrayList<>(stored);
     if (!guardian && random.nextDouble() < config.getLeftoverChance()) {

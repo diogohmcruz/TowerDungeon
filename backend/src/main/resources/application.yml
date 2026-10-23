@@ -93,6 +93,7 @@ game:
     severity-at-full-sanity: 0.25
     phobia-effect: 0.5
   items:
+    floor-gear-cap: 12
     bundle:
       leftover-chance: 0.20
       find-chance: 0.15
