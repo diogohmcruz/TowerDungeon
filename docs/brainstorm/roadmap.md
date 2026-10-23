@@ -123,3 +123,16 @@ A batch grouped in the "Version 3" milestone: the Tower panel is exactly full he
 | The Year's Quarters and the Food guard | No Quarter lowers Food or adds to Starvation. Winter raises Attrition only |
 | "Season" already means the long Trial race | The four parts of the Year are Quarters in the glossary and code. The player sees Spring, Summer, Autumn and Winter |
 | Voyage numbers (Port cost, Relic rates, risk scaling) depend on the measured economy | Voyages are blocked by the scaling pass (#8) |
+
+## 7. Added later: version 4 (the full-screen scene)
+
+A batch grouped in the "Version 4" milestone: the scene becomes a fixed full-screen backdrop behind a translucent menu column, with an ambient landscape to the left; launching (Set out, Extract, Send Wave, the Start Floor) moves into the picture as objects picked with the raycaster; the Expedition HUD moves into the menu column; Set out becomes a dither dissolve with the camera rise; and the Tower scene gains a full-screen closeup and a single-unit view with a floating card, both of which hold time. The design is `architecture-and-visual-identity.md` section 5.5.
+
+| Decision | Ruling |
+|---|---|
+| "Every action stays in the panel" | Launching is the one exception. Buying, assigning and the Loadout stay in the panel, and every in-scene action keeps a panel button and keyboard route |
+| Stopping time on a zoom | It reuses the Held Party: a new `HOLD` action, released by `RESUME`. A Trial's clock stops with it, so a hold costs no race time. Agents have no zoom, so the MCP surface gains no tool |
+| Translucent panels against verified contrast | 88% opacity plus a dither scrim, and a test that fails below 7:1 on the worst-case backdrop |
+| The Port's sea sits at the right edge | The Tower keeps its position on the right, so the sea stays where it is |
+| Full-screen pixel cost | The pixel scale is chosen automatically for about 250k virtual pixels |
+

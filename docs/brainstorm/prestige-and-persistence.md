@@ -159,6 +159,7 @@ I/O stays off the game threads. `gameLoop` (1000 ms) and `invasionTimer` (10 ms)
 - Enemies are stored with their hp, so a refresh cannot reroll a frightening Floor.
 - Departure is a commit point, so a crash after departure restores the in-flight Expedition. There is no free reroll.
 - A disconnect is therefore a pause button. That is accepted: it cannot heal or undo anything, and the Presence rule bounds how long a tab can sit open.
+- The full-screen views of the Tower scene (the closeup and a single unit, architecture doc 5.5) hold the Party the same way on a live connection: a `HOLD` action stops the Party and the Village clock, and `RESUME` releases them. It is the same accepted pause. In a Trial a Held Party freezes `ticksSinceStart` as it does on a disconnect, so a hold costs the player no race time.
 - Interim, if the in-flight snapshot ships later than the rest: a record written at departure with no in-flight data settles on load as a Wipe with the notice "Contact lost". This is temporary and documented.
 - This **replaces** the three Prestige designs' rules ("freeze 60 s then Wipe", "roll back to pre-launch snapshot"). The first punishes a network blip, because Expeditions last only tens of seconds to about two minutes. The second is an exploit.
 - Implementable: every in-flight field is reachable from `GameState` (`unitsOnTower`, `reinforcements`, `tower.currentFloor`, the current `TowerFloor.enemies`, `supplies`, `carriedLoot`, `carriedCredits`, the `run*` counters), which the table in 2.3 now lists in full.
