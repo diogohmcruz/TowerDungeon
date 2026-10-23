@@ -47,7 +47,8 @@ class FieldAccountingTest {
           Map.entry("runUnitsLost", "ExpeditionSnapshot.runUnitsLost"),
           Map.entry("lastRunSummary", "CampaignSnapshot.lastExpeditionSummary"),
           Map.entry("achievedMilestones", "CampaignSnapshot.milestones"),
-          Map.entry("openedShortcuts", "CampaignSnapshot.shortcutsOpened"));
+          Map.entry("openedShortcuts", "CampaignSnapshot.shortcutsOpened"),
+          Map.entry("artifactsTaken", "CampaignSnapshot.artifactsTaken"));
 
   private static final Map<String, String> GAME_STATE_TRANSIENT =
       Map.of(

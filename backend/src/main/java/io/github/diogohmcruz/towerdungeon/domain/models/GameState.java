@@ -3,6 +3,7 @@ package io.github.diogohmcruz.towerdungeon.domain.models;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -12,6 +13,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Predicate;
 import java.util.random.RandomGenerator;
@@ -63,6 +65,10 @@ public class GameState {
   private Map<ResourceType, Double> carriedLoot = ResourceType.emptyWallet();
   private Double carriedCredits = 0d;
   private Map<ItemTier, Integer> surplus = new EnumMap<>(ItemTier.class);
+
+  /** Ids of the Artifacts taken so far in this generation; they are not offered again. */
+  @JsonIgnore private Set<String> artifactsTaken = new TreeSet<>();
+
   private Double supplies = 0d;
   private Double maxSupplies;
   private Double lastFoodReturned = 0d;
@@ -321,6 +327,16 @@ public class GameState {
 
   public boolean hasSupplies() {
     return supplies > 0;
+  }
+
+  /** The ids of the Artifacts already taken this generation. */
+  public Set<String> getArtifactsTaken() {
+    return Collections.unmodifiableSet(artifactsTaken);
+  }
+
+  /** Notes that an Artifact was taken: its home floor will not offer it again this generation. */
+  public void recordArtifactTaken(String artifactId) {
+    artifactsTaken.add(artifactId);
   }
 
   /** Counts one item that did not fit on anyone: kept per tier, banked like loot on extraction. */
@@ -1147,7 +1163,8 @@ public class GameState {
                 village.getQuarryHeap(),
                 village.isEmergencyTilling(),
                 village.getVillagersLost(),
-                village.getReservesLost()));
+                village.getReservesLost()),
+            List.copyOf(artifactsTaken));
     return new GameSnapshot(campaign, expeditionActive ? expeditionSnapshot() : null);
   }
 
@@ -1324,6 +1341,7 @@ public class GameState {
     }
     state.recomputeUnlockedUnits();
 
+    state.artifactsTaken.addAll(c.artifactsTaken());
     var e = snapshot.expedition();
     if (e != null) {
       state.expeditionActive = true;

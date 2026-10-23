@@ -5,12 +5,17 @@ import java.util.Collections;
 import java.util.List;
 import java.util.random.RandomGenerator;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
+import io.github.diogohmcruz.towerdungeon.domain.items.ArtifactProvider;
+import io.github.diogohmcruz.towerdungeon.domain.items.HomeFloorArtifacts;
 import io.github.diogohmcruz.towerdungeon.domain.items.Item;
 import io.github.diogohmcruz.towerdungeon.domain.items.ItemRating;
+import io.github.diogohmcruz.towerdungeon.domain.items.ItemTier;
 import io.github.diogohmcruz.towerdungeon.domain.items.LeftoverGenerator;
+import io.github.diogohmcruz.towerdungeon.domain.items.TalismanGenerator;
 import io.github.diogohmcruz.towerdungeon.domain.models.GameState;
 import io.github.diogohmcruz.towerdungeon.domain.models.Unit;
 
@@ -24,9 +29,28 @@ public class FloorBundle {
   private final GameProperties.Items.Bundle config;
   private final LeftoverGenerator generator;
   private final ItemRating rating;
+  private final TalismanGenerator talismans;
+  private final ArtifactProvider artifacts;
 
   public FloorBundle(
       RandomGenerator random, GameProperties properties, LeftoverGenerator generator) {
+    this(
+        random,
+        properties,
+        generator,
+        new TalismanGenerator(random, properties),
+        new HomeFloorArtifacts(properties));
+  }
+
+  @Autowired
+  public FloorBundle(
+      RandomGenerator random,
+      GameProperties properties,
+      LeftoverGenerator generator,
+      TalismanGenerator talismans,
+      ArtifactProvider artifacts) {
+    this.talismans = talismans;
+    this.artifacts = artifacts;
     this.random = random;
     this.config = properties.getItems().getBundle();
     this.generator = generator;
@@ -42,8 +66,13 @@ public class FloorBundle {
     var stored = new ArrayList<>(store.takeAll(floor));
     var pool = new ArrayList<>(stored);
     if (!guardian && random.nextDouble() < config.getLeftoverChance()) {
-      pool.add(generator.generate(floor));
+      pool.add(
+          talismans.rollTier() == ItemTier.TALISMAN
+              ? talismans.generate()
+              : generator.generate(floor));
     }
+    // An Artifact comes back to its home floor, guardian or not, until it is taken.
+    pool.addAll(artifacts.artifactsFor(floor, gameState.getArtifactsTaken()));
 
     var finders =
         new ArrayList<>(
@@ -66,6 +95,9 @@ public class FloorBundle {
   }
 
   private void give(GameState gameState, Unit finder, Item item) {
+    if (item.tier() == ItemTier.ARTIFACT) {
+      gameState.recordArtifactTaken(item.id());
+    }
     var result = finder.equip(item, rating);
     if (result.hasSurplus()) {
       gameState.addSurplus(result.surplus().tier());

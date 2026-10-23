@@ -88,6 +88,7 @@ class FloorBundleTest {
 
   @Test
   void aClearedFloorGeneratesALeftoverAboutTwentyPercentOfTheTime() {
+    config.getItems().getDropRates().setTalisman(0.0);
     var random = new SplittableRandom(2);
     var generator = spy(new LeftoverGenerator(random, config));
     var bundle = new FloorBundle(random, config, generator);

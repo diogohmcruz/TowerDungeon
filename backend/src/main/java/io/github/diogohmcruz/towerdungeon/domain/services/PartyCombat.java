@@ -164,8 +164,8 @@ public class PartyCombat {
   }
 
   /**
-   * A melee attacker that hurt a unit wearing Thorn takes the thorn damage back on its torso.
-   * One that dies of it leaves the garrison and counts as a kill.
+   * A melee attacker that hurt a unit wearing Thorn takes the thorn damage back on its torso. One
+   * that dies of it leaves the garrison and counts as a kill.
    */
   private static void returnThorns(
       GameState gameState,

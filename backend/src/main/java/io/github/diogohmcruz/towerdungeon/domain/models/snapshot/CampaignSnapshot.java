@@ -21,6 +21,7 @@ import io.github.diogohmcruz.towerdungeon.domain.models.upgrade.UpgradeType;
  * @param shortcutsOpened shortcuts ever opened (a ratchet: a rebalance never closes one)
  * @param tower null until the first Departure
  * @param trades the Villager pool's assignments, stores and The Count; null in older saves
+ * @param artifactsTaken ids of the Artifacts taken this generation; absent in older saves
  */
 public record CampaignSnapshot(
     double credit,
@@ -37,7 +38,13 @@ public record CampaignSnapshot(
     RunSummary lastExpeditionSummary,
     double villageFood,
     int villagers,
-    TradesSnapshot trades) {
+    TradesSnapshot trades,
+    List<String> artifactsTaken) {
+
+  /** A save from before Artifacts has none taken. */
+  public CampaignSnapshot {
+    artifactsTaken = artifactsTaken == null ? List.of() : artifactsTaken;
+  }
 
   /** The same record with the reserves cleared, for comparing everything but who is in them. */
   public CampaignSnapshot withoutReserves() {
@@ -56,6 +63,7 @@ public record CampaignSnapshot(
         lastExpeditionSummary,
         villageFood,
         villagers,
-        trades);
+        trades,
+        artifactsTaken);
   }
 }

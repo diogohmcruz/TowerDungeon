@@ -34,6 +34,10 @@ class ThornTest {
     return config;
   }
 
+  private Enemy enemy(EnemyStats type) {
+    return new Enemy(type, new SplittableRandom(1), config.getEnemies());
+  }
+
   private static Unit thornWearer() {
     var unit = new Unit(UnitStats.TANK);
     unit.setHealthFactor(100);
@@ -53,7 +57,7 @@ class ThornTest {
   @Test
   void aMeleeAttackerTakesOneDamageBackWhenItHurtsTheWearer() {
     var unit = thornWearer();
-    var beast = new Enemy(EnemyStats.TOWER_BEAST);
+    var beast = enemy(EnemyStats.TOWER_BEAST);
     var healthBefore = beast.getCurrentHealth();
 
     combat.enemiesAttack(state, new ArrayList<>(List.of(beast)), party(unit));
@@ -64,7 +68,7 @@ class ThornTest {
   @Test
   void aRangedOrMagicAttackerTakesNothingBack() {
     var unit = thornWearer();
-    var chimera = new Enemy(EnemyStats.CHIMERA);
+    var chimera = enemy(EnemyStats.CHIMERA);
     var healthBefore = chimera.getCurrentHealth();
 
     combat.enemiesAttack(state, new ArrayList<>(List.of(chimera)), party(unit));
@@ -77,7 +81,7 @@ class ThornTest {
     config.getAiming().setMinMiss(90);
     config.getAiming().setMaxMiss(90);
     var unit = thornWearer();
-    var beast = new Enemy(EnemyStats.TOWER_BEAST);
+    var beast = enemy(EnemyStats.TOWER_BEAST);
     var healthBefore = beast.getCurrentHealth();
     // Every draw is zero, below any miss chance, so every blow misses.
     var missing = new PartyCombat(() -> 0L);
@@ -92,8 +96,8 @@ class ThornTest {
   @Test
   void anAttackerThatDiesOnTheThornsLeavesTheGarrisonAndCountsAsAKill() {
     var unit = thornWearer();
-    var slime = new Enemy(EnemyStats.SLIME);
-    slime.setCurrentHealth(0.5);
+    var slime = enemy(EnemyStats.SLIME);
+    slime.setCurrentHealth(0.01);
     var garrison = new ArrayList<>(List.of(slime));
     var kills = state.getEnemiesDefeated();
 
@@ -108,7 +112,7 @@ class ThornTest {
   void aWearerWithoutThornReturnsNothing() {
     var unit = new Unit(UnitStats.TANK);
     unit.setHealthFactor(100);
-    var beast = new Enemy(EnemyStats.TOWER_BEAST);
+    var beast = enemy(EnemyStats.TOWER_BEAST);
     var healthBefore = beast.getCurrentHealth();
 
     combat.enemiesAttack(state, new ArrayList<>(List.of(beast)), party(unit));
