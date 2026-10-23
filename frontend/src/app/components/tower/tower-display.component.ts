@@ -26,7 +26,6 @@ export class TowerDisplay {
   reinforcements = input<Reinforcement[]>([]);
 
   towerFloors = computed(() => this.tower()?.floors ?? {});
-  maxFloor = computed(() => this.tower()?.maxFloor ?? 0);
   currentFloor = computed(() => this.tower()?.currentFloor ?? 0);
   currentTowerFloor = computed(
     () => this.towerFloors()?.[this.currentFloor() ?? 0],
@@ -42,8 +41,4 @@ export class TowerDisplay {
   });
   currentFloorIsBoss = computed(() => this.currentTowerFloor()?.boss === true);
   enemyCount = computed(() => this.currentTowerFloorEnemies()?.length ?? 0);
-  depthPercent = computed(() => {
-    const max = this.maxFloor();
-    return max > 0 ? Math.min(100, (this.currentFloor() / max) * 100) : 0;
-  });
 }
