@@ -17,6 +17,7 @@ import java.util.function.Predicate;
 import java.util.random.RandomGenerator;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
 
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
 import io.github.diogohmcruz.towerdungeon.domain.items.FloorGearStore;
@@ -45,6 +46,7 @@ import io.github.diogohmcruz.towerdungeon.domain.models.upgrade.UpgradeOffer;
 import io.github.diogohmcruz.towerdungeon.domain.models.upgrade.UpgradeType;
 import io.github.diogohmcruz.towerdungeon.domain.prestige.SuccessionReport;
 import io.github.diogohmcruz.towerdungeon.domain.random.RandomSource;
+import io.github.diogohmcruz.towerdungeon.domain.trial.TrialRun;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -105,6 +107,11 @@ public class GameState {
 
   private int highestFloor = 0;
   private int expeditionsCompleted = 0;
+
+  /** The Trial this Campaign is; null for a real Campaign. Shown to the client without a seed. */
+  @JsonInclude(JsonInclude.Include.NON_NULL)
+  private TrialRun trial;
+
   private int enemiesDefeated = 0;
 
   /** The Tally: totals that spending never reduces. */
@@ -1466,13 +1473,35 @@ public class GameState {
     checkMilestones();
   }
 
-  /** Marks an expedition as finished (extract or wipe) and grants any newly earned milestones. */
+  /**
+   * Marks an expedition as finished (extract or wipe) and grants any newly earned milestones. In a
+   * Trial it counts toward Shortcut and Milestone thresholds only if it cleared at least {@link
+   * #TRIAL_MIN_FLOORS} Floors, as its Summary counts them: otherwise eight instant Extractions
+   * would win the order. Build the Summary first.
+   */
   public void completeExpedition() {
     this.panacea = null;
-    expeditionsCompleted++;
+    if (trial == null
+        || (lastRunSummary != null && lastRunSummary.floorsCleared() >= TRIAL_MIN_FLOORS)) {
+      expeditionsCompleted++;
+    }
     refreshVillageTier();
     refreshShortcuts();
     checkMilestones();
+  }
+
+  /** Floors a Trial's Expedition must clear to count as one. */
+  public static final int TRIAL_MIN_FLOORS = 3;
+
+  /** Whether clearing {@code floor} ends this Trial: it is the Finish Floor of a Trial still on. */
+  public boolean finishesTrial(int floor) {
+    return trial != null && !trial.isClosed() && trial.getFinishFloor() == floor;
+  }
+
+  /** Whether this Campaign is a Trial that is over: its result is frozen and it takes no more. */
+  @JsonIgnore
+  public boolean isTrialClosed() {
+    return trial != null && trial.isClosed();
   }
 
   /**
@@ -1835,7 +1864,9 @@ public class GameState {
   @JsonIgnore
   public boolean isPristine() {
     var fresh = new GameState(config).toSnapshot().campaign().withoutReserves();
-    return !expeditionActive && toSnapshot().campaign().withoutReserves().equals(fresh);
+    return !expeditionActive
+        && (trial == null || trial.getTicksSinceStart() == 0)
+        && toSnapshot().campaign().withoutReserves().equals(fresh);
   }
 
   /**
@@ -1893,7 +1924,10 @@ public class GameState {
             phase,
             pending);
     return new GameSnapshot(
-        campaign, expeditionActive ? expeditionSnapshot() : null, random.snapshot());
+        campaign,
+        expeditionActive ? expeditionSnapshot() : null,
+        random.snapshot(),
+        trial == null ? null : trial.toSnapshot());
   }
 
   private ExpeditionSnapshot expeditionSnapshot() {
@@ -2056,6 +2090,9 @@ public class GameState {
     var c = snapshot.campaign();
     var random = snapshot.random() == null ? fallback : RandomSource.restore(snapshot.random());
     var state = new GameState(config, random);
+    if (snapshot.trial() != null) {
+      state.trial = TrialRun.restore(snapshot.trial());
+    }
     state.credit = c.credit();
     state.units = unitsFrom(c.reserves(), config);
     state.resources.putAll(c.vault());
@@ -2165,6 +2202,9 @@ public class GameState {
               c.highestFloor(),
               new HashSet<>(c.tower().clearedBosses()),
               garrison);
+      if (state.trial != null) {
+        state.tower.setFinishFloor(state.trial.getFinishFloor());
+      }
       state.tower.getFloorMemory().restoreGear(c.tower().floorGear());
       state.tower.getFloorMemory().restoreRisen(c.tower().risen());
     }

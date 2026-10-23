@@ -126,7 +126,9 @@ class RandomSourceTest {
 
     // seed -> seed; combatStream -> combatState; cosmetic -> cosmeticState; floorVisits.
     // "combat" is the same stream as combatStream unless a test scripts it.
-    var mapped = Set.of("seed", "combatStream", "combat", "cosmetic", "floorVisits");
+    // towerSeed and pinned -> towerSeed (null unless a Trial's Terms fix the Tower).
+    var mapped =
+        Set.of("seed", "combatStream", "combat", "cosmetic", "floorVisits", "towerSeed", "pinned");
     var fields =
         Arrays.stream(RandomSource.class.getDeclaredFields())
             .filter(f -> !Modifier.isStatic(f.getModifiers()))
@@ -135,7 +137,8 @@ class RandomSourceTest {
 
     assertThat(mapped).containsAll(fields);
     assertThat(components)
-        .containsExactlyInAnyOrder("seed", "combatState", "cosmeticState", "floorVisits");
+        .containsExactlyInAnyOrder(
+            "seed", "combatState", "cosmeticState", "floorVisits", "towerSeed");
   }
 
   @Test

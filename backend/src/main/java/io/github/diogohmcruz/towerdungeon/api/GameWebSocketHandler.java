@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.stereotype.Component;
@@ -28,6 +29,7 @@ import io.github.diogohmcruz.towerdungeon.api.dtos.UpgradeActionDTO;
 import io.github.diogohmcruz.towerdungeon.domain.commands.Command;
 import io.github.diogohmcruz.towerdungeon.domain.commands.Notice;
 import io.github.diogohmcruz.towerdungeon.domain.services.GameService;
+import io.github.diogohmcruz.towerdungeon.domain.trial.TrialDesk;
 import io.github.diogohmcruz.towerdungeon.persistence.CampaignKey;
 import io.github.diogohmcruz.towerdungeon.persistence.CampaignSchema.SchemaNewerException;
 import lombok.RequiredArgsConstructor;
@@ -49,6 +51,25 @@ public class GameWebSocketHandler implements WebSocketHandler {
   static final CloseStatus BAD_KEY = new CloseStatus(4400, "BAD_KEY");
   static final CloseStatus SCHEMA_NEWER = new CloseStatus(4426, "SCHEMA_NEWER");
   static final CloseStatus STORE_FAILURE = new CloseStatus(4500, "STORE_FAILURE");
+  static final int TRIAL_REFUSED = 4403;
+  private static final String TRIAL_PREFIX = "trial.";
+  private static final String TRIAL_NEXT = ".new";
+  private static final Pattern RACE_ID = Pattern.compile("[A-Za-z0-9_-]{1,40}");
+
+  /**
+   * Which slot a connection asks for: the real Campaign, or a Trial of a race (its current attempt,
+   * or the next one).
+   */
+  record Selector(String raceId, boolean next) {
+    static final Selector CAMPAIGN = new Selector(null, false);
+
+    boolean isTrial() {
+      return raceId != null;
+    }
+  }
+
+  /** The Key's player id and the slot it asks for. */
+  record Handshake(String playerId, Selector selector) {}
 
   private final GameService gameService;
   private final ObjectMapper objectMapper;
@@ -60,17 +81,21 @@ public class GameWebSocketHandler implements WebSocketHandler {
 
   @Override
   public Mono<Void> handle(WebSocketSession session) {
-    var playerId = playerIdOf(session);
-    if (playerId.isEmpty()) {
+    var handshake = handshakeOf(session);
+    if (handshake.isEmpty()) {
       log.warn("Refusing session {}: missing or malformed Campaign Key", session.getId());
       return session.close(BAD_KEY);
     }
-    var id = playerId.get();
+    var id = handshake.get().playerId();
+    var selector = handshake.get().selector();
     var wsId = session.getId();
-    return gameService
-        .attach(id, wsId)
+    var attaching =
+        selector.isTrial()
+            ? gameService.attachTrial(id, selector.raceId(), selector.next(), wsId)
+            : gameService.attach(id, wsId);
+    return attaching
         .onErrorResume(err -> refuseUnloadable(session, id, err))
-        .flatMap(attachment -> serve(session, id, attachment))
+        .flatMap(attachment -> serve(session, attachment.slotId(), attachment))
         .doFinally(
             signal -> {
               log.info("Session {} of player {} ended ({})", wsId, id, signal);
@@ -81,6 +106,12 @@ public class GameWebSocketHandler implements WebSocketHandler {
   /** Closes a connection whose Campaign could not be loaded, with the matching code. */
   private Mono<GameService.Attachment> refuseUnloadable(
       WebSocketSession session, String playerId, Throwable err) {
+    if (err instanceof TrialDesk.Refused refused) {
+      log.info("A Trial was refused: {}", refused.reason());
+      return session
+          .close(new CloseStatus(TRIAL_REFUSED, refused.reason().name()))
+          .then(Mono.empty());
+    }
     if (err instanceof SchemaNewerException) {
       log.warn("Campaign of player {} was saved by a newer version", playerId);
       return session.close(SCHEMA_NEWER).then(Mono.empty());
@@ -89,8 +120,11 @@ public class GameWebSocketHandler implements WebSocketHandler {
     return session.close(STORE_FAILURE).then(Mono.empty());
   }
 
-  /** The player id from the {@code td.v1, <key>} subprotocol offer; the key is never logged. */
-  private Optional<String> playerIdOf(WebSocketSession session) {
+  /**
+   * The player id and slot from the {@code td.v1, <key>[, trial.<raceId>[.new]]} subprotocol offer;
+   * the key is never logged.
+   */
+  private Optional<Handshake> handshakeOf(WebSocketSession session) {
     var offered = session.getHandshakeInfo().getHeaders().get(PROTOCOL_HEADER);
     if (offered == null) {
       return Optional.empty();
@@ -100,10 +134,26 @@ public class GameWebSocketHandler implements WebSocketHandler {
             .flatMap(value -> Arrays.stream(value.split(",")))
             .map(String::trim)
             .toList();
-    if (tokens.size() != 2 || !SUBPROTOCOL.equals(tokens.getFirst())) {
+    if (tokens.size() < 2 || tokens.size() > 3 || !SUBPROTOCOL.equals(tokens.getFirst())) {
       return Optional.empty();
     }
-    return CampaignKey.playerId(tokens.get(1));
+    var selector = tokens.size() == 3 ? selectorOf(tokens.get(2)) : Optional.of(Selector.CAMPAIGN);
+    if (selector.isEmpty()) {
+      return Optional.empty();
+    }
+    return CampaignKey.playerId(tokens.get(1)).map(id -> new Handshake(id, selector.get()));
+  }
+
+  private static Optional<Selector> selectorOf(String token) {
+    if (!token.startsWith(TRIAL_PREFIX)) {
+      return Optional.empty();
+    }
+    var rest = token.substring(TRIAL_PREFIX.length());
+    var next = rest.endsWith(TRIAL_NEXT);
+    var raceId = next ? rest.substring(0, rest.length() - TRIAL_NEXT.length()) : rest;
+    return RACE_ID.matcher(raceId).matches()
+        ? Optional.of(new Selector(raceId, next))
+        : Optional.empty();
   }
 
   private Mono<Void> serve(

@@ -47,7 +47,8 @@ public record CommandResult(
     NOT_ENDED,
     TOLL_TOO_LOW,
     NOT_AVAILABLE,
-    WRITE_FAILED
+    WRITE_FAILED,
+    TRIAL_CLOSED
   }
 
   public CommandResult {

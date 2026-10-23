@@ -1,6 +1,7 @@
 package io.github.diogohmcruz.towerdungeon.config;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
@@ -55,6 +56,7 @@ public class GameProperties {
   private final Persistence persistence = new Persistence();
   private final Security security = new Security();
   private final Agent agent = new Agent();
+  private final Trial trial = new Trial();
 
   /**
    * An independent deep copy of the whole configuration, so one Campaign's overrides never reach
@@ -79,6 +81,56 @@ public class GameProperties {
       boss.setMemoryUpperHealthCap(1 + memory.getUpperGuardianBonusCap());
     }
     return this;
+  }
+
+  /**
+   * The Trials a server offers: sealed Campaigns on identical kits, raced on a Tower seeded from
+   * their Terms. See {@code docs/brainstorm/multiplayer.md} section 3.1.
+   */
+  @Data
+  public static class Trial {
+    /** The Terms on offer, by race. Empty offers no Trial. */
+    private List<Race> races = new ArrayList<>();
+
+    /** No Trial may run longer than this, however its Terms are written. */
+    private Duration maxLimit = Duration.ofMinutes(90);
+
+    /**
+     * One race's Terms as written in configuration. The seed is server-only: leave it blank to
+     * derive it from the server secret and the race id, and never log or send it.
+     */
+    @Data
+    public static class Race {
+      private String raceId;
+
+      /** SEASON or SPRINT; only SEASON can be entered so far. */
+      private String kind = "SEASON";
+
+      /** Pins the Tower plan: it must equal the plan version this build generates. */
+      private int planVersion = 1;
+
+      /** Pins the balance: blank pins it to the running configuration at start-up. */
+      private String configHash;
+
+      private Long seed;
+
+      /** The Guardian Floor that ends the Trial; kept apart from {@code tower.max-floor}. */
+      private int finishFloor = 10;
+
+      /** Blank is open from the start. */
+      private Instant opensAt;
+
+      /** Blank never closes. */
+      private Instant closesAt;
+
+      /** The clock: connected lifecycle time a Trial may take before it times out. */
+      private Duration limit = Duration.ofMinutes(90);
+
+      private int maxAttempts = 3;
+
+      /** Connected Trials of this race at once. */
+      private int maxConcurrent = 20;
+    }
   }
 
   /** Settings of the agent surface (the MCP server and its Sandbox Campaigns). */

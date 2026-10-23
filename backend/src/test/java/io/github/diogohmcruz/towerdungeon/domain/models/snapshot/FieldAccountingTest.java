@@ -61,7 +61,8 @@ class FieldAccountingTest {
           Map.entry("villageTier", "CampaignSnapshot.villageTier"),
           Map.entry("runFallen", "ExpeditionSnapshot.runFallen"),
           Map.entry("wallOfNames", "CampaignSnapshot.wallOfNames"),
-          Map.entry("random", "GameSnapshot.random"));
+          Map.entry("random", "GameSnapshot.random"),
+          Map.entry("trial", "GameSnapshot.trial"));
 
   private static final Map<String, String> GAME_STATE_TRANSIENT =
       Map.of(
@@ -124,7 +125,9 @@ class FieldAccountingTest {
               "the Campaign's RandomSource, which lives on GameState and is saved as"
                   + " GameSnapshot.random; the visits to each floor are RandomSnapshot.floorVisits",
           "architecturePlan", "derived from the architecture seed in config",
-          "layoutVersion", "client redraw counter, recomputed on restore");
+          "layoutVersion", "client redraw counter, recomputed on restore",
+          "finishFloor",
+              "a Trial's Finish Floor, supplied on restore from TrialSnapshot.finishFloor");
 
   private static final Map<String, String> UNIT_MAPPED =
       Map.ofEntries(

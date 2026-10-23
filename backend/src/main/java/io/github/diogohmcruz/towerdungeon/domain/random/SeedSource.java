@@ -27,9 +27,11 @@ public class SeedSource {
   private final SecureRandom entropy = new SecureRandom();
   private final byte[] secret;
   private final Long fixed;
+  private final boolean stable;
 
   @Autowired
   public SeedSource(@Value("${game.seed-secret:}") String configuredSecret) {
+    this.stable = !configuredSecret.isBlank();
     this.secret =
         configuredSecret.isBlank()
             ? randomSecret()
@@ -40,6 +42,7 @@ public class SeedSource {
   private SeedSource(long fixed) {
     this.secret = new byte[] {0};
     this.fixed = fixed;
+    this.stable = true;
   }
 
   /** A source that always hands out {@code seed}: for tests and replays, never for the server. */
@@ -50,6 +53,34 @@ public class SeedSource {
   /** The random source of a new human Campaign, seeded from the server secret. */
   public RandomSource forHumanCampaign() {
     return new RandomSource(fixed != null ? fixed : drawSeed());
+  }
+
+  /**
+   * The random source of a new Trial: the Tower, its yield and the Founders follow from {@code
+   * termsSeed}; everything else is drawn like a human Campaign's.
+   */
+  public RandomSource forTrial(long termsSeed) {
+    return RandomSource.forTrial(termsSeed, fixed != null ? fixed : drawSeed());
+  }
+
+  /**
+   * The seed of a race whose Terms do not state one: a keyed hash of the race id, so it is the same
+   * on every start while the secret is, and unknowable without it.
+   */
+  public long termsSeedOf(String raceId) {
+    try {
+      var mac = Mac.getInstance(HMAC);
+      mac.init(new SecretKeySpec(secret, HMAC));
+      return ByteBuffer.wrap(mac.doFinal(("race:" + raceId).getBytes(StandardCharsets.UTF_8)))
+          .getLong();
+    } catch (GeneralSecurityException e) {
+      throw new IllegalStateException("The seed could not be derived.", e);
+    }
+  }
+
+  /** Whether the secret was set, so the seeds derived from it outlive a restart. */
+  public boolean isStable() {
+    return fixed != null || stable;
   }
 
   private long drawSeed() {

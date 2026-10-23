@@ -33,6 +33,13 @@ public class Tower {
    */
   @JsonIgnore private final RandomSource random;
 
+  /**
+   * A Trial's Finish Floor: a Guardian Floor of its own, apart from the top of the Tower. Floors
+   * keep their difficulty by {@link #maxFloor}, so a short race does not put a Dragon on Floor 20.
+   * Null outside a Trial.
+   */
+  @JsonIgnore private Integer finishFloor;
+
   /** The gear the fallen left and the Risen they became, per floor; survives every rebuild. */
   @JsonIgnore private final FloorMemory floorMemory = new FloorMemory();
 
@@ -129,7 +136,10 @@ public class Tower {
   private TowerFloor newFloor(int floor) {
     var percentageOfTowerComplete = (double) floor / maxFloor;
     var baseDifficulty = EnemyStats.values().length * percentageOfTowerComplete + 1;
-    var isBossFloor = floor % bossConfig.getInterval() == 0 || floor == maxFloor;
+    var isBossFloor =
+        floor % bossConfig.getInterval() == 0
+            || floor == maxFloor
+            || (finishFloor != null && floor == finishFloor);
 
     var easingSteps = easingStepsFor(floor);
     var difficulty =

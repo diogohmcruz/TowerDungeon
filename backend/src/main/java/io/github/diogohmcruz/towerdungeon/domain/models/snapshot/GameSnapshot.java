@@ -7,12 +7,22 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
  * {@code expedition} (null when no expedition is active). A {@code meta} section is reserved for
  * Prestige and is not written yet.
  *
+ * @param trial the Trial this Campaign is, or null for a real Campaign; absent in older saves
  * @param random the seed and where the random streams stand, so a reloaded Campaign carries on from
  *     the same draws; null in a save from before seeded Campaigns, which then gets a new seed
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record GameSnapshot(
-    CampaignSnapshot campaign, ExpeditionSnapshot expedition, RandomSnapshot random) {
+    CampaignSnapshot campaign,
+    ExpeditionSnapshot expedition,
+    RandomSnapshot random,
+    TrialSnapshot trial) {
+
+  /** A Campaign's record: no Trial. */
+  public GameSnapshot(
+      CampaignSnapshot campaign, ExpeditionSnapshot expedition, RandomSnapshot random) {
+    this(campaign, expedition, random, null);
+  }
 
   /** A record with no random state, as saves from before seeded Campaigns have. */
   public GameSnapshot(CampaignSnapshot campaign, ExpeditionSnapshot expedition) {
@@ -24,6 +34,6 @@ public record GameSnapshot(
    * comes in must not bring one: a seed a client knows would show the Tower.
    */
   public GameSnapshot withoutRandom() {
-    return new GameSnapshot(campaign, expedition, null);
+    return new GameSnapshot(campaign, expedition, null, trial);
   }
 }

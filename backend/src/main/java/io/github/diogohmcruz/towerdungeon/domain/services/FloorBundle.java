@@ -60,19 +60,34 @@ public class FloorBundle {
    * the store if they were waiting there.
    */
   public void resolve(GameState gameState, int floor, boolean guardian) {
-    resolve(gameState, floor, guardian, gameState.getRandom().combat());
+    var random = gameState.getRandom();
+    resolve(gameState, floor, guardian, random.combat(), random.yield(floor));
   }
 
   /** As {@link #resolve(GameState, int, boolean)}, with every draw taken from {@code random}. */
   public void resolve(GameState gameState, int floor, boolean guardian, RandomGenerator random) {
+    resolve(gameState, floor, guardian, random, random);
+  }
+
+  /**
+   * As above, with what the Floor offers (a Leftover, its tier and make) drawn from {@code offer}
+   * and who finds what from {@code random}. A Trial fixes the first by its Terms and not the
+   * second.
+   */
+  private void resolve(
+      GameState gameState,
+      int floor,
+      boolean guardian,
+      RandomGenerator random,
+      RandomGenerator offer) {
     var store = gameState.floorGear();
     var stored = new ArrayList<>(store.takeAll(floor));
     var pool = new ArrayList<>(stored);
-    if (!guardian && random.nextDouble() < config.getLeftoverChance()) {
+    if (!guardian && offer.nextDouble() < config.getLeftoverChance()) {
       pool.add(
-          talismans.rollTier(random) == ItemTier.TALISMAN
-              ? talismans.generate(random)
-              : generator.generate(floor, random));
+          talismans.rollTier(offer) == ItemTier.TALISMAN
+              ? talismans.generate(offer)
+              : generator.generate(floor, offer));
     }
     // An Artifact comes back to its home floor, guardian or not, until it is taken.
     pool.addAll(artifacts.artifactsFor(floor, gameState.getArtifactsTaken()));

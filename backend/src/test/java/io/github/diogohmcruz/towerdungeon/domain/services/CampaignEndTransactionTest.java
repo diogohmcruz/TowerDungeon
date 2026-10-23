@@ -193,8 +193,7 @@ class CampaignEndTransactionTest {
   }
 
   @Test
-  void theForecastOpensExodusOnceWorthLeavingAndClosesItWhileAnExpeditionIsOut()
-      throws Exception {
+  void theForecastOpensExodusOnceWorthLeavingAndClosesItWhileAnExpeditionIsOut() throws Exception {
     worthLeaving();
     var open = mapper.readTree(service.renderState(PLAYER).orElseThrow()).get("forecast");
     assertThat(open.get("canExodus").asBoolean()).isTrue();

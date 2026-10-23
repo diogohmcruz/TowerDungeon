@@ -288,3 +288,19 @@ game:
       # 6 hours of simulated time per Campaign, and at most 3600 ticks per wait.
       max-simulated-seconds: 21600
       max-ticks-per-wait: 3600
+  trial:
+    # No Trial runs longer than this, whatever its Terms say.
+    max-limit: 90m
+    races:
+      # The first Terms: the Short preset. Floor 20 waits for a measured baseline (#65); raising the
+      # Finish Floor is a change here and needs no code. The seed is derived from game.seed-secret
+      # and the race id (never write one here); the balance hash is pinned to the running balance
+      # at start-up unless config-hash states one, and a server whose balance differs refuses entry.
+      - race-id: season-1
+        kind: SEASON
+        plan-version: 1
+        finish-floor: 10
+        limit: 90m
+        max-attempts: 3
+        max-concurrent: 20
+        # opens-at / closes-at: ISO instants. Blank is open and never closes: set both before launch.

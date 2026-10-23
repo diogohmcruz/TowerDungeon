@@ -98,10 +98,17 @@ class GameWebSocketHandlerTest {
   }
 
   private Client connect(String key) throws Exception {
+    return connect(key, new String[0]);
+  }
+
+  private Client connect(String key, String... selector) throws Exception {
     var client = new Client();
+    var protocols = new java.util.ArrayList<String>();
+    protocols.add(key);
+    protocols.addAll(List.of(selector));
     client.socket =
         http.newWebSocketBuilder()
-            .subprotocols("td.v1", key)
+            .subprotocols("td.v1", protocols.toArray(String[]::new))
             .buildAsync(URI.create("ws://localhost:" + port + "/api/ws"), client)
             .get(5, TimeUnit.SECONDS);
     return client;
@@ -134,6 +141,56 @@ class GameWebSocketHandlerTest {
     assertThat(frame.get("session").get("notices").isArray()).isTrue();
     assertThat(frame.get("session").get("held").asBoolean()).isFalse();
     client.socket.sendClose(WebSocket.NORMAL_CLOSURE, "bye");
+  }
+
+  @Test
+  void aKeyThatAsksForTheSeasonGetsATrialOfItsOwn() throws Exception {
+    var key = newKey();
+    var client = connect(key, "trial.season-1");
+
+    await(() -> !client.frames.isEmpty());
+    var frame = mapper.readTree(client.frames.getFirst());
+    assertThat(frame.path("trial").path("raceId").asString()).isEqualTo("season-1");
+    assertThat(frame.path("trial").path("status").asString()).isEqualTo("RACING");
+    assertThat(frame.path("trial").path("finishFloor").asInt()).isEqualTo(10);
+    assertThat(client.frames.getFirst()).doesNotContain("seed");
+    assertThat(gameService.hasSlot(playerId(key))).isFalse();
+  }
+
+  @Test
+  void enteringATrialReplacesTheRealCampaignConnectionAndLeavingReverses() throws Exception {
+    var key = newKey();
+    var real = connect(key);
+    await(() -> !real.frames.isEmpty());
+
+    var trial = connect(key, "trial.season-1");
+    await(real::closed);
+    await(() -> !trial.frames.isEmpty());
+    assertThat(real.closeCode.get()).isEqualTo(4001);
+    assertThat(mapper.readTree(real.frames.getFirst()).has("trial")).isFalse();
+
+    var back = connect(key);
+    await(trial::closed);
+    await(() -> !back.frames.isEmpty());
+    assertThat(trial.closeCode.get()).isEqualTo(4001);
+    assertThat(mapper.readTree(back.frames.getFirst()).has("trial")).isFalse();
+  }
+
+  @Test
+  void aRaceThatDoesNotExistIsRefusedWith4403() throws Exception {
+    var client = connect(newKey(), "trial.nowhere");
+
+    await(client::closed);
+    assertThat(client.closeCode.get()).isEqualTo(4403);
+    assertThat(client.frames).isEmpty();
+  }
+
+  @Test
+  void anUnknownSlotSelectorIsABadKey() throws Exception {
+    var client = connect(newKey(), "campaign.x");
+
+    await(client::closed);
+    assertThat(client.closeCode.get()).isEqualTo(4400);
   }
 
   @Test

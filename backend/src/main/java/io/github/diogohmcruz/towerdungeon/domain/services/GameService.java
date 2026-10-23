@@ -13,6 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.function.ToLongFunction;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,6 +51,10 @@ import io.github.diogohmcruz.towerdungeon.domain.prestige.TollContext;
 import io.github.diogohmcruz.towerdungeon.domain.prestige.TollForecast;
 import io.github.diogohmcruz.towerdungeon.domain.random.RandomSource;
 import io.github.diogohmcruz.towerdungeon.domain.random.SeedSource;
+import io.github.diogohmcruz.towerdungeon.domain.trial.Terms;
+import io.github.diogohmcruz.towerdungeon.domain.trial.TermsRegistry;
+import io.github.diogohmcruz.towerdungeon.domain.trial.TrialDesk;
+import io.github.diogohmcruz.towerdungeon.domain.trial.TrialRun;
 import io.github.diogohmcruz.towerdungeon.persistence.CampaignSchema;
 import io.github.diogohmcruz.towerdungeon.persistence.CampaignSchema.SchemaNewerException;
 import io.github.diogohmcruz.towerdungeon.persistence.CampaignStore;
@@ -57,6 +62,7 @@ import io.github.diogohmcruz.towerdungeon.persistence.CampaignStore.LoadResult;
 import io.github.diogohmcruz.towerdungeon.persistence.MetaCodec;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.node.ObjectNode;
@@ -121,8 +127,19 @@ public class GameService {
         MetaCodec.development(objectMapper));
   }
 
-  /** What a connection gets back from {@link #attach}: a signal for when it has been replaced. */
-  public record Attachment(Mono<Void> replaced) {}
+  /**
+   * What a connection gets back from {@link #attach}: the id of the slot it serves (the player's
+   * own, or a Trial's) and a signal for when it has been replaced.
+   */
+  public record Attachment(String slotId, Mono<Void> replaced) {}
+
+  /** Who may enter a Trial; absent where Trials are not offered (a bare engine in a test). */
+  private TrialDesk trials;
+
+  @Autowired(required = false)
+  public void setTrials(TrialDesk trials) {
+    this.trials = trials;
+  }
 
   /**
    * Starts a brand-new human campaign: an empty {@link GameState} with the configured Founders
@@ -163,6 +180,28 @@ public class GameService {
    */
   public GameState newSandboxCampaign(long seed) {
     return newCampaign(config.copy(), new RandomSource(seed));
+  }
+
+  /**
+   * Starts a Trial: the start kit every Contender shares (the configured Credits, Villagers, Food
+   * and Founders, no Roll, Tower Memory 0), on a Tower the Terms seed. The four Founders' strengths
+   * come from the Terms too, so every Contender starts with the identical four. Not a Campaign: it
+   * is sealed in a file of its own and never offered for export.
+   */
+  GameState newTrialCampaign(Terms terms, int attempt) {
+    var trialConfig = config.copy();
+    var state = new GameState(trialConfig, seeds.forTrial(terms.seed()));
+    var founderDraws = state.getRandom().founders();
+    for (var founder : trialConfig.getStart().getFounders()) {
+      state.addUnits(founder.getUnitType(), List.of(state.recruitFounder(founder, founderDraws)));
+    }
+    state.setTrial(
+        new TrialRun(
+            terms.raceId(),
+            attempt,
+            terms.finishFloor(),
+            TermsRegistry.ticksIn(terms.limit(), trialConfig.getLoop().getLifecycleMs())));
+    return state;
   }
 
   private GameState newCampaign(GameProperties campaignConfig, RandomSource random) {
@@ -311,12 +350,121 @@ public class GameService {
                     current.attach(connection);
                     return current;
                   });
-          return slot.loading().thenReturn(new Attachment(connection.replaced().asMono()));
+          // Back in the real Campaign: any Trial of this Key lets go of its connection.
+          trialSlotsOf(playerId, null).forEach(PlayerSlot::displace);
+          return slot.loading()
+              .thenReturn(new Attachment(playerId, connection.replaced().asMono()));
         });
+  }
+
+  /**
+   * Attaches a connection to the Key's Trial in a race: its current attempt, or the next one when
+   * {@code next} and the current is over. Entering detaches the real Campaign (frozen, as ADR 0001)
+   * and the Key's other Trials; connecting to the real Campaign again reverses it. Fails with
+   * {@link TrialDesk.Refused} when the Key may not enter.
+   */
+  public Mono<Attachment> attachTrial(String playerId, String raceId, boolean next, String wsId) {
+    return Mono.defer(
+            () -> {
+              if (trials == null) {
+                throw new TrialDesk.Refused(TrialDesk.Refusal.UNKNOWN_RACE);
+              }
+              var admission =
+                  trials.admit(
+                      playerId,
+                      raceId,
+                      next,
+                      Instant.now(),
+                      terms -> connectedTrials(terms.raceId(), playerId));
+              var real = players.get(playerId);
+              if (real != null) {
+                real.displace();
+              }
+              trialSlotsOf(playerId, admission.trialId()).forEach(PlayerSlot::displace);
+              var connection = new PlayerSlot.Connection(wsId);
+              var slot =
+                  players.compute(
+                      admission.trialId(),
+                      (id, existing) -> {
+                        var current =
+                            existing != null ? existing : newTrialSlot(id, playerId, admission);
+                        current.attach(connection);
+                        return current;
+                      });
+              return slot.loading()
+                  .thenReturn(new Attachment(admission.trialId(), connection.replaced().asMono()));
+            })
+        .subscribeOn(Schedulers.boundedElastic());
+  }
+
+  /** The Trial slots of a Key, other than {@code except}. */
+  private List<PlayerSlot> trialSlotsOf(String ownerId, String except) {
+    return players.values().stream()
+        .filter(
+            slot ->
+                slot.isTrial()
+                    && slot.trial().ownerId().equals(ownerId)
+                    && !slot.playerId().equals(except))
+        .toList();
+  }
+
+  /** Trials of a race that other Keys have connected. */
+  private int connectedTrials(String raceId, String exceptOwner) {
+    return (int)
+        players.values().stream()
+            .filter(
+                slot ->
+                    slot.isTrial()
+                        && slot.trial().raceId().equals(raceId)
+                        && !slot.trial().ownerId().equals(exceptOwner)
+                        && slot.isAttached())
+            .count();
+  }
+
+  private PlayerSlot newTrialSlot(String trialId, String ownerId, TrialDesk.Admission admission) {
+    var slot = new PlayerSlot(trialId);
+    slot.trial(new PlayerSlot.TrialLink(ownerId, admission.terms().raceId(), admission.attempt()));
+    // Every Contender climbs the Tower plan the Terms' seed makes; a Generation's meta is not
+    // theirs.
+    slot.plan(
+        ArchitecturePlan.generate(
+            admission.terms().seed(),
+            config.getTower().getMaxFloor(),
+            config.getBoss().getInterval(),
+            config.getEnemies().getSurgeInterval()));
+    slot.loading(
+        store
+            .load(trialId)
+            .map(
+                result ->
+                    restoreCampaign(
+                        slot,
+                        result,
+                        () -> newTrialCampaign(admission.terms(), admission.attempt())))
+            .switchIfEmpty(
+                Mono.fromSupplier(
+                    () -> {
+                      var fresh = newTrialCampaign(admission.terms(), admission.attempt());
+                      slot.loaded(fresh, false, null, CampaignSchema.CURRENT);
+                      saves.opened(slot, CampaignStore.INITIAL_SEQ);
+                      return fresh;
+                    }))
+            .doOnError(
+                e -> {
+                  log.error("Failed to load a Trial of a player", e);
+                  players.remove(trialId, slot);
+                })
+            .cache());
+    return slot;
   }
 
   /** Detaches the connection if it is still the attached one; the slot lingers before eviction. */
   public void detach(String playerId, String wsId) {
+    detachSlot(playerId, wsId);
+    trialSlotsOf(playerId, null).forEach(trial -> detachSlot(trial.playerId(), wsId));
+  }
+
+  private void detachSlot(String playerId, String wsId) {
     var slot = players.get(playerId);
     if (slot != null && slot.detach(wsId, System.nanoTime())) {
       // The clock stops here. An Expedition in flight is held until the player comes back.
@@ -395,7 +543,16 @@ public class GameService {
   private Mono<GameState> loadCampaign(PlayerSlot slot) {
     return store
         .load(slot.playerId())
-        .map(result -> restoreCampaign(slot, result))
+        .map(
+            result ->
+                restoreCampaign(
+                    slot,
+                    result,
+                    () -> {
+                      var meta = freshMeta();
+                      adopt(slot, meta);
+                      return newCampaign(meta, false);
+                    }))
         .switchIfEmpty(
             Mono.fromSupplier(
                 () -> {
@@ -408,30 +565,33 @@ public class GameService {
                 }));
   }
 
-  private GameState restoreCampaign(PlayerSlot slot, LoadResult result) {
+  private GameState restoreCampaign(PlayerSlot slot, LoadResult result, Supplier<GameState> fresh) {
     if (result.schema() > CampaignSchema.CURRENT) {
       throw new SchemaNewerException(result.schema());
     }
     result.notices().forEach(text -> slot.addNotice(new Notice("SAVE_MIGRATED", text)));
     if (result.campaignLost()) {
       // The record could not be read any more; a copy of it is kept. Start over where it left off.
-      var meta = freshMeta();
-      adopt(slot, meta);
-      var fresh = newCampaign(meta, false);
-      slot.loaded(fresh, false, null, CampaignSchema.CURRENT);
+      var started = fresh.get();
+      slot.loaded(started, false, null, CampaignSchema.CURRENT);
       saves.opened(slot, result.seq());
-      return fresh;
+      return started;
     }
     var snapshot = objectMapper.readValue(result.payload(), GameSnapshot.class);
-    var meta = metaOf(result.payload());
-    adopt(slot, meta);
-    var state =
-        GameState.restore(
-            snapshot,
-            config.copy().withTowerMemory(meta.generation()),
-            new RandomSource(meta.seed()),
-            slot.plan());
-    state.setDoorOpen(meta.opensTheDoor());
+    GameState state;
+    if (slot.isTrial()) {
+      state = restoreTrial(slot, snapshot);
+    } else {
+      var meta = metaOf(result.payload());
+      adopt(slot, meta);
+      state =
+          GameState.restore(
+              snapshot,
+              config.copy().withTowerMemory(meta.generation()),
+              new RandomSource(meta.seed()),
+              slot.plan());
+      state.setDoorOpen(meta.opensTheDoor());
+    }
     if (!result.quarantined().isEmpty()) {
       slot.addNotice(
           new Notice("SAVE_DAMAGED", "A damaged save was set aside and an older one was loaded."));
@@ -442,6 +602,15 @@ public class GameService {
     saves.opened(slot, result.seq());
     if (state.isExpeditionActive()) {
       slot.hold();
+    }
+    return state;
+  }
+
+  /** A Trial as saved: on its Terms' Tower plan, with no meta and no Tower Memory. */
+  private GameState restoreTrial(PlayerSlot slot, GameSnapshot snapshot) {
+    var state = GameState.restore(snapshot, config.copy(), seeds.forHumanCampaign(), slot.plan());
+    if (state.getTrial() == null) {
+      throw new IllegalStateException("A Trial's file holds no Trial.");
     }
     return state;
   }
@@ -644,6 +813,15 @@ public class GameService {
   private CommandResult apply(
       PlayerSlot slot, GameState gameState, String playerId, Command command) {
     CommandResult result;
+    if (gameState.isTrialClosed()) {
+      return CommandResult.rejected(Reason.TRIAL_CLOSED, "The Trial is over.")
+          .withStateSeq(slot.stateSeq());
+    }
+    if (slot.isTrial() && (isSuccessionCommand(command) || command instanceof Command.Exodus)) {
+      // A Trial has no Generations: it ends on its Finish Floor, its clock or a Defeat.
+      return CommandResult.rejected(Reason.NOT_AVAILABLE, "A Trial has no succession.")
+          .withStateSeq(slot.stateSeq());
+    }
     try {
       if (gameState.getPhase() == CampaignPhase.OFFER && !isSuccessionCommand(command)) {
         return CommandResult.rejected(Reason.CAMPAIGN_ENDED, "The Campaign has ended.")
@@ -938,6 +1116,9 @@ public class GameService {
               gameState.getRandom(),
               slot.plan() == null ? architecturePlan : slot.plan()));
     }
+    if (gameState.getTrial() != null) {
+      gameState.getTower().setFinishFloor(gameState.getTrial().getFinishFloor());
+    }
     gameState.getTower().startNewRunAt(requestedFloor);
     gameState.setRunStartFloor(requestedFloor > 0 ? requestedFloor : 0);
     gameState.startRun(
@@ -959,6 +1140,16 @@ public class GameService {
       log.warn("Player[{}] tried to extract with no active run.", playerId);
       return CommandResult.rejected(Reason.NO_EXPEDITION, "No expedition is out.");
     }
+    extractParty(gameState);
+    log.info(
+        "Player[{}] extracted. Leftover food returned to village, loot banked, party returned"
+            + " home to recover on the village's food.",
+        playerId);
+    return CommandResult.applied("The party extracted.");
+  }
+
+  /** Brings the Party home with its haul, as an Extraction does. */
+  private void extractParty(GameState gameState) {
     gameState.buildRunSummary(RunSummary.EXTRACTED);
     gameState.returnLeftoverSuppliesToVillage();
     gameState.returnReinforcementsHome();
@@ -968,11 +1159,6 @@ public class GameService {
     gameState.setExpeditionActive(false);
     gameState.completeExpedition();
     logToll(gameState, RunSummary.EXTRACTED);
-    log.info(
-        "Player[{}] extracted. Leftover food returned to village, loot banked, party returned"
-            + " home to recover on the village's food.",
-        playerId);
-    return CommandResult.applied("The party extracted.");
   }
 
   /** Lets a Held Party march on: the clock starts again from exactly where it stopped. */
@@ -1109,6 +1295,9 @@ public class GameService {
 
   /** The Toll bar's forecast; null once the Campaign has ended or before it has a Tally. */
   private TollForecast tollForecast(PlayerSlot slot, GameState gameState) {
+    if (slot.isTrial()) {
+      return null; // A Trial pays no Toll.
+    }
     if (gameState.getPhase() != CampaignPhase.ACTIVE
         || gameState.getGameOutcome() != GameOutcome.PLAYING
         || gameState.getTally() == null) {
@@ -1119,8 +1308,7 @@ public class GameService {
     double divisor = prestige.getPointsDivisor();
     double nextLegacyAt = (Math.floor(toll.toll() / divisor) + 1) * divisor;
     int minimum = prestige.getMinPointsToExodus();
-    boolean open =
-        !gameState.isExpeditionActive() && !slot.isHeld() && toll.legacy() >= minimum;
+    boolean open = !gameState.isExpeditionActive() && !slot.isHeld() && toll.legacy() >= minimum;
     return new TollForecast(toll, divisor, nextLegacyAt, minimum, open);
   }
 
@@ -1200,7 +1388,8 @@ public class GameService {
    * failed write is retried after a pause, and the player is told once.
    */
   void settleEnded(PlayerSlot slot, GameState gameState) {
-    if (gameState.getPhase() == CampaignPhase.OFFER
+    if (slot.isTrial()
+        || gameState.getPhase() == CampaignPhase.OFFER
         || gameState.getGameOutcome() == GameOutcome.PLAYING) {
       return;
     }
@@ -1292,6 +1481,14 @@ public class GameService {
    * caller holds the state's lock. Both drivers run exactly this.
    */
   void lifecycleTick(PlayerSlot slot, GameState gameState) {
+    var trial = gameState.getTrial();
+    if (trial != null) {
+      if (trial.isClosed()) {
+        noteTrialClosed(slot, gameState);
+        return;
+      }
+      trial.tick();
+    }
     var slainBefore = gameState.getEnemiesDefeated();
     var floorBefore = floorOf(gameState);
     gameState.triggerLifecycle();
@@ -1302,6 +1499,56 @@ public class GameService {
     recordTick(slot, gameState, slainBefore, floorBefore);
     emitStrikes(slot, "PARTY", party);
     emitStrikes(slot, "GARRISON", garrison);
+    if (trial != null) {
+      if (gameState.getGameOutcome() == GameOutcome.DEFEAT) {
+        trial.defeat();
+      } else if (trial.isOutOfTime()) {
+        timeOutTrial(gameState);
+      }
+      noteTrialClosed(slot, gameState);
+    }
+  }
+
+  /** The clock ran out: the Party comes home with what it holds and the result freezes. */
+  private void timeOutTrial(GameState gameState) {
+    gameState.getTrial().timeOut();
+    if (gameState.isExpeditionActive()) {
+      extractParty(gameState);
+    }
+    log.info("A Trial ran out of time.");
+  }
+
+  /**
+   * The Finish Floor's Guardian is slain: the result freezes at this tick and the Party is
+   * Extracted. This is the Trial's own Summit Conquered, not a new Expedition Outcome.
+   */
+  private void endTrialOnFinish(GameState gameState) {
+    gameState.getTrial().finish();
+    extractParty(gameState);
+    log.info("A Trial was won: the Guardian of its Finish Floor is slain.");
+  }
+
+  /** Writes down, once, that a Trial is over: the attempts record, the event log and the save. */
+  private void noteTrialClosed(PlayerSlot slot, GameState gameState) {
+    var link = slot.trial();
+    var trial = gameState.getTrial();
+    if (link == null || trial == null || !trial.isClosed() || !slot.noteTrialClosed()) {
+      return;
+    }
+    if (trials != null) {
+      trials
+          .ledger()
+          .close(
+              link.raceId(),
+              link.ownerId(),
+              link.attempt(),
+              trial.getStatus(),
+              trial.getTicksSinceStart());
+    }
+    slot.emit(
+        "TRIAL_CLOSED",
+        Map.of("status", trial.getStatus().name(), "ticks", trial.getTicksSinceStart()));
+    slot.saves().event(true);
   }
 
   /**
@@ -1309,6 +1556,9 @@ public class GameService {
    * health), so one call of 1000 equals a hundred calls of 10. The caller holds the lock.
    */
   void attritionTick(GameState gameState, long ms) {
+    if (gameState.isTrialClosed()) {
+      return;
+    }
     gameState.passingTime(ms);
   }
 
@@ -1387,6 +1637,10 @@ public class GameService {
         log.info(
             "Defeated the guardian of floor {}! The lesser floors below it grow easier.",
             clearedFloor);
+      }
+      if (bossCleared && gameState.finishesTrial(clearedFloor)) {
+        endTrialOnFinish(gameState);
+        return;
       }
       if (clearedFloor >= tower.getMaxFloor()) {
         log.info("VICTORY! Player conquered the summit of the tower on floor {}!", clearedFloor);
@@ -1499,6 +1753,10 @@ public class GameService {
    * The persisted record of a player's live Campaign, or empty when the player has no loaded slot.
    */
   public Optional<GameSnapshot> snapshotOf(String playerId) {
+    var slot = players.get(playerId);
+    if (slot != null && slot.isTrial()) {
+      return Optional.empty(); // A Trial's file never leaves the server.
+    }
     return access(playerId, GameState::toSnapshot);
   }
 
@@ -1527,6 +1785,9 @@ public class GameService {
       ObjectNode meta,
       ToLongFunction<OptionalLong> persist) {
     var slot = players.get(playerId);
+    if (slot != null && slot.isTrial()) {
+      return false; // Nothing is imported into a Trial.
+    }
     if (slot == null || slot.state() == null) {
       persist.applyAsLong(OptionalLong.empty());
       return true;

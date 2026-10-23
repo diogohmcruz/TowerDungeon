@@ -30,7 +30,15 @@ final class PlayerSlot {
     }
   }
 
+  /**
+   * What makes a slot a Trial's: the Key it belongs to, the race and the attempt. The slot's own id
+   * is the id of the Trial's file, never the Key's player id.
+   */
+  record TrialLink(String ownerId, String raceId, int attempt) {}
+
   private final String playerId;
+  private volatile TrialLink trial;
+  private boolean trialClosureNoted;
   private final SaveTracker saves = new SaveTracker();
   private final Queue<Notice> notices = new ConcurrentLinkedQueue<>();
   private Mono<GameState> loading;
@@ -100,6 +108,26 @@ final class PlayerSlot {
 
   String playerId() {
     return playerId;
+  }
+
+  /** The Trial this slot holds, or null for a real Campaign or a Sandbox. */
+  TrialLink trial() {
+    return trial;
+  }
+
+  void trial(TrialLink trial) {
+    this.trial = trial;
+  }
+
+  boolean isTrial() {
+    return trial != null;
+  }
+
+  /** True once, the first time the end of this slot's Trial is noted. Call under the lock. */
+  boolean noteTrialClosed() {
+    var first = !trialClosureNoted;
+    trialClosureNoted = true;
+    return first;
   }
 
   Mono<GameState> loading() {
@@ -257,6 +285,16 @@ final class PlayerSlot {
       return true;
     }
     return false;
+  }
+
+  /**
+   * Tells the attached connection, if any, that another slot of the same Key took over: used when a
+   * Key moves between its real Campaign and a Trial. The connection's own cleanup detaches it.
+   */
+  synchronized void displace() {
+    if (connection != null) {
+      connection.replaced().tryEmitEmpty();
+    }
   }
 
   synchronized boolean isAttached() {
