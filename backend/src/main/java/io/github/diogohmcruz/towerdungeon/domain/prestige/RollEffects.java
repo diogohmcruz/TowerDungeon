@@ -118,7 +118,41 @@ public final class RollEffects {
         holds(InheritanceType.WHETSTONE_HABIT) ? numbers.getWhetstoneHabit().getDamageBonus() : 0);
     state.setHealthBonus(
         has(Epitaph.NAMES_ON_THE_WALL) ? epitaphNumbers.getNamesOnTheWall().getHealthBonus() : 0);
+    var stair = numbers.getNarrowStair();
+    state.setNarrowStair(
+        holds(InheritanceType.NARROW_STAIR)
+            ? new NarrowStairRule(stair.getFloor(), stair.getMaxParty())
+            : null);
+    var overreach = numbers.getOverreach();
+    state.setOverreachRule(
+        holds(InheritanceType.OVERREACH)
+            ? new OverreachRule(
+                overreach.getSupplyDrainMultiplier(),
+                overreach.getStarvationDamageMultiplier(),
+                overreach.getLootMultiplier())
+            : null);
+    state.setLoadoutSlots(
+        holds(InheritanceType.QUARTERMASTERS_TALLY)
+            ? Math.max(0, numbers.getQuartermastersTally().getSlots())
+            : 0);
   }
+
+  /**
+   * Narrow Stair: a Shortcut to {@code floor}, for a Party of at most {@code maxParty} Units.
+   *
+   * @param floor the Floor it deposits the Party on
+   * @param maxParty the largest Party that may use it
+   */
+  public record NarrowStairRule(int floor, int maxParty) {}
+
+  /**
+   * Overreach: what the per-Expedition switch multiplies while it is on.
+   *
+   * @param supplyDrain the Supplies each Unit eats each tick
+   * @param starvationDamage the damage Starvation does
+   * @param loot every Credit, Material, Relic and Spore found
+   */
+  public record OverreachRule(double supplyDrain, double starvationDamage, double loot) {}
 
   /**
    * What a new Campaign is given once it is built: the Village Tier, the Dowry and the Heir, by the

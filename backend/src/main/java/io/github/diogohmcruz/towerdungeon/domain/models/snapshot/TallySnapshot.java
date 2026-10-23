@@ -9,6 +9,8 @@ package io.github.diogohmcruz.towerdungeon.domain.models.snapshot;
  * @param relicsBanked Relics banked by Extraction or Victory
  * @param floorsCleared Floors cleared by Expeditions that came home
  * @param peakVillagers the most Villagers the Village has held
+ * @param inheritedStartFloor the highest Floor an Expedition set out from by a Shortcut the Roll
+ *     gave (Narrow Stair); 0 for none. The Toll pays Ascent only above it
  */
 public record TallySnapshot(
     double foodGrown,
@@ -16,4 +18,5 @@ public record TallySnapshot(
     double materialsBanked,
     double relicsBanked,
     int floorsCleared,
-    int peakVillagers) {}
+    int peakVillagers,
+    int inheritedStartFloor) {}

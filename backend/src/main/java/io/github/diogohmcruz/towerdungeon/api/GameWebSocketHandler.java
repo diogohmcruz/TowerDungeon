@@ -18,6 +18,7 @@ import io.github.diogohmcruz.towerdungeon.api.dtos.AssignTradeActionDTO;
 import io.github.diogohmcruz.towerdungeon.api.dtos.BuyActionDTO;
 import io.github.diogohmcruz.towerdungeon.api.dtos.BuyPostsActionDTO;
 import io.github.diogohmcruz.towerdungeon.api.dtos.BuyTomeActionDTO;
+import io.github.diogohmcruz.towerdungeon.api.dtos.ClearLoadoutActionDTO;
 import io.github.diogohmcruz.towerdungeon.api.dtos.GameAction;
 import io.github.diogohmcruz.towerdungeon.api.dtos.GameActionDTO;
 import io.github.diogohmcruz.towerdungeon.api.dtos.GameActionEnvelope;
@@ -25,6 +26,7 @@ import io.github.diogohmcruz.towerdungeon.api.dtos.InvadeActionDTO;
 import io.github.diogohmcruz.towerdungeon.api.dtos.ReattachActionDTO;
 import io.github.diogohmcruz.towerdungeon.api.dtos.ReinforceActionDTO;
 import io.github.diogohmcruz.towerdungeon.api.dtos.RemedyActionDTO;
+import io.github.diogohmcruz.towerdungeon.api.dtos.SaveLoadoutActionDTO;
 import io.github.diogohmcruz.towerdungeon.api.dtos.SuccessionActionDTO;
 import io.github.diogohmcruz.towerdungeon.api.dtos.UpgradeActionDTO;
 import io.github.diogohmcruz.towerdungeon.domain.commands.Command;
@@ -265,7 +267,8 @@ public class GameWebSocketHandler implements WebSocketHandler {
             invade.salt(),
             invade.saltPack(),
             invade.saltBearer(),
-            Boolean.TRUE.equals(invade.panacea()));
+            Boolean.TRUE.equals(invade.panacea()),
+            Boolean.TRUE.equals(invade.overreach()));
       }
       case EXTRACT -> new Command.Extract();
       case RESUME -> new Command.Resume();
@@ -300,6 +303,22 @@ public class GameWebSocketHandler implements WebSocketHandler {
       }
       case EXODUS -> new Command.Exodus();
       case MUSTER_ROLL -> new Command.MusterRoll();
+      case SAVE_LOADOUT -> {
+        var save = payload(message, new TypeReference<GameActionDTO<SaveLoadoutActionDTO>>() {});
+        yield save == null
+            ? new Command.SaveLoadout(null, null, null, null, false, false)
+            : new Command.SaveLoadout(
+                save.slot(),
+                save.salt(),
+                save.saltPack(),
+                save.saltBearer(),
+                Boolean.TRUE.equals(save.panacea()),
+                Boolean.TRUE.equals(save.overreach()));
+      }
+      case CLEAR_LOADOUT -> {
+        var clear = payload(message, new TypeReference<GameActionDTO<ClearLoadoutActionDTO>>() {});
+        yield new Command.ClearLoadout(clear == null ? null : clear.slot());
+      }
       case BEGIN_GENERATION -> new Command.BeginGeneration();
       case ROLL_BUY -> {
         var buy = payload(message, new TypeReference<GameActionDTO<SuccessionActionDTO>>() {});

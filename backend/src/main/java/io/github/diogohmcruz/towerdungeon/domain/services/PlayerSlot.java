@@ -236,7 +236,8 @@ final class PlayerSlot {
             command.salt(),
             command.saltPack(),
             command.saltBearer(),
-            command.panacea());
+            command.panacea(),
+            command.overreach());
   }
 
   long stateSeq() {

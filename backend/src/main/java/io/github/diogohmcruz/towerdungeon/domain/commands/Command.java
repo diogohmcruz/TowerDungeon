@@ -110,7 +110,8 @@ public sealed interface Command {
    * (today it fails with a {@link NullPointerException}). {@code salt} is the Salt to salt Supplies
    * with; null is none. {@code saltPack} is the Salt of a Salt Pack against Chymus Insects, carried
    * by the first Unit of type {@code saltBearer} in the Party; null or 0 is no Pack. {@code
-   * panacea} asks the Loadout to carry a Panacea.
+   * panacea} asks the Loadout to carry a Panacea. {@code overreach} sets the Expedition to
+   * Overreach, which only a Roll that holds it allows.
    */
   record StartExpedition(
       Map<UnitStats, Integer> units,
@@ -118,8 +119,19 @@ public sealed interface Command {
       Integer salt,
       Integer saltPack,
       UnitStats saltBearer,
-      boolean panacea)
+      boolean panacea,
+      boolean overreach)
       implements Command {
+    public StartExpedition(
+        Map<UnitStats, Integer> units,
+        Integer startFloor,
+        Integer salt,
+        Integer saltPack,
+        UnitStats saltBearer,
+        boolean panacea) {
+      this(units, startFloor, salt, saltPack, saltBearer, panacea, false);
+    }
+
     public StartExpedition(Map<UnitStats, Integer> units, Integer startFloor, Integer salt) {
       this(units, startFloor, salt, null, null);
     }
@@ -140,6 +152,32 @@ public sealed interface Command {
     @Override
     public String kind() {
       return "START_EXPEDITION";
+    }
+  }
+
+  /**
+   * Save the Loadout in a slot, under Quartermaster's Tally: the Salt, the Salt Pack and its
+   * bearer, the Panacea and the Overreach switch, not the Party.
+   */
+  record SaveLoadout(
+      Integer slot,
+      Integer salt,
+      Integer saltPack,
+      UnitStats saltBearer,
+      boolean panacea,
+      boolean overreach)
+      implements Command {
+    @Override
+    public String kind() {
+      return "SAVE_LOADOUT";
+    }
+  }
+
+  /** Forget the Loadout saved in a slot. */
+  record ClearLoadout(Integer slot) implements Command {
+    @Override
+    public String kind() {
+      return "CLEAR_LOADOUT";
     }
   }
 

@@ -44,6 +44,8 @@ import io.github.diogohmcruz.towerdungeon.domain.models.snapshot.UnitSnapshot;
 import io.github.diogohmcruz.towerdungeon.domain.models.snapshot.WaveSnapshot;
 import io.github.diogohmcruz.towerdungeon.domain.models.upgrade.UpgradeOffer;
 import io.github.diogohmcruz.towerdungeon.domain.models.upgrade.UpgradeType;
+import io.github.diogohmcruz.towerdungeon.domain.prestige.RollEffects;
+import io.github.diogohmcruz.towerdungeon.domain.prestige.SavedLoadout;
 import io.github.diogohmcruz.towerdungeon.domain.prestige.SuccessionReport;
 import io.github.diogohmcruz.towerdungeon.domain.random.RandomSource;
 import io.github.diogohmcruz.towerdungeon.domain.trial.TrialResult;
@@ -84,6 +86,21 @@ public class GameState {
    * is saved with it, so the bonus is not applied twice on a reload.
    */
   @JsonIgnore private double healthBonus = 0;
+
+  /** Narrow Stair, from the Roll; null when not held. Never saved. */
+  @JsonIgnore private RollEffects.NarrowStairRule narrowStair;
+
+  /** What Overreach multiplies, from the Roll; null when not held. Never saved. */
+  @JsonIgnore private RollEffects.OverreachRule overreachRule;
+
+  /** How many Loadouts Quartermaster's Tally lets the player save; 0 when not held. */
+  @JsonIgnore private int loadoutSlots = 0;
+
+  /** The Loadouts saved in the player's meta, shown with the Loadout. Never saved here. */
+  @JsonIgnore private List<SavedLoadout> savedLoadouts = List.of();
+
+  /** Whether the Expedition out now was set out under Overreach. */
+  @JsonIgnore private boolean overreach = false;
 
   private Village village;
   private Map<ResourceType, Double> resources = ResourceType.emptyWallet();
@@ -256,6 +273,17 @@ public class GameState {
    * cannot be made is not carried.
    */
   public void startRun(int saltToUse, int packSalt, UnitStats bearerType, boolean withPanacea) {
+    startRun(saltToUse, packSalt, bearerType, withPanacea, false);
+  }
+
+  /**
+   * As {@link #startRun(int, int, UnitStats, boolean)}, set out under Overreach when {@code
+   * overreachOn} and the Roll holds it: the Expedition then eats, starves and gathers by its
+   * multipliers until it ends.
+   */
+  public void startRun(
+      int saltToUse, int packSalt, UnitStats bearerType, boolean withPanacea, boolean overreachOn) {
+    this.overreach = overreachOn && overreachRule != null;
     this.panacea = null;
     if (withPanacea && panaceaBlocked().isEmpty()) {
       village.takeSpores(config.getSpores().getPanaceaSpores());
@@ -529,7 +557,7 @@ public class GameState {
   }
 
   public void gatherLoot(ResourceType type, Double amount) {
-    carriedLoot.merge(type, amount, Double::sum);
+    carriedLoot.merge(type, amount * lootMultiplier(), Double::sum);
   }
 
   /**
@@ -537,7 +565,7 @@ public class GameState {
    * credits are only kept if the party extracts; a wipe forfeits them.
    */
   public void gatherCredits(Double amount) {
-    carriedCredits += amount;
+    carriedCredits += amount * lootMultiplier();
   }
 
   /**
@@ -562,11 +590,37 @@ public class GameState {
   public void drainExpeditionSupplies(int units) {
     var share = supplies > 0 ? Math.min(1d, saltedSupplies / supplies) : 0d;
     var plain = config.getLoop().getSupplyDrainPerUnit();
-    var perUnit = plain - share * (plain - config.getSalt().getSaltedDrainPerUnit());
+    var perUnit =
+        (plain - share * (plain - config.getSalt().getSaltedDrainPerUnit())) * drainMultiplier();
     var before = supplies;
     var saltedBefore = saltedSupplies;
     drainSupplies(units * perUnit);
     this.saltedSupplies = Math.max(0d, saltedBefore - (before - supplies) * share);
+  }
+
+  /** What the Expedition's Supplies drain is multiplied by: Overreach, while it is on. */
+  public double drainMultiplier() {
+    return overreachApplies() ? overreachRule.supplyDrain() : 1d;
+  }
+
+  /** The damage Starvation does to a Unit on the Tower, doubled by Overreach while it is on. */
+  public double starvationDamage() {
+    var plain = config.getLoop().getStarvationDamage();
+    return overreachApplies() ? plain * overreachRule.starvationDamage() : plain;
+  }
+
+  /** What all Loot found is multiplied by: Overreach, while it is on. */
+  public double lootMultiplier() {
+    return overreachApplies() ? overreachRule.loot() : 1d;
+  }
+
+  private boolean overreachApplies() {
+    return overreach && overreachRule != null;
+  }
+
+  /** Whether the Expedition out now is under Overreach, and the Roll still holds it. */
+  public boolean isOverreaching() {
+    return overreachApplies() && expeditionActive;
   }
 
   public boolean hasSupplies() {
@@ -591,9 +645,10 @@ public class GameState {
   /** The Relics the counted surplus will bank at extraction: each item by its tier. */
   private double surplusRelics() {
     var relics = config.getItems().getSurplusRelics();
-    return surplus.entrySet().stream()
-        .mapToDouble(entry -> (double) entry.getValue() * relics.of(entry.getKey()))
-        .sum();
+    return lootMultiplier()
+        * surplus.entrySet().stream()
+            .mapToDouble(entry -> (double) entry.getValue() * relics.of(entry.getKey()))
+            .sum();
   }
 
   /**
@@ -605,7 +660,10 @@ public class GameState {
     if (floor < spores.getLootFromFloor()) {
       return;
     }
-    carriedSpores += spores.getLootPerFloor() * (guardian ? spores.getGuardianLootMultiplier() : 1);
+    carriedSpores +=
+        spores.getLootPerFloor()
+            * (guardian ? spores.getGuardianLootMultiplier() : 1)
+            * lootMultiplier();
   }
 
   /** Banks the carried loot, and every surplus item as Relics by tier. */
@@ -743,8 +801,8 @@ public class GameState {
       return;
     }
     var partyFloor = tower == null ? 0 : tower.getCurrentFloor();
-    var drainPerUnit = config.getLoop().getSupplyDrainPerUnit();
-    var starvationDamage = config.getLoop().getStarvationDamage();
+    var drainPerUnit = config.getLoop().getSupplyDrainPerUnit() * drainMultiplier();
+    var starvationDamage = starvationDamage();
     var climb = config.getReinforcements().getClimbFloorsPerTick() + village.waveSpeedBonus();
     var iterator = reinforcements.iterator();
     while (iterator.hasNext()) {
@@ -1223,8 +1281,67 @@ public class GameState {
         spores.getPanaceaMaterials(),
         vaultMaterials(),
         spores.getPanaceaCapacity(),
-        panaceaBlocked().orElse(null));
+        panaceaBlocked().orElse(null),
+        overreachRule == null
+            ? null
+            : new OverreachSwitch(
+                overreachRule.supplyDrain(),
+                overreachRule.starvationDamage(),
+                overreachRule.loot()),
+        loadoutSlots <= 0 ? null : quartermastersTally(taken, partySize, perSalt));
   }
+
+  /**
+   * The Supplies-runway forecast and the saved Loadouts, for the default Party. The runway is the
+   * ticks the Supplies last at the Party's drain, before any Supplies a Floor adds.
+   */
+  private QuartermastersTally quartermastersTally(double taken, int partySize, double perSalt) {
+    var salted = Math.min(taken, Math.floor(village.getSalt()) * perSalt);
+    return new QuartermastersTally(
+        loadoutSlots,
+        savedLoadouts,
+        runwayTicks(taken, partySize, 0d, false),
+        runwayTicks(taken, partySize, salted, false),
+        overreachRule == null ? null : runwayTicks(taken, partySize, 0d, true));
+  }
+
+  /**
+   * How many ticks {@code supplies} last a Party of {@code party} Units, when {@code salted} of
+   * them are salted and the Expedition is, or is not, under Overreach; null for an empty Party.
+   * Supplies a cleared Floor adds, and the Starvation after they run out, are not counted.
+   */
+  public Integer runwayTicks(double supplies, int party, double salted, boolean underOverreach) {
+    if (party <= 0) {
+      return null;
+    }
+    var share = supplies > 0 ? Math.min(1d, salted / supplies) : 0d;
+    var plain = config.getLoop().getSupplyDrainPerUnit();
+    var perUnit = plain - share * (plain - config.getSalt().getSaltedDrainPerUnit());
+    if (underOverreach && overreachRule != null) {
+      perUnit *= overreachRule.supplyDrain();
+    }
+    return perUnit <= 0 ? null : (int) Math.floor(supplies / (party * perUnit));
+  }
+
+  /** Overreach as the Loadout offers it: present only when the Roll holds it. */
+  public record OverreachSwitch(
+      double supplyDrainMultiplier, double starvationDamageMultiplier, double lootMultiplier) {}
+
+  /**
+   * What Quartermaster's Tally adds to the Loadout.
+   *
+   * @param slots how many Loadouts may be saved
+   * @param saved the Loadouts saved so far
+   * @param runwayTicks ticks the Supplies last the default Party, unsalted
+   * @param saltedRunwayTicks the same with all the Salt held put to use
+   * @param overreachRunwayTicks the same under Overreach; null when the Roll holds none
+   */
+  public record QuartermastersTally(
+      int slots,
+      List<SavedLoadout> saved,
+      Integer runwayTicks,
+      Integer saltedRunwayTicks,
+      Integer overreachRunwayTicks) {}
 
   /** The Loadout's lines about Supplies. Each later line joins it as one more component. */
   public record LoadoutPreview(
@@ -1248,7 +1365,9 @@ public class GameState {
       double panaceaMaterials,
       double vaultMaterials,
       double panaceaCapacity,
-      String panaceaBlocked) {}
+      String panaceaBlocked,
+      OverreachSwitch overreach,
+      QuartermastersTally tally) {}
 
   /** The Count: what the Campaign has lost to Starvation. */
   public TheCount getTheCount() {
@@ -1753,6 +1872,11 @@ public class GameState {
         .collect(java.util.stream.Collectors.joining(", "));
   }
 
+  /** The Floor the Toll's Ascent starts above: the highest inherited Floor set out from. */
+  public int getInheritedStartFloor() {
+    return tally.getInheritedStartFloor();
+  }
+
   /** The Tally as the Prestige Toll reads it; the caller supplies the Guardians slain. */
   public io.github.diogohmcruz.towerdungeon.domain.prestige.Tally tollTally(int guardiansSlain) {
     return new io.github.diogohmcruz.towerdungeon.domain.prestige.Tally(
@@ -1838,7 +1962,56 @@ public class GameState {
               shortcut.getFloor(),
               isShortcutOpen(shortcut)));
     }
+    if (narrowStair != null) {
+      offers.add(
+          new ShortcutOffer(
+              NARROW_STAIR_ID,
+              "Narrow Stair",
+              "A spiral stair too narrow for an army: a small Party can climb it straight to the"
+                  + " floor above the twentieth guardian.",
+              "Inherited; a Party of at most " + narrowStair.maxParty(),
+              narrowStair.floor(),
+              true,
+              narrowStair.maxParty()));
+    }
     return offers;
+  }
+
+  /** The id of Narrow Stair among the Shortcuts. */
+  public static final String NARROW_STAIR_ID = "NARROW_STAIR";
+
+  /** Whether {@code floor} is Narrow Stair's, and no Shortcut the Campaign opened leads there. */
+  private boolean isNarrowStairFloor(int floor) {
+    return narrowStair != null
+        && floor == narrowStair.floor()
+        && Arrays.stream(ShortcutType.values())
+            .noneMatch(shortcut -> shortcut.getFloor() == floor && isShortcutOpen(shortcut));
+  }
+
+  /**
+   * Why a Party of {@code partySize} may not set out from {@code requestedFloor}: Narrow Stair
+   * takes only a small Party. Empty when it may.
+   */
+  public Optional<String> startFloorRefusal(int requestedFloor, int partySize) {
+    if (isNarrowStairFloor(requestedFloor) && partySize > narrowStair.maxParty()) {
+      return Optional.of(
+          "Narrow Stair takes a Party of at most "
+              + narrowStair.maxParty()
+              + " Units; this one is "
+              + partySize
+              + ".");
+    }
+    return Optional.empty();
+  }
+
+  /**
+   * Notes that an Expedition set out from {@code floor}. A Floor the Roll gave (Narrow Stair) is
+   * the Toll's baseline: Ascent is paid only for the Floors above it.
+   */
+  public void noteStartFloor(int floor) {
+    if (isNarrowStairFloor(floor)) {
+      tally.noteInheritedStartFloor(floor);
+    }
   }
 
   /**
@@ -1849,8 +2022,10 @@ public class GameState {
     if (requestedFloor <= 0) {
       return true;
     }
-    return Arrays.stream(ShortcutType.values())
-        .anyMatch(shortcut -> shortcut.getFloor() == requestedFloor && isShortcutOpen(shortcut));
+    return (narrowStair != null && requestedFloor == narrowStair.floor())
+        || Arrays.stream(ShortcutType.values())
+            .anyMatch(
+                shortcut -> shortcut.getFloor() == requestedFloor && isShortcutOpen(shortcut));
   }
 
   public Integer buyVillager() {
@@ -2119,7 +2294,8 @@ public class GameState {
         saltBearerId,
         carriedSpores,
         isPanaceaCarried(),
-        doorSeen);
+        doorSeen,
+        overreach);
   }
 
   /** Units in a stable order: by type, then in list order. */
@@ -2299,6 +2475,7 @@ public class GameState {
       state.lastFoodReturned = e.lastFoodReturned();
       state.runStartFloor = e.runStartFloor();
       state.doorSeen = e.doorSeen();
+      state.overreach = e.overreach();
       state.runEnemiesDefeated = e.runEnemiesDefeated();
       state.runUnitsLost = e.runUnitsLost();
       state.runFallen = new ArrayList<>(e.runFallen());

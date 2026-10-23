@@ -89,7 +89,8 @@ public class MetaCodec {
         read.epitaphs(),
         read.openBreach(),
         secret,
-        read.raceRecords());
+        read.raceRecords(),
+        read.savedLoadouts());
   }
 
   /** What survives a section that no longer fits the shape: the numbers that still parse. */

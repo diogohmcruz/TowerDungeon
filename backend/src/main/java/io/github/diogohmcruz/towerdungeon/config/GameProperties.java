@@ -1108,6 +1108,9 @@ public class GameProperties {
       private final VillageCharter villageCharter = new VillageCharter();
       private final Heir heir = new Heir();
       private final OfferingStone offeringStone = new OfferingStone();
+      private final NarrowStair narrowStair = new NarrowStair();
+      private final Overreach overreach = new Overreach();
+      private final QuartermastersTally quartermastersTally = new QuartermastersTally();
 
       private static Map<InheritanceType, Integer> defaultCosts() {
         var costs = new EnumMap<InheritanceType, Integer>(InheritanceType.class);
@@ -1235,6 +1238,30 @@ public class GameProperties {
     public static class TenSealsBroken {
       private int lifetimeGuardiansSlain = 15;
       private double easingMultiplier = 1.25;
+    }
+
+    /**
+     * Narrow Stair: the Floor of its Shortcut and the largest Party that may use it. Both are
+     * placeholders chosen to be survivable on paper, until the measured figures are in.
+     */
+    @Data
+    public static class NarrowStair {
+      private int floor = 21;
+      private int maxParty = 12;
+    }
+
+    /** Overreach: what the per-Expedition switch multiplies. */
+    @Data
+    public static class Overreach {
+      private double supplyDrainMultiplier = 1.3;
+      private double starvationDamageMultiplier = 2.0;
+      private double lootMultiplier = 1.5;
+    }
+
+    /** Quartermaster's Tally: how many Loadouts may be saved. */
+    @Data
+    public static class QuartermastersTally {
+      private int slots = 3;
     }
 
     private final Counters counters = new Counters();

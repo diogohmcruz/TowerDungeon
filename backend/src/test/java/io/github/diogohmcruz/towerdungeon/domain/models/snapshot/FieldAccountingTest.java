@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
@@ -14,6 +15,12 @@ import io.github.diogohmcruz.towerdungeon.domain.models.GameState;
 import io.github.diogohmcruz.towerdungeon.domain.models.Tower;
 import io.github.diogohmcruz.towerdungeon.domain.models.Unit;
 import io.github.diogohmcruz.towerdungeon.domain.models.Village;
+import io.github.diogohmcruz.towerdungeon.domain.prestige.LifetimeLedger;
+import io.github.diogohmcruz.towerdungeon.domain.prestige.PlayerMeta;
+import io.github.diogohmcruz.towerdungeon.domain.prestige.RollEntry;
+import io.github.diogohmcruz.towerdungeon.domain.prestige.SavedLoadout;
+import io.github.diogohmcruz.towerdungeon.persistence.MetaCodec;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Fails the build when a field of the saved classes is neither written to the snapshot nor listed
@@ -52,6 +59,7 @@ class FieldAccountingTest {
           Map.entry("enemiesDefeated", "CampaignSnapshot.enemiesDefeated"),
           Map.entry("runStartFloor", "ExpeditionSnapshot.runStartFloor"),
           Map.entry("doorSeen", "ExpeditionSnapshot.doorSeen"),
+          Map.entry("overreach", "ExpeditionSnapshot.overreach"),
           Map.entry("runEnemiesDefeated", "ExpeditionSnapshot.runEnemiesDefeated"),
           Map.entry("runUnitsLost", "ExpeditionSnapshot.runUnitsLost"),
           Map.entry("lastRunSummary", "CampaignSnapshot.lastExpeditionSummary"),
@@ -65,20 +73,38 @@ class FieldAccountingTest {
           Map.entry("random", "GameSnapshot.random"),
           Map.entry("trial", "GameSnapshot.trial"));
 
-  private static final Map<String, String> GAME_STATE_TRANSIENT =
+  private static final Map<String, String> GAME_STATE_ROLL_DERIVED =
       Map.of(
-          "healthBonus",
-              "derived from the Epitaphs in the player's meta, re-applied on restore; a Unit's own"
-                  + " health factor is saved with it",
-          "rollDamageBonus", "derived from the Roll in the player\'s meta, re-applied on restore",
-          "maxSupplies", "derived: carrying capacity is recomputed from upgrades and the party",
-          "unlockedUnits", "derived: the starting types plus upgrade and milestone unlocks",
-          "recoverySpend", "recomputed by the next lifecycle tick",
-          "foodDistributionStrategy", "behaviour, not state; a default is installed on creation",
-          "config", "game balance, supplied on restore",
-          "doorOpen", "derived: Blood of the Door is on the player's Roll, in the meta",
-          "ledger",
-              "a log of what just happened, not a fact of the Campaign; starts empty on load");
+          "narrowStair", "derived from the Roll in the player's meta, re-applied on restore",
+          "overreachRule", "derived from the Roll in the player's meta, re-applied on restore",
+          "loadoutSlots", "derived from the Roll in the player's meta, re-applied on restore",
+          "savedLoadouts",
+              "kept in the player's meta (PlayerMeta.savedLoadouts), not in the Campaign");
+
+  private static final Map<String, String> GAME_STATE_TRANSIENT =
+      merged(
+          GAME_STATE_ROLL_DERIVED,
+          Map.of(
+              "healthBonus",
+                  "derived from the Epitaphs in the player's meta, re-applied on restore; a Unit's"
+                      + " own health factor is saved with it",
+              "rollDamageBonus",
+                  "derived from the Roll in the player\'s meta, re-applied on restore",
+              "maxSupplies", "derived: carrying capacity is recomputed from upgrades and the party",
+              "unlockedUnits", "derived: the starting types plus upgrade and milestone unlocks",
+              "recoverySpend", "recomputed by the next lifecycle tick",
+              "foodDistributionStrategy",
+                  "behaviour, not state; a default is installed on creation",
+              "config", "game balance, supplied on restore",
+              "doorOpen", "derived: Blood of the Door is on the player's Roll, in the meta",
+              "ledger",
+                  "a log of what just happened, not a fact of the Campaign; starts empty on load"));
+
+  private static Map<String, String> merged(Map<String, String> first, Map<String, String> more) {
+    var all = new java.util.HashMap<>(first);
+    all.putAll(more);
+    return Map.copyOf(all);
+  }
 
   private static final Map<String, String> VILLAGE_MAPPED =
       Map.ofEntries(
@@ -160,6 +186,25 @@ class FieldAccountingTest {
           "sanityRules", "game balance, supplied from config on restore",
           "itemEffects", "game balance, supplied from config on restore",
           "panacea", "the Party's shared Panacea; ExpeditionSnapshot.panaceaCarried re-issues it");
+
+  /**
+   * Every component of the player's meta, and where it is written. A new one must be added to the
+   * codec's reading (it copies the parts by hand) and listed here.
+   */
+  private static final Set<String> META_COMPONENTS =
+      Set.of(
+          "generation",
+          "legacy",
+          "roll",
+          "residue",
+          "lifetime",
+          "chronicle",
+          "slainGuardians",
+          "epitaphs",
+          "openBreach",
+          "towerSecret",
+          "raceRecords",
+          "savedLoadouts");
 
   private static Set<String> fieldsOf(Class<?> type) {
     var names = new TreeSet<String>();
@@ -244,5 +289,38 @@ class FieldAccountingTest {
   void everyUnitFieldIsMappedOrTransient() {
     assertAccounted(Unit.class, UNIT_MAPPED, UNIT_TRANSIENT);
     assertTargetsExist(UNIT_MAPPED);
+  }
+
+  @Test
+  void everyPlayerMetaComponentIsAccountedFor() {
+    var components =
+        Arrays.stream(PlayerMeta.class.getRecordComponents())
+            .map(component -> component.getName())
+            .collect(java.util.stream.Collectors.toSet());
+
+    assertThat(components).isEqualTo(META_COMPONENTS);
+  }
+
+  @Test
+  void everyPlayerMetaComponentSurvivesTheCodec() {
+    var codec = MetaCodec.development(JsonMapper.builder().build());
+    var meta =
+        new PlayerMeta(
+            4,
+            9,
+            List.of(new RollEntry("SEED_GRAIN", 1)),
+            2.5,
+            LifetimeLedger.EMPTY,
+            List.of(),
+            java.util.Map.of(2, List.of(10)),
+            List.of("FIRST_FOOTING"),
+            10,
+            "secret",
+            List.of(),
+            List.of(new SavedLoadout(1, 5, 2, "PORTER", true, false)));
+
+    var read = codec.fromNode(codec.toNode(meta));
+
+    assertThat(read).isEqualTo(meta);
   }
 }

@@ -35,6 +35,7 @@ import io.github.diogohmcruz.towerdungeon.domain.trial.RaceRecord;
  * @param raceRecords one line per Race entered, oldest first, capped; shown in the Race record
  *     section of the Chronicle screen. They belong to the player, not to a Generation: no Legacy,
  *     no Toll, no effect on play
+ * @param savedLoadouts the Loadouts saved under Quartermaster's Tally, by slot; empty for none
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record PlayerMeta(
@@ -48,7 +49,8 @@ public record PlayerMeta(
     List<String> epitaphs,
     int openBreach,
     String towerSecret,
-    List<RaceRecord> raceRecords) {
+    List<RaceRecord> raceRecords,
+    List<SavedLoadout> savedLoadouts) {
 
   public PlayerMeta {
     generation = Math.max(1, generation);
@@ -63,6 +65,41 @@ public record PlayerMeta(
     epitaphs = epitaphs == null ? List.of() : List.copyOf(epitaphs);
     openBreach = Math.max(0, openBreach);
     raceRecords = raceRecords == null ? List.of() : List.copyOf(raceRecords);
+    savedLoadouts =
+        savedLoadouts == null
+            ? List.of()
+            : savedLoadouts.stream()
+                .filter(java.util.Objects::nonNull)
+                .sorted(java.util.Comparator.comparingInt(SavedLoadout::slot))
+                .toList();
+  }
+
+  /** A meta with no saved Loadouts. */
+  public PlayerMeta(
+      int generation,
+      int legacy,
+      List<RollEntry> roll,
+      double residue,
+      LifetimeLedger lifetime,
+      List<ChronicleEntry> chronicle,
+      Map<Integer, List<Integer>> slainGuardians,
+      List<String> epitaphs,
+      int openBreach,
+      String towerSecret,
+      List<RaceRecord> raceRecords) {
+    this(
+        generation,
+        legacy,
+        roll,
+        residue,
+        lifetime,
+        chronicle,
+        slainGuardians,
+        epitaphs,
+        openBreach,
+        towerSecret,
+        raceRecords,
+        List.of());
   }
 
   /** A meta with no Race records. */
@@ -167,7 +204,8 @@ public record PlayerMeta(
         epitaphRules == null ? epitaphs : Epitaph.granted(epitaphs, ledger, epitaphRules),
         openBreach,
         towerSecret,
-        raceRecords);
+        raceRecords,
+        savedLoadouts);
   }
 
   /**
@@ -202,7 +240,25 @@ public record PlayerMeta(
         epitaphs,
         openBreach,
         towerSecret,
-        raceRecords);
+        raceRecords,
+        savedLoadouts);
+  }
+
+  /** The same meta with its Loadouts replaced. */
+  public PlayerMeta withSavedLoadouts(List<SavedLoadout> loadouts) {
+    return new PlayerMeta(
+        generation,
+        legacy,
+        roll,
+        residue,
+        lifetime,
+        chronicle,
+        slainGuardians,
+        epitaphs,
+        openBreach,
+        towerSecret,
+        raceRecords,
+        loadouts);
   }
 
   /** Whether the meta has a Tower secret yet. */
@@ -224,7 +280,8 @@ public record PlayerMeta(
         epitaphs,
         openBreach,
         secret,
-        raceRecords);
+        raceRecords,
+        savedLoadouts);
   }
 
   /** The meta of the next Generation: the same record, one Generation on. */
@@ -240,7 +297,8 @@ public record PlayerMeta(
         epitaphs,
         0,
         towerSecret,
-        raceRecords);
+        raceRecords,
+        savedLoadouts);
   }
 
   /** The same meta with the Guardian Floor the Generation in play holds open (0 for none). */
@@ -256,7 +314,8 @@ public record PlayerMeta(
         epitaphs,
         floor,
         towerSecret,
-        raceRecords);
+        raceRecords,
+        savedLoadouts);
   }
 
   /**
@@ -281,7 +340,8 @@ public record PlayerMeta(
         epitaphs,
         openBreach,
         towerSecret,
-        lines);
+        lines,
+        savedLoadouts);
   }
 
   /** Whether the Epitaph has been earned. */

@@ -49,7 +49,10 @@ class RollRulesTest {
             InheritanceType.BLOOD_OF_THE_DOOR,
             InheritanceType.HARD_WON_HABITS,
             InheritanceType.THE_OPEN_BREACH,
-            InheritanceType.OFFERING_STONE);
+            InheritanceType.OFFERING_STONE,
+            InheritanceType.NARROW_STAIR,
+            InheritanceType.OVERREACH,
+            InheritanceType.QUARTERMASTERS_TALLY);
   }
 
   @Test
@@ -64,7 +67,7 @@ class RollRulesTest {
 
   @Test
   void anUnavailableInheritanceIsListedButNeverBought() {
-    assertThat(RollRules.whyNotBuy(withLegacy(99), InheritanceType.NARROW_STAIR, config))
+    assertThat(RollRules.whyNotBuy(withLegacy(99), InheritanceType.READER_OF_OMENS, config))
         .isEqualTo(RollRefusal.UNAVAILABLE);
     assertThat(RollRules.whyNotBuy(withLegacy(99), InheritanceType.SECOND_PACT, config))
         .isEqualTo(RollRefusal.UNAVAILABLE);

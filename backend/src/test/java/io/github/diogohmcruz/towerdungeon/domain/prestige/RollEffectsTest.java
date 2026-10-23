@@ -62,9 +62,9 @@ class RollEffectsTest {
     var config = new GameProperties().copy();
     var effects =
         RollEffects.of(
-            List.of(new RollEntry("NARROW_STAIR", 5), new RollEntry("LONG_GONE", 3)), config);
+            List.of(new RollEntry("READER_OF_OMENS", 4), new RollEntry("LONG_GONE", 3)), config);
 
-    assertThat(effects.holds(InheritanceType.NARROW_STAIR)).isFalse();
+    assertThat(effects.holds(InheritanceType.READER_OF_OMENS)).isFalse();
   }
 
   @Test

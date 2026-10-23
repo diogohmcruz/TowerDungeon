@@ -19,6 +19,7 @@ import io.github.diogohmcruz.towerdungeon.domain.models.ResourceType;
  * @param carriedSpores Dragon Spores found on this Expedition, not yet banked
  * @param panaceaCarried whether the Party still carries an unspent Panacea
  * @param doorSeen whether the Party has stood at the sealed Door and been paid for the Floor
+ * @param overreach whether the Expedition was set out under Overreach
  * @param garrison the enemies standing on the party's current floor
  */
 public record ExpeditionSnapshot(
@@ -39,7 +40,8 @@ public record ExpeditionSnapshot(
     Integer saltBearerId,
     double carriedSpores,
     boolean panaceaCarried,
-    boolean doorSeen) {
+    boolean doorSeen,
+    boolean overreach) {
 
   /** A save from before the fallen were recorded has none. */
   public ExpeditionSnapshot {

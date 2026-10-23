@@ -15,6 +15,7 @@ public class CampaignTally {
   private double relicsBanked;
   private int floorsCleared;
   private int peakVillagers;
+  private int inheritedStartFloor;
 
   public CampaignTally(int villagers) {
     this.peakVillagers = Math.max(0, villagers);
@@ -44,9 +45,20 @@ public class CampaignTally {
     peakVillagers = Math.max(peakVillagers, villagers);
   }
 
+  /** Notes an Expedition that set out from a Floor the Roll gave; only ever raises it. */
+  public void noteInheritedStartFloor(int floor) {
+    inheritedStartFloor = Math.max(inheritedStartFloor, floor);
+  }
+
   public TallySnapshot toSnapshot() {
     return new TallySnapshot(
-        foodGrown, creditsBanked, materialsBanked, relicsBanked, floorsCleared, peakVillagers);
+        foodGrown,
+        creditsBanked,
+        materialsBanked,
+        relicsBanked,
+        floorsCleared,
+        peakVillagers,
+        inheritedStartFloor);
   }
 
   /** Restores saved counters; they only ever rise from here. */
@@ -57,5 +69,6 @@ public class CampaignTally {
     relicsBanked = Math.max(0, saved.relicsBanked());
     floorsCleared = Math.max(0, saved.floorsCleared());
     peakVillagers = Math.max(peakVillagers, saved.peakVillagers());
+    inheritedStartFloor = Math.max(0, saved.inheritedStartFloor());
   }
 }

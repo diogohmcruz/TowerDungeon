@@ -51,7 +51,8 @@ public record CommandResult(
     INSUFFICIENT_LEGACY,
     COURSE_LOCKED,
     WRITE_FAILED,
-    TRIAL_CLOSED
+    TRIAL_CLOSED,
+    PARTY_TOO_LARGE
   }
 
   public CommandResult {

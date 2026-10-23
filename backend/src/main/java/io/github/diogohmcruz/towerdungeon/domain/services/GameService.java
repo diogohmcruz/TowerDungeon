@@ -7,6 +7,7 @@ import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.TreeMap;
@@ -51,6 +52,7 @@ import io.github.diogohmcruz.towerdungeon.domain.prestige.RollEffects;
 import io.github.diogohmcruz.towerdungeon.domain.prestige.RollEntry;
 import io.github.diogohmcruz.towerdungeon.domain.prestige.RollRefusal;
 import io.github.diogohmcruz.towerdungeon.domain.prestige.RollRules;
+import io.github.diogohmcruz.towerdungeon.domain.prestige.SavedLoadout;
 import io.github.diogohmcruz.towerdungeon.domain.prestige.SuccessionChoice;
 import io.github.diogohmcruz.towerdungeon.domain.prestige.SuccessionReport;
 import io.github.diogohmcruz.towerdungeon.domain.prestige.SuccessionView;
@@ -196,6 +198,7 @@ public class GameService {
         newCampaign(campaignConfig, new RandomSource(meta.seed()), meta.generation(), hollow);
     campaign.setDoorOpen(meta.opensTheDoor());
     effects.start(campaign, choices);
+    campaign.setSavedLoadouts(meta.savedLoadouts());
     return campaign;
   }
 
@@ -641,6 +644,7 @@ public class GameService {
           GameState.restore(snapshot, campaignConfig, new RandomSource(meta.seed()), slot.plan());
       state.setDoorOpen(meta.opensTheDoor());
       effects.carry(state);
+      state.setSavedLoadouts(meta.savedLoadouts());
     }
     if (!result.quarantined().isEmpty()) {
       slot.addNotice(
@@ -875,7 +879,12 @@ public class GameService {
           Command.MusterRoll _,
           Command.BeginGeneration _ ->
           false;
-      case Command.RollBuy _, Command.RollRefund _, Command.Choose _ -> true;
+      case Command.RollBuy _,
+          Command.RollRefund _,
+          Command.Choose _,
+          Command.SaveLoadout _,
+          Command.ClearLoadout _ ->
+          true;
     };
   }
 
@@ -925,6 +934,8 @@ public class GameService {
             case Command.RollRefund refund -> rollRefund(slot, gameState, refund.inheritanceId());
             case Command.Choose choose -> choose(slot, gameState, choose.choiceId());
             case Command.MusterRoll _ -> musterRoll(slot, gameState, playerId);
+            case Command.SaveLoadout save -> saveLoadout(slot, gameState, save);
+            case Command.ClearLoadout clear -> clearLoadout(slot, gameState, clear.slot());
           };
     } catch (InvalidInvasion err) {
       log.warn("Rejected invasion from player {}: {}", playerId, err.getMessage());
@@ -1191,6 +1202,9 @@ public class GameService {
           gameState.getGameOutcome());
       return CommandResult.rejected(Reason.CAMPAIGN_ENDED, "The Campaign has ended.");
     }
+    if (command.overreach() && gameState.getOverreachRule() == null) {
+      return CommandResult.rejected(Reason.NOT_UNLOCKED, "The Roll holds no Overreach.");
+    }
     var requestedFloor = command.startFloor() == null ? 0 : command.startFloor();
     if (!gameState.isStartFloorUnlocked(requestedFloor)) {
       log.warn(
@@ -1198,6 +1212,13 @@ public class GameService {
           playerId,
           requestedFloor);
       return CommandResult.rejected(Reason.START_FLOOR_LOCKED, "That floor has no open shortcut.");
+    }
+    var tooLarge =
+        gameState.startFloorRefusal(requestedFloor, requestedPartySize(gameState, command.units()));
+    if (tooLarge.isPresent()) {
+      log.warn(
+          "Player[{}] tried to take a Party over the limit up floor {}.", playerId, requestedFloor);
+      return CommandResult.rejected(Reason.PARTY_TOO_LARGE, tooLarge.get());
     }
     if (command.panacea()) {
       var cannot = gameState.panaceaBlocked();
@@ -1242,9 +1263,11 @@ public class GameService {
         command.salt() == null ? 0 : command.salt(),
         saltPack,
         command.saltBearer(),
-        command.panacea());
+        command.panacea(),
+        command.overreach());
     if (requestedFloor > 0) {
       gameState.recordFloorReached(requestedFloor);
+      gameState.noteStartFloor(requestedFloor);
     }
     slot.lastMuster(command);
     slot.emit(
@@ -1327,6 +1350,27 @@ public class GameService {
         ? CommandResult.partial(
             Reason.INSUFFICIENT_UNITS, "A wave set out with fewer than asked: not enough at home.")
         : CommandResult.applied("A wave set out.");
+  }
+
+  /**
+   * How many Units the command would send: every Unit at home and on the Tower for an empty
+   * selection, else the sum asked for, as far as there are Units to send.
+   */
+  private static int requestedPartySize(GameState gameState, Map<UnitStats, Integer> asked) {
+    var available = countOf(gameState.getUnits()) + countOf(gameState.getUnitsOnTower());
+    if (asked == null || asked.isEmpty()) {
+      return available;
+    }
+    var wanted =
+        asked.values().stream()
+            .filter(Objects::nonNull)
+            .mapToInt(count -> Math.max(0, count))
+            .sum();
+    return Math.min(wanted, available);
+  }
+
+  private static int countOf(Map<UnitStats, List<Unit>> units) {
+    return units.values().stream().mapToInt(List::size).sum();
   }
 
   /** Whether a Unit of the bearer's type is among those about to set out. */
@@ -1501,6 +1545,65 @@ public class GameService {
     return CommandResult.applied("Chosen.");
   }
 
+  /** Quartermaster's Tally: keeps the Loadout in a slot of the player's meta. */
+  private CommandResult saveLoadout(PlayerSlot slot, GameState gameState, Command.SaveLoadout c) {
+    var refused = loadoutSlotRefusal(slot, gameState, c.slot());
+    if (refused != null) {
+      return refused;
+    }
+    var salt = c.salt() == null ? 0 : c.salt();
+    var pack = c.saltPack() == null ? 0 : c.saltPack();
+    if (salt < 0 || pack < 0) {
+      return CommandResult.rejected(Reason.INVALID_ARGUMENT, "The Salt cannot be negative.");
+    }
+    if (c.overreach() && gameState.getOverreachRule() == null) {
+      return CommandResult.rejected(Reason.NOT_UNLOCKED, "The Roll holds no Overreach.");
+    }
+    var saved =
+        new SavedLoadout(
+            c.slot(),
+            salt,
+            pack,
+            c.saltBearer() == null ? null : c.saltBearer().name(),
+            c.panacea(),
+            c.overreach());
+    var loadouts = new ArrayList<>(slot.meta().savedLoadouts());
+    loadouts.removeIf(old -> old.slot() == c.slot());
+    loadouts.add(saved);
+    slot.meta(slot.meta().withSavedLoadouts(loadouts));
+    gameState.setSavedLoadouts(slot.meta().savedLoadouts());
+    slot.emit("LOADOUT_SAVED", Map.of("slot", c.slot()));
+    return CommandResult.applied("The Loadout is saved.");
+  }
+
+  private CommandResult clearLoadout(PlayerSlot slot, GameState gameState, Integer which) {
+    var refused = loadoutSlotRefusal(slot, gameState, which);
+    if (refused != null) {
+      return refused;
+    }
+    var loadouts = new ArrayList<>(slot.meta().savedLoadouts());
+    if (!loadouts.removeIf(old -> old.slot() == which)) {
+      return CommandResult.rejected(Reason.NOT_AVAILABLE, "No Loadout is saved there.");
+    }
+    slot.meta(slot.meta().withSavedLoadouts(loadouts));
+    gameState.setSavedLoadouts(slot.meta().savedLoadouts());
+    slot.emit("LOADOUT_CLEARED", Map.of("slot", which));
+    return CommandResult.applied("The Loadout is forgotten.");
+  }
+
+  /** Why the slot cannot be used for a saved Loadout: no Tally on the Roll, or no such slot. */
+  private static CommandResult loadoutSlotRefusal(
+      PlayerSlot slot, GameState gameState, Integer which) {
+    if (slot.meta() == null || gameState.getLoadoutSlots() <= 0) {
+      return CommandResult.rejected(
+          Reason.NOT_UNLOCKED, "The Roll holds no Quartermaster's Tally.");
+    }
+    if (which == null || which < 0 || which >= gameState.getLoadoutSlots()) {
+      return CommandResult.rejected(Reason.INVALID_ARGUMENT, "There is no such Loadout slot.");
+    }
+    return null;
+  }
+
   /** Muster Roll: the last Party and Loadout, sent again. */
   private CommandResult musterRoll(PlayerSlot slot, GameState gameState, String playerId) {
     // A Trial has no meta, and so no Roll.
@@ -1526,7 +1629,13 @@ public class GameService {
     var tower = gameState.getTower();
     var guardians = tower == null ? 0 : tower.getSlainGuardians().size();
     var tally = gameState.tollTally(guardians);
-    var context = new TollContext(0, 0, meta.residue(), meta.lifetime().bestGuardians(), 0);
+    var context =
+        new TollContext(
+            0,
+            0,
+            meta.residue(),
+            meta.lifetime().bestGuardians(),
+            gameState.getInheritedStartFloor());
     return new Forecast(
         TollCalculator.calculate(tally, context, gameState.getConfig().getPrestige()),
         tally,
@@ -2015,7 +2124,7 @@ public class GameService {
     starving.forEach(
         unit ->
             gameState.dropGearOnCurrentFloor(
-                unit.receiveAttack(gameState.getConfig().getLoop().getStarvationDamage(), null)));
+                unit.receiveAttack(gameState.starvationDamage(), null)));
     starving.stream().filter(BaseUnit::isDead).toList().forEach(gameState::removeUnit);
   }
 

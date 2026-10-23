@@ -157,7 +157,7 @@ class RollCommandsTest {
         .isEqualTo(Reason.UNKNOWN_ID);
     assertThat(service.execute(PLAYER, new Command.RollBuy(null)).reason())
         .isEqualTo(Reason.UNKNOWN_ID);
-    assertThat(service.execute(PLAYER, buy(InheritanceType.NARROW_STAIR)).reason())
+    assertThat(service.execute(PLAYER, buy(InheritanceType.READER_OF_OMENS)).reason())
         .isEqualTo(Reason.NOT_AVAILABLE);
     assertThat(service.execute(PLAYER, buy(InheritanceType.THE_DOWRY)).reason())
         .isEqualTo(Reason.COURSE_LOCKED);
@@ -263,7 +263,8 @@ class RollCommandsTest {
     assertThat(state().getPhase()).isEqualTo(CampaignPhase.OFFER);
     assertThat(view.inheritances()).hasSize(17);
     assertThat(view.legacy()).isEqualTo(30);
-    var stair = view.inheritances().stream().filter(n -> n.id().equals("NARROW_STAIR")).findFirst();
+    var stair =
+        view.inheritances().stream().filter(n -> n.id().equals("READER_OF_OMENS")).findFirst();
     assertThat(stair.orElseThrow().available()).isFalse();
     assertThat(stair.orElseThrow().whyNot()).isEqualTo(RollRefusal.UNAVAILABLE.name());
     var seed = view.inheritances().stream().filter(n -> n.id().equals("SEED_GRAIN")).findFirst();
