@@ -64,6 +64,10 @@ export class GameComponent {
     this.ws.sendAction(GameAction.BUY, payload);
   }
 
+  reserveCount(unitAsString: string): number {
+    return this.gameState().units?.[unitAsString as Unit]?.length ?? 0;
+  }
+
   mapStringToUnit(unitAsString: string): UnitStats | undefined {
     return this.unitStats()?.get(unitAsString as Unit);
   }

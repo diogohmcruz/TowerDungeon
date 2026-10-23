@@ -32,6 +32,7 @@
     <app-unit-card
       [type]="unit[0]"
       [stats]="mapStringToUnit(unit[0])"
+      [count]="reserveCount(unit[0])"
       (buy)="sendBuyAction($event)"
     />
     }

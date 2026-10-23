@@ -8,6 +8,12 @@
   text-transform: capitalize;
 }
 
+.unit-badges {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.unit-count,
 .unit-cost {
   background: var(--chip-bg);
   border-radius: 10px;

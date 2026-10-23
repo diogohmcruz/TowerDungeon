@@ -1,8 +1,12 @@
 <app-card>
   <span card-title class="unit-type">{{ type() | lowercase }}</span>
-  @if (stats()?.cost != null) {
-  <span card-badge class="unit-cost">{{ stats()?.cost }}c</span>
-  } @if (stats(); as s) {
+  <span card-badge class="unit-badges">
+    <span class="unit-count" title="In reserves">×{{ count() }}</span>
+    @if (stats()?.cost != null) {
+    <span class="unit-cost">{{ stats()?.cost }}c</span>
+    }
+  </span>
+  @if (stats(); as s) {
   <ul class="stat-list">
     <li><span>HP</span><b>{{ s.health | number: '1.0-0' }}</b></li>
     <li><span>DMG</span><b>{{ s.damage | number: '1.0-1' }}</b></li>
@@ -12,5 +16,5 @@
     }
   </ul>
   }
-  <button (click)="buy.emit(type())">Buy {{ type() | lowercase }}</button>
+  <button (click)="buy.emit(type())">Recruit {{ type() | lowercase }}</button>
 </app-card>

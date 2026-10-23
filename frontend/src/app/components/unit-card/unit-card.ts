@@ -13,5 +13,6 @@ import { Card } from '../card/card';
 export class UnitCard {
   type = input.required<string>();
   stats = input<UnitStats | undefined>();
+  count = input(0);
   buy = output<string>();
 }
