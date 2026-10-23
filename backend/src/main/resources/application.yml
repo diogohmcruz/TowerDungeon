@@ -201,6 +201,7 @@ game:
     load-mark: 0.05
     load-cap: 8
     door-floor: 99
+    log-toll: true
     counters:
       food-grown: {marks: 3.0, par: 60000.0}
       materials-banked: {marks: 6.0, par: 17000.0}

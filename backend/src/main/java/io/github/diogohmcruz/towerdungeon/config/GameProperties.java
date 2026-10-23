@@ -792,6 +792,9 @@ public class GameProperties {
     /** Highest Floor above this pays nothing more (Floor 100 is paid through its Guardian). */
     private int doorFloor = 99;
 
+    /** Whether each ended Expedition writes its Toll to the log, for the balance refit. */
+    private boolean logToll = true;
+
     private final Counters counters = new Counters();
 
     /** The square-rooted counters, each with its Marks at par and its par. */

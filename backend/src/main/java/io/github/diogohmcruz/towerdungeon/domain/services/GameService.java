@@ -3,6 +3,7 @@ package io.github.diogohmcruz.towerdungeon.domain.services;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -35,6 +36,8 @@ import io.github.diogohmcruz.towerdungeon.domain.models.snapshot.GameSnapshot;
 import io.github.diogohmcruz.towerdungeon.domain.models.upgrade.UpgradeType;
 import io.github.diogohmcruz.towerdungeon.domain.observation.EventLog;
 import io.github.diogohmcruz.towerdungeon.domain.observation.StateProjection;
+import io.github.diogohmcruz.towerdungeon.domain.prestige.TollCalculator;
+import io.github.diogohmcruz.towerdungeon.domain.prestige.TollContext;
 import io.github.diogohmcruz.towerdungeon.persistence.CampaignSchema;
 import io.github.diogohmcruz.towerdungeon.persistence.CampaignSchema.SchemaNewerException;
 import io.github.diogohmcruz.towerdungeon.persistence.CampaignStore;
@@ -630,6 +633,7 @@ public class GameService {
     gameState.deliverQuarryHeap();
     gameState.setExpeditionActive(false);
     gameState.completeExpedition();
+    logToll(gameState, RunSummary.EXTRACTED);
     log.info(
         "Player[{}] extracted. Leftover food returned to village, loot banked, party returned"
             + " home to recover on the village's food.",
@@ -830,7 +834,7 @@ public class GameService {
     starving.stream().filter(BaseUnit::isDead).toList().forEach(gameState::removeUnit);
   }
 
-  private static void endRunOnWipe(GameState gameState) {
+  private void endRunOnWipe(GameState gameState) {
     gameState.buildRunSummary(RunSummary.WIPED);
     gameState.raiseRisenOnWipe();
     gameState.forfeitLoot();
@@ -840,13 +844,14 @@ public class GameService {
     gameState.setSaltedSupplies(0d);
     gameState.getUnitsOnTower().clear();
     gameState.completeExpedition();
+    logToll(gameState, RunSummary.WIPED);
   }
 
   /**
    * Ends the campaign in triumph: the summit is conquered, so the party banks its full haul and
    * marches home victorious, and the game is marked won.
    */
-  private static void endRunOnVictory(GameState gameState) {
+  private void endRunOnVictory(GameState gameState) {
     gameState.buildRunSummary(RunSummary.VICTORY);
     gameState.returnLeftoverSuppliesToVillage();
     gameState.returnReinforcementsHome();
@@ -856,6 +861,41 @@ public class GameService {
     gameState.setExpeditionActive(false);
     gameState.completeExpedition();
     gameState.winCampaign();
+    logToll(gameState, RunSummary.VICTORY);
+  }
+
+  /**
+   * Writes the Toll of the Expedition that just ended as one JSON INFO line, so the par values can
+   * be refitted from the logs. Read-only over the live Tally; nothing is persisted and a failure
+   * here never reaches the game.
+   */
+  private void logToll(GameState gameState, String outcome) {
+    var prestige = config.getPrestige();
+    if (!prestige.isLogToll()) {
+      return;
+    }
+    try {
+      var tower = gameState.getTower();
+      var guardians = tower == null ? 0 : tower.getSlainGuardians().size();
+      var toll =
+          TollCalculator.calculate(gameState.tollTally(guardians), TollContext.NONE, prestige);
+      var line = new LinkedHashMap<String, Object>();
+      line.put("event", "EXPEDITION_TOLL");
+      line.put("outcome", outcome);
+      line.put("foodMarks", toll.foodMarks());
+      line.put("materialsMarks", toll.materialsMarks());
+      line.put("creditsMarks", toll.creditsMarks());
+      line.put("relicsMarks", toll.relicsMarks());
+      line.put("expeditionsMarks", toll.expeditionsMarks());
+      line.put("ascentMarks", toll.ascentMarks());
+      line.put("guardianMarks", toll.guardianMarks());
+      line.put("marks", toll.marks());
+      line.put("toll", toll.toll());
+      line.put("legacy", toll.legacy());
+      log.info(objectMapper.writeValueAsString(line));
+    } catch (RuntimeException e) {
+      log.warn("Could not write the Expedition's Toll to the log.", e);
+    }
   }
 
   /** A body that reads or mutates a locked {@link GameState} and produces a result; may throw. */
