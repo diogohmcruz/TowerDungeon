@@ -53,6 +53,44 @@ public class GameProperties {
   private final Prestige prestige = new Prestige();
   private final Persistence persistence = new Persistence();
   private final Security security = new Security();
+  private final Agent agent = new Agent();
+
+  /**
+   * An independent deep copy of the whole configuration, so one Campaign's overrides never reach
+   * another's. Shared parts that are shared on purpose (the Body weights the Enemies divide health
+   * by) stay shared inside the copy.
+   */
+  public GameProperties copy() {
+    return ConfigCopy.of(this);
+  }
+
+  /** Settings of the agent surface (the MCP server and its Sandbox Campaigns). */
+  @Data
+  public static class Agent {
+    private final Sandbox sandbox = new Sandbox();
+
+    /** Sandbox Campaigns: headless Campaigns that advance only when a driver ticks them. */
+    @Data
+    public static class Sandbox {
+      /** Off by default: turn it on for a local or private run, never on a public server. */
+      private boolean enabled = false;
+
+      /** Most live Sandbox Campaigns one grant may hold. */
+      private int maxPerGrant = 8;
+
+      /** Most live Sandbox Campaigns across all grants. */
+      private int maxGlobal = 64;
+
+      /** Wall time one call may spend advancing a Sandbox before it stops and says so. */
+      private Duration callWallTime = Duration.ofSeconds(2);
+
+      /** Simulated seconds one Campaign may run in all (6 hours): idle farming has a ceiling. */
+      private long maxSimulatedSeconds = 21_600;
+
+      /** Simulated seconds (ticks) one wait may advance. */
+      private int maxTicksPerWait = 3_600;
+    }
+  }
 
   /** What a Wipe leaves on the Tower: the Risen. */
   @Data

@@ -232,3 +232,13 @@ game:
     allowed-origins: []
     # Production behind TLS should set this to true.
     require-wss: false
+  agent:
+    sandbox:
+      # Never true on a public server: a Sandbox Campaign runs headless, as fast as the CPU allows.
+      enabled: false
+      max-per-grant: 8
+      max-global: 64
+      call-wall-time: 2s
+      # 6 hours of simulated time per Campaign, and at most 3600 ticks per wait.
+      max-simulated-seconds: 21600
+      max-ticks-per-wait: 3600

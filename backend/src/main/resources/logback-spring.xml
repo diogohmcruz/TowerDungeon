@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+  <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+  <!-- agent-stdio: stdout carries the MCP protocol, so the log goes to stderr, without colour. -->
+  <springProfile name="agent-stdio">
+    <appender name="STDERR" class="ch.qos.logback.core.ConsoleAppender">
+      <target>System.err</target>
+      <encoder>
+        <pattern>${CONSOLE_LOG_PATTERN_NO_COLOR:-%d{HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n}</pattern>
+      </encoder>
+    </appender>
+    <root level="INFO">
+      <appender-ref ref="STDERR"/>
+    </root>
+  </springProfile>
+
+  <springProfile name="!agent-stdio">
+    <include resource="org/springframework/boot/logging/logback/base.xml"/>
+  </springProfile>
+</configuration>

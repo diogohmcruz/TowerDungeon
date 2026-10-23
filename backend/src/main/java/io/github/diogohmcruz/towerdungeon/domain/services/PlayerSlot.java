@@ -50,8 +50,46 @@ final class PlayerSlot {
   private final ExpeditionSummaries summaries = new ExpeditionSummaries();
   private RunSummary lastSeenSummary;
 
+  private final ClockMode clock;
+
+  /** Simulated seconds a manual Campaign has run, and the most it may run. Under the lock. */
+  private long simulatedSeconds;
+
+  private long simulatedLimit = Long.MAX_VALUE;
+
   PlayerSlot(String playerId) {
+    this(playerId, ClockMode.REALTIME);
+  }
+
+  PlayerSlot(String playerId, ClockMode clock) {
     this.playerId = playerId;
+    this.clock = clock;
+  }
+
+  ClockMode clock() {
+    return clock;
+  }
+
+  /** A manual Campaign is a Sandbox: nothing advances it but its driver, and it is never saved. */
+  boolean isManual() {
+    return clock == ClockMode.MANUAL;
+  }
+
+  long simulatedSeconds() {
+    return simulatedSeconds;
+  }
+
+  long simulatedLimit() {
+    return simulatedLimit;
+  }
+
+  void simulatedLimit(long limit) {
+    this.simulatedLimit = limit;
+  }
+
+  /** Counts simulated seconds that have just run. Call under the state's lock. */
+  void addSimulatedSeconds(long seconds) {
+    simulatedSeconds += seconds;
   }
 
   String playerId() {

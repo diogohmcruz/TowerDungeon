@@ -1,5 +1,6 @@
 package io.github.diogohmcruz.towerdungeon.api;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
@@ -17,6 +18,7 @@ import reactor.core.publisher.Mono;
  * game.security.allowed-origins}.
  */
 @Slf4j
+@ConditionalOnWebApplication
 @Component
 @RequiredArgsConstructor
 public class HandshakeGuardFilter implements WebFilter {

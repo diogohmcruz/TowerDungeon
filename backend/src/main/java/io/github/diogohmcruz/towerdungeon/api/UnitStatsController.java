@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,6 +20,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 
+@ConditionalOnWebApplication
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/unit-stats")

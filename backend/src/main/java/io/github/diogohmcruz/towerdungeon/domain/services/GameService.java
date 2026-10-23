@@ -63,6 +63,7 @@ public class GameService {
   private final FloorBundle floorBundle;
   private final AutosaveCoordinator saves;
   private final Map<String, PlayerSlot> players = new ConcurrentHashMap<>();
+  private final ManualTickDriver manualDriver = new ManualTickDriver(this, System::nanoTime);
   private volatile boolean running = true;
 
   /** What a connection gets back from {@link #attach}: a signal for when it has been replaced. */
@@ -73,11 +74,52 @@ public class GameService {
    * into Reserves at no cost. Restoring a saved campaign must not go through here.
    */
   GameState newCampaign() {
-    var gameState = new GameState(config);
-    for (var founder : config.getStart().getFounders()) {
+    return newCampaign(config.copy());
+  }
+
+  /** A brand-new Campaign that owns {@code campaignConfig}: nobody else's tuning can reach it. */
+  GameState newCampaign(GameProperties campaignConfig) {
+    var gameState = new GameState(campaignConfig);
+    for (var founder : campaignConfig.getStart().getFounders()) {
       gameState.addUnits(founder.getUnitType(), List.of(gameState.recruitFounder(founder, random)));
     }
     return gameState;
+  }
+
+  /** The driver that advances Sandbox Campaigns, and only them. */
+  ManualTickDriver manualDriver() {
+    return manualDriver;
+  }
+
+  /**
+   * Opens a Sandbox Campaign under a synthetic id: a manual clock, its own copy of the
+   * configuration, and no connection, so nothing but the manual driver advances it and the autosave
+   * coordinator never writes it. Its simulated time may not pass {@code simulatedLimit}.
+   */
+  void openSandbox(String sandboxId, GameProperties campaignConfig, long simulatedLimit) {
+    var slot = new PlayerSlot(sandboxId, ClockMode.MANUAL);
+    var state = newCampaign(campaignConfig);
+    slot.simulatedLimit(simulatedLimit);
+    slot.loaded(state, false, null, CampaignSchema.CURRENT);
+    slot.loading(Mono.just(state));
+    players.put(sandboxId, slot);
+  }
+
+  /** Forgets a Sandbox Campaign. A human's Campaign is never closed through here. */
+  boolean closeSandbox(String sandboxId) {
+    var closed = new boolean[1];
+    players.computeIfPresent(
+        sandboxId,
+        (_, slot) -> {
+          closed[0] = slot.isManual();
+          return closed[0] ? null : slot;
+        });
+    return closed[0];
+  }
+
+  /** The Campaign slot of an id, if any; manual or real-time. */
+  PlayerSlot slotOf(String playerId) {
+    return players.get(playerId);
   }
 
   /** The live state of a player, if it has a loaded slot. Test hook. */
@@ -151,7 +193,7 @@ public class GameService {
                 players.computeIfPresent(
                     id,
                     (_, slot) -> {
-                      if (!slot.hasLingeredFor(linger, nowNanos)) {
+                      if (slot.isManual() || !slot.hasLingeredFor(linger, nowNanos)) {
                         return slot;
                       }
                       if (slot.saves().isDirty()) {
@@ -223,7 +265,7 @@ public class GameService {
       return fresh;
     }
     var snapshot = objectMapper.readValue(result.payload(), GameSnapshot.class);
-    var state = GameState.restore(snapshot, config, random, architecturePlan);
+    var state = GameState.restore(snapshot, config.copy(), random, architecturePlan);
     if (!result.quarantined().isEmpty()) {
       slot.addNotice(
           new Notice("SAVE_DAMAGED", "A damaged save was set aside and an older one was loaded."));
@@ -273,15 +315,15 @@ public class GameService {
   }
 
   /**
-   * Mutates every connected player's state, each under its own lock. Detached slots and Held
-   * Parties do not tick.
+   * Mutates every connected player's state, each under its own lock. Detached slots, Held Parties
+   * and Sandbox Campaigns (manual clock) do not tick.
    */
   private void forEachPlayer(BiConsumer<PlayerSlot, GameState> action) {
     if (!running) {
       return;
     }
     for (var slot : players.values()) {
-      if (!slot.isAttached() || slot.isHeld()) {
+      if (!TickDriver.REALTIME.drives(slot) || !slot.isAttached() || slot.isHeld()) {
         continue;
       }
       try {
@@ -642,9 +684,9 @@ public class GameService {
     if (gameState.getTower() == null) {
       gameState.setTower(
           new Tower(
-              config.getTower().getMaxFloor(),
-              config.getBoss().copy(),
-              config.getEnemies().copy(),
+              gameState.getConfig().getTower().getMaxFloor(),
+              gameState.getConfig().getBoss().copy(),
+              gameState.getConfig().getEnemies().copy(),
               random,
               architecturePlan));
     }
@@ -774,15 +816,29 @@ public class GameService {
 
   @Scheduled(fixedRateString = "${game.loop.lifecycle-ms}")
   public void gameLoop() {
-    forEachPlayer(
-        (slot, gameState) -> {
-          var slainBefore = gameState.getEnemiesDefeated();
-          var floorBefore = floorOf(gameState);
-          gameState.triggerLifecycle();
-          updateInvasion(gameState);
-          slot.bumpSeq();
-          recordTick(slot, gameState, slainBefore, floorBefore);
-        });
+    forEachPlayer(this::lifecycleTick);
+  }
+
+  /**
+   * One lifecycle second for one Campaign: Village production, Upkeep, Starvation, Recovery and
+   * Recharge, then the Expedition (Supplies drain, Wave climb, floor clear, one combat round). The
+   * caller holds the state's lock. Both drivers run exactly this.
+   */
+  void lifecycleTick(PlayerSlot slot, GameState gameState) {
+    var slainBefore = gameState.getEnemiesDefeated();
+    var floorBefore = floorOf(gameState);
+    gameState.triggerLifecycle();
+    updateInvasion(gameState);
+    slot.bumpSeq();
+    recordTick(slot, gameState, slainBefore, floorBefore);
+  }
+
+  /**
+   * Attrition for {@code ms} milliseconds. The damage is proportional to the interval (and to part
+   * health), so one call of 1000 equals a hundred calls of 10. The caller holds the lock.
+   */
+  void attritionTick(GameState gameState, long ms) {
+    gameState.passingTime(ms);
   }
 
   private static int floorOf(GameState gameState) {
@@ -806,7 +862,7 @@ public class GameService {
   @Scheduled(fixedRateString = "${game.loop.invasion-tick-ms}")
   public void invasionTimer() {
     var tick = config.getLoop().getInvasionTickMs();
-    forEachPlayer((_, gameState) -> gameState.passingTime(tick));
+    forEachPlayer((_, gameState) -> attritionTick(gameState, tick));
   }
 
   private void updateInvasion(GameState gameState) {
@@ -836,7 +892,7 @@ public class GameService {
     if (currentTowerFloor == null || currentTowerFloor.getEnemies().isEmpty()) {
       var clearedFloor = tower.getCurrentFloor();
       var bossCleared = currentTowerFloor != null && currentTowerFloor.isBoss();
-      var reward = config.getReward();
+      var reward = gameState.getConfig().getReward();
       var rewardMultiplier = bossCleared ? reward.getBossRewardMultiplier() : 1.0;
       gameState.gatherCredits(clearedFloor * reward.getCreditPerFloor() * rewardMultiplier);
       gatherFloorLoot(gameState, clearedFloor, rewardMultiplier);
@@ -869,7 +925,7 @@ public class GameService {
     if (clearedFloor <= 0) {
       return;
     }
-    var reward = config.getReward();
+    var reward = gameState.getConfig().getReward();
     gameState.gatherLoot(
         ResourceType.MATERIALS, clearedFloor * reward.getMaterialsPerFloor() * rewardMultiplier);
     gameState.gatherSupplies(reward.getSuppliesPerFloor() * rewardMultiplier);
@@ -881,7 +937,7 @@ public class GameService {
     starving.forEach(
         unit ->
             gameState.dropGearOnCurrentFloor(
-                unit.receiveAttack(config.getLoop().getStarvationDamage(), null)));
+                unit.receiveAttack(gameState.getConfig().getLoop().getStarvationDamage(), null)));
     starving.stream().filter(BaseUnit::isDead).toList().forEach(gameState::removeUnit);
   }
 
@@ -922,7 +978,7 @@ public class GameService {
    * here never reaches the game.
    */
   private void logToll(GameState gameState, String outcome) {
-    var prestige = config.getPrestige();
+    var prestige = gameState.getConfig().getPrestige();
     if (!prestige.isLogToll()) {
       return;
     }

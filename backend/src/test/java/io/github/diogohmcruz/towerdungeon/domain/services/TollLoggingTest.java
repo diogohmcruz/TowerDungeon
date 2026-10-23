@@ -145,7 +145,8 @@ class TollLoggingTest {
 
   @Test
   void theFlagTurnsTheLineOff() {
-    config.getPrestige().setLogToll(false);
+    // Each Campaign owns a copy of the configuration, so the flag is turned off on that copy.
+    state.getConfig().getPrestige().setLogToll(false);
     addParty();
     service.execute(PLAYER, new Command.Extract());
     assertThat(tollLines()).isEmpty();

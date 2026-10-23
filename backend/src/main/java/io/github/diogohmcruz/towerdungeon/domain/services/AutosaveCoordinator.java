@@ -87,17 +87,26 @@ public class AutosaveCoordinator {
 
   /** The slot's Campaign is loaded (or new); {@code seq} is the sequence number it was read at. */
   void opened(PlayerSlot slot, long seq) {
+    if (slot.isManual()) {
+      return;
+    }
     slot.saves().opened(seq, clock.getAsLong());
     slot.saves().expedition(slot.state() != null && slot.state().isExpeditionActive());
   }
 
   /** Something changed that autosave will pick up. */
   void touched(PlayerSlot slot) {
+    if (slot.isManual()) {
+      return;
+    }
     slot.saves().touch();
   }
 
   /** A purchase: written after a short quiet spell. */
   void purchased(PlayerSlot slot) {
+    if (slot.isManual()) {
+      return;
+    }
     slot.saves().purchase(clock.getAsLong());
   }
 
@@ -107,6 +116,9 @@ public class AutosaveCoordinator {
    * into a backup (a backup holds settled states only); the rest are.
    */
   void recorded(PlayerSlot slot, Marks before, Marks after) {
+    if (slot.isManual()) {
+      return;
+    }
     var tracker = slot.saves();
     tracker.touch();
     tracker.expedition(after.expedition());
@@ -122,12 +134,18 @@ public class AutosaveCoordinator {
 
   /** Writes at once whatever is unwritten (a disconnect). Does nothing for a clean slot. */
   void flush(PlayerSlot slot) {
+    if (slot.isManual()) {
+      return;
+    }
     slot.saves().flush();
     attempt(slot, true);
   }
 
   /** Starts any write that has fallen due. Cheap when nothing has. */
   void tick(PlayerSlot slot) {
+    if (slot.isManual()) {
+      return;
+    }
     attempt(slot, false);
   }
 
@@ -139,7 +157,9 @@ public class AutosaveCoordinator {
     var deadline = clock.getAsLong() + wait.toNanos();
     var pending = new HashSet<PlayerSlot>();
     for (var slot : slots) {
-      if (slot.state() != null && (slot.isAttached() || slot.saves().isDirty())) {
+      if (!slot.isManual()
+          && slot.state() != null
+          && (slot.isAttached() || slot.saves().isDirty())) {
         slot.saves().flush();
         pending.add(slot);
       }
@@ -176,6 +196,9 @@ public class AutosaveCoordinator {
   }
 
   private void attempt(PlayerSlot slot, boolean force) {
+    if (slot.isManual()) {
+      return;
+    }
     var state = slot.state();
     if (state == null) {
       return;

@@ -1,0 +1,18 @@
+# The agent-stdio profile: the MCP server speaks JSON-RPC over stdin and stdout, so nothing else may
+# touch stdout. No web server, no banner, no colour codes, and every log line goes to stderr (see
+# logback-spring.xml). Local and private runs only.
+spring:
+  main:
+    web-application-type: none
+    banner-mode: "off"
+  output:
+    ansi:
+      enabled: never
+
+game:
+  agent:
+    sandbox:
+      enabled: true
+  persistence:
+    # The agent runs beside a developer's own game: keep its Campaigns apart.
+    data-dir: ./data-agent
