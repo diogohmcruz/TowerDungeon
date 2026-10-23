@@ -5,13 +5,21 @@ export interface Village {
   breakers: number;
   scribes: number;
   salters: number;
+  sporewardens: number;
   knowledge: number;
   salt: number;
+  /** Dragon Spores in the Stockroom. */
+  spores: number;
   quarryHeap: number;
   emergencyTilling: boolean;
 }
 
-export type TradeId = 'TILLER' | 'BREAKER' | 'SCRIBE' | 'SALTER';
+export type TradeId =
+  | 'TILLER'
+  | 'BREAKER'
+  | 'SCRIBE'
+  | 'SALTER'
+  | 'SPOREWARDEN';
 
 export interface TradeView {
   trade: TradeId;
@@ -131,4 +139,14 @@ export interface LoadoutPreview {
   packCapacity: number;
   /** Unit types in the Reserves, any of which can be the Salt-bearer. */
   bearerTypes: string[];
+  /** Dragon Spores in the Stockroom, whole. */
+  sporesHeld: number;
+  panaceaSpores: number;
+  panaceaMaterials: number;
+  /** Materials in the Vault, which a Panacea draws on. */
+  vaultMaterials: number;
+  /** Carrying Capacity a Panacea takes up. */
+  panaceaCapacity: number;
+  /** Why a Panacea cannot be made now; null when it can. */
+  panaceaBlocked: string | null;
 }

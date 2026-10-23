@@ -27,7 +27,7 @@ const BUSY: VillageInput = {
   ...EMPTY_VILLAGE,
   food: 900,
   reserves: 45,
-  hands: { TILLER: 60, BREAKER: 30, SCRIBE: 12, SALTER: 20 },
+  hands: { TILLER: 60, BREAKER: 30, SCRIBE: 12, SALTER: 20, SPOREWARDEN: 0 },
   posts: { SCRIBE: 12 },
   quarryHeap: 40,
   quarryHeapCap: 40,
@@ -212,13 +212,26 @@ describe('village layout', () => {
   describe('villagers and Reserves', () => {
     it('shows one figure per two Villagers, capped at 40 in all', () => {
       expect(
-        figureCounts({ TILLER: 5, BREAKER: 2, SCRIBE: 0, SALTER: 1 }),
-      ).toEqual({ TILLER: 3, BREAKER: 1, SCRIBE: 0, SALTER: 1 });
+        figureCounts({
+          TILLER: 5,
+          BREAKER: 2,
+          SCRIBE: 0,
+          SALTER: 1,
+          SPOREWARDEN: 0,
+        }),
+      ).toEqual({
+        TILLER: 3,
+        BREAKER: 1,
+        SCRIBE: 0,
+        SALTER: 1,
+        SPOREWARDEN: 0,
+      });
       const capped = figureCounts({
         TILLER: 400,
         BREAKER: 100,
         SCRIBE: 40,
         SALTER: 40,
+        SPOREWARDEN: 0,
       });
       const total = Object.values(capped).reduce((a, b) => a + b, 0);
       expect(total).toBe(MAX_VILLAGER_FIGURES);
@@ -228,7 +241,13 @@ describe('village layout', () => {
       const v = buildVillage({
         ...BUSY,
         reserves: 500,
-        hands: { TILLER: 900, BREAKER: 90, SCRIBE: 90, SALTER: 90 },
+        hands: {
+          TILLER: 900,
+          BREAKER: 90,
+          SCRIBE: 90,
+          SALTER: 90,
+          SPOREWARDEN: 0,
+        },
       });
       expect(
         v.filter((x) => /^villager-[A-Z]+-\d+$/.test(x.id)).length,

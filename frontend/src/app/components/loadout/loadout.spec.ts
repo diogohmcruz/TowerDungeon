@@ -22,6 +22,12 @@ describe('Loadout', () => {
     trustHeld: 12,
     packCapacity: 10,
     bearerTypes: ['TANK', 'WARRIOR'],
+    sporesHeld: 5,
+    panaceaSpores: 4,
+    panaceaMaterials: 40,
+    vaultMaterials: 100,
+    panaceaCapacity: 10,
+    panaceaBlocked: null,
     ...over,
   });
 
@@ -115,6 +121,42 @@ describe('Loadout', () => {
     fixture.detectChanges();
 
     expect(text()).toContain('Supplies last about 13 s');
+  });
+
+  it('offers a Panacea for its cost and Carrying Capacity, off by default', () => {
+    load();
+    open();
+
+    expect(text()).toContain('4 Spores and 40 Materials');
+    expect(text()).toContain('10 Carrying Capacity');
+    expect(fixture.componentInstance.panacea()).toBeFalse();
+    expect(text()).toContain('Carrying Capacity 160');
+  });
+
+  it('takes the Panacea off the Carrying Capacity once it is chosen', () => {
+    load();
+    open();
+
+    (root().querySelector('.panacea input') as HTMLInputElement).click();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.panacea()).toBeTrue();
+    expect(text()).toContain('Carrying Capacity 150');
+    expect(text()).toContain('Taking 100 Supplies');
+  });
+
+  it('says why a Panacea cannot be carried and disables the choice', () => {
+    load({
+      panaceaBlocked: 'A Panacea takes 4 Spores. The Stockroom holds 1.',
+    });
+    open();
+
+    expect(text()).toContain(
+      'A Panacea takes 4 Spores. The Stockroom holds 1.',
+    );
+    expect(
+      (root().querySelector('.panacea input') as HTMLInputElement).disabled,
+    ).toBeTrue();
   });
 
   it('says the Salt Pans are not open when they are not', () => {

@@ -79,6 +79,30 @@
       </rect>
       }
     </svg>
+    @if (atHome() && (wounded() || lostLimbs().length > 0)) {
+    <div class="spore-doses">
+      <span class="phobias-label">Spore Dose</span>
+      @if (wounded()) {
+      <button
+        class="btn btn-ghost dose"
+        type="button"
+        [disabled]="sporesHeld() < 1"
+        (click)="remedy.emit(member().id)"
+      >
+        Remedy, 20 hp, 1 Spore
+      </button>
+      } @for (limb of lostLimbs(); track limb.kind) {
+      <button
+        class="btn btn-ghost dose"
+        type="button"
+        [disabled]="sporesHeld() < 1"
+        (click)="reattach.emit({ unitId: member().id, part: limb.kind })"
+      >
+        Reattach {{ limb.label | lowercase }}, 1 Spore
+      </button>
+      }
+    </div>
+    }
     <p class="readout" aria-live="polite">{{ detail() }}</p>
     <div class="slots">
       @for (slot of slots(); track slot.name) {

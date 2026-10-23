@@ -108,7 +108,9 @@
         (view.trade === 'BREAKER') { +{{ this.output(view.trade) | number:
         '1.0-2' }} Materials/s into the Heap } @else if (view.trade ===
         'SALTER') { +{{ this.output(view.trade) | number: '1.0-2' }} Salt/s }
-        @else { +{{ this.output(view.trade) | number: '1.0-2' }} Knowledge/s }
+        @else if (view.trade === 'SPOREWARDEN') { +{{ this.output(view.trade) |
+        number: '1.0-2' }} Spores/s } @else { +{{ this.output(view.trade) |
+        number: '1.0-2' }} Knowledge/s }
       </span>
     </div>
     }
@@ -132,6 +134,7 @@
     <p>
       Stockroom: Knowledge {{ this.gameState().village.knowledge | number:
       '1.0-1' }}, Salt {{ this.gameState().village.salt | number: '1.0-1' }},
+      Dragon Spores {{ this.gameState().village.spores | number: '1.0-1' }},
       each of {{ this.gameState().stockroomCap | number: '1.0-0' }}.
     </p>
     <p>

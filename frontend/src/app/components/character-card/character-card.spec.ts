@@ -172,4 +172,43 @@ describe('CharacterCard', () => {
 
     expect(el.querySelector('.member-damage')?.textContent).toContain('10');
   });
+
+  it('offers a Remedy for a wounded Unit at home, and a reattachment for each lost limb', () => {
+    const emitted: unknown[] = [];
+    fixture.componentInstance.remedy.subscribe((id) => emitted.push(['r', id]));
+    fixture.componentInstance.reattach.subscribe((e) => emitted.push(e));
+    fixture.componentRef.setInput('atHome', true);
+    fixture.componentRef.setInput('sporesHeld', 2);
+    const el = render({
+      parts: parts({
+        TORSO: { currentHealth: 4 },
+        LEFT_ARM: { lost: true, currentHealth: 0 },
+      }),
+    });
+    expand(el);
+
+    const buttons = Array.from(
+      el.querySelectorAll('.spore-doses .dose'),
+    ) as HTMLButtonElement[];
+    expect(buttons.map((b) => b.textContent?.trim())).toEqual([
+      'Remedy, 20 hp, 1 Spore',
+      'Reattach left arm, 1 Spore',
+    ]);
+    buttons.forEach((b) => b.click());
+
+    expect(emitted).toEqual([['r', 1], { unitId: 1, part: 'LEFT_ARM' }]);
+  });
+
+  it('disables the Spore Doses with no Spores and hides them away from home', () => {
+    fixture.componentRef.setInput('atHome', true);
+    const el = render({ parts: parts({ TORSO: { currentHealth: 4 } }) });
+    expand(el);
+    expect(
+      (el.querySelector('.spore-doses .dose') as HTMLButtonElement).disabled,
+    ).toBeTrue();
+
+    fixture.componentRef.setInput('atHome', false);
+    fixture.detectChanges();
+    expect(el.querySelector('.spore-doses')).toBeNull();
+  });
 });

@@ -20,7 +20,9 @@ import io.github.diogohmcruz.towerdungeon.api.dtos.GameAction;
 import io.github.diogohmcruz.towerdungeon.api.dtos.GameActionDTO;
 import io.github.diogohmcruz.towerdungeon.api.dtos.GameActionEnvelope;
 import io.github.diogohmcruz.towerdungeon.api.dtos.InvadeActionDTO;
+import io.github.diogohmcruz.towerdungeon.api.dtos.ReattachActionDTO;
 import io.github.diogohmcruz.towerdungeon.api.dtos.ReinforceActionDTO;
+import io.github.diogohmcruz.towerdungeon.api.dtos.RemedyActionDTO;
 import io.github.diogohmcruz.towerdungeon.api.dtos.UpgradeActionDTO;
 import io.github.diogohmcruz.towerdungeon.domain.commands.Command;
 import io.github.diogohmcruz.towerdungeon.domain.commands.Notice;
@@ -179,7 +181,8 @@ public class GameWebSocketHandler implements WebSocketHandler {
             invade.startFloor(),
             invade.salt(),
             invade.saltPack(),
-            invade.saltBearer());
+            invade.saltBearer(),
+            Boolean.TRUE.equals(invade.panacea()));
       }
       case EXTRACT -> new Command.Extract();
       case RESUME -> new Command.Resume();
@@ -191,6 +194,16 @@ public class GameWebSocketHandler implements WebSocketHandler {
       case BUY_POSTS -> {
         var posts = payload(message, new TypeReference<GameActionDTO<BuyPostsActionDTO>>() {});
         yield new Command.BuyPosts(posts == null ? null : posts.trade());
+      }
+      case REMEDY -> {
+        var remedy = payload(message, new TypeReference<GameActionDTO<RemedyActionDTO>>() {});
+        yield new Command.GiveRemedy(remedy == null ? null : remedy.unitId());
+      }
+      case REATTACH -> {
+        var reattach = payload(message, new TypeReference<GameActionDTO<ReattachActionDTO>>() {});
+        yield reattach == null
+            ? new Command.ReattachPart(null, null)
+            : new Command.ReattachPart(reattach.unitId(), reattach.part());
       }
       case ASSIGN_TRADE -> {
         var assign = payload(message, new TypeReference<GameActionDTO<AssignTradeActionDTO>>() {});

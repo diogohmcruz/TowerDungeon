@@ -34,7 +34,7 @@ export class VillageFixturePage {
         ...EMPTY_VILLAGE,
         food: 400,
         reserves: 18,
-        hands: { TILLER: 14, BREAKER: 8, SCRIBE: 4, SALTER: 6 },
+        hands: { TILLER: 14, BREAKER: 8, SCRIBE: 4, SALTER: 6, SPOREWARDEN: 0 },
         posts: { SCRIBE: 6 },
         quarryHeap: 24,
         quarryHeapCap: 40,

@@ -55,6 +55,13 @@ export class GameComponent {
   /** Salt the Loadout has chosen for the Salt Pack, and the Unit type that carries it. */
   readonly packSalt = signal(0);
   readonly packBearer = signal('');
+  /** Whether the Loadout has chosen to carry a Panacea. */
+  readonly panaceaChosen = signal(false);
+
+  /** Whole Dragon Spores in the Stockroom. */
+  readonly sporesHeld = computed(() =>
+    Math.floor(this.gameState().village.spores),
+  );
 
   readonly openShortcuts = computed(() =>
     (this.gameState().shortcuts ?? []).filter((s) => s.unlocked),
@@ -96,15 +103,26 @@ export class GameComponent {
     const pack = bearer
       ? Math.min(this.packSalt(), Math.max(0, (loadout?.saltHeld ?? 0) - salt))
       : 0;
+    const panacea = this.panaceaChosen() && loadout?.panaceaBlocked === null;
     const payload = {
       units,
       startFloor: this.selectedStartFloor(),
       salt,
       ...(pack > 0 ? { saltPack: pack, saltBearer: bearer } : {}),
+      panacea,
     };
     this.ws.sendAction(GameAction.INVADE, payload);
     this.saltToUse.set(0);
     this.packSalt.set(0);
+    this.panaceaChosen.set(false);
+  }
+
+  giveRemedy(unitId: number) {
+    this.ws.sendAction(GameAction.REMEDY, { unitId });
+  }
+
+  reattachPart(event: { unitId: number; part: string }) {
+    this.ws.sendAction(GameAction.REATTACH, event);
   }
 
   selectStartFloor(floor: number) {

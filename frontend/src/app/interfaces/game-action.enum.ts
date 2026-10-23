@@ -15,4 +15,6 @@ export enum GameAction {
   BUY_TOME = 'BUY_TOME',
   BUY_POSTS = 'BUY_POSTS',
   BUY_RING = 'BUY_RING',
+  REMEDY = 'REMEDY',
+  REATTACH = 'REATTACH',
 }

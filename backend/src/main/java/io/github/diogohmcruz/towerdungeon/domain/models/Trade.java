@@ -5,7 +5,8 @@ public enum Trade {
   TILLER("Tiller", "Fields"),
   BREAKER("Breaker", "Quarry"),
   SCRIBE("Scribe", "Scribe's Study"),
-  SALTER("Salter", "Salt Pans");
+  SALTER("Salter", "Salt Pans"),
+  SPOREWARDEN("Sporewarden", "Spore Cellar");
 
   private final String noun;
   private final String workplace;

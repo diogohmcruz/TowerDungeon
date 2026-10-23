@@ -79,6 +79,14 @@ public class Village {
   @Setter(AccessLevel.NONE)
   private int ringLevel;
 
+  /** Villagers in the Spore Cellar. */
+  @Setter(AccessLevel.NONE)
+  private int sporewardens;
+
+  /** Dragon Spores in the Stockroom. */
+  @Setter(AccessLevel.NONE)
+  private double spores;
+
   /** The Count: Villagers lost to Starvation this Campaign. */
   @Setter(AccessLevel.NONE)
   private int villagersLost;
@@ -92,6 +100,7 @@ public class Village {
   @JsonIgnore private GameProperties.Trades trades;
   @JsonIgnore private GameProperties.Salt saltRules = new GameProperties.Salt();
   @JsonIgnore private GameProperties.Trust trustRules = new GameProperties.Trust();
+  @JsonIgnore private GameProperties.Spores sporeRules = new GameProperties.Spores();
 
   /** What Emergency Tilling did this tick. {@code moved} is null when no one could be moved. */
   public record EmergencyTillingResult(boolean active, boolean started, Trade moved) {}
@@ -247,10 +256,26 @@ public class Village {
         + tomeLevel(Tome.SURVIVORS_NOTES) * trustRules.getSurvivorsNotesCapacityPerLevel();
   }
 
+  /** Restores the Spore Cellar. Call after {@link #restoreTrades}, which clamps the Trades. */
+  public void restoreSpores(int sporewardens, double spores, List<Integer> settlingSporewardens) {
+    this.sporewardens = Math.max(0, sporewardens);
+    this.spores = Math.max(0, spores);
+    settling.put(
+        Trade.SPOREWARDEN,
+        new ArrayList<>(settlingSporewardens == null ? List.of() : settlingSporewardens));
+    clampTrades();
+  }
+
+  /** Restores the Cellar's hands and the Stockroom's Spores, leaving any Settling as it is. */
+  public void restoreSpores(int sporewardens, double spores) {
+    restoreSpores(sporewardens, spores, settling.get(Trade.SPOREWARDEN));
+  }
+
   private void clampTrades() {
     scribes = Math.min(scribes, villagersCount);
     breakers = Math.min(breakers, villagersCount - scribes);
     salters = Math.min(salters, villagersCount - scribes - breakers);
+    sporewardens = Math.min(sporewardens, villagersCount - scribes - breakers - salters);
     for (var trade : Trade.values()) {
       var ticks = settling.get(trade);
       while (ticks.size() > hands(trade)) {
@@ -277,6 +302,7 @@ public class Village {
     this.quarryHeap = filled(quarryHeap, materialsPerTick(highestFloor), heapCap(highestFloor));
     this.knowledge = filled(knowledge, knowledgePerTick(highestFloor), stockroomCap(highestFloor));
     this.salt = filled(salt, saltPerTick(), stockroomCap(highestFloor));
+    this.spores = filled(spores, sporesPerTick(), stockroomCap(highestFloor));
     settling.values().forEach(ticks -> ticks.replaceAll(left -> left - 1));
     settling.values().forEach(ticks -> ticks.removeIf(left -> left <= 0));
     return checkStarvation();
@@ -290,10 +316,11 @@ public class Village {
   /** Villagers working {@code trade}; Tillers are whoever is not a Breaker or a Scribe. */
   public int hands(Trade trade) {
     return switch (trade) {
-      case TILLER -> villagersCount - breakers - scribes - salters;
+      case TILLER -> villagersCount - breakers - scribes - salters - sporewardens;
       case BREAKER -> breakers;
       case SCRIBE -> scribes;
       case SALTER -> salters;
+      case SPOREWARDEN -> sporewardens;
     };
   }
 
@@ -448,6 +475,23 @@ public class Village {
     return taken;
   }
 
+  /** Spores the Spore Cellar makes each tick; it does not grow with the Highest Floor. */
+  public double sporesPerTick() {
+    return sporewardens * sporeRules.getPerSporewardenPerTick();
+  }
+
+  /** Takes up to {@code amount} whole Spores from the Stockroom; returns what was taken. */
+  public int takeSpores(int amount) {
+    var taken = (int) Math.min(Math.floor(spores), Math.max(0, amount));
+    spores -= taken;
+    return taken;
+  }
+
+  /** Puts Spores into the Stockroom, as an Extraction banks them; the cap does not apply. */
+  public void addSpores(double amount) {
+    spores += Math.max(0d, amount);
+  }
+
   public double stockroomCap(int highestFloor) {
     return trades.getStockroomBase() + trades.getStockroomPerFloor() * Math.max(0, highestFloor);
   }
@@ -540,6 +584,7 @@ public class Village {
       case BREAKER -> breakers += by;
       case SCRIBE -> scribes += by;
       case SALTER -> salters += by;
+      case SPOREWARDEN -> sporewardens += by;
       case TILLER -> {
         // Tillers are the remainder.
       }
@@ -569,7 +614,7 @@ public class Village {
     Trade moved = null;
     if (upkeep > getProductionRate()) {
       moved =
-          List.of(Trade.BREAKER, Trade.SCRIBE, Trade.SALTER).stream()
+          List.of(Trade.BREAKER, Trade.SCRIBE, Trade.SALTER, Trade.SPOREWARDEN).stream()
               .filter(trade -> hands(trade) > settlingHands(trade))
               .max(Comparator.comparingInt(this::hands))
               .orElse(null);

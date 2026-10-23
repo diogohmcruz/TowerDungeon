@@ -70,6 +70,8 @@ export interface RunSummary {
   unitsLost: number;
   survivors: number;
   fallen: Fallen[];
+  /** Dragon Spores brought home (or lost, on a Wipe). */
+  sporesGained?: number;
 }
 
 export interface Reinforcement {
@@ -128,10 +130,16 @@ export interface GameState {
   quarryRate: number;
   /** Salt the Salt Pans make per second. */
   saltRate: number;
+  /** Dragon Spores the Spore Cellar makes per second. */
+  sporeRate: number;
   /** What setting out with every Reserve would do, for the Loadout. */
   loadout: LoadoutPreview;
   /** Supplies carried that are salted. */
   saltedSupplies: number;
+  /** Dragon Spores found on this Expedition, banked at Extraction. */
+  carriedSpores: number;
+  /** Whether the Party out on the Tower still carries an unspent Panacea. */
+  panaceaCarried: boolean;
   studyRate: number;
   /** Share the Quarry and the Study yield above their base, from Highest Floor. */
   yieldBonus: number;

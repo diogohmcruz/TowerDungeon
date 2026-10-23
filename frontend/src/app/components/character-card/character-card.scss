@@ -168,3 +168,15 @@
   color: var(--bone);
   overflow-wrap: anywhere;
 }
+
+.spore-doses {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+
+  .dose {
+    padding: 2px 8px;
+    font-size: 12px;
+  }
+}

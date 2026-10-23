@@ -424,6 +424,8 @@ public class GameService {
           Command.SellRelics _,
           Command.SellSalt _,
           Command.AssignTrade _,
+          Command.GiveRemedy _,
+          Command.ReattachPart _,
           Command.BuyUpgrade _ ->
           true;
       case Command.StartExpedition _,
@@ -456,6 +458,8 @@ public class GameService {
             case Command.AssignTrade trade -> assignTrade(slot, gameState, playerId, trade);
             case Command.BuyTome tome -> buyTome(slot, gameState, playerId, tome);
             case Command.BuyRing _ -> buyRing(slot, gameState, playerId);
+            case Command.GiveRemedy remedy -> giveRemedy(slot, gameState, playerId, remedy);
+            case Command.ReattachPart reattach -> reattachPart(slot, gameState, playerId, reattach);
             case Command.BuyPosts posts -> buyPosts(slot, gameState, playerId, posts);
             case Command.Resume _ -> resume(slot, playerId);
             case Command.SendReinforcements wave ->
@@ -625,6 +629,34 @@ public class GameService {
     return CommandResult.applied("The Ring was strengthened.");
   }
 
+  private CommandResult giveRemedy(
+      PlayerSlot slot, GameState gameState, String playerId, Command.GiveRemedy command) {
+    if (command.unitId() == null) {
+      return CommandResult.rejected(Reason.INVALID_ARGUMENT, "The Remedy is incomplete.");
+    }
+    var refused = gameState.giveRemedy(command.unitId());
+    log.info("Player[{}] Remedy -> {}", playerId, refused.isPresent() ? "refused" : "given");
+    if (refused.isPresent()) {
+      return CommandResult.rejected(Reason.PURCHASE_REFUSED, refused.get());
+    }
+    slot.emit("REMEDY_GIVEN", Map.of("unit", command.unitId()));
+    return CommandResult.applied("The Remedy was given.");
+  }
+
+  private CommandResult reattachPart(
+      PlayerSlot slot, GameState gameState, String playerId, Command.ReattachPart command) {
+    if (command.unitId() == null || command.part() == null) {
+      return CommandResult.rejected(Reason.INVALID_ARGUMENT, "The Spore Dose is incomplete.");
+    }
+    var refused = gameState.reattachPart(command.unitId(), command.part());
+    log.info("Player[{}] reattach -> {}", playerId, refused.isPresent() ? "refused" : "given");
+    if (refused.isPresent()) {
+      return CommandResult.rejected(Reason.PURCHASE_REFUSED, refused.get());
+    }
+    slot.emit("PART_REATTACHED", Map.of("unit", command.unitId(), "part", command.part().name()));
+    return CommandResult.applied("The part was reattached.");
+  }
+
   private CommandResult buyPosts(
       PlayerSlot slot, GameState gameState, String playerId, Command.BuyPosts command) {
     if (command.trade() == null) {
@@ -662,6 +694,12 @@ public class GameService {
           requestedFloor);
       return CommandResult.rejected(Reason.START_FLOOR_LOCKED, "That floor has no open shortcut.");
     }
+    if (command.panacea()) {
+      var cannot = gameState.panaceaBlocked();
+      if (cannot.isPresent()) {
+        return CommandResult.rejected(Reason.PURCHASE_REFUSED, cannot.get());
+      }
+    }
     var units = gameState.getUnits();
     final var unitsOnTower = gameState.getUnitsOnTower();
     var invadeUnits = command.units();
@@ -692,7 +730,11 @@ public class GameService {
     }
     gameState.getTower().startNewRunAt(requestedFloor);
     gameState.setRunStartFloor(requestedFloor > 0 ? requestedFloor : 0);
-    gameState.startRun(command.salt() == null ? 0 : command.salt(), saltPack, command.saltBearer());
+    gameState.startRun(
+        command.salt() == null ? 0 : command.salt(),
+        saltPack,
+        command.saltBearer(),
+        command.panacea());
     if (requestedFloor > 0) {
       gameState.recordFloorReached(requestedFloor);
     }
@@ -896,6 +938,7 @@ public class GameService {
       var rewardMultiplier = bossCleared ? reward.getBossRewardMultiplier() : 1.0;
       gameState.gatherCredits(clearedFloor * reward.getCreditPerFloor() * rewardMultiplier);
       gatherFloorLoot(gameState, clearedFloor, rewardMultiplier);
+      gameState.gatherFloorSpores(clearedFloor, bossCleared);
       floorBundle.resolve(gameState, clearedFloor, bossCleared);
       gameState.layRisenToRest(clearedFloor);
       if (bossCleared) {

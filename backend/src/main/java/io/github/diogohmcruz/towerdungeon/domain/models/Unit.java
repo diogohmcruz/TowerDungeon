@@ -53,6 +53,12 @@ public class Unit extends BaseUnit implements Aimable {
   /** The item category this unit has a knack for; rolled at recruit, {@code null} for none. */
   private ItemCategory affinity;
 
+  /** The Party's Panacea, while it is carried and unspent; shared with the other Units. */
+  @JsonIgnore
+  @Getter(AccessLevel.NONE)
+  @EqualsAndHashCode.Exclude
+  private Panacea panacea;
+
   /** Health below this counts as zero, absorbing floating-point drift from proportional hits. */
   static final double EPSILON = 1e-9;
 
@@ -304,7 +310,51 @@ public class Unit extends BaseUnit implements Aimable {
               part.setCurrentHealth(Math.max(0, part.getCurrentHealth() - landed));
               settle(part, dropped);
             });
+    savedByPanacea();
     return dropped;
+  }
+
+  /** Gives this Unit the Party's Panacea, or takes it away with {@code null}. */
+  public void setPanacea(Panacea panacea) {
+    this.panacea = panacea;
+  }
+
+  /**
+   * After a hit: if exactly one vital part has run out and the Party's Panacea is unspent, leaves
+   * that part at its share of maximum and spends the Panacea. A hit that takes both vital parts to
+   * zero cannot be saved.
+   */
+  private void savedByPanacea() {
+    if (panacea == null || !panacea.isArmed()) {
+      return;
+    }
+    var down = parts.stream().filter(part -> part.getKind().isVital() && isEmpty(part)).toList();
+    if (down.size() == 1) {
+      var part = down.getFirst();
+      part.setCurrentHealth(part.getMaxHealth() * panacea.saveShare());
+      panacea.spend();
+    }
+  }
+
+  /**
+   * Reattaches a lost arm or leg at {@code share} of that part's maximum health. Head and torso are
+   * never lost.
+   *
+   * @return whether a part was reattached
+   */
+  public boolean reattach(BodyPart kind, double share) {
+    var lost = parts.stream().filter(part -> part.getKind() == kind && part.isLost()).findFirst();
+    if (lost.isEmpty()) {
+      return false;
+    }
+    lost.get().setLost(false);
+    lost.get().setCurrentHealth(lost.get().getMaxHealth() * share);
+    return true;
+  }
+
+  /** The arms and legs this unit has lost, for a Spore Dose to bring back. */
+  public List<BodyPart> lostParts() {
+    return parts.stream().filter(Part::isLost).map(Part::getKind).toList();
   }
 
   /**
@@ -731,6 +781,7 @@ public class Unit extends BaseUnit implements Aimable {
                   Math.max(0, part.getCurrentHealth() - taken * part.getMaxHealth() / max));
               settle(part, dropped);
             });
+    savedByPanacea();
     return dropped;
   }
 

@@ -408,7 +408,7 @@ A village-made good that slows supplies drain when carried as treated supplies, 
 _Avoid_: Preservative, rock salt
 
 **Dragon Spores**:
-A village-grown healing ingredient, made into remedies that restore a unit's health at once and into the panacea. Planned.
+A healing ingredient made by Sporewardens in the Spore Cellar (open from Village Tier III) and found as loot from Floor 20 (three times that on a guardian floor, banked at Extraction). One Spore is a Spore Dose: a Remedy that restores 20 health at once, most wounded part first, or a reattachment of one lost arm or leg at 25% of that part's maximum health (head and torso are never lost). Four Spores and 40 Materials make a Panacea, chosen in the Loadout (one per Party, 10 Carrying Capacity): the first time a unit's head or torso would reach zero it is left at 10% of its maximum and the Panacea is spent; it cannot save a unit whose single hit takes both to zero.
 _Avoid_: Herbs, mushrooms, potions
 
 ### Progression

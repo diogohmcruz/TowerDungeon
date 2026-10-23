@@ -9,7 +9,13 @@
     </header>
     <div class="member-list">
       @for (member of unit[1]; track member.id) {
-      <app-character-card [member]="member" />
+      <app-character-card
+        [member]="member"
+        [atHome]="atHome()"
+        [sporesHeld]="sporesHeld()"
+        (remedy)="remedy.emit($event)"
+        (reattach)="reattach.emit($event)"
+      />
       }
     </div>
   </section>

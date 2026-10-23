@@ -75,7 +75,13 @@ export class VillageScene {
       return { ...fixed, tick: t, flicker: (t * STEP_MS) / 1000 };
     }
     const s = this.state();
-    const hands = { TILLER: 0, BREAKER: 0, SCRIBE: 0, SALTER: 0 };
+    const hands = {
+      TILLER: 0,
+      BREAKER: 0,
+      SCRIBE: 0,
+      SALTER: 0,
+      SPOREWARDEN: 0,
+    };
     const posts: VillageInput['posts'] = {};
     for (const view of s.tradeViews ?? []) {
       hands[view.trade] = view.hands;

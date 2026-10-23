@@ -6,7 +6,10 @@
   @if (summary().fallen.length > 0) {
   <ul class="fallen" aria-label="The fallen">
     @for (unit of summary().fallen; track $index) {
-    <li>{{ unit.name }}, {{ typeName(unit.type) }}, fell on Floor {{ unit.floor }}.</li>
+    <li>
+      {{ unit.name }}, {{ typeName(unit.type) }}, fell on Floor {{ unit.floor
+      }}.
+    </li>
     }
   </ul>
   }
@@ -47,5 +50,13 @@
         >{{ summary().relicsGained | number: '1.0-0' }}</span
       >
     </div>
+    @if ((summary().sporesGained ?? 0) > 0) {
+    <div class="stat">
+      <span class="stat-label">Dragon Spores</span>
+      <span class="stat-value"
+        >{{ summary().sporesGained | number: '1.0-0' }}</span
+      >
+    </div>
+    }
   </div>
 </app-card>

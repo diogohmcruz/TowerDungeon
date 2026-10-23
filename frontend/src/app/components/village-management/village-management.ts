@@ -96,6 +96,8 @@ export class VillageManagement {
         return this.gameState().quarryRate;
       case 'SALTER':
         return this.gameState().saltRate;
+      case 'SPOREWARDEN':
+        return this.gameState().sporeRate;
       default:
         return this.gameState().studyRate;
     }

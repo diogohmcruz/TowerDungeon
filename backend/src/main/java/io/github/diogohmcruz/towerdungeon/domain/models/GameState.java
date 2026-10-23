@@ -80,6 +80,12 @@ public class GameState {
   /** The Unit carrying the Salt Pack, who Chymus Insects aim at; null when there is no Pack. */
   private Integer saltBearerId;
 
+  /** Dragon Spores found on this Expedition; banked at Extraction, forfeited by a Wipe. */
+  private double carriedSpores = 0d;
+
+  /** The Panacea the Party carries, while unspent; null when none was chosen or it is spent. */
+  @JsonIgnore private Panacea panacea;
+
   private Double maxSupplies;
   private Double lastFoodReturned = 0d;
   private List<Reinforcement> reinforcements = new ArrayList<>();
@@ -156,6 +162,7 @@ public class GameState {
     this.tally = new CampaignTally(village.getVillagersCount());
     this.village.setSaltRules(config.getSalt());
     this.village.setTrustRules(config.getTrust());
+    this.village.setSporeRules(config.getSpores());
   }
 
   /**
@@ -178,11 +185,35 @@ public class GameState {
   }
 
   /**
+   * As {@link #startRun(int)}, also carrying a Panacea when {@code withPanacea} and the Village can
+   * make one now. See {@link #startRun(int, int, UnitStats, boolean)}.
+   */
+  public void startRun(int saltToUse, boolean withPanacea) {
+    startRun(saltToUse, 0, null, withPanacea);
+  }
+
+  /** As {@link #startRun(int, int, UnitStats, boolean)}, carrying no Panacea. */
+  public void startRun(int saltToUse, int packSalt, UnitStats bearerType) {
+    startRun(saltToUse, packSalt, bearerType, false);
+  }
+
+  /**
    * As {@link #startRun(int)}, also loading a Salt Pack of up to {@code packSalt} Salt on the first
    * Unit of {@code bearerType} in the Party. The Pack is taken first and costs Carrying Capacity; a
-   * Party without such a Unit, or a Stockroom without Salt, takes no Pack.
+   * Party without such a Unit, or a Stockroom without Salt, takes no Pack. It also carries a
+   * Panacea when {@code withPanacea} and the Village can make one now: its Spores come from the
+   * Stockroom, its Materials from the Vault, and it takes up Carrying Capacity. A Panacea that
+   * cannot be made is not carried.
    */
-  public void startRun(int saltToUse, int packSalt, UnitStats bearerType) {
+  public void startRun(int saltToUse, int packSalt, UnitStats bearerType, boolean withPanacea) {
+    this.panacea = null;
+    if (withPanacea && panaceaBlocked().isEmpty()) {
+      village.takeSpores(config.getSpores().getPanaceaSpores());
+      resources.merge(
+          ResourceType.MATERIALS, -config.getSpores().getPanaceaMaterials(), Double::sum);
+      this.panacea = new Panacea(config.getSpores().getPanaceaSaveShare());
+    }
+    this.carriedSpores = 0d;
     this.expeditionActive = true;
     this.saltPack = 0;
     this.saltBearerId = null;
@@ -207,6 +238,7 @@ public class GameState {
     this.runUnitsLost = 0;
     this.runFallen = new ArrayList<>();
     partyMembers().forEach(Unit::forgetFearFloor);
+    partyMembers().forEach(unit -> unit.setPanacea(panacea));
   }
 
   /**
@@ -227,7 +259,15 @@ public class GameState {
             .mapToDouble(entry -> entry.getKey().getSupplyBonus() * entry.getValue().size())
             .sum();
     var pack = saltBearerId == null ? 0d : config.getSalt().getPackCapacity();
-    return config.getSupply().getBaseMax() + getSupplyCapacityBonus() + supplyBonus - pack;
+    var panaceaLoad =
+        panacea != null && panacea.isArmed() ? config.getSpores().getPanaceaCapacity() : 0d;
+    return Math.max(
+        0d,
+        config.getSupply().getBaseMax()
+            + getSupplyCapacityBonus()
+            + supplyBonus
+            - pack
+            - panaceaLoad);
   }
 
   /** The Unit carrying the Salt Pack, if it still stands. */
@@ -476,8 +516,22 @@ public class GameState {
         .sum();
   }
 
+  /**
+   * Adds the Dragon Spores a cleared Floor yields: from the configured Floor on, one per Floor,
+   * tripled on a Guardian Floor. Like other loot they are kept only if the Party extracts.
+   */
+  public void gatherFloorSpores(int floor, boolean guardian) {
+    var spores = config.getSpores();
+    if (floor < spores.getLootFromFloor()) {
+      return;
+    }
+    carriedSpores += spores.getLootPerFloor() * (guardian ? spores.getGuardianLootMultiplier() : 1);
+  }
+
   /** Banks the carried loot, and every surplus item as Relics by tier. */
   public void bankLoot() {
+    village.addSpores(carriedSpores);
+    this.carriedSpores = 0d;
     var surplusRelics = surplusRelics();
     if (surplusRelics > 0) {
       resources.merge(ResourceType.RELICS, surplusRelics, Double::sum);
@@ -494,6 +548,7 @@ public class GameState {
   }
 
   public void forfeitLoot() {
+    this.carriedSpores = 0d;
     this.surplus = new EnumMap<>(ItemTier.class);
     this.carriedLoot = ResourceType.emptyWallet();
     this.carriedCredits = 0d;
@@ -527,6 +582,7 @@ public class GameState {
   }
 
   public void returnPartyHome() {
+    partyMembers().forEach(unit -> unit.setPanacea(null));
     unitsOnTower.forEach(
         (stats, survivors) ->
             units.computeIfAbsent(stats, _ -> new ArrayList<>()).addAll(survivors));
@@ -636,6 +692,9 @@ public class GameState {
         .forEach(
             (stats, survivors) ->
                 unitsOnTower.computeIfAbsent(stats, _ -> new ArrayList<>()).addAll(survivors));
+    wave.getUnits().values().stream()
+        .flatMap(List::stream)
+        .forEach(unit -> unit.setPanacea(panacea));
     this.supplies += wave.getSupplies();
     recalculateSupplyCapacity();
     log.info("A reinforcement wave of {} reached the party at floor {}.", wave.size(), partyFloor);
@@ -743,8 +802,18 @@ public class GameState {
     return villageTier.atLeast(VillageTier.SHELTERED);
   }
 
+  /** The Spore Cellar opens with Village Tier III, Fortified. */
+  public boolean isSporeCellarOpen() {
+    return villageTier.atLeast(VillageTier.FORTIFIED);
+  }
+
   /** Why a Trade is not yet open, or null. */
   private String tradeGate(Trade trade) {
+    if (trade == Trade.SPOREWARDEN && !isSporeCellarOpen()) {
+      return "The Spore Cellar opens at Village Tier III, "
+          + VillageTier.FORTIFIED.getDisplayName()
+          + ".";
+    }
     if (trade == Trade.SALTER && !isSaltPansOpen()) {
       return "The Salt Pans open at Village Tier II, "
           + VillageTier.SHELTERED.getDisplayName()
@@ -932,6 +1001,94 @@ public class GameState {
     return village.saltPerTick();
   }
 
+  /** Dragon Spores the Spore Cellar makes each tick. */
+  public double getSporeRate() {
+    return village.sporesPerTick();
+  }
+
+  /** Whether the Party out on the Tower still carries an unspent Panacea. */
+  public boolean isPanaceaCarried() {
+    return panacea != null && panacea.isArmed();
+  }
+
+  /** Why a Panacea cannot be made now, or empty: it needs Spores and Materials in the Vault. */
+  public Optional<String> panaceaBlocked() {
+    var rules = config.getSpores();
+    var held = (int) Math.floor(village.getSpores());
+    if (held < rules.getPanaceaSpores()) {
+      return Optional.of(
+          "A Panacea takes "
+              + rules.getPanaceaSpores()
+              + " Spores. The Stockroom holds "
+              + held
+              + ".");
+    }
+    if (vaultMaterials() < rules.getPanaceaMaterials()) {
+      return Optional.of(
+          "A Panacea takes "
+              + (long) rules.getPanaceaMaterials()
+              + " Materials. The Vault holds "
+              + (long) vaultMaterials()
+              + ".");
+    }
+    return Optional.empty();
+  }
+
+  private Optional<Unit> homeUnit(Integer unitId) {
+    return units.values().stream()
+        .flatMap(List::stream)
+        .filter(unit -> unit.getId().equals(unitId))
+        .findFirst();
+  }
+
+  /**
+   * Spends one Spore on a Remedy: the Unit at home recovers up to the configured health at once,
+   * the most wounded part first. It never regrows a part, and it does not wait for Recovery.
+   * Returns why not, or empty when given.
+   */
+  public Optional<String> giveRemedy(Integer unitId) {
+    if (gameOutcome != GameOutcome.PLAYING) {
+      return Optional.of("Nothing given.");
+    }
+    var unit = homeUnit(unitId);
+    if (unit.isEmpty()) {
+      return Optional.of("That Unit is not at home.");
+    }
+    if (!unit.get().isWounded()) {
+      return Optional.of(unit.get().getName() + " is not wounded.");
+    }
+    if (village.takeSpores(1) < 1) {
+      return Optional.of("The Stockroom holds no Spores.");
+    }
+    unit.get().heal(config.getSpores().getDoseHeal());
+    return Optional.empty();
+  }
+
+  /**
+   * Spends one Spore on reattaching a lost arm or leg of a Unit at home, at the configured share of
+   * that part's maximum health. Head and torso are never lost. Returns why not, or empty.
+   */
+  public Optional<String> reattachPart(Integer unitId, BodyPart part) {
+    if (gameOutcome != GameOutcome.PLAYING) {
+      return Optional.of("Nothing given.");
+    }
+    var unit = homeUnit(unitId);
+    if (unit.isEmpty()) {
+      return Optional.of("That Unit is not at home.");
+    }
+    if (part == null || part.isVital()) {
+      return Optional.of("A head or a torso is never lost.");
+    }
+    if (!unit.get().lostParts().contains(part)) {
+      return Optional.of(unit.get().getName() + " has not lost that part.");
+    }
+    if (village.takeSpores(1) < 1) {
+      return Optional.of("The Stockroom holds no Spores.");
+    }
+    unit.get().reattach(part, config.getSpores().getReattachShare());
+    return Optional.empty();
+  }
+
   /**
    * What setting out with the default party (every Reserve) would do, before the irreversible step:
    * the Carrying Capacity, the Supplies taken from the Pantry and the Pantry's hold after.
@@ -944,6 +1101,7 @@ public class GameState {
             .sum();
     var capacity = config.getSupply().getBaseMax() + getSupplyCapacityBonus() + porterBonus;
     var taken = Math.min(village.getFood(), capacity);
+    var spores = config.getSpores();
     var perSalt = config.getSalt().getSuppliesPerSalt();
     return new LoadoutPreview(
         capacity,
@@ -964,7 +1122,13 @@ public class GameState {
             .map(entry -> entry.getKey().name())
             .sorted()
             .toList(),
-        getTrustHeld());
+        getTrustHeld(),
+        (int) Math.floor(village.getSpores()),
+        spores.getPanaceaSpores(),
+        spores.getPanaceaMaterials(),
+        vaultMaterials(),
+        spores.getPanaceaCapacity(),
+        panaceaBlocked().orElse(null));
   }
 
   /** The Loadout's lines about Supplies. Each later line joins it as one more component. */
@@ -983,7 +1147,13 @@ public class GameState {
       boolean saltPansOpen,
       double packCapacity,
       List<String> bearerTypes,
-      int trustHeld) {}
+      int trustHeld,
+      int sporesHeld,
+      int panaceaSpores,
+      double panaceaMaterials,
+      double vaultMaterials,
+      double panaceaCapacity,
+      String panaceaBlocked) {}
 
   /** The Count: what the Campaign has lost to Starvation. */
   public TheCount getTheCount() {
@@ -1235,6 +1405,7 @@ public class GameState {
 
   /** Marks an expedition as finished (extract or wipe) and grants any newly earned milestones. */
   public void completeExpedition() {
+    this.panacea = null;
     expeditionsCompleted++;
     refreshVillageTier();
     refreshShortcuts();
@@ -1263,7 +1434,8 @@ public class GameState {
                 + (RunSummary.WIPED.equals(outcome) ? 0d : surplusRelics()),
             runUnitsLost,
             survivors,
-            List.copyOf(runFallen));
+            List.copyOf(runFallen),
+            RunSummary.WIPED.equals(outcome) ? 0d : carriedSpores);
     if (!RunSummary.WIPED.equals(outcome)) {
       tally.addFloorsCleared(floorsCleared);
       village.earnTrust(floorsCleared, survivors, survivors + runUnitsLost);
@@ -1647,7 +1819,10 @@ public class GameState {
                 List.copyOf(village.getSettling().get(Trade.SALTER)),
                 village.getSalt(),
                 village.getTrust(),
-                village.getRingLevel()),
+                village.getRingLevel(),
+                village.getSporewardens(),
+                List.copyOf(village.getSettling().get(Trade.SPOREWARDEN)),
+                village.getSpores()),
             List.copyOf(artifactsTaken),
             tally.toSnapshot(),
             villageTier.getLevel(),
@@ -1697,7 +1872,9 @@ public class GameState {
         waves,
         saltedSupplies,
         saltPack,
-        saltBearerId);
+        saltBearerId,
+        carriedSpores,
+        isPanaceaCarried());
   }
 
   /** Units in a stable order: by type, then in list order. */
@@ -1836,6 +2013,7 @@ public class GameState {
       state.village.restoreUpgrades(t.tomes(), t.postLevels());
       state.village.restoreSalt(t.salters(), t.salt(), t.settlingSalters());
       state.village.restoreTrust(t.trust(), t.ringLevel());
+      state.village.restoreSpores(t.sporewardens(), t.spores(), t.settlingSporewardens());
     }
     state.tally = new CampaignTally(c.villagers());
     if (c.tally() != null) {
@@ -1853,6 +2031,11 @@ public class GameState {
       state.saltedSupplies = Math.min(e.saltedSupplies(), e.supplies());
       state.saltPack = Math.max(0, e.saltPack());
       state.saltBearerId = state.saltPack > 0 ? e.saltBearerId() : null;
+      state.carriedSpores = Math.max(0d, e.carriedSpores());
+      if (e.panaceaCarried()) {
+        state.panacea = new Panacea(config.getSpores().getPanaceaSaveShare());
+        state.partyMembers().forEach(unit -> unit.setPanacea(state.panacea));
+      }
       state.carriedLoot.putAll(e.carriedLoot());
       state.carriedCredits = e.carriedCredits();
       state.surplus.putAll(e.surplus());
@@ -1870,6 +2053,13 @@ public class GameState {
                           w.currentFloor(),
                           w.supplies(),
                           w.maxSupplies())));
+      if (state.panacea != null) {
+        state.reinforcements.forEach(
+            wave ->
+                wave.getUnits().values().stream()
+                    .flatMap(List::stream)
+                    .forEach(unit -> unit.setPanacea(state.panacea)));
+      }
     }
     if (c.tower() != null) {
       var garrison =

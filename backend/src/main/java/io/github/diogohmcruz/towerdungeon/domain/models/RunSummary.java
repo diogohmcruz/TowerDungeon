@@ -19,11 +19,40 @@ public record RunSummary(
     double relicsGained,
     int unitsLost,
     int survivors,
-    List<Fallen> fallen) {
+    List<Fallen> fallen,
+    double sporesGained) {
 
   /** A summary saved before the fallen were recorded names none. */
   public RunSummary {
     fallen = fallen == null ? List.of() : fallen;
+  }
+
+  /** A summary with no Spores found. */
+  public RunSummary(
+      String outcome,
+      int startFloor,
+      int highestFloor,
+      int floorsCleared,
+      int enemiesDefeated,
+      double creditsGained,
+      double materialsGained,
+      double relicsGained,
+      int unitsLost,
+      int survivors,
+      List<Fallen> fallen) {
+    this(
+        outcome,
+        startFloor,
+        highestFloor,
+        floorsCleared,
+        enemiesDefeated,
+        creditsGained,
+        materialsGained,
+        relicsGained,
+        unitsLost,
+        survivors,
+        fallen,
+        0d);
   }
 
   public static final String EXTRACTED = "EXTRACTED";

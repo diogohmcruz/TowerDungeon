@@ -16,6 +16,8 @@ import io.github.diogohmcruz.towerdungeon.domain.models.ResourceType;
  * @param saltedSupplies how much of the Supplies carried is salted
  * @param saltPack Salt the Salt Pack still carries
  * @param saltBearerId the Unit carrying the Pack; null when there is none
+ * @param carriedSpores Dragon Spores found on this Expedition, not yet banked
+ * @param panaceaCarried whether the Party still carries an unspent Panacea
  * @param garrison the enemies standing on the party's current floor
  */
 public record ExpeditionSnapshot(
@@ -33,7 +35,9 @@ public record ExpeditionSnapshot(
     List<WaveSnapshot> waves,
     double saltedSupplies,
     int saltPack,
-    Integer saltBearerId) {
+    Integer saltBearerId,
+    double carriedSpores,
+    boolean panaceaCarried) {
 
   /** A save from before the fallen were recorded has none. */
   public ExpeditionSnapshot {

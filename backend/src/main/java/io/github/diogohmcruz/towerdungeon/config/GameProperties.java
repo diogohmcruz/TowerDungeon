@@ -49,6 +49,7 @@ public class GameProperties {
   private final Tiers tiers = new Tiers();
   private final Salt salt = new Salt();
   private final Trust trust = new Trust();
+  private final Spores spores = new Spores();
   private final Architecture architecture = new Architecture();
   private final Prestige prestige = new Prestige();
   private final Persistence persistence = new Persistence();
@@ -842,6 +843,40 @@ public class GameProperties {
 
     /** Carrying Capacity a level of Survivors' Notes adds to every Wave, and to nothing else. */
     private double survivorsNotesCapacityPerLevel = 10.0;
+  }
+
+  /** Dragon Spores: made in the Spore Cellar, found as loot, spent on Doses and the Panacea. */
+  @Data
+  public static class Spores {
+    /** Spores one Sporewarden makes per tick (6 make 0.3). */
+    private double perSporewardenPerTick = 0.05;
+
+    /** Health one Spore Dose restores, or what a Remedy restores. */
+    private double doseHeal = 20.0;
+
+    /** Share of a part's maximum health a reattached arm or leg comes back with. */
+    private double reattachShare = 0.25;
+
+    /** Spores a Panacea is made from. */
+    private int panaceaSpores = 4;
+
+    /** Materials from the Vault a Panacea is made from. */
+    private double panaceaMaterials = 40.0;
+
+    /** Carrying Capacity a Panacea takes up. */
+    private double panaceaCapacity = 10.0;
+
+    /** Share of its maximum a vital part is left at when the Panacea saves it. */
+    private double panaceaSaveShare = 0.10;
+
+    /** The first Floor whose clearing yields Spores as loot. */
+    private int lootFromFloor = 20;
+
+    /** Spores each cleared Floor yields from that Floor. */
+    private double lootPerFloor = 1.0;
+
+    /** Multiplier of that loot on a Guardian Floor. */
+    private double guardianLootMultiplier = 3.0;
   }
 
   /** Floor Architectures: the seeded plan, and the switch for their gameplay effects. */

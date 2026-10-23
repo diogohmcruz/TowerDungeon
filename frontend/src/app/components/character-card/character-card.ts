@@ -1,5 +1,5 @@
-import { Component, computed, input, signal } from '@angular/core';
-import { DecimalPipe } from '@angular/common';
+import { Component, computed, input, output, signal } from '@angular/core';
+import { DecimalPipe, LowerCasePipe } from '@angular/common';
 import {
   BodyPart,
   BodyPartKind,
@@ -53,10 +53,30 @@ const SLOTS: Omit<SlotView, 'item'>[] = [
   standalone: true,
   templateUrl: './character-card.html',
   styleUrl: './character-card.scss',
-  imports: [DecimalPipe, Card],
+  imports: [DecimalPipe, LowerCasePipe, Card],
 })
 export class CharacterCard {
   member = input.required<Member>();
+  /** Dragon Spores in the Stockroom, for a Unit at home to be treated with. */
+  sporesHeld = input(0);
+  /** Whether this Unit is at home, where a Spore Dose can reach it. */
+  atHome = input(false);
+  remedy = output<number>();
+  reattach = output<{ unitId: number; part: BodyPartKind }>();
+
+  /** Whether any part still attached is hurt. */
+  wounded = computed(() =>
+    (this.member().parts ?? []).some(
+      (part) => !part.lost && part.currentHealth < part.maxHealth - 1e-9,
+    ),
+  );
+  lostLimbs = computed(() =>
+    REGIONS.filter((region) =>
+      (this.member().parts ?? []).some(
+        (part) => part.kind === region.kind && part.lost,
+      ),
+    ),
+  );
   expanded = signal(false);
   /** The region or slot under the pointer or focus, spelled out for the readout. */
   detail = signal('');

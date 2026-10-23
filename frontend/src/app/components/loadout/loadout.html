@@ -12,8 +12,8 @@
   @if (open()) {
   <div class="loadout-body" id="loadout-body">
     <p class="loadout-line capacity">
-      Carrying Capacity {{ preview().carryingCapacity | number: '1.0-0' }}.
-      Taking {{ preview().suppliesTaken | number: '1.0-0' }} Supplies.
+      Carrying Capacity {{ capacity() | number: '1.0-0' }}. Taking {{ taken() |
+      number: '1.0-0' }} Supplies.
     </p>
 
     @if (!preview().saltPansOpen) {
@@ -94,6 +94,24 @@
     </p>
     }
 
+    <p class="loadout-line panacea">
+      <span class="line-name">Panacea</span>
+      <label>
+        <input
+          type="checkbox"
+          [checked]="panaceaChosen()"
+          [disabled]="disabled() || !panaceaAvailable()"
+          (change)="togglePanacea()"
+        />
+        Carry one
+      </label>
+      @if (panaceaAvailable()) { {{ preview().panaceaSpores }} Spores and {{
+      preview().panaceaMaterials | number: '1.0-0' }} Materials, {{
+      preview().panaceaCapacity | number: '1.0-0' }} Carrying Capacity. One per
+      Party. The first time a head or torso would reach zero, it is left at 10%
+      and the Panacea is spent. } @else { {{ preview().panaceaBlocked }} }
+    </p>
+
     <p class="loadout-line lasts">
       @if (lastsChosen() === null) { No Party to feed. } @else { Supplies last
       about {{ lastsChosen() }} s at Party size {{ preview().partySize }}. @if
@@ -104,9 +122,9 @@
     <p class="loadout-line trust">Trust held: {{ preview().trustHeld }}.</p>
 
     <p class="loadout-line hold" [class.short]="pantryHoldsShort()">
-      Setting out takes {{ preview().suppliesTaken | number: '1.0-0' }} Food.
-      @if (preview().pantryHoldSeconds === null) { Fields cover Upkeep. } @else
-      { Pantry would hold {{ preview().pantryHoldSeconds }} s. }
+      Setting out takes {{ taken() | number: '1.0-0' }} Food. @if
+      (preview().pantryHoldSeconds === null) { Fields cover Upkeep. } @else {
+      Pantry would hold {{ preview().pantryHoldSeconds }} s. }
     </p>
   </div>
   }

@@ -23,6 +23,9 @@ import io.github.diogohmcruz.towerdungeon.domain.models.Trade;
  * @param salt Salt in the Stockroom
  * @param trust Trust held; earned on Extraction only
  * @param ringLevel levels of the Thought-Binding Ring bought
+ * @param sporewardens Villagers in the Spore Cellar
+ * @param settlingSporewardens ticks left for each Sporewarden still Settling; null in older saves
+ * @param spores Dragon Spores in the Stockroom
  */
 public record TradesSnapshot(
     int breakers,
@@ -41,4 +44,7 @@ public record TradesSnapshot(
     List<Integer> settlingSalters,
     double salt,
     double trust,
-    int ringLevel) {}
+    int ringLevel,
+    int sporewardens,
+    List<Integer> settlingSporewardens,
+    double spores) {}

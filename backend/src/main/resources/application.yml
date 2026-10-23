@@ -203,6 +203,17 @@ game:
     wave-speed-per-level: 0.25
     wave-capacity-per-level: 5.0
     survivors-notes-capacity-per-level: 10.0
+  spores:
+    per-sporewarden-per-tick: 0.05
+    dose-heal: 20.0
+    reattach-share: 0.25
+    panacea-spores: 4
+    panacea-materials: 40.0
+    panacea-capacity: 10.0
+    panacea-save-share: 0.10
+    loot-from-floor: 20
+    loot-per-floor: 1.0
+    guardian-loot-multiplier: 3.0
   architecture:
     enabled: false
     seed: 362108372306

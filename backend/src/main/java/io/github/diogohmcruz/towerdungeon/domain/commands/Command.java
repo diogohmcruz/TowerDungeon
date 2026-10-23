@@ -2,6 +2,7 @@ package io.github.diogohmcruz.towerdungeon.domain.commands;
 
 import java.util.Map;
 
+import io.github.diogohmcruz.towerdungeon.domain.models.BodyPart;
 import io.github.diogohmcruz.towerdungeon.domain.models.Tome;
 import io.github.diogohmcruz.towerdungeon.domain.models.Trade;
 import io.github.diogohmcruz.towerdungeon.domain.models.UnitStats;
@@ -84,21 +85,32 @@ public sealed interface Command {
    * Send reserves up the tower. An empty selection sends everyone; a null one is not supported
    * (today it fails with a {@link NullPointerException}). {@code salt} is the Salt to salt Supplies
    * with; null is none. {@code saltPack} is the Salt of a Salt Pack against Chymus Insects, carried
-   * by the first Unit of type {@code saltBearer} in the Party; null or 0 is no Pack.
+   * by the first Unit of type {@code saltBearer} in the Party; null or 0 is no Pack. {@code
+   * panacea} asks the Loadout to carry a Panacea.
    */
   record StartExpedition(
       Map<UnitStats, Integer> units,
       Integer startFloor,
       Integer salt,
       Integer saltPack,
-      UnitStats saltBearer)
+      UnitStats saltBearer,
+      boolean panacea)
       implements Command {
     public StartExpedition(Map<UnitStats, Integer> units, Integer startFloor, Integer salt) {
       this(units, startFloor, salt, null, null);
     }
 
     public StartExpedition(Map<UnitStats, Integer> units, Integer startFloor) {
-      this(units, startFloor, null, null, null);
+      this(units, startFloor, null, null, null, false);
+    }
+
+    public StartExpedition(
+        Map<UnitStats, Integer> units,
+        Integer startFloor,
+        Integer salt,
+        Integer saltPack,
+        UnitStats saltBearer) {
+      this(units, startFloor, salt, saltPack, saltBearer, false);
     }
 
     @Override
@@ -136,6 +148,22 @@ public sealed interface Command {
     @Override
     public String kind() {
       return "BUY_POSTS";
+    }
+  }
+
+  /** Spend one Spore on a Remedy: a Unit at home recovers 20 health at once. */
+  record GiveRemedy(Integer unitId) implements Command {
+    @Override
+    public String kind() {
+      return "GIVE_REMEDY";
+    }
+  }
+
+  /** Spend one Spore on reattaching a lost arm or leg of a Unit at home. */
+  record ReattachPart(Integer unitId, BodyPart part) implements Command {
+    @Override
+    public String kind() {
+      return "REATTACH_PART";
     }
   }
 

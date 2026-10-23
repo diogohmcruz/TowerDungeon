@@ -23,6 +23,8 @@ export class Loadout {
   readonly pack = model(0);
   /** The Unit type that carries the Pack: the Salt-bearer. */
   readonly bearer = model('');
+  /** Whether a Panacea is carried. */
+  readonly panacea = model(false);
 
   readonly open = signal(false);
 
@@ -50,11 +52,30 @@ export class Loadout {
     return types.includes(this.bearer()) ? this.bearer() : (types[0] ?? '');
   });
 
+  /** Whether the Panacea is chosen and can be made. */
+  readonly panaceaChosen = computed(
+    () => this.panacea() && this.panaceaAvailable(),
+  );
+
+  /** Carrying Capacity after the Panacea, if one is chosen, takes its share. */
+  readonly capacity = computed(() => {
+    const p = this.preview();
+    return Math.max(
+      0,
+      p.carryingCapacity - (this.panaceaChosen() ? p.panaceaCapacity : 0),
+    );
+  });
+
+  /** Supplies taken from the Pantry: no more than the capacity left. */
+  readonly taken = computed(() =>
+    Math.min(this.preview().suppliesTaken, this.capacity()),
+  );
+
   /** Share of the Supplies taken that the chosen Salt salts. */
   private readonly saltedShare = computed(() => {
     const p = this.preview();
-    return p.suppliesTaken > 0
-      ? Math.min(1, (this.saltChosen() * p.suppliesPerSalt) / p.suppliesTaken)
+    return this.taken() > 0
+      ? Math.min(1, (this.saltChosen() * p.suppliesPerSalt) / this.taken())
       : 0;
   });
 
@@ -64,7 +85,7 @@ export class Loadout {
     const perUnit =
       p.drainPerUnit - share * (p.drainPerUnit - p.saltedDrainPerUnit);
     const drain = p.partySize * perUnit;
-    return drain > 0 ? Math.floor(p.suppliesTaken / drain) : null;
+    return drain > 0 ? Math.floor(this.taken() / drain) : null;
   }
 
   readonly lastsPlain = computed(() => this.lasts(0));
@@ -75,6 +96,15 @@ export class Loadout {
     const seconds = this.preview().pantryHoldSeconds;
     return seconds !== null && seconds < 60;
   });
+
+  /** A Panacea can be chosen once, and only while the Village can make one. */
+  readonly panaceaAvailable = computed(
+    () => this.preview().panaceaBlocked === null,
+  );
+
+  togglePanacea() {
+    this.panacea.update((chosen) => !chosen);
+  }
 
   toggle() {
     this.open.update((open) => !open);

@@ -15,5 +15,7 @@ public enum GameAction {
   ASSIGN_TRADE,
   BUY_TOME,
   BUY_POSTS,
-  BUY_RING
+  BUY_RING,
+  REMEDY,
+  REATTACH
 }

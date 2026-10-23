@@ -39,6 +39,8 @@ class FieldAccountingTest {
           Map.entry("saltedSupplies", "ExpeditionSnapshot.saltedSupplies"),
           Map.entry("saltPack", "ExpeditionSnapshot.saltPack"),
           Map.entry("saltBearerId", "ExpeditionSnapshot.saltBearerId"),
+          Map.entry("carriedSpores", "ExpeditionSnapshot.carriedSpores"),
+          Map.entry("panacea", "ExpeditionSnapshot.panaceaCarried"),
           Map.entry("lastFoodReturned", "ExpeditionSnapshot.lastFoodReturned"),
           Map.entry("reinforcements", "ExpeditionSnapshot.waves"),
           Map.entry("purchasedUpgrades", "CampaignSnapshot.upgrades"),
@@ -84,7 +86,9 @@ class FieldAccountingTest {
           Map.entry("salters", "TradesSnapshot.salters"),
           Map.entry("salt", "TradesSnapshot.salt"),
           Map.entry("trust", "TradesSnapshot.trust"),
-          Map.entry("ringLevel", "TradesSnapshot.ringLevel"));
+          Map.entry("ringLevel", "TradesSnapshot.ringLevel"),
+          Map.entry("sporewardens", "TradesSnapshot.sporewardens"),
+          Map.entry("spores", "TradesSnapshot.spores"));
 
   private static final Map<String, String> VILLAGE_TRANSIENT =
       Map.of(
@@ -92,7 +96,8 @@ class FieldAccountingTest {
           "unitFoodConsumption", "game balance, copied from config on creation",
           "trades", "game balance, copied from config on creation",
           "saltRules", "game balance, copied from config on creation",
-          "trustRules", "game balance, copied from config on creation");
+          "trustRules", "game balance, copied from config on creation",
+          "sporeRules", "game balance, copied from config on creation");
 
   private static final Map<String, String> TOWER_MAPPED =
       Map.of(
@@ -138,7 +143,8 @@ class FieldAccountingTest {
           "maxHealth", "derived: the sum of the present parts' maximum health",
           "bodyWeights", "game balance, supplied from config on restore",
           "sanityRules", "game balance, supplied from config on restore",
-          "itemEffects", "game balance, supplied from config on restore");
+          "itemEffects", "game balance, supplied from config on restore",
+          "panacea", "the Party's shared Panacea; ExpeditionSnapshot.panaceaCarried re-issues it");
 
   private static Set<String> fieldsOf(Class<?> type) {
     var names = new TreeSet<String>();

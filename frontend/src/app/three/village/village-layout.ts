@@ -82,7 +82,7 @@ export interface VillageInput {
 export const EMPTY_VILLAGE: VillageInput = {
   food: 0,
   reserves: 0,
-  hands: { TILLER: 0, BREAKER: 0, SCRIBE: 0, SALTER: 0 },
+  hands: { TILLER: 0, BREAKER: 0, SCRIBE: 0, SALTER: 0, SPOREWARDEN: 0 },
   posts: {},
   quarryHeap: 0,
   quarryHeapCap: 0,
@@ -113,6 +113,8 @@ export const TRADE_ANNEX: Record<TradeId, keyof typeof ANNEX_X> = {
   BREAKER: 'quarry',
   SCRIBE: 'study',
   SALTER: 'pans',
+  // The Spore Cellar lies below the Base, so its hands work at the Fort's foot.
+  SPOREWARDEN: 'fort',
 };
 
 /** The lane each Trade walks: x range and z, in front of its Annex. */
@@ -124,6 +126,7 @@ export const LANES: Record<
   BREAKER: { x0: 0.05, x1: 1.05, z: 1.15 },
   SCRIBE: { x0: 1.3, x1: 1.8, z: 1.15 },
   SALTER: { x0: 0.05, x1: 1.05, z: 1.7 },
+  SPOREWARDEN: { x0: -3.1, x1: -2.0, z: 1.3 },
 };
 
 /** The silo stands behind the stair's foot, so the two never share a plan. */
@@ -189,7 +192,13 @@ export function litLamps(villageTierLevel: number): number {
 export function figureCounts(
   hands: Record<TradeId, number>,
 ): Record<TradeId, number> {
-  const trades: TradeId[] = ['TILLER', 'BREAKER', 'SCRIBE', 'SALTER'];
+  const trades: TradeId[] = [
+    'TILLER',
+    'BREAKER',
+    'SCRIBE',
+    'SALTER',
+    'SPOREWARDEN',
+  ];
   const counts = {} as Record<TradeId, number>;
   for (const t of trades) counts[t] = Math.ceil(Math.max(0, hands[t]) / 2);
   let total = trades.reduce((s, t) => s + counts[t], 0);
@@ -441,6 +450,9 @@ function carried(out: Volume[], trade: TradeId, id: string, x: number, z: number
       break;
     case 'SALTER': // a pale sack
       box(out, `${id}-load`, 'village', x - 0.08, 0.05, z, 0.1, 0.12, 0.05, VILLAGE_TONE.salt);
+      break;
+    case 'SPOREWARDEN': // a small lidded crate
+      box(out, `${id}-load`, 'village', x - 0.08, 0.06, z, 0.08, 0.08, 0.05, VILLAGE_TONE.ash);
       break;
   }
 }

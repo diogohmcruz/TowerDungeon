@@ -74,6 +74,43 @@ describe('GameComponent', () => {
       units: new Map(),
       startFloor: 0,
       salt: 0,
+      panacea: false,
+    });
+  });
+
+  it('sends a Panacea only when the Loadout chose one and the Village can make it', () => {
+    component.panaceaChosen.set(true);
+
+    component.sendInvadeAction();
+    expect(sendAction).toHaveBeenCalledWith(
+      GameAction.INVADE,
+      jasmine.objectContaining({ panacea: true }),
+    );
+    expect(component.panaceaChosen()).toBeFalse();
+
+    sendAction.calls.reset();
+    stateService.update({
+      loadout: {
+        ...stateService.state().loadout,
+        panaceaBlocked: 'A Panacea takes 4 Spores. The Stockroom holds 0.',
+      },
+    });
+    component.panaceaChosen.set(true);
+    component.sendInvadeAction();
+    expect(sendAction).toHaveBeenCalledWith(
+      GameAction.INVADE,
+      jasmine.objectContaining({ panacea: false }),
+    );
+  });
+
+  it('sends a Remedy and a reattachment for a Unit at home', () => {
+    component.giveRemedy(7);
+    component.reattachPart({ unitId: 7, part: 'LEFT_ARM' });
+
+    expect(sendAction).toHaveBeenCalledWith(GameAction.REMEDY, { unitId: 7 });
+    expect(sendAction).toHaveBeenCalledWith(GameAction.REATTACH, {
+      unitId: 7,
+      part: 'LEFT_ARM',
     });
   });
 

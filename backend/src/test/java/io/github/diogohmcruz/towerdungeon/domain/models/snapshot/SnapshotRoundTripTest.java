@@ -18,11 +18,14 @@ import io.github.diogohmcruz.towerdungeon.domain.items.LeftoverGenerator;
 import io.github.diogohmcruz.towerdungeon.domain.models.BodyPart;
 import io.github.diogohmcruz.towerdungeon.domain.models.EnemyStats;
 import io.github.diogohmcruz.towerdungeon.domain.models.GameState;
+import io.github.diogohmcruz.towerdungeon.domain.models.Panacea;
 import io.github.diogohmcruz.towerdungeon.domain.models.ResourceType;
 import io.github.diogohmcruz.towerdungeon.domain.models.RunSummary;
 import io.github.diogohmcruz.towerdungeon.domain.models.Tower;
+import io.github.diogohmcruz.towerdungeon.domain.models.Trade;
 import io.github.diogohmcruz.towerdungeon.domain.models.Unit;
 import io.github.diogohmcruz.towerdungeon.domain.models.UnitStats;
+import io.github.diogohmcruz.towerdungeon.domain.models.VillageTier;
 import io.github.diogohmcruz.towerdungeon.domain.models.architecture.ArchitecturePlan;
 import io.github.diogohmcruz.towerdungeon.domain.models.upgrade.UpgradeType;
 import tools.jackson.databind.json.JsonMapper;
@@ -390,6 +393,33 @@ class SnapshotRoundTripTest {
     upgraded.getResources().put(ResourceType.MATERIALS, 100d);
     upgraded.applyUpgrade(UpgradeType.SUPPLY_LINES);
     assertThat(upgraded.isPristine()).isFalse();
+  }
+
+  @Test
+  void theSporeCellarSporesAndTheCarriedPanaceaSurviveASave() throws Exception {
+    var original = midCampaign();
+    original.setVillageTier(VillageTier.FORTIFIED);
+    original.getVillage().restoreSpores(0, 9);
+    assertThat(original.assignTrade(Trade.SPOREWARDEN, 1)).isEmpty();
+    var villageOnly = viaJson(original);
+    assertThat(villageOnly.getVillage().getSpores()).isEqualTo(9.0);
+    assertThat(villageOnly.getVillage().getSporewardens()).isEqualTo(1);
+    assertThat(villageOnly.getVillage().settlingHands(Trade.SPOREWARDEN)).isEqualTo(1);
+
+    var out = midExpedition();
+    out.setCarriedSpores(3d);
+    out.setPanacea(new Panacea(0.10));
+    out.getUnitsOnTower()
+        .values()
+        .forEach(units -> units.forEach(u -> u.setPanacea(out.getPanacea())));
+    var back = viaJson(out);
+
+    assertThat(back.getCarriedSpores()).isEqualTo(3.0);
+    assertThat(back.isPanaceaCarried()).isTrue();
+    var saved = back.getUnitsOnTower().get(UnitStats.WARRIOR).getFirst();
+    saved.damagePart(BodyPart.TORSO, 1000);
+    assertThat(saved.isDead()).isFalse();
+    assertThat(back.isPanaceaCarried()).isFalse();
   }
 
   @Test
