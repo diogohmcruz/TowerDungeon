@@ -67,8 +67,6 @@ export interface GameState {
   unitsOnTower: Squad;
   village: Village;
   tower?: Tower;
-  upgrades: string[];
-  prestigePoints: number;
   expeditionActive: boolean;
   gameOutcome: string;
   resources: ResourceWallet;

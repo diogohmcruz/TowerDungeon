@@ -34,6 +34,14 @@ public class Reinforcement {
     this.maxSupplies = maxSupplies;
   }
 
+  /** Rebuilds a wave in transit from its persisted facts. */
+  public static Reinforcement restore(
+      Map<UnitStats, List<Unit>> units, double currentFloor, double supplies, double maxSupplies) {
+    var wave = new Reinforcement(units, supplies, maxSupplies);
+    wave.currentFloor = currentFloor;
+    return wave;
+  }
+
   /** Number of climbers still alive in the wave. */
   public int size() {
     return (int) units.values().stream().flatMap(List::stream).count();

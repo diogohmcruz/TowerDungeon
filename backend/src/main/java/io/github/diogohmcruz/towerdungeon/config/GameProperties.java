@@ -3,6 +3,7 @@ package io.github.diogohmcruz.towerdungeon.config;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.springframework.beans.BeanUtils;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import io.github.diogohmcruz.towerdungeon.domain.models.UnitStats;
@@ -116,6 +117,13 @@ public class GameProperties {
     private double healthBaseMultiplier = 3.0;
     private double healthMultiplierPerFloor = 0.05;
     private double damageMultiplier = 1.25;
+
+    /** An independent copy, so one campaign's tower never shares tuning with another's. */
+    public Boss copy() {
+      var copy = new Boss();
+      BeanUtils.copyProperties(this, copy);
+      return copy;
+    }
   }
 
   /**
@@ -164,6 +172,13 @@ public class GameProperties {
 
     /** Floor is never emptier than this (keeps at least a token defender). */
     private double minBudget = 1.0;
+
+    /** An independent copy, so one campaign's tower never shares tuning with another's. */
+    public Enemies copy() {
+      var copy = new Enemies();
+      BeanUtils.copyProperties(this, copy);
+      return copy;
+    }
   }
 
   /** How freshly recruited units differ from their type's baseline. */

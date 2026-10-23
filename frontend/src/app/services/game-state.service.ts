@@ -35,8 +35,6 @@ export class GameStateService {
       villagersCount: 0,
       productionRate: 0,
     },
-    upgrades: [],
-    prestigePoints: 0,
     expeditionActive: false,
     gameOutcome: 'PLAYING',
     resources: { MATERIALS: 0, RELICS: 0 },

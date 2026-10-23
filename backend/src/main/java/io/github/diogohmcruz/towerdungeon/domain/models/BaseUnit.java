@@ -17,7 +17,12 @@ public class BaseUnit {
   }
 
   public BaseUnit(String name) {
-    this.id = ThreadLocalRandom.current().nextInt();
+    this(ThreadLocalRandom.current().nextInt(), name);
+  }
+
+  /** Restores a unit that already has an identity (loaded from a snapshot). */
+  protected BaseUnit(Integer id, String name) {
+    this.id = id;
     this.name = name;
   }
 

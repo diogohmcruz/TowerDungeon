@@ -78,6 +78,40 @@ public class Unit extends BaseUnit {
     this.setCurrentHealth(stats.getHealth());
   }
 
+  /** Restores a persisted unit with its identity; the caller reapplies strengths and health. */
+  private Unit(UnitStats stats, Integer id, String name) {
+    super(id, name);
+    this.stats = stats;
+    layOutBody();
+  }
+
+  /**
+   * Rebuilds a unit from its persisted facts. The rolled factors and the body parts are reapplied
+   * as they were, never re-rolled or re-laid-out; health totals derive from the parts.
+   */
+  public static Unit restore(
+      UnitStats stats,
+      Integer id,
+      String name,
+      double healthFactor,
+      double damageFactor,
+      boolean fixedStrengths,
+      double maxMana,
+      double currentMana,
+      List<Part> savedParts,
+      GameProperties.Body.Weights bodyWeights) {
+    var unit = new Unit(stats, id, name);
+    unit.healthFactor = healthFactor;
+    unit.damageFactor = damageFactor;
+    unit.fixedStrengths = fixedStrengths;
+    unit.maxMana = maxMana;
+    unit.currentMana = currentMana;
+    unit.bodyWeights = bodyWeights;
+    unit.parts.clear();
+    unit.parts.addAll(savedParts);
+    return unit;
+  }
+
   /**
    * Sets the health factor and resets every part to its full share of the type's health scaled by
    * it. Meant for a freshly created unit, not one already wounded.

@@ -5,8 +5,10 @@ import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Predicate;
@@ -15,6 +17,8 @@ import java.util.random.RandomGenerator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
+import io.github.diogohmcruz.towerdungeon.config.ThreadLocalRandomGenerator;
+import io.github.diogohmcruz.towerdungeon.domain.models.architecture.ArchitecturePlan;
 import io.github.diogohmcruz.towerdungeon.domain.models.healing.FoodDistributionStrategy;
 import io.github.diogohmcruz.towerdungeon.domain.models.healing.FoodHealingConfig;
 import io.github.diogohmcruz.towerdungeon.domain.models.healing.RoundRobinFoodDistributionStrategy;
@@ -22,6 +26,14 @@ import io.github.diogohmcruz.towerdungeon.domain.models.milestone.MilestoneOffer
 import io.github.diogohmcruz.towerdungeon.domain.models.milestone.MilestoneType;
 import io.github.diogohmcruz.towerdungeon.domain.models.shortcut.ShortcutOffer;
 import io.github.diogohmcruz.towerdungeon.domain.models.shortcut.ShortcutType;
+import io.github.diogohmcruz.towerdungeon.domain.models.snapshot.CampaignSnapshot;
+import io.github.diogohmcruz.towerdungeon.domain.models.snapshot.EnemySnapshot;
+import io.github.diogohmcruz.towerdungeon.domain.models.snapshot.ExpeditionSnapshot;
+import io.github.diogohmcruz.towerdungeon.domain.models.snapshot.GameSnapshot;
+import io.github.diogohmcruz.towerdungeon.domain.models.snapshot.PartSnapshot;
+import io.github.diogohmcruz.towerdungeon.domain.models.snapshot.TowerSnapshot;
+import io.github.diogohmcruz.towerdungeon.domain.models.snapshot.UnitSnapshot;
+import io.github.diogohmcruz.towerdungeon.domain.models.snapshot.WaveSnapshot;
 import io.github.diogohmcruz.towerdungeon.domain.models.upgrade.UpgradeOffer;
 import io.github.diogohmcruz.towerdungeon.domain.models.upgrade.UpgradeType;
 import lombok.Data;
@@ -39,8 +51,6 @@ public class GameState {
   private boolean expeditionActive = false;
   private GameOutcome gameOutcome = GameOutcome.PLAYING;
   private Village village;
-  private List<String> upgrades = new ArrayList<>();
-  private Integer prestigePoints = 0;
   private Map<ResourceType, Double> resources = ResourceType.emptyWallet();
   private Map<ResourceType, Double> carriedLoot = ResourceType.emptyWallet();
   private Double carriedCredits = 0d;
@@ -69,6 +79,9 @@ public class GameState {
   private RunSummary lastRunSummary;
 
   @JsonIgnore private Set<MilestoneType> achievedMilestones = EnumSet.noneOf(MilestoneType.class);
+
+  /** Shortcuts ever opened; a ratchet, so a rebalance of the thresholds never closes one. */
+  @JsonIgnore private Set<ShortcutType> openedShortcuts = EnumSet.noneOf(ShortcutType.class);
 
   @JsonIgnore @ToString.Exclude @EqualsAndHashCode.Exclude
   private FoodDistributionStrategy foodDistributionStrategy =
@@ -644,6 +657,7 @@ public class GameState {
   /** Marks an expedition as finished (extract or wipe) and grants any newly earned milestones. */
   public void completeExpedition() {
     expeditionsCompleted++;
+    refreshShortcuts();
     checkMilestones();
   }
 
@@ -713,6 +727,21 @@ public class GameState {
   public void recordEnemyKill() {
     enemiesDefeated++;
     runEnemiesDefeated++;
+    refreshShortcuts();
+  }
+
+  private boolean isShortcutOpen(ShortcutType shortcut) {
+    return openedShortcuts.contains(shortcut)
+        || shortcut.isUnlocked(expeditionsCompleted, enemiesDefeated);
+  }
+
+  /** Records every shortcut the campaign's progress now opens, so none can close again. */
+  private void refreshShortcuts() {
+    for (ShortcutType shortcut : ShortcutType.values()) {
+      if (shortcut.isUnlocked(expeditionsCompleted, enemiesDefeated)) {
+        openedShortcuts.add(shortcut);
+      }
+    }
   }
 
   /** Tower shortcuts with their target floor, lore, unlock condition and whether they are open. */
@@ -726,7 +755,7 @@ public class GameState {
               shortcut.getDescription(),
               shortcut.getTriggerLabel(),
               shortcut.getFloor(),
-              shortcut.isUnlocked(expeditionsCompleted, enemiesDefeated)));
+              isShortcutOpen(shortcut)));
     }
     return offers;
   }
@@ -740,10 +769,7 @@ public class GameState {
       return true;
     }
     return Arrays.stream(ShortcutType.values())
-        .anyMatch(
-            shortcut ->
-                shortcut.getFloor() == requestedFloor
-                    && shortcut.isUnlocked(expeditionsCompleted, enemiesDefeated));
+        .anyMatch(shortcut -> shortcut.getFloor() == requestedFloor && isShortcutOpen(shortcut));
   }
 
   public Integer buyVillager() {
@@ -802,5 +828,245 @@ public class GameState {
             .filter(BaseUnit::isDead)
             .toList();
     unitsToRemove.forEach(this::removeUnit);
+  }
+
+  /**
+   * Whether nothing has been done yet: no expedition and no change to the treasury, vault,
+   * upgrades, village or progress since the campaign began, so there is nothing worth writing to
+   * disk. The reserves are ignored, as a new campaign starts with its Founders already in them.
+   */
+  @JsonIgnore
+  public boolean isPristine() {
+    var fresh = new GameState(config).toSnapshot().campaign().withoutReserves();
+    return !expeditionActive && toSnapshot().campaign().withoutReserves().equals(fresh);
+  }
+
+  /**
+   * The persisted record: always the {@code campaign} facts, plus the in-flight {@code expedition}
+   * while one is active. Derived values are not stored. Call it under the state's lock.
+   */
+  public GameSnapshot toSnapshot() {
+    var campaign =
+        new CampaignSnapshot(
+            credit,
+            unitSnapshots(units),
+            new EnumMap<>(resources),
+            new EnumMap<>(purchasedUpgrades),
+            achievedMilestones.stream().sorted().toList(),
+            openedShortcuts.stream().sorted().toList(),
+            tower == null
+                ? null
+                : new TowerSnapshot(tower.getCurrentFloor(), tower.getSlainGuardians()),
+            highestFloor,
+            expeditionsCompleted,
+            enemiesDefeated,
+            gameOutcome,
+            lastRunSummary,
+            village.getFood(),
+            village.getVillagersCount());
+    return new GameSnapshot(campaign, expeditionActive ? expeditionSnapshot() : null);
+  }
+
+  private ExpeditionSnapshot expeditionSnapshot() {
+    var garrison =
+        tower == null || tower.getCurrentTowerFloor() == null
+            ? List.<EnemySnapshot>of()
+            : tower.getCurrentTowerFloor().getEnemies().stream()
+                .map(
+                    enemy ->
+                        new EnemySnapshot(
+                            enemy.getId(),
+                            enemy.getName(),
+                            enemy.getStats(),
+                            enemy.getCurrentHealth(),
+                            enemy.healthMultiplier(),
+                            enemy.damageMultiplier(),
+                            enemy.isBoss()))
+                .toList();
+    var waves =
+        reinforcements.stream()
+            .map(
+                wave ->
+                    new WaveSnapshot(
+                        unitSnapshots(wave.getUnits()),
+                        wave.getCurrentFloor(),
+                        wave.getSupplies(),
+                        wave.getMaxSupplies()))
+            .toList();
+    return new ExpeditionSnapshot(
+        unitSnapshots(unitsOnTower),
+        supplies,
+        new EnumMap<>(carriedLoot),
+        carriedCredits,
+        lastFoodReturned,
+        runStartFloor,
+        runEnemiesDefeated,
+        runUnitsLost,
+        garrison,
+        waves);
+  }
+
+  /** Units in a stable order: by type, then in list order. */
+  private static List<UnitSnapshot> unitSnapshots(Map<UnitStats, List<Unit>> byType) {
+    return byType.entrySet().stream()
+        .sorted(Map.Entry.comparingByKey())
+        .flatMap(entry -> entry.getValue().stream())
+        .map(
+            unit ->
+                new UnitSnapshot(
+                    unit.getId(),
+                    unit.getName(),
+                    unit.getStats(),
+                    unit.getHealthFactor(),
+                    unit.getDamageFactor(),
+                    unit.isFixedStrengths(),
+                    unit.getMaxMana(),
+                    unit.getCurrentMana(),
+                    unit.getParts().stream()
+                        .map(
+                            part ->
+                                new PartSnapshot(
+                                    part.getKind(),
+                                    part.getMaxHealth(),
+                                    part.getCurrentHealth(),
+                                    part.isLost()))
+                        .toList()))
+        .toList();
+  }
+
+  private static Map<UnitStats, List<Unit>> unitsFrom(
+      List<UnitSnapshot> snapshots, GameProperties config) {
+    Map<UnitStats, List<Unit>> byType = new HashMap<>();
+    for (var u : snapshots) {
+      byType
+          .computeIfAbsent(u.type(), _ -> new ArrayList<>())
+          .add(
+              Unit.restore(
+                  u.type(),
+                  u.id(),
+                  u.name(),
+                  u.healthFactor(),
+                  u.damageFactor(),
+                  u.fixedStrengths(),
+                  u.maxMana(),
+                  u.currentMana(),
+                  u.parts().stream()
+                      .map(
+                          p -> {
+                            var part = new Part(p.kind(), p.maxHealth());
+                            part.setCurrentHealth(p.currentHealth());
+                            part.setLost(p.lost());
+                            return part;
+                          })
+                      .toList(),
+                  config.getBody().getWeights()));
+    }
+    return byType;
+  }
+
+  /**
+   * Rebuilds a state with a production-style random source and the Tower's Architecture plan
+   * generated from {@code config}.
+   */
+  public static GameState restore(GameSnapshot snapshot, GameProperties config) {
+    var plan =
+        ArchitecturePlan.generate(
+            config.getArchitecture().getSeed(),
+            config.getTower().getMaxFloor(),
+            config.getBoss().getInterval(),
+            config.getEnemies().getSurgeInterval());
+    return restore(snapshot, config, new ThreadLocalRandomGenerator(), plan);
+  }
+
+  /**
+   * Rebuilds a state from its persisted record. Derived values (unlocked unit types, carrying
+   * capacity) are recomputed; unit strengths are reapplied as saved, never re-rolled; the Tower
+   * gets its own copy of the Boss and Enemies tuning.
+   */
+  public static GameState restore(
+      GameSnapshot snapshot,
+      GameProperties config,
+      RandomGenerator random,
+      ArchitecturePlan architecturePlan) {
+    var c = snapshot.campaign();
+    var state = new GameState(config);
+    state.credit = c.credit();
+    state.units = unitsFrom(c.reserves(), config);
+    state.resources.putAll(c.vault());
+    state.purchasedUpgrades.putAll(c.upgrades());
+    state.achievedMilestones.addAll(c.milestones());
+    state.openedShortcuts.addAll(c.shortcutsOpened());
+    state.highestFloor = c.highestFloor();
+    state.expeditionsCompleted = c.expeditionsCompleted();
+    state.enemiesDefeated = c.enemiesDefeated();
+    state.gameOutcome = c.outcome();
+    state.lastRunSummary = c.lastExpeditionSummary();
+    state.village.restore(c.villageFood(), c.villagers());
+    state.recomputeUnlockedUnits();
+
+    var e = snapshot.expedition();
+    if (e != null) {
+      state.expeditionActive = true;
+      state.unitsOnTower = unitsFrom(e.party(), config);
+      state.supplies = e.supplies();
+      state.carriedLoot.putAll(e.carriedLoot());
+      state.carriedCredits = e.carriedCredits();
+      state.lastFoodReturned = e.lastFoodReturned();
+      state.runStartFloor = e.runStartFloor();
+      state.runEnemiesDefeated = e.runEnemiesDefeated();
+      state.runUnitsLost = e.runUnitsLost();
+      e.waves()
+          .forEach(
+              w ->
+                  state.reinforcements.add(
+                      Reinforcement.restore(
+                          unitsFrom(w.units(), config),
+                          w.currentFloor(),
+                          w.supplies(),
+                          w.maxSupplies())));
+    }
+    if (c.tower() != null) {
+      var garrison =
+          e == null
+              ? List.<Enemy>of()
+              : e.garrison().stream()
+                  .map(
+                      en ->
+                          Enemy.restore(
+                              en.id(),
+                              en.name(),
+                              en.type(),
+                              en.healthMultiplier(),
+                              en.damageMultiplier(),
+                              en.boss(),
+                              en.currentHealth()))
+                  .toList();
+      state.tower =
+          Tower.restore(
+              config.getTower().getMaxFloor(),
+              config.getBoss().copy(),
+              config.getEnemies().copy(),
+              random,
+              architecturePlan,
+              c.tower().currentFloor(),
+              c.highestFloor(),
+              new HashSet<>(c.tower().clearedBosses()),
+              garrison);
+    }
+    state.maxSupplies = state.computeSupplyCapacity();
+    return state;
+  }
+
+  /** Unit types open to recruit: the starting three plus whatever upgrades and milestones grant. */
+  private void recomputeUnlockedUnits() {
+    unlockedUnits = EnumSet.of(UnitStats.WARRIOR, UnitStats.ARCHER, UnitStats.PORTER);
+    purchasedUpgrades.keySet().stream()
+        .map(UpgradeType::getUnlockUnit)
+        .filter(Objects::nonNull)
+        .forEach(unlockedUnits::add);
+    achievedMilestones.stream()
+        .map(MilestoneType::getUnlockUnit)
+        .filter(Objects::nonNull)
+        .forEach(unlockedUnits::add);
   }
 }

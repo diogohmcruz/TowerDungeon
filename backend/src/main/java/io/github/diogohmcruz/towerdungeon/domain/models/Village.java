@@ -27,6 +27,12 @@ public class Village {
     this.unitFoodConsumption = config.getUnitFoodConsumption();
   }
 
+  /** Restores the persisted facts; the production and upkeep rates stay as configured. */
+  public void restore(double food, int villagers) {
+    setFood(food);
+    setVillagersCount(villagers);
+  }
+
   private void setFood(Double food) {
     this.food = Math.max(0, food);
   }

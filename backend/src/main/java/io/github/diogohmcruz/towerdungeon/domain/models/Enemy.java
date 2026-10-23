@@ -33,6 +33,44 @@ public class Enemy extends BaseUnit {
     this.setCurrentHealth(this.getMaxHealth());
   }
 
+  private Enemy(
+      Integer id,
+      String name,
+      EnemyStats stats,
+      double healthMultiplier,
+      double damageMultiplier,
+      boolean boss) {
+    super(id, name);
+    this.stats = stats;
+    this.healthMultiplier = healthMultiplier;
+    this.damageMultiplier = damageMultiplier;
+    this.boss = boss;
+    this.setMaxHealth(stats.getHealth() * healthMultiplier);
+    this.setCurrentHealth(this.getMaxHealth());
+  }
+
+  /** Rebuilds a garrison enemy from its persisted facts; maximum health is derived. */
+  public static Enemy restore(
+      Integer id,
+      String name,
+      EnemyStats stats,
+      double healthMultiplier,
+      double damageMultiplier,
+      boolean boss,
+      double currentHealth) {
+    var enemy = new Enemy(id, name, stats, healthMultiplier, damageMultiplier, boss);
+    enemy.setCurrentHealth(currentHealth);
+    return enemy;
+  }
+
+  public double healthMultiplier() {
+    return healthMultiplier;
+  }
+
+  public double damageMultiplier() {
+    return damageMultiplier;
+  }
+
   private static final String[] GOLEM_MATERIALS = {
     "Granite", "Basalt", "Obsidian", "Marble", "Slate", "Iron", "Bronze", "Onyx"
   };

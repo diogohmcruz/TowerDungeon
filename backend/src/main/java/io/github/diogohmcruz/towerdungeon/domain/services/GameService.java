@@ -221,8 +221,8 @@ public class GameService {
             gameState.setTower(
                 new Tower(
                     config.getTower().getMaxFloor(),
-                    config.getBoss(),
-                    config.getEnemies(),
+                    config.getBoss().copy(),
+                    config.getEnemies().copy(),
                     random,
                     architecturePlan));
           }

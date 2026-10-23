@@ -87,8 +87,38 @@ public class Tower {
     return e.getGentleStartMultiplier() + (1 - e.getGentleStartMultiplier()) * progress;
   }
 
-  /** Builds a fully populated floor (enemies or boss) for the given depth. */
-  private TowerFloor buildFloor(int floor) {
+  /**
+   * Rebuilds a tower from its persisted facts. Floors are not persisted: the floors up to {@code
+   * highestFloor} come back as empty stubs (every floor is rebuilt on arrival anyway), and the
+   * floor the party stands on takes the saved {@code garrison} when one is given.
+   */
+  public static Tower restore(
+      int maxFloor,
+      GameProperties.Boss bossConfig,
+      GameProperties.Enemies enemiesConfig,
+      RandomGenerator random,
+      ArchitecturePlan architecturePlan,
+      int currentFloor,
+      int highestFloor,
+      Set<Integer> clearedBosses,
+      List<Enemy> garrison) {
+    var tower = new Tower(maxFloor, bossConfig, enemiesConfig, random, architecturePlan);
+    tower.clearedBosses.addAll(clearedBosses);
+    tower.currentFloor = currentFloor;
+    var topStub = Math.min(Math.max(highestFloor, currentFloor), maxFloor);
+    for (var floor = 1; floor <= topStub; floor++) {
+      var stub = tower.newFloor(floor);
+      if (floor == currentFloor) {
+        stub.getEnemies().addAll(garrison);
+      }
+      tower.floors.put(floor, stub);
+    }
+    tower.layoutVersion = tower.floors.size() + tower.clearedBosses.size();
+    return tower;
+  }
+
+  /** An empty floor with its depth-derived traits (difficulty, architecture, boss flag). */
+  private TowerFloor newFloor(int floor) {
     var percentageOfTowerComplete = (double) floor / maxFloor;
     var baseDifficulty = EnemyStats.values().length * percentageOfTowerComplete + 1;
     var isBossFloor = floor % bossConfig.getInterval() == 0 || floor == maxFloor;
@@ -101,15 +131,20 @@ public class Tower {
                 1,
                 EnemyStats.values().length);
 
-    var towerFloor =
-        TowerFloor.builder()
-            .id(floor)
-            .difficulty(difficulty)
-            .architecture(architecturePlan.architectureOf(floor))
-            .variant(architecturePlan.variantOf(floor))
-            .boss(isBossFloor)
-            .build();
-    if (isBossFloor) {
+    return TowerFloor.builder()
+        .id(floor)
+        .difficulty(difficulty)
+        .architecture(architecturePlan.architectureOf(floor))
+        .variant(architecturePlan.variantOf(floor))
+        .boss(isBossFloor)
+        .build();
+  }
+
+  /** Builds a fully populated floor (enemies or boss) for the given depth. */
+  private TowerFloor buildFloor(int floor) {
+    var towerFloor = newFloor(floor);
+    var easingSteps = easingStepsFor(floor);
+    if (towerFloor.isBoss()) {
       towerFloor.populateBoss(bossConfig);
     } else {
       towerFloor.populateEnemies(enemyBudget(floor, easingSteps, stepUpsFor(floor)), random);
