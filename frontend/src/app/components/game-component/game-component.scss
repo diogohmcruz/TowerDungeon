@@ -1,18 +1,24 @@
 :host {
+  /* Grows with the controls column. A fixed or inherited height here would
+     cap the sticky containing block at one viewport and the Tower would
+     scroll away with the page. */
   display: flex;
-  height: inherit;
+  align-items: flex-start;
+  min-height: 100vh;
 }
 
 .flex-wrapper {
   flex: 1 1 auto;
   min-width: 0;
-  height: inherit;
 }
 
+/* The Tower panel is exactly one viewport tall and stays put while the
+   controls scroll beside it. dvh follows mobile browser chrome. */
 .tower {
   flex: 0 0 46vw;
   min-width: 440px;
   height: 100vh;
+  height: 100dvh;
   position: sticky;
   top: 0;
   align-self: flex-start;

@@ -3,7 +3,8 @@
   flex-direction: row;
   align-items: stretch;
   gap: 12px;
-  height: 100%;
+  /* Height comes from the parent (the sticky .tower panel). */
+  min-height: 0;
 }
 
 .tower-scene-host {

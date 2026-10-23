@@ -310,4 +310,37 @@ describe('GameComponent', () => {
       );
     });
   });
+
+  describe('Tower panel height', () => {
+    afterEach(() => {
+      window.scrollTo(0, 0);
+    });
+
+    it('is exactly one viewport tall and stays put while the controls scroll', () => {
+      const host: HTMLElement = fixture.nativeElement;
+      document.body.appendChild(host);
+      document.body.style.margin = '0';
+      // Make the controls column far taller than the viewport.
+      const wrapper = host.querySelector('.flex-wrapper') as HTMLElement;
+      const filler = document.createElement('div');
+      filler.style.height = `${window.innerHeight * 3}px`;
+      wrapper.appendChild(filler);
+
+      const tower = host.querySelector('.tower') as HTMLElement;
+      expect(getComputedStyle(tower).position).toBe('sticky');
+      expect(tower.getBoundingClientRect().height).toBe(window.innerHeight);
+
+      // The host must grow with the controls, or sticky has no room to travel.
+      expect(host.getBoundingClientRect().height).toBeGreaterThan(
+        window.innerHeight * 2,
+      );
+
+      window.scrollTo(0, window.innerHeight);
+      const after = tower.getBoundingClientRect();
+      expect(after.top).toBe(0);
+      expect(after.height).toBe(window.innerHeight);
+
+      host.remove();
+    });
+  });
 });
