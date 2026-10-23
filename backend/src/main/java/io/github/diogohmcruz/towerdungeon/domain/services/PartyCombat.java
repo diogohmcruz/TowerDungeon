@@ -41,7 +41,7 @@ public class PartyCombat {
     var damageMultiplier = gameState.getDamageMultiplier();
     var manaCost = gameState.getConfig().getMagic().getCostPerCast();
     var party = unitsOnTower.values().stream().flatMap(List::stream).toList();
-    var woundedAtStart = party.stream().filter(PartyCombat::isWounded).toList();
+    var woundedAtStart = party.stream().filter(Unit::isWounded).toList();
     var enemiesAtStart = List.copyOf(currentEnemies);
     var healersThatCast = new HashSet<Integer>();
 
@@ -115,7 +115,7 @@ public class PartyCombat {
           targetUnitElement.receiveAttack(
               currentEnemy.getEffectiveDamage(), currentEnemy.getStats().getAttackType());
 
-          if (targetUnitElement.getCurrentHealth() <= 0) {
+          if (targetUnitElement.isDead()) {
             log.info("Enemy {} defeated unit {}", currentEnemy, targetUnitElement);
             gameState.removeUnit(targetUnitElement);
           }
@@ -133,10 +133,6 @@ public class PartyCombat {
 
   private static boolean isHealer(Unit unit) {
     return unit.getStats().getAttackType() == AttackType.HEAL;
-  }
-
-  private static boolean isWounded(Unit unit) {
-    return unit.getCurrentHealth() < unit.getMaxHealth();
   }
 
   /** Enemies a Heal hit would hurt: a multiplier of zero is immune, a negative one is healed. */

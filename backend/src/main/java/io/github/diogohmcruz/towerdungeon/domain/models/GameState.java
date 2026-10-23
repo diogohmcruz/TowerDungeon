@@ -489,6 +489,7 @@ public class GameState {
    */
   public Unit recruit(UnitStats unitStats, RandomGenerator random) {
     var unit = new Unit(unitStats);
+    unit.setBodyWeights(config.getBody().getWeights());
     unit.rollStrengths(random, config.getRecruit().getStrengthSpread());
     if (unit.isCaster()) {
       unit.chargeToFull(config.getMagic().getMaxMana());

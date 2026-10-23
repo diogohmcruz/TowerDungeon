@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
 import io.github.diogohmcruz.towerdungeon.domain.models.AttackType;
+import io.github.diogohmcruz.towerdungeon.domain.models.BodyPart;
 import io.github.diogohmcruz.towerdungeon.domain.models.Enemy;
 import io.github.diogohmcruz.towerdungeon.domain.models.EnemyStats;
 import io.github.diogohmcruz.towerdungeon.domain.models.GameState;
@@ -247,6 +248,53 @@ class PartyCombatTest {
     warrior.setCurrentHealth(0.1);
     state.getUnitsOnTower().put(UnitStats.WARRIOR, new ArrayList<>(List.of(warrior)));
     var enemies = new ArrayList<>(List.of(new Enemy(EnemyStats.SLIME)));
+
+    combat.enemiesAttack(state, enemies, party(warrior));
+
+    assertThat(warrior.isDead()).isTrue();
+    assertThat(state.getUnitsOnTower().getOrDefault(UnitStats.WARRIOR, List.of()))
+        .doesNotContain(warrior);
+  }
+
+  @Test
+  void aHealerHealsTheLowestRatioPartOfTheWoundedAlly() {
+    var healer = recruited(UnitStats.HEALER);
+    var warrior = recruited(UnitStats.WARRIOR);
+    warrior.damagePart(BodyPart.TORSO, 1.0);
+    warrior.damagePart(BodyPart.HEAD, 1.0);
+    var enemy = new MeleeImmuneSlime();
+
+    tick(party(healer, warrior), floorOf(enemy));
+
+    // The head sits at half its maximum, the torso at nine tenths: the heal goes to the head.
+    var head = warrior.getParts().stream().filter(p -> p.getKind() == BodyPart.HEAD).findFirst();
+    assertThat(head.orElseThrow().getCurrentHealth()).isEqualTo(2.0);
+  }
+
+  @Test
+  void aUnitWithOnlyALostLimbIsNotWoundedAndAttractsNoHealer() {
+    var healer = recruited(UnitStats.HEALER);
+    var warrior = recruited(UnitStats.WARRIOR);
+    warrior.damagePart(BodyPart.LEFT_ARM, 100);
+    var enemy = new MeleeImmuneSlime();
+    var healthBefore = enemy.getCurrentHealth();
+
+    tick(party(healer, warrior), floorOf(enemy));
+
+    assertThat(warrior.isWounded()).isFalse();
+    assertThat(enemy.getCurrentHealth()).isLessThan(healthBefore);
+  }
+
+  @Test
+  void aStrikeThatWouldHaveKilledTheOldPoolKillsTheUnitInTheSameTick() {
+    var warrior = recruited(UnitStats.WARRIOR);
+    var slime = new Enemy(EnemyStats.SLIME);
+    var hit =
+        slime.getEffectiveDamage()
+            * UnitStats.WARRIOR.getWeaknesses().getOrDefault(slime.getStats().getAttackType(), 1.0);
+    warrior.setCurrentHealth(hit);
+    var enemies = new ArrayList<>(List.of(slime));
+    state.getUnitsOnTower().put(UnitStats.WARRIOR, new ArrayList<>(List.of(warrior)));
 
     combat.enemiesAttack(state, enemies, party(warrior));
 

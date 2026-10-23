@@ -23,16 +23,16 @@ public class RoundRobinFoodDistributionStrategy implements FoodDistributionStrat
     for (var offset = 0; offset < count; offset++) {
       var index = (cursor + offset) % count;
       var unit = homeUnits.get(index);
-      var missing = unit.getMaxHealth() - unit.getCurrentHealth();
-      if (missing <= 0) {
+      if (!unit.isWounded()) {
         continue;
       }
       var affordableHp = village.getFood() / config.costPerHp();
-      var heal = Math.min(Math.min(missing, config.hpBudgetPerTick()), affordableHp);
-      if (heal <= 0) {
+      var budget = Math.min(config.hpBudgetPerTick(), affordableHp);
+      if (budget <= 0) {
         return 0d;
       }
-      unit.setCurrentHealth(unit.getCurrentHealth() + heal);
+      // The unit puts the budget on its lowest-ratio part and never past a part's maximum.
+      var heal = unit.heal(budget);
       var spent = heal * config.costPerHp();
       village.takeFood(spent);
       cursor = (index + 1) % count;

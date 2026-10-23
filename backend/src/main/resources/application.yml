@@ -62,6 +62,12 @@ game:
     base-max: 100.0
   recruit:
     strength-spread: 0.30
+  body:
+    weights:
+      torso: 0.50
+      head: 0.10
+      arm: 0.08
+      leg: 0.12
   magic:
     max-mana: 5.0
     cost-per-cast: 1.0

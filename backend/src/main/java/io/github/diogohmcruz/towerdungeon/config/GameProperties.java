@@ -26,6 +26,7 @@ public class GameProperties {
   private final Boss boss = new Boss();
   private final Enemies enemies = new Enemies();
   private final Recruit recruit = new Recruit();
+  private final Body body = new Body();
   private final Magic magic = new Magic();
   private final Reinforcements reinforcements = new Reinforcements();
   private final Supply supply = new Supply();
@@ -173,6 +174,21 @@ public class GameProperties {
      * either side of the type's baseline, e.g. 0.30 = 70% to 130%.
      */
     private double strengthSpread = 0.30;
+  }
+
+  /** How a unit's rolled health total is divided among its body parts. */
+  @Data
+  public static class Body {
+    private final Weights weights = new Weights();
+
+    /** Each part's share of the total; with two arms and two legs the shares sum to 1. */
+    @Data
+    public static class Weights {
+      private double torso = 0.50;
+      private double head = 0.10;
+      private double arm = 0.08;
+      private double leg = 0.12;
+    }
   }
 
   /** Expedition food-carrying capacity. */

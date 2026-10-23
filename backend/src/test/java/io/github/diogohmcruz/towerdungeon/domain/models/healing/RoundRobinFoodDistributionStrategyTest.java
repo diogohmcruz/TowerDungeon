@@ -1,12 +1,15 @@
 package io.github.diogohmcruz.towerdungeon.domain.models.healing;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
+import io.github.diogohmcruz.towerdungeon.domain.models.BodyPart;
+import io.github.diogohmcruz.towerdungeon.domain.models.Part;
 import io.github.diogohmcruz.towerdungeon.domain.models.Unit;
 import io.github.diogohmcruz.towerdungeon.domain.models.UnitStats;
 import io.github.diogohmcruz.towerdungeon.domain.models.Village;
@@ -92,6 +95,39 @@ class RoundRobinFoodDistributionStrategyTest {
     assertThat(missing(unit)).isEqualTo(17);
     assertThat(spent).isEqualTo(3);
     assertThat(village.getFood()).isZero();
+  }
+
+  @Test
+  void recoverySpendsTheBudgetOnTheLowestRatioPartAndStopsAtItsMaximum() {
+    var village = pantry(100);
+    var unit = new Unit(UnitStats.WARRIOR);
+    unit.damagePart(BodyPart.HEAD, 1.0);
+    unit.damagePart(BodyPart.TORSO, 4.0);
+
+    var spent = strategy.distribute(List.of(unit), village, CONFIG);
+
+    // The head (ratio 0.5) is filled first with 1, then the torso takes the other 4.
+    assertThat(spent).isCloseTo(5.0, within(1e-9));
+    assertThat(part(unit, BodyPart.HEAD).getCurrentHealth()).isCloseTo(2.0, within(1e-9));
+    assertThat(part(unit, BodyPart.TORSO).getCurrentHealth()).isCloseTo(10.0, within(1e-9));
+  }
+
+  @Test
+  void recoveryNeverBringsBackALostPartAndDoesNotCountItAsMissing() {
+    var village = pantry(100);
+    var unit = new Unit(UnitStats.WARRIOR);
+    unit.damagePart(BodyPart.LEFT_LEG, 100);
+
+    var spent = strategy.distribute(List.of(unit), village, CONFIG);
+
+    assertThat(spent).isZero();
+    assertThat(village.getFood()).isEqualTo(100);
+    assertThat(part(unit, BodyPart.LEFT_LEG).isLost()).isTrue();
+    assertThat(unit.getCurrentHealth()).isEqualTo(unit.getMaxHealth());
+  }
+
+  private static Part part(Unit unit, BodyPart kind) {
+    return unit.getParts().stream().filter(p -> p.getKind() == kind).findFirst().orElseThrow();
   }
 
   @Test

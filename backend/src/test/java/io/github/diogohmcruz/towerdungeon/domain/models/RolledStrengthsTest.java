@@ -106,7 +106,7 @@ class RolledStrengthsTest {
     var unit = new Unit(UnitStats.WARRIOR);
     unit.setHealthFactor(1.3);
     var own = unit.getMaxHealth();
-    unit.setCurrentHealth(own - 40);
+    unit.setCurrentHealth(own - 20);
     var villageConfig = new GameProperties.Village();
     villageConfig.setStartingFood(1000);
     var village = new Village(villageConfig);
@@ -116,7 +116,8 @@ class RolledStrengthsTest {
       strategy.distribute(List.of(unit), village, new FoodHealingConfig(1.0, 10.0));
     }
 
-    assertThat(unit.getCurrentHealth()).isEqualTo(own);
+    assertThat(unit.getCurrentHealth()).isEqualTo(own, within(1e-9));
+    assertThat(unit.isWounded()).isFalse();
     assertThat(own).isGreaterThan(UnitStats.WARRIOR.getHealth());
   }
 
