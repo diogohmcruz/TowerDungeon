@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 import java.util.random.RandomGenerator;
 import java.util.stream.Collectors;
 
@@ -41,6 +42,16 @@ public class PartyCombat {
       List<Enemy> currentEnemies,
       TowerFloor currentTowerFloor,
       GameState gameState) {
+    unitsAttack(unitsOnTower, currentEnemies, currentTowerFloor, gameState, strike -> {});
+  }
+
+  /** As {@link #unitsAttack(Map, List, TowerFloor, GameState)}, reporting each aimed strike. */
+  public void unitsAttack(
+      Map<UnitStats, List<Unit>> unitsOnTower,
+      List<Enemy> currentEnemies,
+      TowerFloor currentTowerFloor,
+      GameState gameState,
+      Consumer<AimedStrike.Strike> onStrike) {
     var damageMultiplier = gameState.getDamageMultiplier();
     var manaCost = gameState.getConfig().getMagic().getCostPerCast();
     var party = unitsOnTower.values().stream().flatMap(List::stream).toList();
@@ -94,16 +105,18 @@ public class PartyCombat {
               var targetEnemy = targets.get(random.nextInt(targets.size()));
               var wasAlive = !targetEnemy.isDead();
               var unitType = currentUnit.getStats();
-              aimedStrike.strike(
-                  targetEnemy,
-                  currentUnit.getDamage()
-                      * damageMultiplier
-                      * currentUnit.damageFactorAgainst(targetEnemy.getStats())
-                      * gameState.packDamageFactorAgainst(targetEnemy),
-                  unitType.getAttackType(),
-                  aiming.profileOf(unitType),
-                  currentUnit.getAccuracy(),
-                  aiming.headBiasOf(unitType));
+              var strike =
+                  aimedStrike.resolve(
+                      targetEnemy,
+                      currentUnit.getDamage()
+                          * damageMultiplier
+                          * currentUnit.damageFactorAgainst(targetEnemy.getStats())
+                          * gameState.packDamageFactorAgainst(targetEnemy),
+                      unitType.getAttackType(),
+                      aiming.profileOf(unitType),
+                      currentUnit.getAccuracy(),
+                      aiming.headBiasOf(unitType));
+              onStrike.accept(strike);
               if (currentUnit.isCaster()) {
                 currentUnit.spendMana(manaCost);
               }
@@ -124,6 +137,15 @@ public class PartyCombat {
    */
   public List<Item> enemiesAttack(
       GameState gameState, List<Enemy> currentEnemies, Map<UnitStats, List<Unit>> unitsOnTower) {
+    return enemiesAttack(gameState, currentEnemies, unitsOnTower, strike -> {});
+  }
+
+  /** As {@link #enemiesAttack(GameState, List, Map)}, reporting each aimed strike. */
+  public List<Item> enemiesAttack(
+      GameState gameState,
+      List<Enemy> currentEnemies,
+      Map<UnitStats, List<Unit>> unitsOnTower,
+      Consumer<AimedStrike.Strike> onStrike) {
     var drops = new ArrayList<Item>();
     List.copyOf(currentEnemies)
         .forEach(
@@ -145,16 +167,18 @@ public class PartyCombat {
                 targetUnitElement = targetUnit.get(randomUnitOnTowerIndex);
               }
               var healthBefore = targetUnitElement.getCurrentHealth();
-              drops.addAll(
+              var strike =
                   new AimedStrike(random, gameState.getConfig().getAiming())
-                      .strike(
+                      .resolve(
                           targetUnitElement,
                           currentEnemy.getEffectiveDamage()
                               * targetUnitElement.takenFactorFrom(currentEnemy.getStats()),
                           currentEnemy.getStats().getAttackType(),
                           gameState.getConfig().getAiming().profileOf(currentEnemy.getStats()),
                           currentEnemy.getAccuracy(),
-                          1.0));
+                          1.0);
+              onStrike.accept(strike);
+              drops.addAll(strike.dropped());
 
               returnThorns(
                   gameState, currentEnemies, currentEnemy, targetUnitElement, healthBefore);

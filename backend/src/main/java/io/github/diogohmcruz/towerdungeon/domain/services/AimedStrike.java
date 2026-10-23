@@ -55,37 +55,69 @@ public class AimedStrike {
       Map<Aim, Double> profile,
       double accuracy,
       double headBias) {
+    return resolve(target, damage, type, profile, accuracy, headBias).dropped();
+  }
+
+  /** What one aimed hit on one part came to. */
+  public record PartOutcome(BodyPart part, boolean hit, boolean lost) {}
+
+  /**
+   * What one aimed hit did: the aim it took, how each part it reached fared, and the items lost.
+   * {@code aim} is {@code null} when the blow was not aimed at all (it healed, or did no damage).
+   */
+  public record Strike(Aim aim, List<PartOutcome> parts, List<Item> dropped) {
+    static Strike unaimed() {
+      return new Strike(null, List.of(), List.of());
+    }
+  }
+
+  /** Like {@link #strike} but says how the hit fell, for whoever reports it. */
+  public Strike resolve(
+      Aimable target,
+      double damage,
+      AttackType type,
+      Map<Aim, Double> profile,
+      double accuracy,
+      double headBias) {
     var total = target.scaledByWeakness(damage, type);
     if (total < 0) {
       target.heal(-total);
-      return List.of();
+      return Strike.unaimed();
     }
     total *= target.lostLegsDamageTakenFactor();
     if (total <= 0) {
-      return List.of();
+      return Strike.unaimed();
     }
     var dropped = new ArrayList<Item>();
+    var outcomes = new ArrayList<PartOutcome>();
     var aim = chooseAim(profile);
     var reachable = aim.parts().stream().filter(target::hasPart).toList();
     if (aim == Aim.PART) {
       var part = choosePart(reachable, headBias);
-      land(target, part, total, accuracy, dropped);
-      return dropped;
+      land(target, part, total, accuracy, dropped, outcomes);
+      return new Strike(aim, outcomes, dropped);
     }
     var share = total / reachable.size();
     for (var part : reachable) {
-      land(target, part, share, accuracy, dropped);
+      land(target, part, share, accuracy, dropped, outcomes);
     }
-    return dropped;
+    return new Strike(aim, outcomes, dropped);
   }
 
   private void land(
-      Aimable target, BodyPart part, double amount, double accuracy, List<Item> dropped) {
+      Aimable target,
+      BodyPart part,
+      double amount,
+      double accuracy,
+      List<Item> dropped,
+      List<PartOutcome> outcomes) {
     var missChance = missChance(part, accuracy, target.getEvasion());
     if (random.nextDouble() * 100 < missChance) {
+      outcomes.add(new PartOutcome(part, false, false));
       return;
     }
     dropped.addAll(target.damagePart(part, amount));
+    outcomes.add(new PartOutcome(part, true, !target.hasPart(part)));
   }
 
   private Aim chooseAim(Map<Aim, Double> profile) {

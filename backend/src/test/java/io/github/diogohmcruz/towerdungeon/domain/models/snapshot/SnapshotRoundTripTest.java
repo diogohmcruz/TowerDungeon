@@ -319,6 +319,33 @@ class SnapshotRoundTripTest {
   }
 
   @Test
+  void aUnitSavedBeforeBodiesMindsAndItemsComesBackWholeSaneAndBare() throws Exception {
+    var original = midCampaign();
+    var mapper = JsonMapper.builder().build();
+    var tree = mapper.valueToTree(original.toSnapshot());
+    tree.get("campaign")
+        .get("reserves")
+        .forEach(
+            unit -> {
+              var node = (tools.jackson.databind.node.ObjectNode) unit;
+              node.remove(
+                  List.of(
+                      "parts", "sanity", "maxSanity", "phobias", "fearFloor", "gear", "affinity"));
+            });
+    var snapshot = mapper.treeToValue(tree, GameSnapshot.class);
+
+    var restored = GameState.restore(snapshot, config, random, plan);
+
+    var warrior = restored.getUnits().get(UnitStats.WARRIOR).getFirst();
+    assertThat(warrior.getParts()).hasSize(6).noneMatch(part -> part.isLost());
+    assertThat(warrior.getCurrentHealth()).isEqualTo(warrior.getMaxHealth()).isPositive();
+    assertThat(warrior.getSanity()).isEqualTo(warrior.getMaxSanity());
+    assertThat(warrior.getPhobias()).isEmpty();
+    assertThat(warrior.getGear().getSlots()).isEmpty();
+    assertThat(warrior.getAffinity()).isNull();
+  }
+
+  @Test
   void anAffinitySurvivesARoundTripAndNoAffinityStaysNone() throws Exception {
     var original = midCampaign();
     var archer = original.getUnits().get(UnitStats.ARCHER).getFirst();

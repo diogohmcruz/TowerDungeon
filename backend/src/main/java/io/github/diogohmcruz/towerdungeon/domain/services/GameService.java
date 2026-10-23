@@ -37,6 +37,7 @@ import io.github.diogohmcruz.towerdungeon.domain.models.UnitStats;
 import io.github.diogohmcruz.towerdungeon.domain.models.architecture.ArchitecturePlan;
 import io.github.diogohmcruz.towerdungeon.domain.models.snapshot.GameSnapshot;
 import io.github.diogohmcruz.towerdungeon.domain.models.upgrade.UpgradeType;
+import io.github.diogohmcruz.towerdungeon.domain.observation.AimTally;
 import io.github.diogohmcruz.towerdungeon.domain.observation.EventLog;
 import io.github.diogohmcruz.towerdungeon.domain.observation.StateProjection;
 import io.github.diogohmcruz.towerdungeon.domain.prestige.TollCalculator;
@@ -870,9 +871,13 @@ public class GameService {
     var slainBefore = gameState.getEnemiesDefeated();
     var floorBefore = floorOf(gameState);
     gameState.triggerLifecycle();
-    updateInvasion(gameState);
+    var party = new AimTally();
+    var garrison = new AimTally();
+    updateInvasion(gameState, party, garrison);
     slot.bumpSeq();
     recordTick(slot, gameState, slainBefore, floorBefore);
+    emitStrikes(slot, "PARTY", party);
+    emitStrikes(slot, "GARRISON", garrison);
   }
 
   /**
@@ -907,7 +912,14 @@ public class GameService {
     forEachPlayer((_, gameState) -> attritionTick(gameState, tick));
   }
 
-  private void updateInvasion(GameState gameState) {
+  /** Files one event for a side's aimed strikes this tick, if it threw any. */
+  private static void emitStrikes(PlayerSlot slot, String side, AimTally tally) {
+    if (!tally.isEmpty()) {
+      slot.emit("AIMED_STRIKES", tally.toEventData(side));
+    }
+  }
+
+  private void updateInvasion(GameState gameState, AimTally party, AimTally garrison) {
     if (!gameState.isExpeditionActive()) {
       return;
     }
@@ -959,9 +971,9 @@ public class GameService {
       return;
     }
     var currentEnemies = currentTowerFloor.getEnemies();
-    partyCombat.unitsAttack(unitsOnTower, currentEnemies, currentTowerFloor, gameState);
+    partyCombat.unitsAttack(unitsOnTower, currentEnemies, currentTowerFloor, gameState, party::add);
     gameState.dropGearOnCurrentFloor(
-        partyCombat.enemiesAttack(gameState, currentEnemies, unitsOnTower));
+        partyCombat.enemiesAttack(gameState, currentEnemies, unitsOnTower, garrison::add));
   }
 
   private void gatherFloorLoot(GameState gameState, int clearedFloor, double rewardMultiplier) {

@@ -525,6 +525,32 @@ class GameServiceCommandsTest {
   }
 
   @Test
+  void fightingTicksLogTheAimedStrikesOfEachSideAsCountsOnly() {
+    service.execute(PLAYER, new Command.StartExpedition(selection(UnitStats.WARRIOR, 1), 0));
+
+    for (var tick = 0; tick < 5; tick++) {
+      service.gameLoop();
+    }
+
+    var strikes =
+        service.eventsSince(PLAYER, 0).orElseThrow().stream()
+            .filter(event -> event.type().equals("AIMED_STRIKES"))
+            .toList();
+    assertThat(strikes).isNotEmpty();
+    assertThat(strikes)
+        .allSatisfy(
+            event -> {
+              assertThat(event.data().get("side")).isIn("PARTY", "GARRISON");
+              var thrown = (Integer) event.data().get("strikes");
+              var hits = (Integer) event.data().get("hits");
+              var misses = (Integer) event.data().get("misses");
+              assertThat(thrown).isPositive();
+              assertThat(hits + misses).isGreaterThanOrEqualTo(thrown);
+              assertThat(event.data()).containsKeys("aims", "partsHit", "partsMissed", "partsLost");
+            });
+  }
+
+  @Test
   void aPlayerWithoutACampaignGetsNoCampaignAndNothingElseIsObservable() {
     var result = service.execute("nobody", new Command.SellFood());
 

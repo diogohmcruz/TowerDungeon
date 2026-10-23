@@ -29,13 +29,17 @@ public record UnitSnapshot(
     Double sanity,
     Double maxSanity,
     List<PhobiaSnapshot> phobias,
-    int fearFloor,
+    Integer fearFloor,
     Map<Slot, Item> gear,
     ItemCategory affinity) {
 
-  /** A save from before sanity existed has none of these: its units come back sane and fearless. */
+  /**
+   * A save from before sanity existed has none of these: its units come back sane and fearless (no
+   * floor frightened them, {@code -1}).
+   */
   public UnitSnapshot {
     phobias = phobias == null ? List.of() : phobias;
+    fearFloor = fearFloor == null ? -1 : fearFloor;
     gear = gear == null ? Map.of() : gear;
   }
 }

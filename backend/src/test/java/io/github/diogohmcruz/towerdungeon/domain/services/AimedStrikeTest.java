@@ -245,4 +245,32 @@ class AimedStrikeTest {
     assertThat(new Unit(UnitStats.WARRIOR).getAccuracy()).isZero();
     assertThat(new Unit(UnitStats.WARRIOR).getEvasion()).isZero();
   }
+
+  @Test
+  void resolveReportsTheAimAndHowEachPartFared() {
+    var target = tank();
+    // Line (all of torso and both arms): roll 0.0 picks it; torso hits, left arm misses, right
+    // arm hits.
+    var result =
+        new AimedStrike(script(0.0, 0.99, 0.0, 0.99), config)
+            .resolve(target, 3.0, null, only(Aim.LINE_H), 0, 1.0);
+
+    assertThat(result.aim()).isEqualTo(Aim.LINE_H);
+    assertThat(result.parts())
+        .extracting(AimedStrike.PartOutcome::part, AimedStrike.PartOutcome::hit)
+        .containsExactly(
+            org.assertj.core.groups.Tuple.tuple(BodyPart.TORSO, true),
+            org.assertj.core.groups.Tuple.tuple(BodyPart.LEFT_ARM, false),
+            org.assertj.core.groups.Tuple.tuple(BodyPart.RIGHT_ARM, true));
+  }
+
+  @Test
+  void aHealIsNotAnAimedStrike() {
+    var target = tank();
+    var result =
+        new AimedStrike(script(), config).resolve(target, -1.0, null, only(Aim.PART), 0, 1.0);
+
+    assertThat(result.aim()).isNull();
+    assertThat(result.parts()).isEmpty();
+  }
 }

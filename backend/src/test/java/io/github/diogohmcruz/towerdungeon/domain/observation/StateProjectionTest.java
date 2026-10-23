@@ -175,4 +175,19 @@ class StateProjectionTest {
     assertThat(expedition.waveCount()).isEqualTo(25);
     assertThat(expedition.waves()).hasSize(StateProjection.MAX_LISTED_WAVES);
   }
+
+  @Test
+  void healthIsShownPerKindOfPartAndLostPartsDropOut() {
+    var state = campaign(2, false);
+    var unit = state.getUnits().get(UnitStats.WARRIOR).getFirst();
+    unit.damagePart(io.github.diogohmcruz.towerdungeon.domain.models.BodyPart.LEFT_ARM, 1_000);
+
+    var group = StateProjection.brief(state, 1).reserves().get("WARRIOR");
+
+    assertThat(group.lostParts()).isEqualTo(1);
+    assertThat(group.partHealth())
+        .containsOnlyKeys("TORSO", "HEAD", "RIGHT_ARM", "LEFT_LEG", "RIGHT_LEG", "LEFT_ARM");
+    assertThat(group.partHealth().get("TORSO")).matches("\\d+/\\d+");
+    assertThat(StateProjection.brief(state, 1).reserves().get("ARCHER").partHealth()).hasSize(6);
+  }
 }

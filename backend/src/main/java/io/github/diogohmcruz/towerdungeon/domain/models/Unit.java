@@ -196,8 +196,13 @@ public class Unit extends BaseUnit implements Aimable {
     unit.maxMana = maxMana;
     unit.currentMana = currentMana;
     unit.bodyWeights = bodyWeights;
-    unit.parts.clear();
-    unit.parts.addAll(savedParts);
+    if (savedParts == null || savedParts.isEmpty()) {
+      // A save from before units had bodies: lay a whole body out from the rolled health.
+      unit.layOutBody();
+    } else {
+      unit.parts.clear();
+      unit.parts.addAll(savedParts);
+    }
     unit.gear.restore(savedGear);
     unit.affinity = affinity;
     return unit;

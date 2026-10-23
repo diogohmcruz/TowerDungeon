@@ -1915,6 +1915,9 @@ public class GameState {
   }
 
   private static List<Part> partsFrom(List<PartSnapshot> snapshots) {
+    if (snapshots == null) {
+      return List.of();
+    }
     return snapshots.stream()
         .map(
             p -> {

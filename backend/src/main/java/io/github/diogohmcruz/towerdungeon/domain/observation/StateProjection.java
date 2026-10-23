@@ -55,6 +55,8 @@ public record StateProjection(
    * @param knownPhobias phobias the player has discovered, over all units of the type
    * @param lostParts body parts lost, over all units of the type
    * @param itemsWorn items worn, over all units of the type
+   * @param partHealth health per kind of body part, summed over the parts still attached, for
+   *     example {@code {"HEAD": "9/12"}}; a kind no unit of the type still has is absent
    */
   public record UnitGroup(
       int n,
@@ -63,14 +65,15 @@ public record StateProjection(
       double lowestSanity,
       int knownPhobias,
       int lostParts,
-      int itemsWorn) {}
+      int itemsWorn,
+      Map<String, String> partHealth) {}
 
   public record Supplies(double have, double capacity) {}
 
   public record Loot(double credits, double materials, double relics) {}
 
   /** The enemies still standing on the floor the party fights on. */
-  public record Garrison(int remaining, String health, Map<String, Integer> types) {}
+  public record Garrison(int remaining, String health, Map<String, Integer> types, int lostParts) {}
 
   public record Wave(int n, double floor, double supplies) {}
 
@@ -137,7 +140,9 @@ public record StateProjection(
     List<Enemy> enemies = floor == null ? List.of() : floor.getEnemies();
     var types = new TreeMap<String, Integer>();
     enemies.forEach(enemy -> types.merge(enemy.getStats().name(), 1, Integer::sum));
-    return new Garrison(enemies.size(), health(enemies), types);
+    var lostParts =
+        enemies.stream().flatMap(enemy -> enemy.getParts().stream()).filter(Part::isLost).count();
+    return new Garrison(enemies.size(), health(enemies), types, (int) lostParts);
   }
 
   private static Map<String, UnitGroup> groups(Map<UnitStats, List<Unit>> byType) {
@@ -165,7 +170,26 @@ public record StateProjection(
         round(sanity.getMin()),
         (int) knownPhobias,
         (int) lostParts,
-        itemsWorn);
+        itemsWorn,
+        partHealth(units));
+  }
+
+  /** Current over maximum health per kind of part, over the parts still attached. */
+  private static Map<String, String> partHealth(List<Unit> units) {
+    var current = new TreeMap<String, Double>();
+    var max = new TreeMap<String, Double>();
+    units.stream()
+        .flatMap(unit -> unit.getParts().stream())
+        .filter(part -> !part.isLost())
+        .forEach(
+            part -> {
+              current.merge(part.getKind().name(), part.getCurrentHealth(), Double::sum);
+              max.merge(part.getKind().name(), part.getMaxHealth(), Double::sum);
+            });
+    var result = new TreeMap<String, String>();
+    current.forEach(
+        (kind, value) -> result.put(kind, Math.round(value) + "/" + Math.round(max.get(kind))));
+    return result;
   }
 
   private static String health(Collection<? extends BaseUnit> units) {
