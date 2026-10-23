@@ -84,4 +84,22 @@ describe('village subjects', () => {
 
     expect(marked).toEqual(plain);
   });
+
+  it('makes the footing, pier and hull one Port subject; the sea is no subject', () => {
+    for (const id of ['port-footing-n', 'port-pier-deck', 'port-boat-hull']) {
+      expect(subjectOfVolume(id)).toEqual({ kind: 'port', id: 'PORT' });
+    }
+    expect(subjectOfVolume('sea-band-1')).toBeNull();
+    expect(subjectOfVolume('sea-body')).toBeNull();
+  });
+
+  it('outlines the Port footing and pier when hovered, within the frame', () => {
+    const input = { ...busy, port: 'FOOTING' as const, hovered: 'PORT' };
+    const v = buildVillage(input);
+    const outline = v.filter((x) => x.id.startsWith('outline-PORT:hover:port'));
+
+    expect(outline.length).toBe(4);
+    expect(subjectOfVolume(outline[0].id)).toEqual({ kind: 'port', id: 'PORT' });
+    for (const x of outline) expect(x.x + x.w / 2).toBeLessThanOrEqual(5.5);
+  });
 });

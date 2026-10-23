@@ -108,4 +108,46 @@ describe('village captions', () => {
     expect(captionFor(null, state)).toBeNull();
     expect(captionFor({ kind: 'annex', id: 'NOWHERE' }, state)).toBeNull();
   });
+
+  describe('Port', () => {
+    const portView = (state: 'HIDDEN' | 'FOOTING' | 'BUILT') => ({
+      state,
+      footingExpeditions: 12,
+      expeditionsCompleted: 12,
+      materialsCost: 600,
+      creditsCost: 300,
+    });
+
+    it('states in words what finishes the footing', () => {
+      load({ port: portView('FOOTING') });
+
+      const c = captionFor({ kind: 'port', id: 'PORT' }, state)!;
+
+      expect(c.name).toBe('The Port');
+      expect(c.lock).toBe(
+        'Finishing it costs 600 Materials and 300 Credits from the Vault. ' +
+          'The footing opened at 12 completed Expeditions; 12 are behind the Village.',
+      );
+    });
+
+    it('says the finished Port stands, and whether the Boat lies at the pier', () => {
+      load({ port: portView('BUILT') });
+      expect(captionFor({ kind: 'port', id: 'PORT' }, state)!.lock).toBeNull();
+      expect(captionText(captionFor({ kind: 'port', id: 'PORT' }, state)!)).toContain(
+        'pier stands',
+      );
+
+      load({ port: portView('BUILT'), boatDocked: true });
+      expect(captionText(captionFor({ kind: 'port', id: 'PORT' }, state)!)).toContain(
+        'A Boat lies at the pier',
+      );
+    });
+
+    it('has no caption while hidden or when the frame has no Port', () => {
+      load({ port: portView('HIDDEN') });
+      expect(captionFor({ kind: 'port', id: 'PORT' }, state)).toBeNull();
+      load({ port: undefined });
+      expect(captionFor({ kind: 'port', id: 'PORT' }, state)).toBeNull();
+    });
+  });
 });

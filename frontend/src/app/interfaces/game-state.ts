@@ -54,6 +54,19 @@ export interface ShortcutOffer {
   unlocked: boolean;
 }
 
+/** Where the Port stands: out of sight, a footing to build on, or finished. */
+export type PortState = 'HIDDEN' | 'FOOTING' | 'BUILT';
+
+/** The Port as the frame reports it (backend `PortView`). */
+export interface PortView {
+  state: PortState;
+  /** Completed Expeditions that open the footing. */
+  footingExpeditions: number;
+  expeditionsCompleted: number;
+  materialsCost: number;
+  creditsCost: number;
+}
+
 export interface Fallen {
   name: string;
   type: string;
@@ -199,6 +212,14 @@ export interface GameState {
   tally: Tally;
   villageTierLevel: number;
   villageTierName: string;
+  /** The Port; absent from older frames, which means hidden. */
+  port?: PortView;
+  /**
+   * True while the Boat lies docked at the pier (false on a Voyage or before it
+   * has arrived). The Boat is #83: the backend does not send this field yet, so
+   * the Village reads it as absent, no hull. Rename here when #83 names it.
+   */
+  boatDocked?: boolean;
   /** What the Village Tier has opened so far, comma-separated. */
   villageTierOpens: string;
   tomeViews: TomeView[];

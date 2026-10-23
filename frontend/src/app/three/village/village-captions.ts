@@ -116,10 +116,39 @@ const upgrade: CaptionBuilder = (subject, state) => {
   };
 };
 
+/**
+ * The Port: the footing says what finishes it, from the frame's Port state; the
+ * finished Port says what stands. Hidden, it has no volumes to point at.
+ */
+const port: CaptionBuilder = (_subject, state) => {
+  const p = state.port;
+  if (!p || p.state === 'HIDDEN') return null;
+  if (p.state === 'BUILT') {
+    return {
+      name: 'The Port',
+      status: state.boatDocked
+        ? 'Finished. A Boat lies at the pier.'
+        : 'Finished. The pier stands over the dark water.',
+      makes: '',
+      lock: null,
+    };
+  }
+  return {
+    name: 'The Port',
+    status: 'A footing and a short pier. Unfinished.',
+    makes: '',
+    lock:
+      `Finishing it costs ${p.materialsCost} Materials and ${p.creditsCost} Credits ` +
+      `from the Vault. The footing opened at ${p.footingExpeditions} completed ` +
+      `Expeditions; ${p.expeditionsCompleted} are behind the Village.`,
+  };
+};
+
 export const CAPTION_BUILDERS: Partial<Record<SubjectKind, CaptionBuilder>> = {
   annex,
   villagers,
   upgrade,
+  port,
 };
 
 export function captionFor(

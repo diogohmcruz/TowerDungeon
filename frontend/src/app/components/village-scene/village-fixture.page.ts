@@ -10,6 +10,11 @@ import { VillageScene } from './village-scene.component';
  * Dev tooling (route `/village-fixture`, dev mode only): the Village Elevation
  * without a backend. `?empty=1` shows a new Campaign instead of a busy Village.
  */
+function portParam(): VillageInput['port'] {
+  const v = new URLSearchParams(location.search).get('port');
+  return v === 'footing' ? 'FOOTING' : v === 'built' ? 'BUILT' : 'HIDDEN';
+}
+
 @Component({
   selector: 'app-village-fixture',
   imports: [VillageScene],
@@ -54,6 +59,9 @@ export class VillageFixturePage {
           { id: 'b', floor: 10 },
           { id: 'c', floor: 21 },
         ],
+        // `?port=footing` or `?port=built`, with `&boat=1` for a docked Boat.
+        port: portParam(),
+        boatDocked: new URLSearchParams(location.search).has('boat'),
         still: false,
       };
 }

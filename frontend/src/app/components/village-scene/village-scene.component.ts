@@ -158,6 +158,8 @@ export class VillageScene {
         .filter((sc) => sc.unlocked)
         .map((sc) => ({ id: sc.id, floor: sc.floor })),
       highlightedShortcut: this.highlightedShortcut(),
+      port: s.port?.state ?? 'HIDDEN',
+      boatDocked: s.boatDocked ?? false,
       tick,
       flicker: (tick * STEP_MS) / 1000,
       still: this.still,

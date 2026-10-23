@@ -10,7 +10,10 @@
 import type { TradeId } from '../../interfaces/village';
 import type { Volume } from './village-layout';
 
-export type SubjectKind = 'annex' | 'villagers' | 'upgrade';
+export type SubjectKind = 'annex' | 'villagers' | 'upgrade' | 'port';
+
+/** The id of the Port subject: the footing, the pier and the Boat are one thing. */
+export const PORT_SUBJECT = 'PORT';
 
 export interface VillageSubject {
   kind: SubjectKind;
@@ -34,6 +37,7 @@ export const VOLUME_SUBJECTS: ReadonlyArray<{
   { prefix: 'slit-', kind: 'annex', id: 'SCRIBE' },
   { prefix: 'footing-', kind: 'annex', id: 'SALTER' },
   { prefix: 'pan-', kind: 'annex', id: 'SALTER' },
+  { prefix: 'port-', kind: 'port', id: PORT_SUBJECT },
 ];
 
 const TRADES: readonly TradeId[] = [
@@ -58,7 +62,7 @@ export function sameThing(
 export function subjectOfVolume(volumeId: string): VillageSubject | null {
   if (volumeId.startsWith(OUTLINE)) {
     const id = volumeId.slice(OUTLINE.length).split(':')[0];
-    return { kind: 'annex', id };
+    return { kind: id === PORT_SUBJECT ? 'port' : 'annex', id };
   }
   const villager = /^villager-([A-Z]+)-/.exec(volumeId);
   if (villager && (TRADES as readonly string[]).includes(villager[1])) {
@@ -94,7 +98,7 @@ export function outlineVolumes(
 ): Volume[] {
   const out: Volume[] = [];
   const t = PIXEL * weight;
-  for (const kind of ['annex', 'villagers'] as const) {
+  for (const kind of ['annex', 'villagers', 'port'] as const) {
     const parts = ofSubject(volumes, id, kind);
     if (parts.length === 0) continue;
     const x0 = Math.min(...parts.map((v) => v.x - v.w / 2)) - PAD;

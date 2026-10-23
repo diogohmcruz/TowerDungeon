@@ -17,6 +17,7 @@ import {
   MAX_VILLAGE_HEIGHT,
   MAX_VILLAGE_SHARE,
   MAX_VILLAGER_FIGURES,
+  SHORE_X0,
   SHORTCUT_MARK_ID,
   shortcutMarkHeight,
   siloFill,
@@ -45,6 +46,7 @@ const BUSY: VillageInput = {
   still: false,
 };
 
+const VILLAGE_DARK = 0.12;
 const ids = (volumes: Volume[]) => volumes.map((v) => v.id);
 
 describe('village layout', () => {
@@ -500,6 +502,96 @@ describe('village layout', () => {
 
     it('stays within the renderer capacity', () => {
       expect(buildVillage({ ...BUSY, upgrades: full }).length).toBeLessThanOrEqual(512);
+    });
+  });
+
+  describe('Port', () => {
+    const shore = (v: Volume[]) => v.filter((x) => x.group === 'port');
+    const hasSea = (v: Volume[]) => v.some((x) => x.id.startsWith('sea-'));
+    const FOOTING = { ...BUSY, port: 'FOOTING' as const };
+    const BUILT = { ...BUSY, port: 'BUILT' as const };
+
+    it('draws no sea and nothing of the Port before the footing opens', () => {
+      const v = buildVillage(BUSY);
+
+      expect(shore(v)).toEqual([]);
+      expect(hasSea(v)).toBe(false);
+      expect(buildVillage(EMPTY_VILLAGE)).toEqual(
+        buildVillage({ ...EMPTY_VILLAGE, port: 'HIDDEN', boatDocked: true }),
+      );
+    });
+
+    it('shows a hairline footing, a short pier and a strip of sea at the footing', () => {
+      const v = buildVillage(FOOTING);
+
+      expect(ids(v)).toContain('port-footing-n');
+      expect(ids(v)).toContain('port-pier-deck');
+      expect(hasSea(v)).toBe(true);
+      expect(ids(v)).not.toContain('port-pier-bollard');
+      const hair = v.find((x) => x.id === 'port-footing-n')!;
+      expect(hair.h).toBeLessThan(0.02);
+    });
+
+    it('shows the full pier once finished, longer than the footing pier', () => {
+      const deck = (input: VillageInput) =>
+        buildVillage(input).find((x) => x.id === 'port-pier-deck')!;
+
+      expect(deck(BUILT).w).toBeGreaterThan(deck(FOOTING).w);
+      expect(ids(buildVillage(BUILT))).toContain('port-pier-bollard');
+    });
+
+    it('keeps the sea in the outer right-hand 20% only, inside the frame', () => {
+      for (const input of [FOOTING, BUILT, { ...BUILT, boatDocked: true }]) {
+        const v = buildVillage(input);
+        const sea = v.filter((x) => x.id.startsWith('sea-'));
+        for (const x of sea) {
+          expect(x.x - x.w / 2).toBeGreaterThanOrEqual(SHORE_X0 - 1e-9);
+          expect(x.x + x.w / 2).toBeLessThanOrEqual(FRAME_WIDTH / 2);
+        }
+        for (const x of shore(v)) {
+          expect(x.x - x.w / 2).toBeGreaterThanOrEqual(SHORE_X0 - 1e-9);
+          expect(x.x + x.w / 2).toBeLessThanOrEqual(FRAME_WIDTH / 2);
+        }
+        const b = villageBounds(v);
+        expect(b.maxX).toBeLessThanOrEqual(FRAME_WIDTH * 0.3);
+      }
+      expect(SHORE_X0).toBeCloseTo(FRAME_WIDTH * 0.3);
+    });
+
+    it('draws sea as horizontal bands, no waves: every band is wider than tall', () => {
+      const bands = buildVillage(BUILT).filter((x) =>
+        x.id.startsWith('sea-band-'),
+      );
+
+      expect(bands.length).toBeGreaterThan(3);
+      for (const b of bands) expect(b.w).toBeGreaterThan(b.h * 5);
+    });
+
+    it('docks a dark hull only once built and docked, and removes it on a Voyage', () => {
+      const hull = (input: VillageInput) =>
+        buildVillage(input).find((x) => x.id === 'port-boat-hull');
+
+      expect(hull(BUILT)).toBeUndefined();
+      const docked = hull({ ...BUILT, boatDocked: true })!;
+      expect(docked.tone).toBeLessThanOrEqual(VILLAGE_DARK);
+      expect(hull({ ...BUILT, boatDocked: false })).toBeUndefined();
+      expect(hull({ ...FOOTING, boatDocked: true })).toBeUndefined();
+    });
+
+    it('is the same hull whether motion is reduced or not', () => {
+      const a = buildVillage({ ...BUILT, boatDocked: true, still: true });
+      const b = buildVillage({ ...BUILT, boatDocked: true, still: false, tick: 0 });
+
+      expect(ids(a).filter((i) => i.startsWith('port-boat'))).toEqual(
+        ids(b).filter((i) => i.startsWith('port-boat')),
+      );
+    });
+
+    it('stays within the renderer capacity', () => {
+      const v = buildVillage({ ...BUSY, port: 'BUILT', boatDocked: true });
+
+      expect(v.length).toBeLessThanOrEqual(512);
+      expect(new Set(ids(v)).size).toBe(v.length);
     });
   });
 });

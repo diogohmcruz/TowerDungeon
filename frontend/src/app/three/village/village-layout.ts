@@ -5,6 +5,7 @@
  * instanced mesh. World units: x across, y up from the ground top, z toward the
  * camera. The Tower stands behind the Village and rises into the dither.
  */
+import type { PortState } from '../../interfaces/game-state';
 import type { TradeId } from '../../interfaces/village';
 import { outlineVolumes } from './village-subjects';
 
@@ -52,7 +53,8 @@ export const SHORTCUT_MARK_Z = -0.27;
 /** Id prefix of a Shortcut mark volume; the rest is the Shortcut id. */
 export const SHORTCUT_MARK_ID = 'shortcut-mark-';
 
-export type VolumeGroup = 'village' | 'tower';
+/** `port` is the shore: sea, pier and Boat, drawn in the outer right-hand 20% of the frame. */
+export type VolumeGroup = 'village' | 'tower' | 'port';
 
 /** A box: `x`, `y`, `z` are the centre; `y` is the centre height above the ground top. */
 export interface Volume {
@@ -97,6 +99,13 @@ export interface VillageInput {
   shortcuts: VillageShortcut[];
   /** Shortcut whose mark is drawn thicker (hook for the shared selection service). */
   highlightedShortcut: string | null;
+  /** The Port from the frame: hidden draws no sea at all; footing and built follow it. */
+  port: PortState;
+  /**
+   * The Boat lies docked at the pier. Only drawn once the Port is built. The
+   * backend sends no such field until #83; `GameState.boatDocked` is the input.
+   */
+  boatDocked: boolean;
   /** Seconds-ish counter: villagers step once per tick. */
   tick: number;
   /** Lamp flicker phase in seconds; 0 freezes the lamps. */
@@ -124,6 +133,8 @@ export const EMPTY_VILLAGE: VillageInput = {
   salt: 0,
   shortcuts: [],
   highlightedShortcut: null,
+  port: 'HIDDEN',
+  boatDocked: false,
   tick: 0,
   flicker: 0,
   still: true,
@@ -558,6 +569,70 @@ function shortcutMarks(
   }
 }
 
+/** The shore starts here: the right-hand 20% of the frame, beyond the Village's 60%. */
+export const SHORE_X0 = FRAME_WIDTH * 0.3;
+export const SHORE_X1 = FRAME_WIDTH / 2;
+/** The pier starts just past the Vault and runs out over the water. */
+const PIER_X0 = 3.35;
+const PIER_Z = 0.9;
+const PIER_DECK = 0.2;
+
+/**
+ * Sea bands: horizontal strips with gaps, no waves, so the ink dither reads as
+ * still black water. Each is `[bottom, from, to, tone]`, `from` and `to` as a
+ * share of the strip's width.
+ */
+const SEA_BANDS: ReadonlyArray<readonly [number, number, number, number]> = [
+  [-0.22, 0.0, 0.7, 0.45],
+  [-0.14, 0.25, 1.0, 0.6],
+  [-0.06, 0.0, 0.45, 0.5],
+  [-0.06, 0.6, 1.0, 0.5],
+  [0.02, 0.15, 0.8, 0.62],
+  [0.1, 0.0, 0.3, 0.4],
+  [0.1, 0.5, 0.9, 0.4],
+];
+
+/**
+ * The Port. Hidden: nothing, the Village is landlocked. Footing: a hairline
+ * rectangle, a short pier and a strip of sea. Built: the full pier, and the Boat's
+ * dark hull once it is docked. Everything sits at x >= 3.3 (the outer 20%).
+ */
+function port(out: Volume[], state: PortState, boatDocked: boolean): void {
+  if (state === 'HIDDEN') return;
+  const w = SHORE_X1 - SHORE_X0 - 0.1;
+  const sx = SHORE_X0 + 0.05;
+  // The sea: a dark body and bands, only in the outer right-hand 20%.
+  box(out, 'sea-body', 'port', sx + w / 2, -0.3, 1.2, w, 0.4, 2.0, VILLAGE_TONE.ground);
+  SEA_BANDS.forEach(([bottom, a, b, tone], i) => {
+    box(out, `sea-band-${i}`, 'port', sx + ((a + b) / 2) * w, bottom, 2.205, (b - a) * w, 0.035, 0.01, tone);
+  });
+  // The footing is a hairline rectangle on the ground, as the Pans' is.
+  const fx0 = PIER_X0;
+  const fx1 = PIER_X0 + 0.7;
+  const d = 0.5;
+  const line = VILLAGE_TONE.footing + 0.3;
+  box(out, 'port-footing-n', 'port', (fx0 + fx1) / 2, 0, PIER_Z - d / 2, fx1 - fx0, 0.012, 0.012, line);
+  box(out, 'port-footing-s', 'port', (fx0 + fx1) / 2, 0, PIER_Z + d / 2, fx1 - fx0, 0.012, 0.012, line);
+  box(out, 'port-footing-w', 'port', fx0, 0, PIER_Z, 0.012, 0.012, d, line);
+  box(out, 'port-footing-e', 'port', fx1, 0, PIER_Z, 0.012, 0.012, d, line);
+  const length = state === 'BUILT' ? SHORE_X1 - 0.35 - PIER_X0 : 0.9;
+  const tone = state === 'BUILT' ? VILLAGE_TONE.timber : VILLAGE_TONE.footing;
+  box(out, 'port-pier-deck', 'port', PIER_X0 + length / 2, PIER_DECK, PIER_Z, length, 0.05, 0.4, tone);
+  const piles = state === 'BUILT' ? 4 : 2;
+  for (let i = 0; i < piles; i++) {
+    const px = PIER_X0 + 0.1 + (i * (length - 0.2)) / Math.max(1, piles - 1);
+    box(out, `port-pier-pile-${i}`, 'port', px, -0.2, PIER_Z, 0.05, PIER_DECK + 0.2, 0.05, tone);
+  }
+  if (state !== 'BUILT') return;
+  box(out, 'port-pier-bollard', 'port', PIER_X0 + length - 0.1, PIER_DECK + 0.05, PIER_Z, 0.06, 0.1, 0.06, VILLAGE_TONE.stone);
+  if (!boatDocked) return;
+  // The Boat: a low dark hull alongside the pier, a raised bow and a bare mast.
+  const hx = PIER_X0 + length - 0.75;
+  box(out, 'port-boat-hull', 'port', hx, 0.02, 1.5, 1.2, 0.2, 0.4, VILLAGE_TONE.dark);
+  box(out, 'port-boat-bow', 'port', hx + 0.55, 0.22, 1.5, 0.2, 0.14, 0.4, VILLAGE_TONE.dark);
+  box(out, 'port-boat-mast', 'port', hx - 0.1, 0.22, 1.5, 0.03, 0.8, 0.03, VILLAGE_TONE.dark);
+}
+
 function ground(out: Volume[]): void {
   box(out, 'ground', 'village', 0, -0.2, 1, FRAME_WIDTH * 2, 0.2, 5, VILLAGE_TONE.ground);
 }
@@ -638,6 +713,7 @@ export function buildVillage(input: VillageInput): Volume[] {
   study(out, input.hands.SCRIBE, input.posts.SCRIBE);
   vault(out, input.materials, input.relics);
   pans(out, input.saltPansOpen, input.salt);
+  port(out, input.port ?? 'HIDDEN', input.boatDocked ?? false);
   shortcutMarks(out, input.shortcuts, input.highlightedShortcut);
   growth(out, input.upgrades ?? {});
   reserves(out, input.reserves);
