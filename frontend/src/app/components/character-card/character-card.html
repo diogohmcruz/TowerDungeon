@@ -1,5 +1,14 @@
 <app-card>
-  <span card-title class="member-name">{{ member().name }}</span>
+  <span card-title class="member-name">
+    <button
+      type="button"
+      class="toggle"
+      [attr.aria-expanded]="expanded()"
+      (click)="toggle()"
+    >
+      {{ member().name }}
+    </button>
+  </span>
   <span card-badge class="member-hp">
     {{ member().currentHealth | number: '1.0-0' }} / {{ maxHealth() | number:
     '1.0-0' }}
@@ -11,8 +20,90 @@
     >Damage {{ damage() | number: '1.0-1' }}</span
   >
   @if (maxMana() > 0) {
-    <div class="mana-bar" [title]="'Mana ' + (member().currentMana | number: '1.0-1') + ' / ' + (maxMana() | number: '1.0-1')">
-      <div class="mana-fill" [style.width.%]="manaPct()"></div>
+  <div
+    class="mana-bar"
+    [title]="'Mana ' + (member().currentMana | number: '1.0-1') + ' / ' + (maxMana() | number: '1.0-1')"
+  >
+    <div class="mana-fill" [style.width.%]="manaPct()"></div>
+  </div>
+  } @if (expanded()) {
+  <div class="detail">
+    @if (maxSanity() > 0) {
+    <div
+      class="sanity-bar"
+      [title]="'Sanity ' + (member().sanity | number: '1.0-0') + ' / ' + (maxSanity() | number: '1.0-0')"
+    >
+      <div class="sanity-fill" [style.width.%]="sanityPct()"></div>
     </div>
+    <span class="sanity-text"
+      >Sanity {{ member().sanity | number: '1.0-0' }} / {{ maxSanity() | number:
+      '1.0-0' }}</span
+    >
+    }
+    <span class="rolled"
+      >Health <b>{{ maxHealth() | number: '1.0-1' }}</b> &middot; Damage
+      <b>{{ damage() | number: '1.0-1' }}</b></span
+    >
+    <div class="phobias">
+      <span class="phobias-label">Phobias</span>
+      @if (phobias().length === 0) {
+      <span class="phobia-none">none</span>
+      } @for (phobia of phobias(); track $index) {
+      <span
+        class="phobia"
+        [class.phobia--unknown]="!phobia.known"
+        [attr.aria-label]="phobia.known ? 'Fears ' + phobiaText(phobia.enemyType) : 'Unknown phobia'"
+        >{{ phobiaText(phobia.enemyType) }}</span
+      >
+      }
+    </div>
+    <svg class="silhouette" viewBox="0 0 60 100" role="group" aria-label="Body">
+      @for (region of regions(); track region.kind) {
+      <rect
+        class="region"
+        [class.region--lost]="region.lost"
+        [attr.x]="region.x"
+        [attr.y]="region.y"
+        [attr.width]="region.w"
+        [attr.height]="region.h"
+        [style.fill]="region.lost ? null : 'color-mix(in srgb, var(--bone) ' + region.pct + '%, var(--ember))'"
+        tabindex="0"
+        role="img"
+        [attr.aria-label]="region.text"
+        (mouseenter)="show(region.text)"
+        (mouseleave)="clear()"
+        (focus)="show(region.text)"
+        (blur)="clear()"
+      >
+        <title>{{ region.text }}</title>
+      </rect>
+      }
+    </svg>
+    <p class="readout" aria-live="polite">{{ detail() }}</p>
+    <div class="slots">
+      @for (slot of slots(); track slot.name) {
+      <div
+        class="slot"
+        [class.slot--empty]="!slot.item"
+        [attr.data-slot]="slot.name"
+        [style.grid-column]="slot.column"
+        [style.grid-row]="slot.row"
+        tabindex="0"
+        role="img"
+        [attr.aria-label]="slotText(slot)"
+        [title]="slotText(slot)"
+        (mouseenter)="show(slotText(slot))"
+        (mouseleave)="clear()"
+        (focus)="show(slotText(slot))"
+        (blur)="clear()"
+      >
+        @if (slot.item) {
+        <span class="slot-tier">{{ tierName(slot.item) }}</span>
+        <span class="slot-name">{{ slot.item.name }}</span>
+        }
+      </div>
+      }
+    </div>
+  </div>
   }
 </app-card>

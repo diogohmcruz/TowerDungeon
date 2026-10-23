@@ -34,3 +34,137 @@
   height: 100%;
   background: var(--cold);
 }
+
+.toggle {
+  all: unset;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+
+  &:focus-visible {
+    outline: 1px solid var(--bone);
+    outline-offset: 2px;
+  }
+}
+
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.sanity-bar {
+  height: 4px;
+  width: 100%;
+  background: var(--void);
+  border: 1px solid var(--rule);
+  overflow: hidden;
+}
+
+.sanity-fill {
+  height: 100%;
+  background: var(--text);
+}
+
+.sanity-text,
+.phobias-label,
+.phobia-none {
+  color: var(--muted);
+}
+
+.rolled b {
+  font-family: var(--font-pixel);
+  font-weight: normal;
+  color: var(--bone);
+}
+
+.phobias {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.phobia {
+  padding: 0 4px;
+  border: 1px solid var(--ember);
+  color: var(--ember-text);
+
+  &--unknown {
+    font-family: var(--font-pixel);
+  }
+}
+
+.silhouette {
+  width: 72px;
+  height: 120px;
+  align-self: center;
+}
+
+.region {
+  stroke: var(--rule);
+  stroke-width: 1;
+  cursor: help;
+
+  &--lost {
+    fill: var(--rule);
+    fill-opacity: 0.35;
+    stroke: var(--muted);
+    stroke-dasharray: 2 2;
+  }
+
+  &:focus-visible {
+    outline: none;
+    stroke: var(--bone);
+    stroke-width: 2;
+  }
+}
+
+.readout {
+  margin: 0;
+  min-height: 1.4em;
+  text-align: center;
+  color: var(--muted);
+}
+
+.slots {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 3px;
+}
+
+.slot {
+  min-height: 30px;
+  padding: 2px 3px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid var(--rule);
+  background: var(--ink);
+  font-size: 10px;
+  line-height: 1.2;
+
+  &--empty {
+    background: transparent;
+    border-style: dashed;
+    opacity: 0.5;
+  }
+
+  &:focus-visible {
+    outline: 1px solid var(--bone);
+    outline-offset: 1px;
+  }
+}
+
+.slot-tier {
+  color: var(--muted);
+}
+
+.slot-name {
+  color: var(--bone);
+  overflow-wrap: anywhere;
+}

@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { Member } from '../../interfaces/member';
+import { BodyPart, Member } from '../../interfaces/member';
 import { UnitStats } from '../../interfaces/unit.enum';
 import { CharacterCard } from './character-card';
 
@@ -30,6 +30,141 @@ describe('CharacterCard', () => {
 
     expect(el.querySelector('.member-hp')?.textContent).toContain('120 / 130');
     expect(el.querySelector('.member-damage')?.textContent).toContain('13');
+  });
+
+  const parts = (over: Record<string, Partial<BodyPart>> = {}): BodyPart[] =>
+    (
+      [
+        'TORSO',
+        'HEAD',
+        'LEFT_ARM',
+        'RIGHT_ARM',
+        'LEFT_LEG',
+        'RIGHT_LEG',
+      ] as const
+    ).map((kind) => ({
+      kind,
+      currentHealth: 10,
+      maxHealth: 10,
+      lost: false,
+      ...over[kind],
+    }));
+
+  const expand = (el: HTMLElement): void => {
+    (el.querySelector('.toggle') as HTMLButtonElement).click();
+    fixture.detectChanges();
+  };
+
+  const region = (el: HTMLElement, label: string): SVGElement =>
+    el.querySelector(`.region[aria-label^="${label}"]`) as SVGElement;
+
+  it('keeps the compact row and hides the detail until clicked', () => {
+    const el = render({ parts: parts() });
+
+    expect(el.querySelector('.detail')).toBeNull();
+    expand(el);
+    expect(el.querySelector('.detail')).not.toBeNull();
+    expect(el.querySelectorAll('.region').length).toBe(6);
+    expect(el.querySelectorAll('.slot').length).toBe(8);
+  });
+
+  it('fills a healthy region fully and a wounded one by its ratio', () => {
+    const el = render({
+      parts: parts({ HEAD: { currentHealth: 5 }, TORSO: {} }),
+    });
+    expand(el);
+
+    expect(region(el, 'Torso').getAttribute('style')).toContain('100%');
+    expect(region(el, 'Head').getAttribute('style')).toContain('50%');
+    expect(region(el, 'Head').getAttribute('aria-label')).toBe('Head: 5 / 10');
+  });
+
+  it('outlines and greys a lost region and says so in text', () => {
+    const el = render({
+      parts: parts({ LEFT_ARM: { lost: true, currentHealth: 0 } }),
+    });
+    expand(el);
+
+    const arm = region(el, 'Left arm');
+    expect(arm.classList).toContain('region--lost');
+    expect(arm.getAttribute('aria-label')).toBe('Left arm: lost');
+    expect(region(el, 'Head').classList).not.toContain('region--lost');
+  });
+
+  it('shows the numbers of a focused region', () => {
+    const el = render({ parts: parts({ HEAD: { currentHealth: 5 } }) });
+    expand(el);
+
+    region(el, 'Head').dispatchEvent(new Event('focus'));
+    fixture.detectChanges();
+
+    expect(el.querySelector('.readout')?.textContent).toContain('Head: 5 / 10');
+  });
+
+  it('makes every region and slot reachable by keyboard', () => {
+    const el = render({ parts: parts() });
+    expand(el);
+
+    const stops = el.querySelectorAll(
+      '.region[tabindex="0"], .slot[tabindex="0"]',
+    );
+    expect(stops.length).toBe(14);
+  });
+
+  it('shows a ? for an unknown phobia and the type once known', () => {
+    const el = render({
+      phobias: [
+        { enemyType: null, known: false },
+        { enemyType: 'SLIME', known: true },
+      ],
+    });
+    expand(el);
+
+    const phobias = Array.from(el.querySelectorAll('.phobia')).map((p) =>
+      p.textContent?.trim(),
+    );
+    expect(phobias).toEqual(['?', 'Slime']);
+  });
+
+  it('shows the sanity bar and the rolled numbers', () => {
+    const el = render({
+      maxHealth: 130,
+      damage: 13,
+      sanity: 40,
+      maxSanity: 80,
+    });
+    expand(el);
+
+    expect((el.querySelector('.sanity-fill') as HTMLElement).style.width).toBe(
+      '50%',
+    );
+    expect(el.querySelector('.rolled')?.textContent).toContain('130');
+  });
+
+  it('shows empty slots faint and worn items with tier and name', () => {
+    const el = render({
+      gear: {
+        slots: {
+          HEAD: {
+            id: 'h1',
+            name: 'Rusty Helm',
+            tier: 'LEFTOVER',
+            category: 'HELM',
+            stats: { ARMOUR: 1.5 },
+          },
+        },
+      },
+    });
+    expand(el);
+
+    const head = el.querySelector('[data-slot="HEAD"]') as HTMLElement;
+    expect(head.textContent).toContain('Leftover');
+    expect(head.textContent).toContain('Rusty Helm');
+    expect(head.title).toContain('Armour 1.5');
+    expect(head.classList).not.toContain('slot--empty');
+    const torso = el.querySelector('[data-slot="TORSO"]') as HTMLElement;
+    expect(torso.classList).toContain('slot--empty');
+    expect(torso.textContent?.trim()).toBe('');
   });
 
   it('falls back to the type damage when no rolled value is sent', () => {
