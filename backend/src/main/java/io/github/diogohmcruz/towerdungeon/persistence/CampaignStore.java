@@ -2,6 +2,7 @@ package io.github.diogohmcruz.towerdungeon.persistence;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.function.Supplier;
 
 import reactor.core.publisher.Mono;
 
@@ -29,6 +30,22 @@ public interface CampaignStore {
       int schema,
       String gameVersion,
       byte[] payload);
+
+  /**
+   * As {@link #save(String, long, Rotation, int, String, byte[])}, but the payload is produced by
+   * {@code payload} when the write runs, so a store with a writer thread can serialize there
+   * instead of on the caller's thread. The default produces it when subscribed.
+   */
+  default Mono<Long> save(
+      String playerId,
+      long expectedSeq,
+      Rotation rotation,
+      int schema,
+      String gameVersion,
+      Supplier<byte[]> payload) {
+    return Mono.fromSupplier(payload)
+        .flatMap(bytes -> save(playerId, expectedSeq, rotation, schema, gameVersion, bytes));
+  }
 
   /** The newest readable record, or empty when none is recoverable. */
   Mono<LoadResult> load(String playerId);

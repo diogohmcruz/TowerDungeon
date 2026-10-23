@@ -18,7 +18,7 @@ public record GameFrame(@JsonUnwrapped GameState state, SessionMeta session) {
    * @param savedAt when the loaded record was saved; null for a fresh Campaign
    * @param schema the schema of the loaded record (the current one for a fresh Campaign)
    * @param notices things the player should be told, delivered once
-   * @param held whether a Held Party is waiting; always false until the Held Party exists
+   * @param held whether a Held Party is waiting for the player to resume
    */
   public record SessionMeta(
       boolean resumed, Instant savedAt, int schema, List<Notice> notices, boolean held) {}

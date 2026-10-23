@@ -18,6 +18,22 @@
   align-self: flex-start;
 }
 
+.held-party {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  margin: 0 0 10px;
+  border: 1px solid var(--ember);
+
+  p {
+    margin: 0;
+    font-size: 12px;
+    color: var(--text);
+  }
+}
+
 .hire-list {
   display: flex;
   flex-wrap: wrap;

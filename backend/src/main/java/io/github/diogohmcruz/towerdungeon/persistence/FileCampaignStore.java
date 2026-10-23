@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
@@ -78,6 +79,29 @@ public class FileCampaignStore implements CampaignStore, AutoCloseable {
               byte[] bytes = payload.clone();
               return Mono.fromCallable(
                   () -> saveBlocking(playerId, expectedSeq, rotation, schema, gameVersion, bytes));
+            })
+        .subscribeOn(writer);
+  }
+
+  /** Runs {@code payload} on the writer thread, so serialization never happens on the caller. */
+  @Override
+  public Mono<Long> save(
+      String playerId,
+      long expectedSeq,
+      Rotation rotation,
+      int schema,
+      String gameVersion,
+      Supplier<byte[]> payload) {
+    return Mono.defer(
+            () -> {
+              requireValidId(playerId);
+              if (gameVersion == null || !GAME_VERSION.matcher(gameVersion).matches()) {
+                throw new IllegalArgumentException("Invalid game version: " + gameVersion);
+              }
+              return Mono.fromCallable(
+                  () ->
+                      saveBlocking(
+                          playerId, expectedSeq, rotation, schema, gameVersion, payload.get()));
             })
         .subscribeOn(writer);
   }

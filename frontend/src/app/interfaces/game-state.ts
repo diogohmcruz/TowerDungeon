@@ -68,6 +68,16 @@ export interface Reinforcement {
   maxSupplies: number;
 }
 
+/** The session's own facts, sent with every frame. */
+export interface SessionMeta {
+  resumed: boolean;
+  savedAt: string | null;
+  schema: number;
+  notices: { code: string; message: string }[];
+  /** A Held Party is waiting for the player to resume. */
+  held: boolean;
+}
+
 export interface GameState {
   credit: number;
   units: Squad;
@@ -118,4 +128,5 @@ export interface GameState {
   /** What the Village Tier has opened so far, comma-separated. */
   villageTierOpens: string;
   ledger: LedgerLine[];
+  session?: SessionMeta;
 }

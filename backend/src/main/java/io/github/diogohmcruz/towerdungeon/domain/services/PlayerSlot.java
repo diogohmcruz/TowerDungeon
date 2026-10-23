@@ -25,12 +25,14 @@ final class PlayerSlot {
   }
 
   private final String playerId;
+  private final SaveTracker saves = new SaveTracker();
   private final Queue<Notice> notices = new ConcurrentLinkedQueue<>();
   private Mono<GameState> loading;
   private volatile GameState state;
   private volatile boolean resumed;
   private volatile Instant savedAt;
   private volatile int schema;
+  private volatile boolean held;
   private Connection connection;
   private long detachedAtNanos;
 
@@ -50,6 +52,23 @@ final class PlayerSlot {
     this.loading = loading;
   }
 
+  SaveTracker saves() {
+    return saves;
+  }
+
+  /** Whether the Party is Held: it stands still until the player resumes or extracts. */
+  boolean isHeld() {
+    return held;
+  }
+
+  void hold() {
+    held = true;
+  }
+
+  void resume() {
+    held = false;
+  }
+
   /** The Campaign once loaded; null while the load is still in flight. */
   GameState state() {
     return state;
@@ -66,13 +85,16 @@ final class PlayerSlot {
     notices.add(notice);
   }
 
-  /** The session facts for the next frame; drains the pending notices. */
-  SessionMeta takeMeta() {
+  /**
+   * The session facts for the next frame; drains the pending notices. {@code held} is whether the
+   * Party is Held right now.
+   */
+  SessionMeta takeMeta(boolean held) {
     var pending = new ArrayList<Notice>();
     for (Notice n; (n = notices.poll()) != null; ) {
       pending.add(n);
     }
-    return new SessionMeta(resumed, savedAt, schema, List.copyOf(pending), false);
+    return new SessionMeta(resumed, savedAt, schema, List.copyOf(pending), held);
   }
 
   /** Attaches a connection, newest wins: the previous one is told it was replaced. */
@@ -84,12 +106,17 @@ final class PlayerSlot {
     }
   }
 
-  /** Detaches only if {@code wsId} is still the attached connection (compare-and-detach). */
-  synchronized void detach(String wsId, long nowNanos) {
+  /**
+   * Detaches only if {@code wsId} is still the attached connection (compare-and-detach). Returns
+   * whether it detached.
+   */
+  synchronized boolean detach(String wsId, long nowNanos) {
     if (connection != null && connection.wsId().equals(wsId)) {
       connection = null;
       detachedAtNanos = nowNanos;
+      return true;
     }
+    return false;
   }
 
   synchronized boolean isAttached() {

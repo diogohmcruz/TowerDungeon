@@ -22,6 +22,12 @@
     }
   </section>
   }
+  @if (gameState().session?.held) {
+  <section class="held-party">
+    <p>The Party has not moved.</p>
+    <button class="btn" (click)="resume()">Resume</button>
+  </section>
+  }
   <hr />
 
   <app-village-management />

@@ -47,7 +47,9 @@ class PlayerSlotsTest {
             mock(ArchitecturePlan.class),
             new PartyCombat(new SplittableRandom(7)),
             store,
-            mock(FloorBundle.class));
+            mock(FloorBundle.class),
+            new AutosaveCoordinator(
+                store, mapper, config.getPersistence(), "test", System::nanoTime));
   }
 
   private void saveCampaign(int schema, byte[] payload) {

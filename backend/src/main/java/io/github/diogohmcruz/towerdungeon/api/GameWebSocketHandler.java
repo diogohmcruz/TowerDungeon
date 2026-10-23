@@ -162,6 +162,7 @@ public class GameWebSocketHandler implements WebSocketHandler {
       case SELL_RELICS -> gameService.handleSellRelicsAction(playerId);
       case INVADE -> handleInvadeAction(playerId, message);
       case EXTRACT -> gameService.handleExtractAction(playerId);
+      case RESUME -> gameService.handleResumeAction(playerId);
       case REINFORCE -> handleReinforceAction(playerId, message);
       case UPGRADE -> handleUpgradeAction(playerId, message);
       case ASSIGN_TRADE -> handleAssignTradeAction(playerId, message);

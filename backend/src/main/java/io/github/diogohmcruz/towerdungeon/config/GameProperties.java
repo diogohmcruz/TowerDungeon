@@ -61,6 +61,33 @@ public class GameProperties {
 
     /** How long a slot with no connection stays in memory, frozen, before it is evicted. */
     private Duration linger = Duration.ofSeconds(30);
+
+    /** Quiet time after a purchase before it is written. */
+    private Duration purchaseDebounce = Duration.ofSeconds(3);
+
+    /** Longest a stream of purchases may delay their write. */
+    private Duration purchaseMaxWait = Duration.ofSeconds(10);
+
+    /** How often a connected player's Campaign is written while it has unsaved changes. */
+    private Duration autosaveInterval = Duration.ofSeconds(30);
+
+    /** The autosave interval while an Expedition is in flight. */
+    private Duration expeditionAutosaveInterval = Duration.ofSeconds(5);
+
+    /** Minimum time between backup rotations by autosave. */
+    private Duration rotationInterval = Duration.ofMinutes(10);
+
+    /** First retry delay after a failed write; it doubles up to {@link #retryMax}. */
+    private Duration retryInitial = Duration.ofSeconds(1);
+
+    /** Longest delay between retries of a failed write. */
+    private Duration retryMax = Duration.ofSeconds(30);
+
+    /** Failed writes in a row before the player is told that records are not being kept. */
+    private int failuresBeforeNotice = 3;
+
+    /** Longest the shutdown flush waits for the writes to finish. */
+    private Duration shutdownWait = Duration.ofSeconds(20);
   }
 
   /** Who may open the game socket. */

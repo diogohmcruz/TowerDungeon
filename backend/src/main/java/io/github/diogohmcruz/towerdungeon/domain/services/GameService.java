@@ -53,7 +53,9 @@ public class GameService {
   private final PartyCombat partyCombat;
   private final CampaignStore store;
   private final FloorBundle floorBundle;
+  private final AutosaveCoordinator saves;
   private final Map<String, PlayerSlot> players = new ConcurrentHashMap<>();
+  private volatile boolean running = true;
 
   /** What a connection gets back from {@link #attach}: a signal for when it has been replaced. */
   public record Attachment(Mono<Void> replaced) {}
@@ -112,8 +114,17 @@ public class GameService {
   /** Detaches the connection if it is still the attached one; the slot lingers before eviction. */
   public void detach(String playerId, String wsId) {
     var slot = players.get(playerId);
-    if (slot != null) {
-      slot.detach(wsId, System.nanoTime());
+    if (slot != null && slot.detach(wsId, System.nanoTime())) {
+      // The clock stops here. An Expedition in flight is held until the player comes back.
+      access(
+          slot,
+          state -> {
+            if (state.isExpeditionActive()) {
+              slot.hold();
+            }
+            return Boolean.TRUE;
+          });
+      saves.flush(slot);
     }
   }
 
@@ -130,7 +141,30 @@ public class GameService {
         .forEach(
             id ->
                 players.computeIfPresent(
-                    id, (_, slot) -> slot.hasLingeredFor(linger, nowNanos) ? null : slot));
+                    id,
+                    (_, slot) -> {
+                      if (!slot.hasLingeredFor(linger, nowNanos)) {
+                        return slot;
+                      }
+                      if (slot.saves().isDirty()) {
+                        saves.flush(slot);
+                      }
+                      return null;
+                    }));
+  }
+
+  /** Writes the Campaigns that are due; runs often and only ever hands work to the store. */
+  @Scheduled(fixedRate = 500)
+  public void autosave() {
+    if (running) {
+      players.values().forEach(saves::tick);
+    }
+  }
+
+  /** Stops the game clocks and writes every attached or unsaved Campaign, within the bound. */
+  void shutdown() {
+    running = false;
+    saves.flushAll(players.values(), config.getPersistence().getShutdownWait());
   }
 
   /** Queues a notice for the player's next frame. Does nothing when the player has no slot. */
@@ -163,6 +197,7 @@ public class GameService {
                 () -> {
                   var fresh = newCampaign();
                   slot.loaded(fresh, false, null, CampaignSchema.CURRENT);
+                  saves.opened(slot, CampaignStore.INITIAL_SEQ);
                   return fresh;
                 }));
   }
@@ -180,6 +215,10 @@ public class GameService {
       slot.addNotice(new Notice("SAVE_FROM_BACKUP", "Your latest save was unreadable."));
     }
     slot.loaded(state, true, result.savedAt(), result.schema());
+    saves.opened(slot, result.seq());
+    if (state.isExpeditionActive()) {
+      slot.hold();
+    }
     return state;
   }
 
@@ -209,31 +248,63 @@ public class GameService {
    * late message can never resurrect a closed Campaign.
    */
   private void withPlayer(String playerId, Consumer<GameState> action) {
+    withPlayer(playerId, action, false);
+  }
+
+  /** As {@link #withPlayer(String, Consumer)}, and the change is written as a purchase. */
+  private void withPurchase(String playerId, Consumer<GameState> action) {
+    withPlayer(playerId, action, true);
+  }
+
+  private void withPlayer(String playerId, Consumer<GameState> action, boolean purchase) {
+    var slot = players.get(playerId);
     var applied =
-        access(
-            playerId,
-            gameState -> {
-              action.accept(gameState);
-              return Boolean.TRUE;
-            });
+        slot == null
+            ? Optional.empty()
+            : access(
+                slot,
+                gameState -> {
+                  applyAndRecord(slot, gameState, action);
+                  if (purchase) {
+                    saves.purchased(slot);
+                  }
+                  return Boolean.TRUE;
+                });
     if (applied.isEmpty()) {
       log.debug("Ignoring an action for player {} with no live Campaign", playerId);
     }
   }
 
+  /** Runs a mutation and tells the coordinator what it changed. Call under the state's lock. */
+  private void applyAndRecord(PlayerSlot slot, GameState gameState, Consumer<GameState> action) {
+    var before = AutosaveCoordinator.Marks.of(gameState);
+    try {
+      action.accept(gameState);
+    } finally {
+      if (!gameState.isExpeditionActive()) {
+        slot.resume();
+      }
+      saves.recorded(slot, before, AutosaveCoordinator.Marks.of(gameState));
+    }
+  }
+
   /**
-   * Mutates every connected player's state, each under its own lock. Detached slots do not tick.
+   * Mutates every connected player's state, each under its own lock. Detached slots and Held
+   * Parties do not tick.
    */
   private void forEachPlayer(Consumer<GameState> action) {
+    if (!running) {
+      return;
+    }
     for (var slot : players.values()) {
-      if (!slot.isAttached()) {
+      if (!slot.isAttached() || slot.isHeld()) {
         continue;
       }
       try {
         access(
             slot,
             gameState -> {
-              action.accept(gameState);
+              applyAndRecord(slot, gameState, action);
               return Boolean.TRUE;
             });
       } catch (RuntimeException e) {
@@ -254,11 +325,15 @@ public class GameService {
     return slot == null
         ? Optional.empty()
         : access(
-            slot, state -> objectMapper.writeValueAsString(new GameFrame(state, slot.takeMeta())));
+            slot,
+            state ->
+                objectMapper.writeValueAsString(
+                    new GameFrame(
+                        state, slot.takeMeta(slot.isHeld() && state.isExpeditionActive()))));
   }
 
   public void handleMessage(String playerId, BuyActionDTO buyActionDTO) {
-    withPlayer(
+    withPurchase(
         playerId,
         gameState -> {
           if (!gameState.isUnitUnlocked(buyActionDTO.unitStats())) {
@@ -283,7 +358,7 @@ public class GameService {
   }
 
   public void handleBuyVillagersAction(String playerId) {
-    withPlayer(
+    withPurchase(
         playerId,
         gameState -> {
           var villagersCount = gameState.buyVillager();
@@ -292,7 +367,7 @@ public class GameService {
   }
 
   public void handleSellFoodAction(String playerId) {
-    withPlayer(
+    withPurchase(
         playerId,
         gameState -> {
           var credits = gameState.sellFood();
@@ -301,7 +376,7 @@ public class GameService {
   }
 
   public void handleSellMaterialsAction(String playerId) {
-    withPlayer(
+    withPurchase(
         playerId,
         gameState -> {
           var profit = gameState.sellAllMaterials();
@@ -310,7 +385,7 @@ public class GameService {
   }
 
   public void handleSellRelicsAction(String playerId) {
-    withPlayer(
+    withPurchase(
         playerId,
         gameState -> {
           var profit = gameState.sellAllRelics();
@@ -319,7 +394,7 @@ public class GameService {
   }
 
   public void handleAssignTradeAction(String playerId, AssignTradeActionDTO dto) {
-    withPlayer(
+    withPurchase(
         playerId,
         gameState -> {
           if (dto == null || dto.trade() == null || dto.delta() == null) {
@@ -337,7 +412,7 @@ public class GameService {
   }
 
   public void handleUpgradeAction(String playerId, UpgradeActionDTO upgradeActionDTO) {
-    withPlayer(
+    withPurchase(
         playerId,
         gameState -> {
           UpgradeType type;
@@ -435,8 +510,24 @@ public class GameService {
         });
   }
 
+  /** Lets a Held Party march on: the clock starts again from exactly where it stopped. */
+  public void handleResumeAction(String playerId) {
+    var slot = players.get(playerId);
+    if (slot != null && slot.isHeld()) {
+      slot.resume();
+      log.info("Player[{}] resumed the Held Party.", playerId);
+    }
+  }
+
   public void handleMessage(String playerId, ReinforceActionDTO reinforceActionDTO) {
     log.info("Received reinforce action from session [{}] {}", playerId, reinforceActionDTO);
+    var slot = players.get(playerId);
+    if (slot != null && slot.isHeld()) {
+      slot.addNotice(
+          new Notice(
+              "PARTY_HELD", "The Party has not moved. Resume before sending reinforcements."));
+      return;
+    }
     withPlayer(
         playerId,
         gameState -> {

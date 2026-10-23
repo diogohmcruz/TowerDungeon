@@ -34,7 +34,9 @@ class FoundersTest {
         mock(ArchitecturePlan.class),
         new PartyCombat(new SplittableRandom(7)),
         store,
-        mock(FloorBundle.class));
+        mock(FloorBundle.class),
+        new AutosaveCoordinator(
+            store, new ObjectMapper(), config.getPersistence(), "test", System::nanoTime));
   }
 
   private static List<Unit> reserves(GameState state) {

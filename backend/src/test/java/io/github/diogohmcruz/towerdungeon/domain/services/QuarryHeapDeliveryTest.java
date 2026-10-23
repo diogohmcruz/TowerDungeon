@@ -39,15 +39,19 @@ class QuarryHeapDeliveryTest {
   @BeforeEach
   void setUp() {
     config.getPersistence().setDataDir(dir.toString());
+    var mapper = JsonMapper.builder().build();
+    var store = new FileCampaignStore(config.getPersistence());
     service =
         new GameService(
             config,
-            JsonMapper.builder().build(),
+            mapper,
             random,
             plan,
             new PartyCombat(random),
-            new FileCampaignStore(config.getPersistence()),
-            mock(FloorBundle.class));
+            store,
+            mock(FloorBundle.class),
+            new AutosaveCoordinator(
+                store, mapper, config.getPersistence(), "test", System::nanoTime));
   }
 
   /** A state mid-Expedition, three Floors up from the base, with a 40-Material Heap at home. */

@@ -8,6 +8,7 @@ public enum GameAction {
   SELL_RELICS,
   INVADE,
   EXTRACT,
+  RESUME,
   REINFORCE,
   UPGRADE,
   ASSIGN_TRADE

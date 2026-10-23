@@ -82,6 +82,10 @@ export class GameComponent {
     this.selectedStartFloor.set(floor);
   }
 
+  resume() {
+    this.ws.sendAction(GameAction.RESUME, null);
+  }
+
   extract() {
     this.ws.sendAction(GameAction.EXTRACT, null);
   }

@@ -15,6 +15,7 @@ management:
         include: '*'
 
 server:
+  shutdown: graceful
   compression:
     enabled: true
   http2:
