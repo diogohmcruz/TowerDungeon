@@ -330,9 +330,9 @@ public class GameState {
 
   /**
    * Musters a follow-up wave from the units resting at home and sends it up after the active party.
-   * An empty selection sends everyone currently home; otherwise the requested counts are pulled (and
-   * clamped to what is actually available). The wave draws its own rations from the village pantry up
-   * to its carrying capacity, then sets out from the base to climb after the party.
+   * An empty selection sends everyone currently home; otherwise the requested counts are pulled
+   * (and clamped to what is actually available). The wave draws its own rations from the village
+   * pantry up to its carrying capacity, then sets out from the base to climb after the party.
    */
   public void sendReinforcement(Map<UnitStats, Integer> selection) {
     Map<UnitStats, List<Unit>> waveUnits = new HashMap<>();
@@ -373,9 +373,9 @@ public class GameState {
   }
 
   /**
-   * Advances every in-transit reinforcement wave one tick: each drains rations for its size (starving
-   * climbers if the reserve is dry), climbs toward the party, and — once it reaches the party's
-   * current floor — merges its survivors and any leftover food into the delving party.
+   * Advances every in-transit reinforcement wave one tick: each drains rations for its size
+   * (starving climbers if the reserve is dry), climbs toward the party, and — once it reaches the
+   * party's current floor — merges its survivors and any leftover food into the delving party.
    */
   public void advanceReinforcements() {
     if (reinforcements.isEmpty()) {
@@ -430,8 +430,8 @@ public class GameState {
   }
 
   /**
-   * Recalls any waves still climbing when the run ends — they were not at the deadly front, so their
-   * survivors march back home and their leftover rations are poured back into the pantry.
+   * Recalls any waves still climbing when the run ends — they were not at the deadly front, so
+   * their survivors march back home and their leftover rations are poured back into the pantry.
    */
   public void returnReinforcementsHome() {
     reinforcements.forEach(

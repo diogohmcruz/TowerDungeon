@@ -26,7 +26,9 @@ public class Unit extends BaseUnit {
     return type == AttackType.MAGIC || type == AttackType.HEAL;
   }
 
-  /** Fills the mana reserve to {@code max} — used when the unit is freshly raised at the village. */
+  /**
+   * Fills the mana reserve to {@code max} — used when the unit is freshly raised at the village.
+   */
   public void chargeToFull(double max) {
     this.maxMana = max;
     this.currentMana = max;

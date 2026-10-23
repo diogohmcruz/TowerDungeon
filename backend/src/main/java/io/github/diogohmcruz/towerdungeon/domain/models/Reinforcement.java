@@ -6,13 +6,13 @@ import java.util.Map;
 import lombok.Data;
 
 /**
- * A follow-up wave the player musters mid-run and sends up after an active delve. Instead of joining
- * the party instantly, the wave sets out from the base of the tower and climbs one floor at a time,
- * carrying its own rations drawn from the village pantry. It burns food every tick as it ascends —
- * if the reserve runs dry before it reaches the party, climbers starve on the stairs — and only once
- * it catches up to the party's current floor does it merge in (units and any leftover food). This is
- * the player's lever over an otherwise autonomous delve: who to send up, and when — fresh,
- * fully-recharged mages to relieve spent ones, extra porters and food to extend a deep push.
+ * A follow-up wave the player musters mid-run and sends up after an active delve. Instead of
+ * joining the party instantly, the wave sets out from the base of the tower and climbs one floor at
+ * a time, carrying its own rations drawn from the village pantry. It burns food every tick as it
+ * ascends — if the reserve runs dry before it reaches the party, climbers starve on the stairs —
+ * and only once it catches up to the party's current floor does it merge in (units and any leftover
+ * food). This is the player's lever over an otherwise autonomous delve: who to send up, and when —
+ * fresh, fully-recharged mages to relieve spent ones, extra porters and food to extend a deep push.
  */
 @Data
 public class Reinforcement {

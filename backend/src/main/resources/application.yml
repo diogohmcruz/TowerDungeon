@@ -75,3 +75,16 @@ game:
   architecture:
     enabled: false
     seed: 362108372306
+  prestige:
+    points-divisor: 9.0
+    ascent-marks-per-floor: 0.4
+    guardian-marks: 1.5
+    load-mark: 0.05
+    load-cap: 8
+    door-floor: 99
+    counters:
+      food-grown: {marks: 3.0, par: 60000.0}
+      materials-banked: {marks: 6.0, par: 17000.0}
+      credits-banked: {marks: 3.0, par: 6800.0}
+      relics-banked: {marks: 4.0, par: 320.0}
+      expeditions: {marks: 3.0, par: 17.0}

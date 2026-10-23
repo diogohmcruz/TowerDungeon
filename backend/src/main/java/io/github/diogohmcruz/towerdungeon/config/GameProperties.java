@@ -25,6 +25,7 @@ public class GameProperties {
   private final Healing healing = new Healing();
   private final Village village = new Village();
   private final Architecture architecture = new Architecture();
+  private final Prestige prestige = new Prestige();
 
   /** Values a freshly created player starts the game with. */
   @Data
@@ -125,7 +126,9 @@ public class GameProperties {
     /** Mana spent per cast (one magic attack or one heal). */
     private double costPerCast = 1.0;
 
-    /** Mana a caster regains per lifecycle tick while standing by at home (the fast, safe refill). */
+    /**
+     * Mana a caster regains per lifecycle tick while standing by at home (the fast, safe refill).
+     */
     private double rechargePerTick = 0.25;
 
     /**
@@ -169,5 +172,53 @@ public class GameProperties {
 
     /** The Tower seed; a shipped constant, so Generation 1 is the Tower the player learns. */
     private long seed = 362108372306L;
+  }
+
+  /** The Toll a Campaign pays out as Legacy: what the Tally is worth. */
+  @Data
+  public static class Prestige {
+    /** Toll points per Legacy point. */
+    private double pointsDivisor = 9.0;
+
+    /** Marks per Floor climbed above the inherited Start Floor. */
+    private double ascentMarksPerFloor = 0.4;
+
+    /** Marks per Guardian slain. */
+    private double guardianMarks = 1.5;
+
+    /** Share of Marks added per point of Load. */
+    private double loadMark = 0.05;
+
+    /** Load above this pays nothing more. */
+    private int loadCap = 8;
+
+    /** Highest Floor above this pays nothing more (Floor 100 is paid through its Guardian). */
+    private int doorFloor = 99;
+
+    private final Counters counters = new Counters();
+
+    /** The square-rooted counters, each with its Marks at par and its par. */
+    @Data
+    public static class Counters {
+      private final Counter foodGrown = counter(3.0, 60000.0);
+      private final Counter materialsBanked = counter(6.0, 17000.0);
+      private final Counter creditsBanked = counter(3.0, 6800.0);
+      private final Counter relicsBanked = counter(4.0, 320.0);
+      private final Counter expeditions = counter(3.0, 17.0);
+
+      private static Counter counter(double marks, double par) {
+        var counter = new Counter();
+        counter.setMarks(marks);
+        counter.setPar(par);
+        return counter;
+      }
+    }
+
+    /** One counter's weight: the Marks it earns at par, and its par. */
+    @Data
+    public static class Counter {
+      private double marks;
+      private double par;
+    }
   }
 }
