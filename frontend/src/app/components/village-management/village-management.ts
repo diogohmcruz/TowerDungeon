@@ -3,7 +3,7 @@ import { GameStateService } from '../../services/game-state.service';
 import { GameAction } from '../../interfaces/game-action.enum';
 import { GameWebSocketService } from '../../services/game-web-socket.service';
 import { DecimalPipe } from '@angular/common';
-import { TradeId, TradePreview } from '../../interfaces/village';
+import { TomeId, TradeId, TradePreview } from '../../interfaces/village';
 
 @Component({
   selector: 'app-village-management',
@@ -50,6 +50,8 @@ export class VillageManagement {
   readonly yieldPercent = computed(() =>
     Math.round(this.gameState().yieldBonus * 100),
   );
+  readonly tomes = computed(() => this.gameState().tomeViews);
+  readonly postUpgrades = computed(() => this.gameState().postUpgrades);
   readonly theCount = computed(() => this.gameState().theCount);
   readonly tally = computed(() => this.gameState().tally);
   readonly ledger = computed(() => this.gameState().ledger.slice(-5));
@@ -94,6 +96,14 @@ export class VillageManagement {
 
   onClickAssign(trade: TradeId, delta: 1 | -1) {
     this.ws.sendAction(GameAction.ASSIGN_TRADE, { trade, delta });
+  }
+
+  onClickBuyTome(tome: TomeId) {
+    this.ws.sendAction(GameAction.BUY_TOME, { tome });
+  }
+
+  onClickBuyPosts(trade: TradeId) {
+    this.ws.sendAction(GameAction.BUY_POSTS, { trade });
   }
 
   onClickBuyVillager() {

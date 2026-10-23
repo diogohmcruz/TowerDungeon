@@ -711,6 +711,24 @@ public class GameProperties {
 
     /** Materials of the Heap an Extraction delivers per Floor cleared in that Expedition. */
     private double heapDeliveryPerFloorCleared = 5.0;
+
+    /** Knowledge the first level of a Tome costs. */
+    private double tomeBaseCost = 60.0;
+
+    /** Each further Tome level costs this many times the one before. */
+    private double tomeCostGrowth = 1.5;
+
+    /** Output a Tome level adds: 0.25 is +25% of the base. */
+    private double tomeBonusPerLevel = 0.25;
+
+    /** Posts a Post upgrade adds to the Quarry or the Scribe's Study. */
+    private int postsPerLevel = 5;
+
+    /** Materials the first Post upgrade costs. */
+    private double postBaseCost = 25.0;
+
+    /** Each further Post upgrade costs this many times the one before. */
+    private double postCostGrowth = 1.6;
   }
 
   /** Floor Architectures: the seeded plan, and the switch for their gameplay effects. */

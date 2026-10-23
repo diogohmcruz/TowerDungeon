@@ -135,6 +135,75 @@ class GameStateTradesTest {
   }
 
   @Test
+  void aPostUpgradeSpendsMaterialsFromTheVaultAndAddsPosts() {
+    var state = stateWith(100, 20, 0);
+    state.getResources().put(ResourceType.MATERIALS, 70.0);
+
+    assertThat(state.buyPosts(Trade.BREAKER)).isEmpty();
+    assertThat(state.buyPosts(Trade.BREAKER)).isEmpty();
+    assertThat(state.buyPosts(Trade.BREAKER))
+        .contains("Posts cost 64 Materials. The Vault holds 5.");
+
+    assertThat(state.getResources().get(ResourceType.MATERIALS)).isEqualTo(5.0);
+    assertThat(state.getVillage().posts(Trade.BREAKER)).isEqualTo(20);
+    assertThat(state.getPostUpgrades())
+        .filteredOn(view -> view.trade().equals("BREAKER"))
+        .singleElement()
+        .satisfies(
+            view -> {
+              assertThat(view.level()).isEqualTo(2);
+              assertThat(view.nextPosts()).isEqualTo(25);
+              assertThat(view.cost()).isEqualTo(64);
+              assertThat(view.blocked()).isNotNull();
+            });
+  }
+
+  @Test
+  void aTomeIsBoughtWithKnowledgeAndListedGatedWithItsReason() {
+    var state = stateWith(100, 20, 0);
+    state.getVillage().restoreTrades(0, 0, Map.of(), 200, 0, false, 0, 0);
+    state.setHighestFloor(5);
+
+    assertThat(state.buyTome(Tome.TILLERS_RECORD)).isEmpty();
+    assertThat(state.getTomeViews())
+        .filteredOn(view -> view.tome().equals("TILLERS_RECORD"))
+        .singleElement()
+        .satisfies(
+            view -> {
+              assertThat(view.level()).isEqualTo(1);
+              assertThat(view.gated()).isTrue();
+              assertThat(view.blocked())
+                  .isEqualTo("Tome 2 costs 90. Stockroom holds 80. Needs Highest Floor 8.");
+            });
+    assertThat(state.buyTome(Tome.TILLERS_RECORD)).isPresent();
+    assertThat(state.getVillage().getKnowledge()).isEqualTo(140);
+  }
+
+  @Test
+  void theTomesAndPostUpgradesRoundTripThroughTheSnapshot() throws Exception {
+    var config = new GameProperties();
+    var plan =
+        ArchitecturePlan.generate(
+            config.getArchitecture().getSeed(),
+            config.getTower().getMaxFloor(),
+            config.getBoss().getInterval(),
+            config.getEnemies().getSurgeInterval());
+    var state = stateWith(100, 20, 0);
+    state.getVillage().restoreUpgrades(Map.of(Tome.SEAM_CHARTS, 2), Map.of(Trade.SCRIBE, 3));
+
+    var mapper = JsonMapper.builder().build();
+    var json = mapper.writeValueAsString(state.toSnapshot());
+    var back =
+        mapper.readValue(
+            json, io.github.diogohmcruz.towerdungeon.domain.models.snapshot.GameSnapshot.class);
+    var restored = GameState.restore(back, config, new SplittableRandom(5), plan);
+
+    assertThat(restored.getVillage().tomeLevel(Tome.SEAM_CHARTS)).isEqualTo(2);
+    assertThat(restored.getVillage().postLevel(Trade.SCRIBE)).isEqualTo(3);
+    assertThat(restored.toSnapshot()).isEqualTo(state.toSnapshot());
+  }
+
+  @Test
   void theTradesRoundTripThroughTheSnapshot() throws Exception {
     var config = new GameProperties();
     var random = new SplittableRandom(5);

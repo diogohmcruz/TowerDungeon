@@ -157,6 +157,57 @@
     </p>
   </div>
 
+  <div class="tomes">
+    <h4 class="tomes-title">Tomes</h4>
+    @for (view of this.tomes(); track view.tome) {
+    <div class="tome-row" [class.gated]="view.gated">
+      <span class="tome-name">{{ view.title }}</span>
+      <span class="tome-level"
+        >Level {{ view.level }}: {{ view.effect }} +{{ view.level *
+        view.bonusPercent }}%</span
+      >
+      <button
+        class="btn btn-ghost"
+        type="button"
+        [attr.aria-label]="'Buy ' + view.title"
+        [disabled]="!!view.blocked"
+        (click)="this.onClickBuyTome(view.tome)"
+      >
+        Buy ({{ view.cost | number: '1.0-0' }} Knowledge)
+      </button>
+      @if (view.blocked) {
+      <span class="tome-note" [class.gate]="view.gated"
+        >{{ view.blocked }}</span
+      >
+      }
+    </div>
+    }
+  </div>
+
+  <div class="posts">
+    <h4 class="tomes-title">Posts</h4>
+    @for (view of this.postUpgrades(); track view.trade) {
+    <div class="tome-row">
+      <span class="tome-name">{{ view.workplace }}</span>
+      <span class="tome-level"
+        >{{ view.posts }} Posts, {{ view.nextPosts }} after the next</span
+      >
+      <button
+        class="btn btn-ghost"
+        type="button"
+        [attr.aria-label]="'Raise Posts of ' + view.workplace"
+        [disabled]="!!view.blocked"
+        (click)="this.onClickBuyPosts(view.trade)"
+      >
+        Raise ({{ view.cost | number: '1.0-0' }} Materials)
+      </button>
+      @if (view.blocked) {
+      <span class="tome-note">{{ view.blocked }}</span>
+      }
+    </div>
+    }
+  </div>
+
   @if (this.ledger().length > 0) {
   <ul class="ledger" aria-label="Ledger">
     @for (line of this.ledger(); track $index) {

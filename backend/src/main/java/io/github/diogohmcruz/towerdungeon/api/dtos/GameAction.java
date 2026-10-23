@@ -11,5 +11,7 @@ public enum GameAction {
   RESUME,
   REINFORCE,
   UPGRADE,
-  ASSIGN_TRADE
+  ASSIGN_TRADE,
+  BUY_TOME,
+  BUY_POSTS
 }

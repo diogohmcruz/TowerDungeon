@@ -167,6 +167,46 @@
   }
 }
 
+.tomes,
+.posts {
+  margin-top: 10px;
+  border-top: 1px solid var(--rule);
+  padding-top: 8px;
+}
+
+.tomes-title {
+  margin: 0 0 4px;
+  font-size: 12px;
+  color: var(--bone);
+  text-transform: uppercase;
+}
+
+.tome-row {
+  display: grid;
+  grid-template-columns: 9rem 15rem auto 1fr;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+
+  .tome-name {
+    color: var(--bone);
+  }
+
+  .tome-level {
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .tome-note {
+    color: var(--muted);
+    font-size: 12px;
+
+    &.gate {
+      color: var(--ember-text);
+    }
+  }
+}
+
 .ledger {
   list-style: none;
   margin: 8px 0 0;

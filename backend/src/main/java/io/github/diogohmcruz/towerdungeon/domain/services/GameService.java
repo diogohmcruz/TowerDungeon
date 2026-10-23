@@ -15,6 +15,8 @@ import org.springframework.stereotype.Service;
 
 import io.github.diogohmcruz.towerdungeon.api.dtos.AssignTradeActionDTO;
 import io.github.diogohmcruz.towerdungeon.api.dtos.BuyActionDTO;
+import io.github.diogohmcruz.towerdungeon.api.dtos.BuyPostsActionDTO;
+import io.github.diogohmcruz.towerdungeon.api.dtos.BuyTomeActionDTO;
 import io.github.diogohmcruz.towerdungeon.api.dtos.GameFrame;
 import io.github.diogohmcruz.towerdungeon.api.dtos.GameFrame.Notice;
 import io.github.diogohmcruz.towerdungeon.api.dtos.InvadeActionDTO;
@@ -408,6 +410,32 @@ public class GameService {
               dto.trade(),
               dto.delta(),
               refused.orElse("moved"));
+        });
+  }
+
+  public void handleBuyTomeAction(String playerId, BuyTomeActionDTO dto) {
+    withPlayer(
+        playerId,
+        gameState -> {
+          if (dto == null || dto.tome() == null) {
+            log.warn("Player[{}] sent an incomplete Tome purchase. Ignoring.", playerId);
+            return;
+          }
+          var refused = gameState.buyTome(dto.tome());
+          log.info("Player[{}] Tome {} -> {}", playerId, dto.tome(), refused.orElse("bought"));
+        });
+  }
+
+  public void handleBuyPostsAction(String playerId, BuyPostsActionDTO dto) {
+    withPlayer(
+        playerId,
+        gameState -> {
+          if (dto == null || dto.trade() == null) {
+            log.warn("Player[{}] sent an incomplete Posts purchase. Ignoring.", playerId);
+            return;
+          }
+          var refused = gameState.buyPosts(dto.trade());
+          log.info("Player[{}] Posts {} -> {}", playerId, dto.trade(), refused.orElse("bought"));
         });
   }
 

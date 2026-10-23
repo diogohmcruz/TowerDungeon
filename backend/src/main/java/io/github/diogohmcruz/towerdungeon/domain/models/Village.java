@@ -50,6 +50,14 @@ public class Village {
   @Setter(AccessLevel.NONE)
   private double quarryHeap;
 
+  /** Levels bought of each Tome. */
+  @Setter(AccessLevel.NONE)
+  private Map<Tome, Integer> tomes = new EnumMap<>(Tome.class);
+
+  /** Post upgrades bought for each Trade; the Fields have none. */
+  @Setter(AccessLevel.NONE)
+  private Map<Trade, Integer> postLevels = new EnumMap<>(Trade.class);
+
   /** Whether Emergency Tilling is running; it ends only once the Pantry passes its upper mark. */
   @Setter(AccessLevel.NONE)
   private boolean emergencyTilling;
@@ -122,6 +130,24 @@ public class Village {
     clampTrades();
   }
 
+  /** Restores the Tome levels and Post upgrades bought. Missing entries mean none. */
+  public void restoreUpgrades(Map<Tome, Integer> tomeLevels, Map<Trade, Integer> postUpgrades) {
+    tomes = new EnumMap<>(Tome.class);
+    postLevels = new EnumMap<>(Trade.class);
+    if (tomeLevels != null) {
+      tomeLevels.forEach((tome, level) -> tomes.put(tome, Math.max(0, level)));
+    }
+    if (postUpgrades != null) {
+      postUpgrades.forEach(
+          (trade, level) -> {
+            if (trade != Trade.TILLER) {
+              postLevels.put(trade, Math.max(0, level));
+            }
+          });
+    }
+    clampTrades();
+  }
+
   private void clampTrades() {
     scribes = Math.min(scribes, villagersCount);
     breakers = Math.min(breakers, villagersCount - scribes);
@@ -181,12 +207,112 @@ public class Village {
 
   /** Posts of {@code trade}; null for the Fields, which has no cap. */
   public Integer posts(Trade trade) {
-    return trade == Trade.TILLER ? null : trades.getStartingPosts();
+    return trade == Trade.TILLER
+        ? null
+        : trades.getStartingPosts() + trades.getPostsPerLevel() * postLevel(trade);
+  }
+
+  public int postLevel(Trade trade) {
+    return postLevels.getOrDefault(trade, 0);
+  }
+
+  /** Materials the next Post upgrade of {@code trade} costs, whole. */
+  public long postCost(Trade trade) {
+    return grown(trades.getPostBaseCost(), trades.getPostCostGrowth(), postLevel(trade));
+  }
+
+  /** Why the Post upgrade cannot be bought with {@code materials} in the Vault, or empty. */
+  public Optional<String> postUpgradeBlocked(Trade trade, double materials) {
+    if (trade == Trade.TILLER) {
+      return Optional.of("The Fields have no Posts to raise.");
+    }
+    var cost = postCost(trade);
+    if (materials < cost) {
+      return Optional.of(
+          "Posts cost " + cost + " Materials. The Vault holds " + (long) materials + ".");
+    }
+    return Optional.empty();
+  }
+
+  /** Adds the Posts of one upgrade. The caller has taken the Materials. */
+  public void raisePosts(Trade trade) {
+    postLevels.merge(trade, 1, Integer::sum);
+  }
+
+  public int tomeLevel(Tome tome) {
+    return tomes.getOrDefault(tome, 0);
+  }
+
+  /** Knowledge the next level of {@code tome} costs, whole. */
+  public long tomeCost(Tome tome) {
+    return grown(trades.getTomeBaseCost(), trades.getTomeCostGrowth(), tomeLevel(tome));
+  }
+
+  private static long grown(double base, double growth, int level) {
+    return (long) Math.floor(base * Math.pow(growth, level) + 1e-9);
+  }
+
+  /**
+   * The reason the Stockroom cannot hold the next level of {@code tome}, or null when it can. The
+   * floor named is the first Highest Floor whose Stockroom holds the cost.
+   */
+  public String tomeGate(Tome tome, int highestFloor) {
+    var cost = tomeCost(tome);
+    var holds = stockroomCap(highestFloor);
+    if (cost <= holds) {
+      return null;
+    }
+    var floor = (int) Math.ceil((cost - trades.getStockroomBase()) / trades.getStockroomPerFloor());
+    return "Tome "
+        + (tomeLevel(tome) + 1)
+        + " costs "
+        + cost
+        + ". Stockroom holds "
+        + (long) holds
+        + ". Needs Highest Floor "
+        + floor
+        + ".";
+  }
+
+  /** Why the next level of {@code tome} cannot be bought now, or empty. The gate comes first. */
+  public Optional<String> tomeBlocked(Tome tome, int highestFloor) {
+    var gate = tomeGate(tome, highestFloor);
+    if (gate != null) {
+      return Optional.of(gate);
+    }
+    var cost = tomeCost(tome);
+    if (knowledge < cost) {
+      return Optional.of(
+          "Tome "
+              + (tomeLevel(tome) + 1)
+              + " costs "
+              + cost
+              + ". Knowledge "
+              + (long) knowledge
+              + ".");
+    }
+    return Optional.empty();
+  }
+
+  /** Spends Knowledge on the next level of {@code tome}. Returns why not, or empty when bought. */
+  public Optional<String> buyTome(Tome tome, int highestFloor) {
+    var blocked = tomeBlocked(tome, highestFloor);
+    if (blocked.isPresent()) {
+      return blocked;
+    }
+    knowledge -= tomeCost(tome);
+    tomes.merge(tome, 1, Integer::sum);
+    return Optional.empty();
+  }
+
+  /** Output of the Fields over the base: Tillers' Record adds a share per level. */
+  private double fieldsMultiplier() {
+    return 1 + trades.getTomeBonusPerLevel() * tomeLevel(Tome.TILLERS_RECORD);
   }
 
   /** Food the Tillers grow each tick. */
   public double getProductionRate() {
-    return hands(Trade.TILLER) * villagerFoodProduction;
+    return hands(Trade.TILLER) * villagerFoodProduction * fieldsMultiplier();
   }
 
   /** The Quarry and the Study yield more from ground the Village already knows. */
@@ -195,7 +321,8 @@ public class Village {
   }
 
   public double materialsPerTick(int highestFloor) {
-    return breakers * trades.getBreakerMaterialsPerTick() * yieldMultiplier(highestFloor);
+    var seams = 1 + trades.getTomeBonusPerLevel() * tomeLevel(Tome.SEAM_CHARTS);
+    return breakers * trades.getBreakerMaterialsPerTick() * yieldMultiplier(highestFloor) * seams;
   }
 
   public double knowledgePerTick(int highestFloor) {
@@ -381,7 +508,7 @@ public class Village {
    */
   public MovePreview preview(Trade trade, int delta, int unitCount, double recoverySpend) {
     var tillers = hands(Trade.TILLER) - Integer.signum(delta);
-    var fields = Math.max(0, tillers) * villagerFoodProduction;
+    var fields = Math.max(0, tillers) * villagerFoodProduction * fieldsMultiplier();
     var upkeep = upkeepFor(unitCount);
     return new MovePreview(
         trade,

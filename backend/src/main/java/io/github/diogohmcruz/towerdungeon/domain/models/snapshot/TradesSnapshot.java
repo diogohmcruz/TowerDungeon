@@ -1,6 +1,10 @@
 package io.github.diogohmcruz.towerdungeon.domain.models.snapshot;
 
 import java.util.List;
+import java.util.Map;
+
+import io.github.diogohmcruz.towerdungeon.domain.models.Tome;
+import io.github.diogohmcruz.towerdungeon.domain.models.Trade;
 
 /**
  * The Villager pool's assignments and what they have made. The Tillers are not stored: they are the
@@ -12,6 +16,8 @@ import java.util.List;
  * @param emergencyTilling whether Emergency Tilling is running (it ends only above its upper mark)
  * @param villagersLost The Count: Villagers lost to Starvation
  * @param reservesLost The Count: Reserves lost to Starvation
+ * @param tomes levels bought of each Tome; null in older saves
+ * @param postLevels Post upgrades bought for each Trade; null in older saves
  */
 public record TradesSnapshot(
     int breakers,
@@ -23,4 +29,6 @@ public record TradesSnapshot(
     double quarryHeap,
     boolean emergencyTilling,
     int villagersLost,
-    int reservesLost) {}
+    int reservesLost,
+    Map<Tome, Integer> tomes,
+    Map<Trade, Integer> postLevels) {}

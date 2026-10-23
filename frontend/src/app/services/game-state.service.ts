@@ -87,6 +87,8 @@ export class GameStateService {
     villageTierLevel: 1,
     villageTierName: 'Huddled',
     villageTierOpens: "Fields, Quarry, Scribe's Study",
+    tomeViews: [],
+    postUpgrades: [],
     ledger: [],
   });
   readonly state: Signal<GameState> = this._state.asReadonly();

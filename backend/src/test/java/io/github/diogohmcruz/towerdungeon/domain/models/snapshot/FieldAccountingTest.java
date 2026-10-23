@@ -73,7 +73,9 @@ class FieldAccountingTest {
           Map.entry("quarryHeap", "TradesSnapshot.quarryHeap"),
           Map.entry("emergencyTilling", "TradesSnapshot.emergencyTilling"),
           Map.entry("villagersLost", "TradesSnapshot.villagersLost"),
-          Map.entry("reservesLost", "TradesSnapshot.reservesLost"));
+          Map.entry("reservesLost", "TradesSnapshot.reservesLost"),
+          Map.entry("tomes", "TradesSnapshot.tomes"),
+          Map.entry("postLevels", "TradesSnapshot.postLevels"));
 
   private static final Map<String, String> VILLAGE_TRANSIENT =
       Map.of(

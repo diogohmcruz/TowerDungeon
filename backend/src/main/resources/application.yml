@@ -173,6 +173,12 @@ game:
     stockroom-per-floor: 4.0
     heap-per-floor: 10.0
     heap-delivery-per-floor-cleared: 5.0
+    tome-base-cost: 60.0
+    tome-cost-growth: 1.5
+    tome-bonus-per-level: 0.25
+    posts-per-level: 5
+    post-base-cost: 25.0
+    post-cost-growth: 1.6
   tiers:
     sheltered: {food-grown: 1000.0, highest-floor: 5}
     fortified: {materials-banked: 1000.0, highest-floor: 10, expeditions: 6}

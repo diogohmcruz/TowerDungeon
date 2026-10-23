@@ -3,8 +3,10 @@ import { Tower } from './tower';
 import { Member } from './member';
 import {
   LedgerLine,
+  PostUpgradeView,
   Tally,
   TheCount,
+  TomeView,
   TradePreview,
   TradeView,
   Village,
@@ -127,6 +129,8 @@ export interface GameState {
   villageTierName: string;
   /** What the Village Tier has opened so far, comma-separated. */
   villageTierOpens: string;
+  tomeViews: TomeView[];
+  postUpgrades: PostUpgradeView[];
   ledger: LedgerLine[];
   session?: SessionMeta;
 }

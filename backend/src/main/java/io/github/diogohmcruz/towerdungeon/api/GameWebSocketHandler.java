@@ -13,6 +13,8 @@ import org.springframework.web.reactive.socket.WebSocketSession;
 
 import io.github.diogohmcruz.towerdungeon.api.dtos.AssignTradeActionDTO;
 import io.github.diogohmcruz.towerdungeon.api.dtos.BuyActionDTO;
+import io.github.diogohmcruz.towerdungeon.api.dtos.BuyPostsActionDTO;
+import io.github.diogohmcruz.towerdungeon.api.dtos.BuyTomeActionDTO;
 import io.github.diogohmcruz.towerdungeon.api.dtos.GameAction;
 import io.github.diogohmcruz.towerdungeon.api.dtos.GameActionDTO;
 import io.github.diogohmcruz.towerdungeon.api.dtos.GameActionEnvelope;
@@ -166,6 +168,8 @@ public class GameWebSocketHandler implements WebSocketHandler {
       case REINFORCE -> handleReinforceAction(playerId, message);
       case UPGRADE -> handleUpgradeAction(playerId, message);
       case ASSIGN_TRADE -> handleAssignTradeAction(playerId, message);
+      case BUY_TOME -> handleBuyTomeAction(playerId, message);
+      case BUY_POSTS -> handleBuyPostsAction(playerId, message);
       default -> log.error("Invalid game action {} from player {}", gameAction, playerId);
     }
   }
@@ -192,6 +196,18 @@ public class GameWebSocketHandler implements WebSocketHandler {
         objectMapper.readValue(
             message, new TypeReference<GameActionDTO<AssignTradeActionDTO>>() {});
     gameService.handleAssignTradeAction(playerId, dto.payload());
+  }
+
+  private void handleBuyTomeAction(String playerId, String message) throws JacksonException {
+    var dto =
+        objectMapper.readValue(message, new TypeReference<GameActionDTO<BuyTomeActionDTO>>() {});
+    gameService.handleBuyTomeAction(playerId, dto.payload());
+  }
+
+  private void handleBuyPostsAction(String playerId, String message) throws JacksonException {
+    var dto =
+        objectMapper.readValue(message, new TypeReference<GameActionDTO<BuyPostsActionDTO>>() {});
+    gameService.handleBuyPostsAction(playerId, dto.payload());
   }
 
   private void handleUpgradeAction(String playerId, String message) throws JacksonException {

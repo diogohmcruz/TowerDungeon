@@ -2,7 +2,12 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { GameAction } from '../../interfaces/game-action.enum';
 import { GameState } from '../../interfaces/game-state';
-import { TradePreview, TradeView } from '../../interfaces/village';
+import {
+  PostUpgradeView,
+  TomeView,
+  TradePreview,
+  TradeView,
+} from '../../interfaces/village';
 import { GameStateService } from '../../services/game-state.service';
 import { GameWebSocketService } from '../../services/game-web-socket.service';
 import { VillageManagement } from './village-management';
@@ -185,6 +190,120 @@ describe('VillageManagement', () => {
     expect(text()).toContain('Food grown 1,234');
     expect(text()).toContain('Floors cleared 19');
     expect(text()).toContain('peak Villagers 24');
+  });
+
+  const tomeViews: TomeView[] = [
+    {
+      tome: 'TILLERS_RECORD',
+      title: "Tillers' Record",
+      effect: 'Fields output',
+      bonusPercent: 25,
+      level: 1,
+      cost: 90,
+      gated: true,
+      blocked: 'Tome 2 costs 90. Stockroom holds 80. Needs Highest Floor 8.',
+    },
+    {
+      tome: 'SEAM_CHARTS',
+      title: 'Seam Charts',
+      effect: 'Breaker output',
+      bonusPercent: 25,
+      level: 0,
+      cost: 60,
+      gated: false,
+      blocked: null,
+    },
+  ];
+
+  const postUpgrades: PostUpgradeView[] = [
+    {
+      trade: 'BREAKER',
+      workplace: 'Quarry',
+      level: 1,
+      posts: 15,
+      nextPosts: 20,
+      cost: 40,
+      blocked: null,
+    },
+    {
+      trade: 'SCRIBE',
+      workplace: "Scribe's Study",
+      level: 0,
+      posts: 10,
+      nextPosts: 15,
+      cost: 25,
+      blocked: 'Posts cost 25 Materials. The Vault holds 3.',
+    },
+  ];
+
+  it('lists the Tomes, and states why a gated level cannot be bought', () => {
+    load({ tomeViews });
+
+    expect(text()).toContain("Tillers' Record");
+    expect(text()).toContain('Level 1: Fields output +25%');
+    expect(text()).toContain(
+      'Tome 2 costs 90. Stockroom holds 80. Needs Highest Floor 8.',
+    );
+    const gated = fixture.nativeElement.querySelector(
+      '[aria-label="Buy Tillers\' Record"]',
+    ) as HTMLButtonElement;
+    const open = fixture.nativeElement.querySelector(
+      '[aria-label="Buy Seam Charts"]',
+    ) as HTMLButtonElement;
+    expect(gated.disabled).toBeTrue();
+    expect(open.disabled).toBeFalse();
+  });
+
+  it('sends the Tome purchase', () => {
+    load({ tomeViews });
+
+    (
+      fixture.nativeElement.querySelector(
+        '[aria-label="Buy Seam Charts"]',
+      ) as HTMLButtonElement
+    ).click();
+
+    expect(sendAction).toHaveBeenCalledWith(GameAction.BUY_TOME, {
+      tome: 'SEAM_CHARTS',
+    });
+  });
+
+  it('shows the Post upgrades with their cost and sends the purchase', () => {
+    load({ postUpgrades });
+
+    expect(text()).toContain('15 Posts, 20 after the next');
+    expect(text()).toContain('Raise (40 Materials)');
+    expect(text()).toContain('Posts cost 25 Materials. The Vault holds 3.');
+    const raise = fixture.nativeElement.querySelector(
+      '[aria-label="Raise Posts of Quarry"]',
+    ) as HTMLButtonElement;
+    raise.click();
+    expect(sendAction).toHaveBeenCalledWith(GameAction.BUY_POSTS, {
+      trade: 'BREAKER',
+    });
+    expect(
+      (
+        fixture.nativeElement.querySelector(
+          '[aria-label="Raise Posts of Scribe\'s Study"]',
+        ) as HTMLButtonElement
+      ).disabled,
+    ).toBeTrue();
+  });
+
+  it('keeps the avoided glossary terms out of the panel copy', () => {
+    load({ tomeViews, postUpgrades });
+
+    const avoided = [
+      'idle units',
+      'standby',
+      'food pantry',
+      'buy villagers',
+      'farmers',
+      'quarriers',
+      'lore',
+    ];
+    const copy = text().toLowerCase();
+    avoided.forEach((term) => expect(copy).not.toContain(term));
   });
 
   it('prints the last Ledger lines with a marker for losses', () => {

@@ -689,6 +689,66 @@ public class GameState {
     return previews;
   }
 
+  /** Buys the next level of {@code tome} with Knowledge. Returns why not, or empty when bought. */
+  public Optional<String> buyTome(Tome tome) {
+    if (gameOutcome != GameOutcome.PLAYING) {
+      return Optional.of("Nothing bought.");
+    }
+    return village.buyTome(tome, highestFloor);
+  }
+
+  /** Raises the Posts of {@code trade} for Materials from the Vault. Returns why not, or empty. */
+  public Optional<String> buyPosts(Trade trade) {
+    if (gameOutcome != GameOutcome.PLAYING) {
+      return Optional.of("Nothing bought.");
+    }
+    var blocked = village.postUpgradeBlocked(trade, vaultMaterials());
+    if (blocked.isPresent()) {
+      return blocked;
+    }
+    resources.merge(ResourceType.MATERIALS, -(double) village.postCost(trade), Double::sum);
+    village.raisePosts(trade);
+    return Optional.empty();
+  }
+
+  private double vaultMaterials() {
+    return resources.getOrDefault(ResourceType.MATERIALS, 0d);
+  }
+
+  /** The Tomes as the Village panel lists them; {@code blocked} says why one cannot be bought. */
+  public List<TomeView> getTomeViews() {
+    return Arrays.stream(Tome.values())
+        .map(
+            tome ->
+                new TomeView(
+                    tome.name(),
+                    tome.title(),
+                    tome.effect(),
+                    (int) Math.round(config.getTrades().getTomeBonusPerLevel() * 100),
+                    village.tomeLevel(tome),
+                    village.tomeCost(tome),
+                    village.tomeGate(tome, highestFloor) != null,
+                    village.tomeBlocked(tome, highestFloor).orElse(null)))
+        .toList();
+  }
+
+  /** The Post upgrades of the Quarry and the Scribe's Study. */
+  public List<PostUpgradeView> getPostUpgrades() {
+    return Arrays.stream(Trade.values())
+        .filter(trade -> trade != Trade.TILLER)
+        .map(
+            trade ->
+                new PostUpgradeView(
+                    trade.name(),
+                    trade.workplace(),
+                    village.postLevel(trade),
+                    village.posts(trade),
+                    village.posts(trade) + config.getTrades().getPostsPerLevel(),
+                    village.postCost(trade),
+                    village.postUpgradeBlocked(trade, vaultMaterials()).orElse(null)))
+        .toList();
+  }
+
   /** The Count: what the Campaign has lost to Starvation. */
   public TheCount getTheCount() {
     return new TheCount(village.getVillagersLost(), village.getReservesLost());
@@ -715,6 +775,27 @@ public class GameState {
       String blocked) {}
 
   public record TheCount(int villagers, int reserves) {}
+
+  /** A Tome: {@code gated} when the Stockroom cannot hold its cost; {@code blocked} says why. */
+  public record TomeView(
+      String tome,
+      String title,
+      String effect,
+      int bonusPercent,
+      int level,
+      long cost,
+      boolean gated,
+      String blocked) {}
+
+  /** The next Post upgrade of a workplace and what it costs in Materials. */
+  public record PostUpgradeView(
+      String trade,
+      String workplace,
+      int level,
+      int posts,
+      int nextPosts,
+      long cost,
+      String blocked) {}
 
   /**
    * Refills the mana of casters standing by at home, a little each tick. This is the fast, safe
@@ -1243,7 +1324,9 @@ public class GameState {
                 village.getQuarryHeap(),
                 village.isEmergencyTilling(),
                 village.getVillagersLost(),
-                village.getReservesLost()),
+                village.getReservesLost(),
+                new EnumMap<>(village.getTomes()),
+                new EnumMap<>(village.getPostLevels())),
             List.copyOf(artifactsTaken),
             tally.toSnapshot(),
             villageTier.getLevel());
@@ -1422,6 +1505,7 @@ public class GameState {
           t.emergencyTilling(),
           t.villagersLost(),
           t.reservesLost());
+      state.village.restoreUpgrades(t.tomes(), t.postLevels());
     }
     state.tally = new CampaignTally(c.villagers());
     if (c.tally() != null) {

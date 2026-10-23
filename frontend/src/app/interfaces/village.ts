@@ -34,6 +34,37 @@ export interface TradePreview {
   blocked: string | null;
 }
 
+export type TomeId = 'TILLERS_RECORD' | 'SEAM_CHARTS';
+
+/** A Tome bought with Knowledge. */
+export interface TomeView {
+  tome: TomeId;
+  title: string;
+  /** What each level raises, e.g. "Fields output". */
+  effect: string;
+  /** Percent of the base each level adds. */
+  bonusPercent: number;
+  level: number;
+  /** Knowledge the next level costs. */
+  cost: number;
+  /** The Stockroom cannot hold the cost of the next level. */
+  gated: boolean;
+  /** Why the next level cannot be bought now; null when it can. */
+  blocked: string | null;
+}
+
+/** The next Post upgrade of the Quarry or the Scribe's Study. */
+export interface PostUpgradeView {
+  trade: TradeId;
+  workplace: string;
+  level: number;
+  posts: number;
+  nextPosts: number;
+  /** Materials the upgrade costs. */
+  cost: number;
+  blocked: string | null;
+}
+
 export interface LedgerLine {
   text: string;
   loss: boolean;
