@@ -16,6 +16,7 @@ import { ShortcutCard } from '../shortcut-card/shortcut-card';
 import { RunSummaryCard } from '../run-summary-card/run-summary-card';
 import { Reinforcement } from '../../interfaces/game-state';
 import { Loadout } from '../loadout/loadout';
+import { TollBar } from '../toll-bar/toll-bar';
 
 @Component({
   selector: 'app-game-component',
@@ -31,6 +32,7 @@ import { Loadout } from '../loadout/loadout';
     ShortcutCard,
     RunSummaryCard,
     Loadout,
+    TollBar,
   ],
   templateUrl: './game-component.html',
   styleUrls: ['./game-component.scss'],
@@ -130,6 +132,10 @@ export class GameComponent {
 
   selectStartFloor(floor: number) {
     this.selectedStartFloor.set(floor);
+  }
+
+  exodus() {
+    this.ws.sendAction(GameAction.EXODUS, null);
   }
 
   resume() {

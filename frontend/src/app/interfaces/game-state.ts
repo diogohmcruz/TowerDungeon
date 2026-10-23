@@ -74,6 +74,46 @@ export interface RunSummary {
   sporesGained?: number;
 }
 
+/** The Toll broken down by counter, in Marks. */
+export interface Toll {
+  foodMarks: number;
+  materialsMarks: number;
+  creditsMarks: number;
+  relicsMarks: number;
+  expeditionsMarks: number;
+  ascentMarks: number;
+  guardianMarks: number;
+  marks: number;
+  toll: number;
+  newGround: number;
+  legacy: number;
+  residueNext: number;
+}
+
+/** What ending the Campaign now would pay; absent once the Campaign has ended. */
+export interface TollForecast {
+  toll: Toll;
+  /** The Toll that pays one point of Legacy. */
+  pointsDivisor: number;
+  nextLegacyAt: number;
+  /** Legacy the forecast must reach before Exodus is offered. */
+  exodusMinimum: number;
+  /** Exodus is open: playing, no Expedition active or Held, forecast at the minimum. */
+  canExodus: boolean;
+}
+
+/** What an ended Campaign was worth, stored when it ended. */
+export interface SuccessionReport {
+  outcome: string;
+  generation: number;
+  toll: Toll;
+  legacy: number;
+  pity: boolean;
+  guardiansSlain: number;
+  highestFloor: number;
+  expeditions: number;
+}
+
 export interface Reinforcement {
   units: Squad;
   currentFloor: number;
@@ -99,6 +139,12 @@ export interface GameState {
   tower?: Tower;
   expeditionActive: boolean;
   gameOutcome: string;
+  /** ACTIVE while the Campaign is played, OFFER once it has ended. */
+  phase?: string;
+  /** The Succession report computed when the Campaign ended. */
+  pending?: SuccessionReport | null;
+  /** The Toll forecast; absent once the Campaign has ended. */
+  forecast?: TollForecast | null;
   resources: ResourceWallet;
   carriedLoot: ResourceWallet;
   carriedCredits: number;

@@ -6,19 +6,23 @@
     [class.defeat]="gameLost() || gameLeft()"
   >
     @if (gameWon()) {
-    <h2>Summit Conquered</h2>
+    <h2>The Heirs</h2>
     <p>
-      Your party has clawed its way to the summit and cast down the tower's
-      final guardian. Its hold over the village is broken — and Ignelia is free.
+      The Dragon is down. The Tower did not fall. It only listened. Your
+      survivors' children will climb it again, because someone must.
     </p>
     } @else if (gameLeft()) {
-    <h2>Exodus</h2>
-    <p>The village leaves in the night. The tower keeps whoever stayed.</p>
+    <h2>The Flight</h2>
+    <p>The Village leaves in the night. The Tower keeps whoever stayed.</p>
     } @else {
-    <h2>Defeat</h2>
+    <h2>The Second Company</h2>
     <p>
-      No soldiers remain, the last villager is gone, and there is nothing left
-      to raise another party. The tower has swallowed everyone.
+      No one is left to ring the bell. In spring a second company finds the
+      graves and the Ledger and reads the names aloud.
+    </p>
+    } @if (gameState().pending; as report) {
+    <p class="campaign-toll">
+      Toll {{ report.toll.toll | number: '1.1-1' }}. Legacy {{ report.legacy }}.
     </p>
     }
   </section>
@@ -32,6 +36,10 @@
 
   <app-village-management />
   <hr />
+
+  @if (gameState().forecast; as forecast) {
+  <app-toll-bar [forecast]="forecast" (leave)="exodus()" />
+  }
 
   <section class="hire-list">
     @for (unit of units(); track unit[0]) {

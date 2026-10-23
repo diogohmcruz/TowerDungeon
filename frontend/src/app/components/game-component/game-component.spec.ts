@@ -54,6 +54,88 @@ describe('GameComponent', () => {
     );
   });
 
+  describe('the Toll and the endings', () => {
+    const toll = {
+      foodMarks: 0,
+      materialsMarks: 0,
+      creditsMarks: 0,
+      relicsMarks: 0,
+      expeditionsMarks: 0,
+      ascentMarks: 0,
+      guardianMarks: 0,
+      marks: 30,
+      toll: 30,
+      newGround: 0,
+      legacy: 3,
+      residueNext: 3,
+    };
+    const forecast = {
+      toll,
+      pointsDivisor: 9,
+      nextLegacyAt: 36,
+      exodusMinimum: 3,
+      canExodus: true,
+    };
+    const host = () => fixture.nativeElement as HTMLElement;
+
+    it('shows the Toll bar while the Campaign is played, and sends EXODUS only after confirming', () => {
+      stateService.update({ forecast });
+      fixture.detectChanges();
+
+      expect(host().querySelector('app-toll-bar')).not.toBeNull();
+      (host().querySelector('.toll-exodus') as HTMLElement).click();
+      fixture.detectChanges();
+      expect(sendAction).not.toHaveBeenCalled();
+
+      (host().querySelector('.toll-confirm button') as HTMLElement).click();
+      expect(sendAction).toHaveBeenCalledOnceWith(GameAction.EXODUS, null);
+    });
+
+    it('has no Toll bar once the Campaign has ended', () => {
+      stateService.update({ forecast: null, gameOutcome: 'EXODUS' });
+      fixture.detectChanges();
+
+      expect(host().querySelector('app-toll-bar')).toBeNull();
+    });
+
+    it('names each ending and never congratulates', () => {
+      const headings: [string, string][] = [
+        ['VICTORY', 'The Heirs'],
+        ['DEFEAT', 'The Second Company'],
+        ['EXODUS', 'The Flight'],
+      ];
+      for (const [outcome, heading] of headings) {
+        stateService.update({ gameOutcome: outcome, forecast: null });
+        fixture.detectChanges();
+        const banner = host().querySelector('.campaign-banner');
+        expect(banner?.querySelector('h2')?.textContent).toBe(heading);
+        expect(banner?.textContent).not.toMatch(/Ignelia is free|Conquered|Prestige/);
+      }
+    });
+
+    it('reports the stored Toll and Legacy as plain numbers on the ending', () => {
+      stateService.update({
+        gameOutcome: 'EXODUS',
+        forecast: null,
+        pending: {
+          outcome: 'EXODUS',
+          generation: 1,
+          toll,
+          legacy: 3,
+          pity: false,
+          guardiansSlain: 0,
+          highestFloor: 12,
+          expeditions: 5,
+        },
+      });
+      fixture.detectChanges();
+
+      expect(host().querySelector('.campaign-toll')?.textContent).toContain(
+        'Toll 30.0. Legacy 3.',
+      );
+    });
+  });
+
   it('sends RESUME', () => {
     component.resume();
 

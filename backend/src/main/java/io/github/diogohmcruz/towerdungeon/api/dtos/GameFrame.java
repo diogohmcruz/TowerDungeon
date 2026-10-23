@@ -7,12 +7,14 @@ import com.fasterxml.jackson.annotation.JsonUnwrapped;
 
 import io.github.diogohmcruz.towerdungeon.domain.commands.Notice;
 import io.github.diogohmcruz.towerdungeon.domain.models.GameState;
+import io.github.diogohmcruz.towerdungeon.domain.prestige.TollForecast;
 
 /**
  * One outbound frame: the game state, unwrapped so the existing client parser keeps working, plus
- * the session's own facts under {@code session}.
+ * the session's own facts under {@code session}, and the Toll forecast under {@code forecast}
+ * (null once the Campaign has ended).
  */
-public record GameFrame(@JsonUnwrapped GameState state, SessionMeta session) {
+public record GameFrame(@JsonUnwrapped GameState state, SessionMeta session, TollForecast forecast) {
 
   /**
    * @param resumed true when the Campaign was loaded from the store, false for a fresh one

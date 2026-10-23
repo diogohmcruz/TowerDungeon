@@ -180,6 +180,41 @@ class CampaignEndTransactionTest {
     assertThat(service.playerMeta(PLAYER).chronicle()).isEmpty();
   }
 
+  // ---- The Toll forecast the frame carries
+
+  @Test
+  void theFrameCarriesAForecastThatKeepsExodusClosedBelowThreePoints() throws Exception {
+    var forecast = mapper.readTree(service.renderState(PLAYER).orElseThrow()).get("forecast");
+
+    assertThat(forecast.get("canExodus").asBoolean()).isFalse();
+    assertThat(forecast.get("exodusMinimum").asInt()).isEqualTo(3);
+    assertThat(forecast.get("toll").get("legacy").asInt()).isLessThan(3);
+    assertThat(forecast.get("nextLegacyAt").asDouble()).isEqualTo(9.0);
+  }
+
+  @Test
+  void theForecastOpensExodusOnceWorthLeavingAndClosesItWhileAnExpeditionIsOut()
+      throws Exception {
+    worthLeaving();
+    var open = mapper.readTree(service.renderState(PLAYER).orElseThrow()).get("forecast");
+    assertThat(open.get("canExodus").asBoolean()).isTrue();
+    assertThat(open.get("toll").get("legacy").asInt()).isGreaterThanOrEqualTo(3);
+
+    service.execute(PLAYER, new Command.StartExpedition(Map.of(), 0));
+    var out = mapper.readTree(service.renderState(PLAYER).orElseThrow()).get("forecast");
+    assertThat(out.get("canExodus").asBoolean()).isFalse();
+  }
+
+  @Test
+  void theForecastIsGoneOnceTheCampaignHasEnded() throws Exception {
+    worthLeaving();
+    service.execute(PLAYER, new Command.Exodus());
+
+    var frame = mapper.readTree(service.renderState(PLAYER).orElseThrow());
+
+    assertThat(frame.get("forecast").isNull()).isTrue();
+  }
+
   @Test
   void exodusEndsTheCampaignWithItsOwnOutcomeAndStoresTheToll() {
     worthLeaving();

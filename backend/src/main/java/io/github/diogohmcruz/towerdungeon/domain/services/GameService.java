@@ -47,6 +47,7 @@ import io.github.diogohmcruz.towerdungeon.domain.prestige.SuccessionReport;
 import io.github.diogohmcruz.towerdungeon.domain.prestige.Toll;
 import io.github.diogohmcruz.towerdungeon.domain.prestige.TollCalculator;
 import io.github.diogohmcruz.towerdungeon.domain.prestige.TollContext;
+import io.github.diogohmcruz.towerdungeon.domain.prestige.TollForecast;
 import io.github.diogohmcruz.towerdungeon.domain.random.RandomSource;
 import io.github.diogohmcruz.towerdungeon.domain.random.SeedSource;
 import io.github.diogohmcruz.towerdungeon.persistence.CampaignSchema;
@@ -514,7 +515,9 @@ public class GameService {
             state ->
                 objectMapper.writeValueAsString(
                     new GameFrame(
-                        state, slot.takeMeta(slot.isHeld() && state.isExpeditionActive()))));
+                        state,
+                        slot.takeMeta(slot.isHeld() && state.isExpeditionActive()),
+                        tollForecast(slot, state))));
   }
 
   /**
@@ -1067,6 +1070,23 @@ public class GameService {
         TollCalculator.calculate(tally, context, gameState.getConfig().getPrestige()),
         tally,
         guardians);
+  }
+
+  /** The Toll bar's forecast; null once the Campaign has ended or before it has a Tally. */
+  private TollForecast tollForecast(PlayerSlot slot, GameState gameState) {
+    if (gameState.getPhase() != CampaignPhase.ACTIVE
+        || gameState.getGameOutcome() != GameOutcome.PLAYING
+        || gameState.getTally() == null) {
+      return null;
+    }
+    var prestige = gameState.getConfig().getPrestige();
+    var toll = forecast(slot, gameState).toll();
+    double divisor = prestige.getPointsDivisor();
+    double nextLegacyAt = (Math.floor(toll.toll() / divisor) + 1) * divisor;
+    int minimum = prestige.getMinPointsToExodus();
+    boolean open =
+        !gameState.isExpeditionActive() && !slot.isHeld() && toll.legacy() >= minimum;
+    return new TollForecast(toll, divisor, nextLegacyAt, minimum, open);
   }
 
   /**
