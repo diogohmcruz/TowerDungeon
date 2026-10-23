@@ -11,8 +11,8 @@ import java.util.SplittableRandom;
 
 import org.junit.jupiter.api.Test;
 
-import io.github.diogohmcruz.towerdungeon.api.dtos.InvadeActionDTO;
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
+import io.github.diogohmcruz.towerdungeon.domain.commands.Command;
 import io.github.diogohmcruz.towerdungeon.domain.models.GameState;
 import io.github.diogohmcruz.towerdungeon.domain.models.Unit;
 import io.github.diogohmcruz.towerdungeon.domain.models.UnitStats;
@@ -102,7 +102,7 @@ class FoundersTest {
     var service = service();
     service.attach("session", "ws").block();
 
-    service.handleMessage("session", new InvadeActionDTO(new HashMap<>(), null));
+    service.execute("session", new Command.StartExpedition(new HashMap<>(), null));
 
     var state = service.playerState("session");
     assertThat(state.isExpeditionActive()).isTrue();

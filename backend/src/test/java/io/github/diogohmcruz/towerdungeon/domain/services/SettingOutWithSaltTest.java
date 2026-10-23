@@ -10,8 +10,8 @@ import java.util.SplittableRandom;
 
 import org.junit.jupiter.api.Test;
 
-import io.github.diogohmcruz.towerdungeon.api.dtos.InvadeActionDTO;
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
+import io.github.diogohmcruz.towerdungeon.domain.commands.Command;
 import io.github.diogohmcruz.towerdungeon.domain.models.architecture.ArchitecturePlan;
 import io.github.diogohmcruz.towerdungeon.persistence.CampaignStore;
 import reactor.core.publisher.Mono;
@@ -45,7 +45,7 @@ class SettingOutWithSaltTest {
     var state = service.playerState("session");
     state.getVillage().restoreSalt(0, 6);
 
-    service.handleMessage("session", new InvadeActionDTO(new HashMap<>(), null));
+    service.execute("session", new Command.StartExpedition(new HashMap<>(), null));
 
     assertThat(state.isExpeditionActive()).isTrue();
     assertThat(state.getSaltedSupplies()).isZero();
@@ -58,7 +58,7 @@ class SettingOutWithSaltTest {
     var state = service.playerState("session");
     state.getVillage().restoreSalt(0, 6);
 
-    service.handleMessage("session", new InvadeActionDTO(new HashMap<>(), null, 4));
+    service.execute("session", new Command.StartExpedition(new HashMap<>(), null, 4));
 
     assertThat(state.getSaltedSupplies()).isEqualTo(40.0);
     assertThat(state.getVillage().getSalt()).isEqualTo(2.0);
@@ -71,7 +71,7 @@ class SettingOutWithSaltTest {
     state.getVillage().restoreSalt(0, 6);
     state.setExpeditionActive(true);
 
-    service.handleMessage("session", new InvadeActionDTO(new HashMap<>(), null, 4));
+    service.execute("session", new Command.StartExpedition(new HashMap<>(), null, 4));
 
     assertThat(state.getVillage().getSalt()).isEqualTo(6.0);
   }

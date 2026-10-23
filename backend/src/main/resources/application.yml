@@ -12,7 +12,8 @@ management:
   endpoints:
     web:
       exposure:
-        include: '*'
+        # Only these three are reachable over HTTP. Never '*': that would add env, beans, heapdump.
+        include: health,info,metrics
 
 server:
   shutdown: graceful

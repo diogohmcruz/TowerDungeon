@@ -14,9 +14,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-import io.github.diogohmcruz.towerdungeon.api.dtos.InvadeActionDTO;
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
-import io.github.diogohmcruz.towerdungeon.domain.exceptions.InvalidInvasion;
+import io.github.diogohmcruz.towerdungeon.domain.commands.Command;
+import io.github.diogohmcruz.towerdungeon.domain.commands.CommandResult.Outcome;
+import io.github.diogohmcruz.towerdungeon.domain.commands.CommandResult.Reason;
+import io.github.diogohmcruz.towerdungeon.domain.commands.Notice;
 import io.github.diogohmcruz.towerdungeon.domain.models.UnitStats;
 import io.github.diogohmcruz.towerdungeon.domain.models.architecture.ArchitecturePlan;
 import io.github.diogohmcruz.towerdungeon.persistence.CampaignSchema;
@@ -92,8 +94,10 @@ class PlayerSlotsTest {
 
   @Test
   void accessNeverCreatesASlot() {
-    service.handleSellFoodAction(PLAYER);
-    service.handleMessage(PLAYER, new InvadeActionDTO(java.util.Map.of(), 0));
+    var sold = service.execute(PLAYER, new Command.SellFood());
+    var invaded = service.execute(PLAYER, new Command.StartExpedition(java.util.Map.of(), 0));
+    assertThat(sold.reason()).isEqualTo(Reason.NO_CAMPAIGN);
+    assertThat(invaded.reason()).isEqualTo(Reason.NO_CAMPAIGN);
     service.gameLoop();
     service.invasionTimer();
 
@@ -185,8 +189,11 @@ class PlayerSlotsTest {
     request.put(UnitStats.WARRIOR, 2);
     request.put(UnitStats.ARCHER, 5);
 
-    assertThatThrownBy(() -> service.handleMessage(PLAYER, new InvadeActionDTO(request, 0)))
-        .isInstanceOf(InvalidInvasion.class);
+    var result = service.execute(PLAYER, new Command.StartExpedition(request, 0));
+
+    assertThat(result.outcome()).isEqualTo(Outcome.REJECTED);
+    assertThat(result.reason()).isEqualTo(Reason.INSUFFICIENT_UNITS);
+    assertThat(result.notices()).extracting(Notice::code).containsExactly("INVALID_INVASION");
 
     assertThat(state.getUnits().get(UnitStats.WARRIOR)).containsExactlyElementsOf(warriorsBefore);
     assertThat(state.getUnits().get(UnitStats.ARCHER)).containsExactlyElementsOf(archersBefore);

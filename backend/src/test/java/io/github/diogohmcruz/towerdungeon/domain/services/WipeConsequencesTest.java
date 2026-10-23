@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
+import io.github.diogohmcruz.towerdungeon.domain.commands.Command;
 import io.github.diogohmcruz.towerdungeon.domain.models.EnemyStats;
 import io.github.diogohmcruz.towerdungeon.domain.models.Fallen;
 import io.github.diogohmcruz.towerdungeon.domain.models.GameState;
@@ -266,7 +267,7 @@ class WipeConsequencesTest {
     lose(party(3));
     party(1);
 
-    service.handleExtractAction(PLAYER);
+    service.execute(PLAYER, new Command.Extract());
 
     assertThat(tower.getFloorMemory().risenByFloor()).isEmpty();
     assertThat(state.getLastRunSummary().fallen()).hasSize(3);

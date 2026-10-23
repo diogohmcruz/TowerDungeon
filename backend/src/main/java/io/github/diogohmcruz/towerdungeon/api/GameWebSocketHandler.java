@@ -18,11 +18,11 @@ import io.github.diogohmcruz.towerdungeon.api.dtos.BuyTomeActionDTO;
 import io.github.diogohmcruz.towerdungeon.api.dtos.GameAction;
 import io.github.diogohmcruz.towerdungeon.api.dtos.GameActionDTO;
 import io.github.diogohmcruz.towerdungeon.api.dtos.GameActionEnvelope;
-import io.github.diogohmcruz.towerdungeon.api.dtos.GameFrame.Notice;
 import io.github.diogohmcruz.towerdungeon.api.dtos.InvadeActionDTO;
 import io.github.diogohmcruz.towerdungeon.api.dtos.ReinforceActionDTO;
 import io.github.diogohmcruz.towerdungeon.api.dtos.UpgradeActionDTO;
-import io.github.diogohmcruz.towerdungeon.domain.exceptions.InvalidInvasion;
+import io.github.diogohmcruz.towerdungeon.domain.commands.Command;
+import io.github.diogohmcruz.towerdungeon.domain.commands.Notice;
 import io.github.diogohmcruz.towerdungeon.domain.services.GameService;
 import io.github.diogohmcruz.towerdungeon.persistence.CampaignKey;
 import io.github.diogohmcruz.towerdungeon.persistence.CampaignSchema.SchemaNewerException;
@@ -143,10 +143,7 @@ public class GameWebSocketHandler implements WebSocketHandler {
         log.error("Invalid game action received: {}", gameAction);
         return;
       }
-      handleGameAction(playerId, payload, gameAction.gameAction());
-    } catch (InvalidInvasion err) {
-      log.warn("Rejected invasion from player {}: {}", playerId, err.getMessage());
-      gameService.notifyPlayer(playerId, new Notice("INVALID_INVASION", err.getMessage()));
+      run(playerId, commandOf(payload, gameAction.gameAction()));
     } catch (Exception err) {
       log.error("Failed to handle a message from player {}", playerId, err);
       gameService.notifyPlayer(
@@ -154,65 +151,57 @@ public class GameWebSocketHandler implements WebSocketHandler {
     }
   }
 
-  private void handleGameAction(String playerId, String message, GameAction gameAction)
+  /** Runs the command and passes its notices on to the player; the rest of the result is unused. */
+  private void run(String playerId, Command command) {
+    gameService
+        .execute(playerId, command)
+        .notices()
+        .forEach(notice -> gameService.notifyPlayer(playerId, notice));
+  }
+
+  private Command commandOf(String message, GameAction gameAction) throws JacksonException {
+    return switch (gameAction) {
+      case BUY -> {
+        var buy = payload(message, new TypeReference<GameActionDTO<BuyActionDTO>>() {});
+        yield new Command.Recruit(buy.unitStats(), buy.quantity());
+      }
+      case BUY_VILLAGERS -> new Command.BuyVillagers();
+      case SELL_FOOD -> new Command.SellFood();
+      case SELL_MATERIALS -> new Command.SellMaterials();
+      case SELL_RELICS -> new Command.SellRelics();
+      case INVADE -> {
+        var invade = payload(message, new TypeReference<GameActionDTO<InvadeActionDTO>>() {});
+        yield new Command.StartExpedition(invade.units(), invade.startFloor(), invade.salt());
+      }
+      case EXTRACT -> new Command.Extract();
+      case RESUME -> new Command.Resume();
+      case BUY_TOME -> {
+        var tome = payload(message, new TypeReference<GameActionDTO<BuyTomeActionDTO>>() {});
+        yield new Command.BuyTome(tome == null ? null : tome.tome());
+      }
+      case BUY_POSTS -> {
+        var posts = payload(message, new TypeReference<GameActionDTO<BuyPostsActionDTO>>() {});
+        yield new Command.BuyPosts(posts == null ? null : posts.trade());
+      }
+      case ASSIGN_TRADE -> {
+        var assign = payload(message, new TypeReference<GameActionDTO<AssignTradeActionDTO>>() {});
+        yield assign == null
+            ? new Command.AssignTrade(null, null)
+            : new Command.AssignTrade(assign.trade(), assign.delta());
+      }
+      case REINFORCE -> {
+        var reinforce = payload(message, new TypeReference<GameActionDTO<ReinforceActionDTO>>() {});
+        yield new Command.SendReinforcements(reinforce.units());
+      }
+      case UPGRADE -> {
+        var upgrade = payload(message, new TypeReference<GameActionDTO<UpgradeActionDTO>>() {});
+        yield new Command.BuyUpgrade(upgrade.upgradeId());
+      }
+    };
+  }
+
+  private <T> T payload(String message, TypeReference<GameActionDTO<T>> type)
       throws JacksonException {
-    switch (gameAction) {
-      case BUY -> handleBuyAction(playerId, message);
-      case BUY_VILLAGERS -> gameService.handleBuyVillagersAction(playerId);
-      case SELL_FOOD -> gameService.handleSellFoodAction(playerId);
-      case SELL_MATERIALS -> gameService.handleSellMaterialsAction(playerId);
-      case SELL_RELICS -> gameService.handleSellRelicsAction(playerId);
-      case INVADE -> handleInvadeAction(playerId, message);
-      case EXTRACT -> gameService.handleExtractAction(playerId);
-      case RESUME -> gameService.handleResumeAction(playerId);
-      case REINFORCE -> handleReinforceAction(playerId, message);
-      case UPGRADE -> handleUpgradeAction(playerId, message);
-      case ASSIGN_TRADE -> handleAssignTradeAction(playerId, message);
-      case BUY_TOME -> handleBuyTomeAction(playerId, message);
-      case BUY_POSTS -> handleBuyPostsAction(playerId, message);
-      default -> log.error("Invalid game action {} from player {}", gameAction, playerId);
-    }
-  }
-
-  private void handleBuyAction(String playerId, String message) throws JacksonException {
-    var dto = objectMapper.readValue(message, new TypeReference<GameActionDTO<BuyActionDTO>>() {});
-    gameService.handleMessage(playerId, dto.payload());
-  }
-
-  private void handleInvadeAction(String playerId, String message) throws JacksonException {
-    var dto =
-        objectMapper.readValue(message, new TypeReference<GameActionDTO<InvadeActionDTO>>() {});
-    gameService.handleMessage(playerId, dto.payload());
-  }
-
-  private void handleReinforceAction(String playerId, String message) throws JacksonException {
-    var dto =
-        objectMapper.readValue(message, new TypeReference<GameActionDTO<ReinforceActionDTO>>() {});
-    gameService.handleMessage(playerId, dto.payload());
-  }
-
-  private void handleAssignTradeAction(String playerId, String message) throws JacksonException {
-    var dto =
-        objectMapper.readValue(
-            message, new TypeReference<GameActionDTO<AssignTradeActionDTO>>() {});
-    gameService.handleAssignTradeAction(playerId, dto.payload());
-  }
-
-  private void handleBuyTomeAction(String playerId, String message) throws JacksonException {
-    var dto =
-        objectMapper.readValue(message, new TypeReference<GameActionDTO<BuyTomeActionDTO>>() {});
-    gameService.handleBuyTomeAction(playerId, dto.payload());
-  }
-
-  private void handleBuyPostsAction(String playerId, String message) throws JacksonException {
-    var dto =
-        objectMapper.readValue(message, new TypeReference<GameActionDTO<BuyPostsActionDTO>>() {});
-    gameService.handleBuyPostsAction(playerId, dto.payload());
-  }
-
-  private void handleUpgradeAction(String playerId, String message) throws JacksonException {
-    var dto =
-        objectMapper.readValue(message, new TypeReference<GameActionDTO<UpgradeActionDTO>>() {});
-    gameService.handleUpgradeAction(playerId, dto.payload());
+    return objectMapper.readValue(message, type).payload();
   }
 }

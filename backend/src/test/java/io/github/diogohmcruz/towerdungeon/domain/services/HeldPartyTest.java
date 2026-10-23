@@ -14,9 +14,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-import io.github.diogohmcruz.towerdungeon.api.dtos.InvadeActionDTO;
-import io.github.diogohmcruz.towerdungeon.api.dtos.ReinforceActionDTO;
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
+import io.github.diogohmcruz.towerdungeon.domain.commands.Command;
 import io.github.diogohmcruz.towerdungeon.domain.models.ResourceType;
 import io.github.diogohmcruz.towerdungeon.domain.models.UnitStats;
 import io.github.diogohmcruz.towerdungeon.domain.models.architecture.ArchitecturePlan;
@@ -67,7 +66,7 @@ class HeldPartyTest {
 
   private void departAndDisconnect() {
     service.attach(PLAYER, "ws-1").block();
-    service.handleMessage(PLAYER, new InvadeActionDTO(Map.of(), 0));
+    service.execute(PLAYER, new Command.StartExpedition(Map.of(), 0));
     assertThat(service.playerState(PLAYER).isExpeditionActive()).isTrue();
     service.detach(PLAYER, "ws-1");
   }
@@ -109,7 +108,7 @@ class HeldPartyTest {
     service.attach(PLAYER, "ws-2").block();
     assertThat(state.toSnapshot()).isEqualTo(before);
 
-    service.handleResumeAction(PLAYER);
+    service.execute(PLAYER, new Command.Resume());
 
     assertThat(frame()).contains("\"held\":false");
     service.gameLoop();
@@ -124,7 +123,7 @@ class HeldPartyTest {
     state.gatherLoot(ResourceType.MATERIALS, 12d);
     service.attach(PLAYER, "ws-2").block();
 
-    service.handleExtractAction(PLAYER);
+    service.execute(PLAYER, new Command.Extract());
 
     assertThat(state.isExpeditionActive()).isFalse();
     assertThat(state.getResources().get(ResourceType.MATERIALS)).isEqualTo(12d);
@@ -139,13 +138,13 @@ class HeldPartyTest {
     state.addUnits(
         UnitStats.WARRIOR, List.of(state.recruit(UnitStats.WARRIOR, new SplittableRandom(1))));
 
-    service.handleMessage(PLAYER, new ReinforceActionDTO(Map.of()));
+    service.execute(PLAYER, new Command.SendReinforcements(Map.of()));
 
     assertThat(state.getReinforcements()).isEmpty();
     assertThat(frame()).contains("PARTY_HELD");
 
-    service.handleResumeAction(PLAYER);
-    service.handleMessage(PLAYER, new ReinforceActionDTO(Map.of()));
+    service.execute(PLAYER, new Command.Resume());
+    service.execute(PLAYER, new Command.SendReinforcements(Map.of()));
     assertThat(state.getReinforcements()).isNotEmpty();
   }
 
@@ -180,7 +179,7 @@ class HeldPartyTest {
   void theShutdownFlushWritesAnAttachedCampaign() {
     service.attach(PLAYER, "ws-1").block();
     service.playerState(PLAYER).setCredit(4242d);
-    service.handleSellFoodAction(PLAYER);
+    service.execute(PLAYER, new Command.SellFood());
 
     service.shutdown();
 

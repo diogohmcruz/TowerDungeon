@@ -7,22 +7,20 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.random.RandomGenerator;
 
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-import io.github.diogohmcruz.towerdungeon.api.dtos.AssignTradeActionDTO;
-import io.github.diogohmcruz.towerdungeon.api.dtos.BuyActionDTO;
-import io.github.diogohmcruz.towerdungeon.api.dtos.BuyPostsActionDTO;
-import io.github.diogohmcruz.towerdungeon.api.dtos.BuyTomeActionDTO;
 import io.github.diogohmcruz.towerdungeon.api.dtos.GameFrame;
-import io.github.diogohmcruz.towerdungeon.api.dtos.GameFrame.Notice;
-import io.github.diogohmcruz.towerdungeon.api.dtos.InvadeActionDTO;
-import io.github.diogohmcruz.towerdungeon.api.dtos.ReinforceActionDTO;
-import io.github.diogohmcruz.towerdungeon.api.dtos.UpgradeActionDTO;
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
+import io.github.diogohmcruz.towerdungeon.domain.commands.Command;
+import io.github.diogohmcruz.towerdungeon.domain.commands.CommandResult;
+import io.github.diogohmcruz.towerdungeon.domain.commands.CommandResult.Reason;
+import io.github.diogohmcruz.towerdungeon.domain.commands.Notice;
 import io.github.diogohmcruz.towerdungeon.domain.exceptions.InvalidInvasion;
 import io.github.diogohmcruz.towerdungeon.domain.models.BaseUnit;
 import io.github.diogohmcruz.towerdungeon.domain.models.GameOutcome;
@@ -35,6 +33,8 @@ import io.github.diogohmcruz.towerdungeon.domain.models.UnitStats;
 import io.github.diogohmcruz.towerdungeon.domain.models.architecture.ArchitecturePlan;
 import io.github.diogohmcruz.towerdungeon.domain.models.snapshot.GameSnapshot;
 import io.github.diogohmcruz.towerdungeon.domain.models.upgrade.UpgradeType;
+import io.github.diogohmcruz.towerdungeon.domain.observation.EventLog;
+import io.github.diogohmcruz.towerdungeon.domain.observation.StateProjection;
 import io.github.diogohmcruz.towerdungeon.persistence.CampaignSchema;
 import io.github.diogohmcruz.towerdungeon.persistence.CampaignSchema.SchemaNewerException;
 import io.github.diogohmcruz.towerdungeon.persistence.CampaignStore;
@@ -245,38 +245,6 @@ public class GameService {
     }
   }
 
-  /**
-   * Mutates one player's state under its lock. Find-only: a player without a slot is ignored, so a
-   * late message can never resurrect a closed Campaign.
-   */
-  private void withPlayer(String playerId, Consumer<GameState> action) {
-    withPlayer(playerId, action, false);
-  }
-
-  /** As {@link #withPlayer(String, Consumer)}, and the change is written as a purchase. */
-  private void withPurchase(String playerId, Consumer<GameState> action) {
-    withPlayer(playerId, action, true);
-  }
-
-  private void withPlayer(String playerId, Consumer<GameState> action, boolean purchase) {
-    var slot = players.get(playerId);
-    var applied =
-        slot == null
-            ? Optional.empty()
-            : access(
-                slot,
-                gameState -> {
-                  applyAndRecord(slot, gameState, action);
-                  if (purchase) {
-                    saves.purchased(slot);
-                  }
-                  return Boolean.TRUE;
-                });
-    if (applied.isEmpty()) {
-      log.debug("Ignoring an action for player {} with no live Campaign", playerId);
-    }
-  }
-
   /** Runs a mutation and tells the coordinator what it changed. Call under the state's lock. */
   private void applyAndRecord(PlayerSlot slot, GameState gameState, Consumer<GameState> action) {
     var before = AutosaveCoordinator.Marks.of(gameState);
@@ -294,7 +262,7 @@ public class GameService {
    * Mutates every connected player's state, each under its own lock. Detached slots and Held
    * Parties do not tick.
    */
-  private void forEachPlayer(Consumer<GameState> action) {
+  private void forEachPlayer(BiConsumer<PlayerSlot, GameState> action) {
     if (!running) {
       return;
     }
@@ -306,7 +274,7 @@ public class GameService {
         access(
             slot,
             gameState -> {
-              applyAndRecord(slot, gameState, action);
+              applyAndRecord(slot, gameState, state -> action.accept(slot, state));
               return Boolean.TRUE;
             });
       } catch (RuntimeException e) {
@@ -334,245 +302,378 @@ public class GameService {
                         state, slot.takeMeta(slot.isHeld() && state.isExpeditionActive()))));
   }
 
-  public void handleMessage(String playerId, BuyActionDTO buyActionDTO) {
-    withPurchase(
-        playerId,
-        gameState -> {
-          if (!gameState.isUnitUnlocked(buyActionDTO.unitStats())) {
-            log.warn(
-                "Player[{}] tried to recruit locked unit {}. Ignoring.",
-                playerId,
-                buyActionDTO.unitStats());
-            return;
-          }
-          var newUnits = new ArrayList<Unit>();
-          var quantity = buyActionDTO.quantity();
-          var cost = buyActionDTO.unitStats().getCost();
-          while (gameState.getSpendableCredit() > cost && quantity > 0) {
-            gameState.spendCredit(cost);
-            var unit = gameState.recruit(buyActionDTO.unitStats(), random);
-            newUnits.add(unit);
-            quantity--;
-          }
-          gameState.addUnits(buyActionDTO.unitStats(), newUnits);
-          log.info("Received buy action from session [{}]. New units: {}", playerId, newUnits);
-        });
+  /**
+   * Applies a command to one player's Campaign under its lock and says what became of it.
+   * Find-only: a player without a loaded Campaign gets {@link Reason#NO_CAMPAIGN}, so a late
+   * message can never resurrect a closed one. Rule failures are results, never exceptions; an
+   * unexpected failure (for example a null map where one is required) still propagates to the
+   * caller.
+   */
+  public CommandResult execute(String playerId, Command command) {
+    var slot = players.get(playerId);
+    var result =
+        slot == null
+            ? Optional.<CommandResult>empty()
+            : access(slot, gameState -> applyAndSave(slot, gameState, playerId, command));
+    if (result.isEmpty()) {
+      log.debug("Ignoring a {} for player {} with no live Campaign", command.kind(), playerId);
+      return CommandResult.rejected(Reason.NO_CAMPAIGN, "There is no live Campaign.");
+    }
+    return result.get();
   }
 
-  public void handleBuyVillagersAction(String playerId) {
-    withPurchase(
-        playerId,
-        gameState -> {
-          var villagersCount = gameState.buyVillager();
-          log.info("Player[{}] total villagers: {}", playerId, villagersCount);
-        });
+  /** The state sequence of a player's Campaign; empty with no live Campaign. */
+  public Optional<Long> stateSeq(String playerId) {
+    return observe(playerId, (slot, _) -> slot.stateSeq());
   }
 
-  public void handleSellFoodAction(String playerId) {
-    withPurchase(
-        playerId,
-        gameState -> {
-          var credits = gameState.sellFood();
-          log.info("Player[{}] sold food for credits: {}", playerId, credits);
-        });
+  /** The compact projection of a player's Campaign; empty with no live Campaign. */
+  public Optional<StateProjection> project(String playerId) {
+    return observe(playerId, (slot, state) -> StateProjection.brief(state, slot.stateSeq()));
   }
 
-  public void handleSellMaterialsAction(String playerId) {
-    withPurchase(
-        playerId,
-        gameState -> {
-          var profit = gameState.sellAllMaterials();
-          log.info("Player[{}] sold all materials for {} credits", playerId, profit);
-        });
+  /** The events after {@code afterId}; empty with no live Campaign. */
+  public Optional<List<EventLog.Event>> eventsSince(String playerId, long afterId) {
+    return observe(playerId, (slot, _) -> slot.events().since(afterId));
   }
 
-  public void handleSellRelicsAction(String playerId) {
-    withPurchase(
-        playerId,
-        gameState -> {
-          var profit = gameState.sellAllRelics();
-          log.info("Player[{}] sold all relics for {} credits", playerId, profit);
-        });
+  /** The capped list of Expedition Summaries, oldest first; empty with no live Campaign. */
+  public Optional<List<RunSummary>> expeditionSummaries(String playerId) {
+    return observe(playerId, (slot, _) -> slot.summaries().all());
   }
 
-  public void handleAssignTradeAction(String playerId, AssignTradeActionDTO dto) {
-    withPurchase(
-        playerId,
-        gameState -> {
-          if (dto == null || dto.trade() == null || dto.delta() == null) {
-            log.warn("Player[{}] sent an incomplete trade assignment. Ignoring.", playerId);
-            return;
-          }
-          var refused = gameState.assignTrade(dto.trade(), Integer.signum(dto.delta()));
-          log.info(
-              "Player[{}] assign {} {} -> {}",
-              playerId,
-              dto.trade(),
-              dto.delta(),
-              refused.orElse("moved"));
-        });
+  private <T> Optional<T> observe(String playerId, BiFunction<PlayerSlot, GameState, T> read) {
+    var slot = players.get(playerId);
+    return slot == null ? Optional.empty() : access(slot, state -> read.apply(slot, state));
   }
 
-  public void handleBuyTomeAction(String playerId, BuyTomeActionDTO dto) {
-    withPlayer(
-        playerId,
-        gameState -> {
-          if (dto == null || dto.tome() == null) {
-            log.warn("Player[{}] sent an incomplete Tome purchase. Ignoring.", playerId);
-            return;
-          }
-          var refused = gameState.buyTome(dto.tome());
-          log.info("Player[{}] Tome {} -> {}", playerId, dto.tome(), refused.orElse("bought"));
-        });
+  /** Runs the command under the autosave bookkeeping; purchases are also written as purchases. */
+  private CommandResult applyAndSave(
+      PlayerSlot slot, GameState gameState, String playerId, Command command) {
+    var result = new CommandResult[1];
+    applyAndRecord(slot, gameState, state -> result[0] = apply(slot, state, playerId, command));
+    if (isPurchase(command)) {
+      saves.purchased(slot);
+    }
+    return result[0];
   }
 
-  public void handleBuyPostsAction(String playerId, BuyPostsActionDTO dto) {
-    withPlayer(
-        playerId,
-        gameState -> {
-          if (dto == null || dto.trade() == null) {
-            log.warn("Player[{}] sent an incomplete Posts purchase. Ignoring.", playerId);
-            return;
-          }
-          var refused = gameState.buyPosts(dto.trade());
-          log.info("Player[{}] Posts {} -> {}", playerId, dto.trade(), refused.orElse("bought"));
-        });
+  /** The commands that spend the player's resources: the ones a save should not lag behind. */
+  private static boolean isPurchase(Command command) {
+    return switch (command) {
+      case Command.Recruit _,
+          Command.BuyVillagers _,
+          Command.SellFood _,
+          Command.SellMaterials _,
+          Command.SellRelics _,
+          Command.AssignTrade _,
+          Command.BuyUpgrade _ ->
+          true;
+      case Command.StartExpedition _,
+          Command.Extract _,
+          Command.Resume _,
+          Command.BuyTome _,
+          Command.BuyPosts _,
+          Command.SendReinforcements _ ->
+          false;
+    };
   }
 
-  public void handleUpgradeAction(String playerId, UpgradeActionDTO upgradeActionDTO) {
-    withPurchase(
-        playerId,
-        gameState -> {
-          UpgradeType type;
-          try {
-            type = UpgradeType.valueOf(upgradeActionDTO.upgradeId());
-          } catch (IllegalArgumentException | NullPointerException e) {
-            log.warn(
-                "Player[{}] requested unknown upgrade {}.", playerId, upgradeActionDTO.upgradeId());
-            return;
-          }
-          var applied = gameState.applyUpgrade(type);
-          log.info(
-              "Player[{}] upgrade {} -> {}", playerId, type, applied ? "purchased" : "rejected");
-        });
+  private CommandResult apply(
+      PlayerSlot slot, GameState gameState, String playerId, Command command) {
+    CommandResult result;
+    try {
+      result =
+          switch (command) {
+            case Command.Recruit recruit -> recruit(slot, gameState, playerId, recruit);
+            case Command.BuyVillagers _ -> buyVillagers(slot, gameState, playerId);
+            case Command.SellFood _ -> sellFood(slot, gameState, playerId);
+            case Command.SellMaterials _ ->
+                sellStock(slot, gameState, playerId, ResourceType.MATERIALS);
+            case Command.SellRelics _ -> sellStock(slot, gameState, playerId, ResourceType.RELICS);
+            case Command.BuyUpgrade upgrade -> buyUpgrade(slot, gameState, playerId, upgrade);
+            case Command.StartExpedition start -> startExpedition(slot, gameState, playerId, start);
+            case Command.Extract _ -> extract(gameState, playerId);
+            case Command.AssignTrade trade -> assignTrade(slot, gameState, playerId, trade);
+            case Command.BuyTome tome -> buyTome(slot, gameState, playerId, tome);
+            case Command.BuyPosts posts -> buyPosts(slot, gameState, playerId, posts);
+            case Command.Resume _ -> resume(slot, playerId);
+            case Command.SendReinforcements wave ->
+                sendReinforcements(slot, gameState, playerId, wave);
+          };
+    } catch (InvalidInvasion err) {
+      log.warn("Rejected invasion from player {}: {}", playerId, err.getMessage());
+      result =
+          CommandResult.rejected(
+                  Reason.INSUFFICIENT_UNITS, "Not enough units in reserves to send that many.")
+              .withNotice(new Notice("INVALID_INVASION", err.getMessage()));
+    }
+    if (result.changedState()) {
+      slot.bumpSeq();
+      slot.collectSummary(gameState);
+    }
+    return result.withStateSeq(slot.stateSeq());
   }
 
-  public void handleMessage(String playerId, InvadeActionDTO invadeActionDTO) {
-    log.info("Received invade action from session [{}] {}", playerId, invadeActionDTO);
-    withPlayer(
-        playerId,
-        gameState -> {
-          if (gameState.isExpeditionActive()) {
-            log.warn(
-                "Player[{}] tried to invade while a run is already active. Ignoring.", playerId);
-            return;
-          }
-          if (gameState.getGameOutcome() != GameOutcome.PLAYING) {
-            log.warn(
-                "Player[{}] tried to invade after the campaign ended ({}). Ignoring.",
-                playerId,
-                gameState.getGameOutcome());
-            return;
-          }
-          var requestedFloor =
-              invadeActionDTO.startFloor() == null ? 0 : invadeActionDTO.startFloor();
-          if (!gameState.isStartFloorUnlocked(requestedFloor)) {
-            log.warn(
-                "Player[{}] tried to start on floor {} without an open shortcut. Ignoring.",
-                playerId,
-                requestedFloor);
-            return;
-          }
-          var units = gameState.getUnits();
-          final var unitsOnTower = gameState.getUnitsOnTower();
-          var invadeUnits = invadeActionDTO.units();
-          if (invadeUnits.isEmpty()) {
-            sendAllToTower(units, unitsOnTower);
-          } else {
-            sendToTower(units, invadeUnits, gameState);
-          }
-          gameState.setUnits(units);
-          gameState.setUnitsOnTower(unitsOnTower);
-          if (!gameState.hasUnitsOnTower()) {
-            log.warn("Player[{}] tried to invade with no available units. Ignoring.", playerId);
-            return;
-          }
-          if (gameState.getTower() == null) {
-            gameState.setTower(
-                new Tower(
-                    config.getTower().getMaxFloor(),
-                    config.getBoss().copy(),
-                    config.getEnemies().copy(),
-                    random,
-                    architecturePlan));
-          }
-          gameState.getTower().startNewRunAt(requestedFloor);
-          gameState.setRunStartFloor(requestedFloor > 0 ? requestedFloor : 0);
-          gameState.startRun(invadeActionDTO.salt() == null ? 0 : invadeActionDTO.salt());
-          if (requestedFloor > 0) {
-            gameState.recordFloorReached(requestedFloor);
-          }
-        });
+  private CommandResult recruit(
+      PlayerSlot slot, GameState gameState, String playerId, Command.Recruit command) {
+    var unitStats = command.unitStats();
+    if (!gameState.isUnitUnlocked(unitStats)) {
+      log.warn("Player[{}] tried to recruit locked unit {}. Ignoring.", playerId, unitStats);
+      return CommandResult.rejected(Reason.NOT_UNLOCKED, "That unit type is not unlocked.");
+    }
+    var newUnits = new ArrayList<Unit>();
+    var quantity = command.quantity();
+    var cost = unitStats.getCost();
+    while (gameState.getSpendableCredit() > cost && quantity > 0) {
+      gameState.spendCredit(cost);
+      var unit = gameState.recruit(unitStats, random);
+      newUnits.add(unit);
+      quantity--;
+    }
+    gameState.addUnits(unitStats, newUnits);
+    log.info("Received buy action from session [{}]. New units: {}", playerId, newUnits);
+    var requested = command.quantity();
+    if (requested != null && requested <= 0) {
+      return CommandResult.rejected(Reason.INVALID_ARGUMENT, "The quantity must be positive.");
+    }
+    var recruited = newUnits.size();
+    if (recruited == 0) {
+      return CommandResult.rejected(
+          Reason.INSUFFICIENT_CREDITS, "The Credits must exceed the cost of one.");
+    }
+    slot.emit("RECRUITED", Map.of("unit", unitStats.name(), "count", recruited));
+    return recruited < requested
+        ? CommandResult.partial(
+            Reason.INSUFFICIENT_CREDITS, "Recruited fewer than asked: the Credits ran out.")
+        : CommandResult.applied("Recruited.");
   }
 
-  public void handleExtractAction(String playerId) {
-    withPlayer(
+  private CommandResult buyVillagers(PlayerSlot slot, GameState gameState, String playerId) {
+    var before = gameState.getVillage().getVillagersCount();
+    var villagersCount = gameState.buyVillager();
+    log.info("Player[{}] total villagers: {}", playerId, villagersCount);
+    var bought = gameState.getVillage().getVillagersCount() - before;
+    if (bought <= 0) {
+      return CommandResult.rejected(
+          Reason.INSUFFICIENT_CREDITS, "The Vault cannot pay for another villager.");
+    }
+    slot.emit("VILLAGERS_BOUGHT", Map.of("count", bought));
+    return CommandResult.applied("Villagers hired.");
+  }
+
+  private CommandResult sellFood(PlayerSlot slot, GameState gameState, String playerId) {
+    var before = gameState.getCredit();
+    var credits = gameState.sellFood();
+    log.info("Player[{}] sold food for credits: {}", playerId, credits);
+    if (gameState.getCredit() <= before) {
+      return CommandResult.rejected(Reason.NOTHING_TO_SELL, "There is no food to sell.");
+    }
+    slot.emit("SOLD", Map.of("what", "FOOD"));
+    return CommandResult.applied("Food sold.");
+  }
+
+  private CommandResult sellStock(
+      PlayerSlot slot, GameState gameState, String playerId, ResourceType type) {
+    var stock = gameState.getResources().getOrDefault(type, 0d);
+    var profit =
+        type == ResourceType.MATERIALS ? gameState.sellAllMaterials() : gameState.sellAllRelics();
+    log.info("Player[{}] sold all {} for {} credits", playerId, type, profit);
+    if (stock <= 0) {
+      return CommandResult.rejected(Reason.NOTHING_TO_SELL, "There is nothing to sell.");
+    }
+    slot.emit("SOLD", Map.of("what", type.name()));
+    return CommandResult.applied("Sold.");
+  }
+
+  private CommandResult buyUpgrade(
+      PlayerSlot slot, GameState gameState, String playerId, Command.BuyUpgrade command) {
+    UpgradeType type;
+    try {
+      type = UpgradeType.valueOf(command.upgradeId());
+    } catch (IllegalArgumentException | NullPointerException e) {
+      // The id is caller-supplied text: never log it.
+      log.warn("Player[{}] requested an unknown upgrade.", playerId);
+      return CommandResult.rejected(Reason.UNKNOWN_ID, "There is no such upgrade.");
+    }
+    var maxed = !type.isAvailableAt(gameState.getPurchasedUpgrades().getOrDefault(type, 0));
+    var applied = gameState.applyUpgrade(type);
+    log.info("Player[{}] upgrade {} -> {}", playerId, type, applied ? "purchased" : "rejected");
+    if (applied) {
+      slot.emit("UPGRADE_BOUGHT", Map.of("upgrade", type.name()));
+      return CommandResult.applied("Upgrade bought.");
+    }
+    return maxed
+        ? CommandResult.rejected(Reason.UPGRADE_MAXED, "That upgrade is at its highest level.")
+        : CommandResult.rejected(Reason.UPGRADE_UNAFFORDABLE, "The Vault cannot pay for it.");
+  }
+
+  private CommandResult assignTrade(
+      PlayerSlot slot, GameState gameState, String playerId, Command.AssignTrade command) {
+    if (command.trade() == null || command.delta() == null) {
+      log.warn("Player[{}] sent an incomplete trade assignment. Ignoring.", playerId);
+      return CommandResult.rejected(Reason.INVALID_ARGUMENT, "The assignment is incomplete.");
+    }
+    var refused = gameState.assignTrade(command.trade(), Integer.signum(command.delta()));
+    log.info(
+        "Player[{}] assign {} {} -> {}",
         playerId,
-        gameState -> {
-          if (!gameState.isExpeditionActive()) {
-            log.warn("Player[{}] tried to extract with no active run.", playerId);
-            return;
-          }
-          gameState.buildRunSummary(RunSummary.EXTRACTED);
-          gameState.returnLeftoverSuppliesToVillage();
-          gameState.returnReinforcementsHome();
-          gameState.returnPartyHome();
-          gameState.bankLoot();
-          gameState.deliverQuarryHeap();
-          gameState.setExpeditionActive(false);
-          gameState.completeExpedition();
-          log.info(
-              "Player[{}] extracted. Leftover food returned to village, loot banked, party returned"
-                  + " home to recover on the village's food.",
-              playerId);
-        });
+        command.trade(),
+        command.delta(),
+        refused.orElse("moved"));
+    if (refused.isPresent()) {
+      return CommandResult.rejected(Reason.TRADE_REFUSED, refused.get());
+    }
+    slot.emit(
+        "TRADE_ASSIGNED",
+        Map.of("trade", command.trade().name(), "delta", Integer.signum(command.delta())));
+    return CommandResult.applied("The villager was moved.");
+  }
+
+  private CommandResult buyTome(
+      PlayerSlot slot, GameState gameState, String playerId, Command.BuyTome command) {
+    if (command.tome() == null) {
+      log.warn("Player[{}] sent an incomplete Tome purchase. Ignoring.", playerId);
+      return CommandResult.rejected(Reason.INVALID_ARGUMENT, "The purchase is incomplete.");
+    }
+    var refused = gameState.buyTome(command.tome());
+    log.info("Player[{}] Tome {} -> {}", playerId, command.tome(), refused.orElse("bought"));
+    if (refused.isPresent()) {
+      return CommandResult.rejected(Reason.PURCHASE_REFUSED, refused.get());
+    }
+    slot.emit("TOME_BOUGHT", Map.of("tome", command.tome().name()));
+    return CommandResult.applied("The Tome was bought.");
+  }
+
+  private CommandResult buyPosts(
+      PlayerSlot slot, GameState gameState, String playerId, Command.BuyPosts command) {
+    if (command.trade() == null) {
+      log.warn("Player[{}] sent an incomplete Posts purchase. Ignoring.", playerId);
+      return CommandResult.rejected(Reason.INVALID_ARGUMENT, "The purchase is incomplete.");
+    }
+    var refused = gameState.buyPosts(command.trade());
+    log.info("Player[{}] Posts {} -> {}", playerId, command.trade(), refused.orElse("bought"));
+    if (refused.isPresent()) {
+      return CommandResult.rejected(Reason.PURCHASE_REFUSED, refused.get());
+    }
+    slot.emit("POSTS_BOUGHT", Map.of("trade", command.trade().name()));
+    return CommandResult.applied("The Posts were bought.");
+  }
+
+  private CommandResult startExpedition(
+      PlayerSlot slot, GameState gameState, String playerId, Command.StartExpedition command) {
+    log.info("Received invade action from session [{}] {}", playerId, command);
+    if (gameState.isExpeditionActive()) {
+      log.warn("Player[{}] tried to invade while a run is already active. Ignoring.", playerId);
+      return CommandResult.rejected(Reason.EXPEDITION_ACTIVE, "An expedition is already out.");
+    }
+    if (gameState.getGameOutcome() != GameOutcome.PLAYING) {
+      log.warn(
+          "Player[{}] tried to invade after the campaign ended ({}). Ignoring.",
+          playerId,
+          gameState.getGameOutcome());
+      return CommandResult.rejected(Reason.CAMPAIGN_ENDED, "The Campaign has ended.");
+    }
+    var requestedFloor = command.startFloor() == null ? 0 : command.startFloor();
+    if (!gameState.isStartFloorUnlocked(requestedFloor)) {
+      log.warn(
+          "Player[{}] tried to start on floor {} without an open shortcut. Ignoring.",
+          playerId,
+          requestedFloor);
+      return CommandResult.rejected(Reason.START_FLOOR_LOCKED, "That floor has no open shortcut.");
+    }
+    var units = gameState.getUnits();
+    final var unitsOnTower = gameState.getUnitsOnTower();
+    var invadeUnits = command.units();
+    if (invadeUnits.isEmpty()) {
+      sendAllToTower(units, unitsOnTower);
+    } else {
+      sendToTower(units, invadeUnits, gameState);
+    }
+    gameState.setUnits(units);
+    gameState.setUnitsOnTower(unitsOnTower);
+    if (!gameState.hasUnitsOnTower()) {
+      log.warn("Player[{}] tried to invade with no available units. Ignoring.", playerId);
+      return CommandResult.rejected(Reason.NO_UNITS, "There are no units to send.");
+    }
+    if (gameState.getTower() == null) {
+      gameState.setTower(
+          new Tower(
+              config.getTower().getMaxFloor(),
+              config.getBoss().copy(),
+              config.getEnemies().copy(),
+              random,
+              architecturePlan));
+    }
+    gameState.getTower().startNewRunAt(requestedFloor);
+    gameState.setRunStartFloor(requestedFloor > 0 ? requestedFloor : 0);
+    gameState.startRun(command.salt() == null ? 0 : command.salt());
+    if (requestedFloor > 0) {
+      gameState.recordFloorReached(requestedFloor);
+    }
+    slot.emit(
+        "EXPEDITION_STARTED",
+        Map.of("startFloor", requestedFloor, "party", gameState.getTowerPartySize()));
+    return CommandResult.applied("The expedition set out.");
+  }
+
+  private CommandResult extract(GameState gameState, String playerId) {
+    if (!gameState.isExpeditionActive()) {
+      log.warn("Player[{}] tried to extract with no active run.", playerId);
+      return CommandResult.rejected(Reason.NO_EXPEDITION, "No expedition is out.");
+    }
+    gameState.buildRunSummary(RunSummary.EXTRACTED);
+    gameState.returnLeftoverSuppliesToVillage();
+    gameState.returnReinforcementsHome();
+    gameState.returnPartyHome();
+    gameState.bankLoot();
+    gameState.deliverQuarryHeap();
+    gameState.setExpeditionActive(false);
+    gameState.completeExpedition();
+    log.info(
+        "Player[{}] extracted. Leftover food returned to village, loot banked, party returned"
+            + " home to recover on the village's food.",
+        playerId);
+    return CommandResult.applied("The party extracted.");
   }
 
   /** Lets a Held Party march on: the clock starts again from exactly where it stopped. */
-  public void handleResumeAction(String playerId) {
-    var slot = players.get(playerId);
-    if (slot != null && slot.isHeld()) {
-      slot.resume();
-      log.info("Player[{}] resumed the Held Party.", playerId);
+  private CommandResult resume(PlayerSlot slot, String playerId) {
+    if (!slot.isHeld()) {
+      return CommandResult.rejected(Reason.NOT_HELD, "No Party is held.");
     }
+    slot.resume();
+    log.info("Player[{}] resumed the Held Party.", playerId);
+    slot.emit("PARTY_RESUMED", Map.of());
+    return CommandResult.applied("The Party marches on.");
   }
 
-  public void handleMessage(String playerId, ReinforceActionDTO reinforceActionDTO) {
-    log.info("Received reinforce action from session [{}] {}", playerId, reinforceActionDTO);
-    var slot = players.get(playerId);
-    if (slot != null && slot.isHeld()) {
+  private CommandResult sendReinforcements(
+      PlayerSlot slot, GameState gameState, String playerId, Command.SendReinforcements command) {
+    log.info("Received reinforce action from session [{}] {}", playerId, command);
+    if (slot.isHeld()) {
+      // As before this change, the player's own screen is told through the slot's notice queue.
       slot.addNotice(
           new Notice(
               "PARTY_HELD", "The Party has not moved. Resume before sending reinforcements."));
-      return;
+      return CommandResult.rejected(Reason.PARTY_HELD, "The Party has not moved.");
     }
-    withPlayer(
-        playerId,
-        gameState -> {
-          if (!gameState.isExpeditionActive()) {
-            log.warn(
-                "Player[{}] tried to send reinforcements with no active run. Ignoring.", playerId);
-            return;
-          }
-          if (gameState.getGameOutcome() != GameOutcome.PLAYING) {
-            log.warn(
-                "Player[{}] tried to reinforce after the campaign ended ({}). Ignoring.",
-                playerId,
-                gameState.getGameOutcome());
-            return;
-          }
-          gameState.sendReinforcement(reinforceActionDTO.units());
-        });
+    if (!gameState.isExpeditionActive()) {
+      log.warn("Player[{}] tried to send reinforcements with no active run. Ignoring.", playerId);
+      return CommandResult.rejected(Reason.NO_EXPEDITION, "No expedition is out.");
+    }
+    if (gameState.getGameOutcome() != GameOutcome.PLAYING) {
+      log.warn(
+          "Player[{}] tried to reinforce after the campaign ended ({}). Ignoring.",
+          playerId,
+          gameState.getGameOutcome());
+      return CommandResult.rejected(Reason.CAMPAIGN_ENDED, "The Campaign has ended.");
+    }
+    var wavesBefore = gameState.getReinforcements().size();
+    gameState.sendReinforcement(command.units());
+    return gameState.getReinforcements().size() > wavesBefore
+        ? CommandResult.applied("A wave set out.")
+        : CommandResult.rejected(Reason.NO_UNITS, "There are no units at home to send.");
   }
 
   private static void sendAllToTower(
@@ -619,16 +720,38 @@ public class GameService {
   @Scheduled(fixedRateString = "${game.loop.lifecycle-ms}")
   public void gameLoop() {
     forEachPlayer(
-        gameState -> {
+        (slot, gameState) -> {
+          var slainBefore = gameState.getEnemiesDefeated();
+          var floorBefore = floorOf(gameState);
           gameState.triggerLifecycle();
           updateInvasion(gameState);
+          slot.bumpSeq();
+          recordTick(slot, gameState, slainBefore, floorBefore);
         });
+  }
+
+  private static int floorOf(GameState gameState) {
+    return gameState.getTower() == null ? 0 : gameState.getTower().getCurrentFloor();
+  }
+
+  /** Files what one lifecycle tick did, aggregated: one event per kind, not one per kill. */
+  private static void recordTick(
+      PlayerSlot slot, GameState gameState, int slainBefore, int floorBefore) {
+    var slain = gameState.getEnemiesDefeated() - slainBefore;
+    if (slain > 0) {
+      slot.emit("ENEMIES_SLAIN", Map.of("count", slain, "floor", floorBefore));
+    }
+    var floor = floorOf(gameState);
+    if (gameState.isExpeditionActive() && floor > floorBefore) {
+      slot.emit("FLOOR_REACHED", Map.of("floor", floor));
+    }
+    slot.collectSummary(gameState);
   }
 
   @Scheduled(fixedRateString = "${game.loop.invasion-tick-ms}")
   public void invasionTimer() {
     var tick = config.getLoop().getInvasionTickMs();
-    forEachPlayer(gameState -> gameState.passingTime(tick));
+    forEachPlayer((_, gameState) -> gameState.passingTime(tick));
   }
 
   private void updateInvasion(GameState gameState) {

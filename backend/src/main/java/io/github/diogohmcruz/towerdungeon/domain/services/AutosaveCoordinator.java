@@ -9,8 +9,8 @@ import java.util.function.LongSupplier;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import io.github.diogohmcruz.towerdungeon.api.dtos.GameFrame.Notice;
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
+import io.github.diogohmcruz.towerdungeon.domain.commands.Notice;
 import io.github.diogohmcruz.towerdungeon.domain.models.GameOutcome;
 import io.github.diogohmcruz.towerdungeon.domain.models.GameState;
 import io.github.diogohmcruz.towerdungeon.domain.models.snapshot.GameSnapshot;

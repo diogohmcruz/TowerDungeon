@@ -9,8 +9,8 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import io.github.diogohmcruz.towerdungeon.api.dtos.GameFrame.Notice;
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
+import io.github.diogohmcruz.towerdungeon.domain.commands.Notice;
 import io.github.diogohmcruz.towerdungeon.domain.models.GameState;
 import io.github.diogohmcruz.towerdungeon.persistence.CampaignStore;
 import io.github.diogohmcruz.towerdungeon.persistence.CampaignStore.Rotation;

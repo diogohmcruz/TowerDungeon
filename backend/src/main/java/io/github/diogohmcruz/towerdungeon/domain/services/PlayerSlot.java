@@ -3,12 +3,16 @@ package io.github.diogohmcruz.towerdungeon.domain.services;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import io.github.diogohmcruz.towerdungeon.api.dtos.GameFrame.Notice;
 import io.github.diogohmcruz.towerdungeon.api.dtos.GameFrame.SessionMeta;
+import io.github.diogohmcruz.towerdungeon.domain.commands.Notice;
 import io.github.diogohmcruz.towerdungeon.domain.models.GameState;
+import io.github.diogohmcruz.towerdungeon.domain.models.RunSummary;
+import io.github.diogohmcruz.towerdungeon.domain.observation.EventLog;
+import io.github.diogohmcruz.towerdungeon.domain.observation.ExpeditionSummaries;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 
@@ -35,6 +39,16 @@ final class PlayerSlot {
   private volatile boolean held;
   private Connection connection;
   private long detachedAtNanos;
+
+  /**
+   * Counts applied commands and lifecycle ticks. Only touched under the state's lock. Not the
+   * persistence sequence number: that one counts saves.
+   */
+  private long stateSeq;
+
+  private final EventLog events = new EventLog();
+  private final ExpeditionSummaries summaries = new ExpeditionSummaries();
+  private RunSummary lastSeenSummary;
 
   PlayerSlot(String playerId) {
     this.playerId = playerId;
@@ -78,7 +92,47 @@ final class PlayerSlot {
     this.resumed = resumed;
     this.savedAt = savedAt;
     this.schema = schema;
+    this.lastSeenSummary = state.getLastRunSummary();
     this.state = state;
+  }
+
+  long stateSeq() {
+    return stateSeq;
+  }
+
+  /** Advances the state sequence. Call under the state's lock. */
+  long bumpSeq() {
+    return ++stateSeq;
+  }
+
+  EventLog events() {
+    return events;
+  }
+
+  ExpeditionSummaries summaries() {
+    return summaries;
+  }
+
+  /**
+   * Logs an event at the sequence number the command in flight will carry (it is bumped once the
+   * command is done). Call under the state's lock.
+   */
+  void emit(String type, Map<String, Object> data) {
+    events.append(stateSeq + 1, type, data);
+  }
+
+  /**
+   * Files a newly finished Expedition Summary, if there is one. Summaries are built by the state
+   * when an expedition ends; this notices a new one by identity, so a summary restored from a save
+   * is not filed again.
+   */
+  void collectSummary(GameState state) {
+    var latest = state.getLastRunSummary();
+    if (latest != null && latest != lastSeenSummary) {
+      lastSeenSummary = latest;
+      summaries.add(latest);
+      events.append(stateSeq, "EXPEDITION_ENDED", Map.of("outcome", latest.outcome()));
+    }
   }
 
   void addNotice(Notice notice) {

@@ -5,6 +5,7 @@ import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonUnwrapped;
 
+import io.github.diogohmcruz.towerdungeon.domain.commands.Notice;
 import io.github.diogohmcruz.towerdungeon.domain.models.GameState;
 
 /**
@@ -22,7 +23,4 @@ public record GameFrame(@JsonUnwrapped GameState state, SessionMeta session) {
    */
   public record SessionMeta(
       boolean resumed, Instant savedAt, int schema, List<Notice> notices, boolean held) {}
-
-  /** A message for the player, with a stable code the client can switch on. */
-  public record Notice(String code, String message) {}
 }

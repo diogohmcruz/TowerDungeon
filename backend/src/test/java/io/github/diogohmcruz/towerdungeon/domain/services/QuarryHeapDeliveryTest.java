@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
+import io.github.diogohmcruz.towerdungeon.domain.commands.Command;
 import io.github.diogohmcruz.towerdungeon.domain.models.GameState;
 import io.github.diogohmcruz.towerdungeon.domain.models.ResourceType;
 import io.github.diogohmcruz.towerdungeon.domain.models.Tower;
@@ -79,7 +80,7 @@ class QuarryHeapDeliveryTest {
   void extractionDeliversFivePerFloorClearedAndKeepsTheRestInTheHeap() {
     var state = expeditionThreeFloorsUp();
 
-    service.handleExtractAction(PLAYER);
+    service.execute(PLAYER, new Command.Extract());
 
     assertThat(state.getResources().get(ResourceType.MATERIALS)).isEqualTo(15.0);
     assertThat(state.getVillage().getQuarryHeap()).isEqualTo(25.0);
