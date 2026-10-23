@@ -11,6 +11,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
+import io.github.diogohmcruz.towerdungeon.domain.items.ItemRating;
+import io.github.diogohmcruz.towerdungeon.domain.items.LeftoverGenerator;
 import io.github.diogohmcruz.towerdungeon.domain.models.EnemyStats;
 import io.github.diogohmcruz.towerdungeon.domain.models.GameState;
 import io.github.diogohmcruz.towerdungeon.domain.models.ResourceType;
@@ -48,6 +50,9 @@ class SnapshotRoundTripTest {
     }
     var wounded = state.getUnits().get(UnitStats.WARRIOR).getFirst();
     wounded.receiveAttack(4d, null);
+    var rating = new ItemRating(config.getItems().getWeights());
+    wounded.equip(new LeftoverGenerator(random, config).generate(12), rating);
+    wounded.equip(new LeftoverGenerator(random, config).generate(12), rating);
     var mage = state.getUnits().get(UnitStats.MAGE).getFirst();
     mage.spendMana(2d);
     state.getResources().put(ResourceType.MATERIALS, 400d);
@@ -129,6 +134,18 @@ class SnapshotRoundTripTest {
         .isEqualTo(original);
     assertThat(restored.getVillage().getFood()).isEqualTo(37.5);
     assertThat(restored.getVillage().getVillagersCount()).isEqualTo(6);
+  }
+
+  @Test
+  void wornItemsSurviveTheRoundTrip() throws Exception {
+    var original = midCampaign();
+    var worn = original.getUnits().get(UnitStats.WARRIOR).getFirst().getGear().getSlots();
+    assertThat(worn).isNotEmpty();
+
+    var restored = viaJson(original);
+
+    var restoredWorn = restored.getUnits().get(UnitStats.WARRIOR).getFirst().getGear().getSlots();
+    assertThat(restoredWorn).isEqualTo(worn);
   }
 
   @Test

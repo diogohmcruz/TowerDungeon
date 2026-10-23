@@ -35,6 +35,7 @@ public class GameProperties {
   private final Body body = new Body();
   private final Aiming aiming = new Aiming();
   private final Sanity sanity = new Sanity();
+  private final Items items = new Items();
   private final Magic magic = new Magic();
   private final Reinforcements reinforcements = new Reinforcements();
   private final Supply supply = new Supply();
@@ -339,6 +340,45 @@ public class GameProperties {
 
     /** Share of damage a phobia moves at severity 1: dealt x(1 - this), taken x(1 + this). */
     private double phobiaEffect = 0.5;
+  }
+
+  /** Gear: how items are rated against each other and how Leftovers are generated. */
+  @Data
+  public static class Items {
+    private final Weights weights = new Weights();
+    private final Leftover leftover = new Leftover();
+
+    /** What one point of each stat adds to an item's rating, and what an effect adds. */
+    @Data
+    public static class Weights {
+      private double power = 1.0;
+      private double armour = 0.8;
+      private double accuracy = 0.6;
+      private double evasion = 0.6;
+      private double sanity = 0.4;
+      private double effect = 2.0;
+    }
+
+    /** A stat's value is its base, times (1 + floorScaling x floor), times a uniform roll. */
+    @Data
+    public static class Leftover {
+      private final Base base = new Base();
+      private int minStats = 1;
+      private int maxStats = 2;
+      private double floorScaling = 0.05;
+      private double rollMin = 0.5;
+      private double rollMax = 1.5;
+
+      /** The unscaled value of each stat. */
+      @Data
+      public static class Base {
+        private double power = 0.5;
+        private double armour = 0.5;
+        private double accuracy = 5.0;
+        private double evasion = 5.0;
+        private double sanity = 5.0;
+      }
+    }
   }
 
   /** Expedition food-carrying capacity. */

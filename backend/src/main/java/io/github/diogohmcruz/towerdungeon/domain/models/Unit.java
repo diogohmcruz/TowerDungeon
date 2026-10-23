@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Predicate;
 import java.util.random.RandomGenerator;
 import java.util.stream.Stream;
@@ -12,6 +13,12 @@ import java.util.stream.Stream;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
+import io.github.diogohmcruz.towerdungeon.domain.items.EquipResult;
+import io.github.diogohmcruz.towerdungeon.domain.items.Item;
+import io.github.diogohmcruz.towerdungeon.domain.items.ItemRating;
+import io.github.diogohmcruz.towerdungeon.domain.items.ItemStat;
+import io.github.diogohmcruz.towerdungeon.domain.items.Loadout;
+import io.github.diogohmcruz.towerdungeon.domain.items.Slot;
 import lombok.AccessLevel;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -47,6 +54,12 @@ public class Unit extends BaseUnit {
 
   /** Damage-taken multiplier for each leg lost. */
   private static final double LOST_LEG_DAMAGE_TAKEN_FACTOR = 1.25;
+
+  /** Share of a hit that always lands on a part, however much armour it wears. */
+  private static final double ARMOUR_MIN_HIT_SHARE = 0.2;
+
+  /** What the unit wears. Items come in through {@link #equip} and leave only as drops. */
+  private final Loadout gear = new Loadout();
 
   /**
    * The unit's six body parts. Their present members' health sums are the unit's {@link
@@ -86,6 +99,24 @@ public class Unit extends BaseUnit {
     layOutBody();
   }
 
+  /**
+   * Offers an item found by this unit: it goes into an empty fitting slot, else replaces the
+   * lowest-rated fitting item if it rates higher, else is surplus. Slots on lost parts are not
+   * fitting.
+   */
+  public EquipResult equip(Item item, ItemRating rating) {
+    return gear.equip(item, rating, this::isUsable);
+  }
+
+  private boolean isUsable(Slot slot) {
+    return slot.bodyPart().map(this::hasPart).orElse(true);
+  }
+
+  /** Takes off and returns everything the unit wears, trinkets included: what a death drops. */
+  public List<Item> dropAll() {
+    return gear.releaseAll();
+  }
+
   /** The unit's body parts, in the order torso, head, arms, legs; lost parts stay listed. */
   public List<Part> getParts() {
     return Collections.unmodifiableList(parts);
@@ -119,6 +150,7 @@ public class Unit extends BaseUnit {
       double maxMana,
       double currentMana,
       List<Part> savedParts,
+      Map<Slot, Item> savedGear,
       GameProperties.Body.Weights bodyWeights) {
     var unit = new Unit(stats, id, name);
     unit.healthFactor = healthFactor;
@@ -129,6 +161,7 @@ public class Unit extends BaseUnit {
     unit.bodyWeights = bodyWeights;
     unit.parts.clear();
     unit.parts.addAll(savedParts);
+    unit.gear.restore(savedGear);
     return unit;
   }
 
@@ -197,7 +230,7 @@ public class Unit extends BaseUnit {
         .forEach(
             part -> {
               part.setCurrentHealth(part.getMaxHealth() * ratio);
-              settle(part);
+              settle(part, null);
             });
   }
 
@@ -222,15 +255,24 @@ public class Unit extends BaseUnit {
   /**
    * Takes {@code amount} straight off one part. A head or torso at zero kills the unit; an arm or
    * leg at zero is lost for good. Does nothing to a part already lost.
+   *
+   * <p>The Armour worn on the part takes that much off the blow, but at least {@link
+   * #ARMOUR_MIN_HIT_SHARE} of it still lands.
+   *
+   * @return the item worn on the part if this blow cost the unit that part, else empty
    */
-  public void damagePart(BodyPart kind, double amount) {
+  public List<Item> damagePart(BodyPart kind, double amount) {
+    var dropped = new ArrayList<Item>();
+    var armour = gear.stat(Slot.on(kind), ItemStat.ARMOUR);
+    var landed = Math.max(amount * ARMOUR_MIN_HIT_SHARE, amount - armour);
     parts.stream()
         .filter(part -> part.getKind() == kind && !part.isLost())
         .forEach(
             part -> {
-              part.setCurrentHealth(Math.max(0, part.getCurrentHealth() - amount));
-              settle(part);
+              part.setCurrentHealth(Math.max(0, part.getCurrentHealth() - landed));
+              settle(part, dropped);
             });
+    return dropped;
   }
 
   /**
@@ -258,12 +300,21 @@ public class Unit extends BaseUnit {
     return amount - remaining;
   }
 
-  /** Marks a part that has run out: an arm or leg is lost, a vital part is simply at zero. */
-  private void settle(Part part) {
+  /**
+   * Marks a part that has run out: an arm or leg is lost, a vital part is simply at zero. The item
+   * on a lost part is added to {@code dropped}; with no list it stays worn until the unit dies.
+   */
+  private void settle(Part part, List<Item> dropped) {
     if (part.getCurrentHealth() <= EPSILON) {
       part.setCurrentHealth(0);
       if (!part.getKind().isVital()) {
         part.setLost(true);
+        if (dropped != null) {
+          var item = gear.release(Slot.on(part.getKind()));
+          if (item != null) {
+            dropped.add(item);
+          }
+        }
       }
     }
   }
@@ -278,13 +329,13 @@ public class Unit extends BaseUnit {
 
   /**
    * Damage of one strike before milestone multipliers: the type's damage scaled by the roll, halved
-   * for each lost arm unless the unit casts.
+   * for each lost arm unless the unit casts, plus the Power of what it wears.
    */
   public double getDamage() {
     var damage = stats.getDamage() * damageFactor;
-    return isCaster()
-        ? damage
-        : damage * Math.pow(LOST_ARM_DAMAGE_FACTOR, lostCount(BodyPart::isArm));
+    var scaled =
+        isCaster() ? damage : damage * Math.pow(LOST_ARM_DAMAGE_FACTOR, lostCount(BodyPart::isArm));
+    return scaled + gear.total(ItemStat.POWER);
   }
 
   /**
@@ -498,18 +549,24 @@ public class Unit extends BaseUnit {
     return parts.stream().anyMatch(part -> part.getKind() == kind && !part.isLost());
   }
 
-  /** Environmental damage: not aimed, spread over every present part in proportion to its size. */
-  public void receiveAttack(Double attack, AttackType attackType) {
+  /**
+   * Environmental damage: not aimed and not armoured, spread over every present part in proportion
+   * to its size.
+   *
+   * @return the items worn on parts this cost the unit; empty for a heal
+   */
+  public List<Item> receiveAttack(Double attack, AttackType attackType) {
     var attackTotal = scaledByWeakness(attack, attackType);
     if (attackTotal < 0) {
       heal(-attackTotal);
-      return;
+      return List.of();
     }
     var taken = attackTotal * lostLegsDamageTakenFactor();
     var max = getMaxHealth();
     if (taken <= 0 || max <= 0) {
-      return;
+      return List.of();
     }
+    var dropped = new ArrayList<Item>();
     // Every part drains in proportion to its maximum, so all lose the same share of it.
     presentParts()
         .toList()
@@ -517,8 +574,9 @@ public class Unit extends BaseUnit {
             part -> {
               part.setCurrentHealth(
                   Math.max(0, part.getCurrentHealth() - taken * part.getMaxHealth() / max));
-              settle(part);
+              settle(part, dropped);
             });
+    return dropped;
   }
 
   @Override

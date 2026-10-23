@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
 
+import io.github.diogohmcruz.towerdungeon.domain.items.Item;
 import io.github.diogohmcruz.towerdungeon.domain.models.AttackType;
 import io.github.diogohmcruz.towerdungeon.domain.models.Enemy;
 import io.github.diogohmcruz.towerdungeon.domain.models.GameState;
@@ -105,8 +106,15 @@ public class PartyCombat {
             });
   }
 
-  public void enemiesAttack(
+  /**
+   * The garrison strikes back.
+   *
+   * @return every item the party lost: worn on a part that was lost, or by a unit that died. Where
+   *     they land is not decided here.
+   */
+  public List<Item> enemiesAttack(
       GameState gameState, List<Enemy> currentEnemies, Map<UnitStats, List<Unit>> unitsOnTower) {
+    var drops = new ArrayList<Item>();
     currentEnemies.forEach(
         currentEnemy -> {
           var unitStatsKeys = new ArrayList<>(unitsOnTower.keySet());
@@ -120,21 +128,24 @@ public class PartyCombat {
           var targetUnitElement = targetUnit.get(randomUnitOnTowerIndex);
           // The enemy's own strikes are aimed at the unit's body; units' strikes at enemies are
           // not until enemies have body parts.
-          new AimedStrike(random, gameState.getConfig().getAiming())
-              .strike(
-                  targetUnitElement,
-                  currentEnemy.getEffectiveDamage()
-                      * targetUnitElement.takenFactorFrom(currentEnemy.getStats()),
-                  currentEnemy.getStats().getAttackType(),
-                  gameState.getConfig().getAiming().profileOf(currentEnemy.getStats()),
-                  currentEnemy.getAccuracy(),
-                  1.0);
+          drops.addAll(
+              new AimedStrike(random, gameState.getConfig().getAiming())
+                  .strike(
+                      targetUnitElement,
+                      currentEnemy.getEffectiveDamage()
+                          * targetUnitElement.takenFactorFrom(currentEnemy.getStats()),
+                      currentEnemy.getStats().getAttackType(),
+                      gameState.getConfig().getAiming().profileOf(currentEnemy.getStats()),
+                      currentEnemy.getAccuracy(),
+                      1.0));
 
           if (targetUnitElement.isDead()) {
             log.info("Enemy {} defeated unit {}", currentEnemy, targetUnitElement);
+            drops.addAll(targetUnitElement.dropAll());
             gameState.removeUnit(targetUnitElement);
           }
         });
+    return drops;
   }
 
   /**

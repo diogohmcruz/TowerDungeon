@@ -1,10 +1,12 @@
 package io.github.diogohmcruz.towerdungeon.domain.services;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.random.RandomGenerator;
 
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
+import io.github.diogohmcruz.towerdungeon.domain.items.Item;
 import io.github.diogohmcruz.towerdungeon.domain.models.Aim;
 import io.github.diogohmcruz.towerdungeon.domain.models.AttackType;
 import io.github.diogohmcruz.towerdungeon.domain.models.BodyPart;
@@ -44,8 +46,9 @@ public class AimedStrike {
    * @param profile weights over the aims; the attacker picks one in proportion
    * @param accuracy the attacker's accuracy in percentage points
    * @param headBias how much likelier the head is than any other part when aiming at one part
+   * @return the items the target lost with any part this hit took off
    */
-  public void strike(
+  public List<Item> strike(
       Unit target,
       double damage,
       AttackType type,
@@ -55,31 +58,34 @@ public class AimedStrike {
     var total = target.scaledByWeakness(damage, type);
     if (total < 0) {
       target.heal(-total);
-      return;
+      return List.of();
     }
     total *= target.lostLegsDamageTakenFactor();
     if (total <= 0) {
-      return;
+      return List.of();
     }
+    var dropped = new ArrayList<Item>();
     var aim = chooseAim(profile);
     var reachable = aim.parts().stream().filter(target::hasPart).toList();
     if (aim == Aim.PART) {
       var part = choosePart(reachable, headBias);
-      land(target, part, total, accuracy);
-      return;
+      land(target, part, total, accuracy, dropped);
+      return dropped;
     }
     var share = total / reachable.size();
     for (var part : reachable) {
-      land(target, part, share, accuracy);
+      land(target, part, share, accuracy, dropped);
     }
+    return dropped;
   }
 
-  private void land(Unit target, BodyPart part, double amount, double accuracy) {
+  private void land(
+      Unit target, BodyPart part, double amount, double accuracy, List<Item> dropped) {
     var missChance = missChance(part, accuracy, target.getEvasion());
     if (random.nextDouble() * 100 < missChance) {
       return;
     }
-    target.damagePart(part, amount);
+    dropped.addAll(target.damagePart(part, amount));
   }
 
   private Aim chooseAim(Map<Aim, Double> profile) {

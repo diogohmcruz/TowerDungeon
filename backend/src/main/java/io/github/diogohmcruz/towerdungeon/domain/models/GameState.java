@@ -978,7 +978,8 @@ public class GameState {
                     unit.getPhobias().stream()
                         .map(phobia -> new PhobiaSnapshot(phobia.getFeared(), phobia.isKnown()))
                         .toList(),
-                    unit.getFearFloor()))
+                    unit.getFearFloor(),
+                    Map.copyOf(unit.getGear().getSlots())))
         .toList();
   }
 
@@ -1005,6 +1006,7 @@ public class GameState {
                         return part;
                       })
                   .toList(),
+              u.gear(),
               config.getBody().getWeights());
       var maxSanity = u.maxSanity() == null ? config.getSanity().getMax() : u.maxSanity();
       unit.restoreMind(

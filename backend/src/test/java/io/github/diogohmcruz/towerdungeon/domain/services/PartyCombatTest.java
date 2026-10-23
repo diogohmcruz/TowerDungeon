@@ -12,6 +12,11 @@ import java.util.random.RandomGenerator;
 import org.junit.jupiter.api.Test;
 
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
+import io.github.diogohmcruz.towerdungeon.domain.items.Item;
+import io.github.diogohmcruz.towerdungeon.domain.items.ItemCategory;
+import io.github.diogohmcruz.towerdungeon.domain.items.ItemRating;
+import io.github.diogohmcruz.towerdungeon.domain.items.ItemStat;
+import io.github.diogohmcruz.towerdungeon.domain.items.ItemTier;
 import io.github.diogohmcruz.towerdungeon.domain.models.AttackType;
 import io.github.diogohmcruz.towerdungeon.domain.models.BodyPart;
 import io.github.diogohmcruz.towerdungeon.domain.models.Enemy;
@@ -361,5 +366,32 @@ class PartyCombatTest {
     tank.receiveAttack(5.0, null);
 
     assertThat(tank.getParts()).allMatch(part -> part.missing() > 0);
+  }
+
+  @Test
+  void aUnitThatDiesInAStrikeDropsEverythingItWore() {
+    var rating = new ItemRating(config.getItems().getWeights());
+    var warrior = recruited(UnitStats.WARRIOR);
+    var charm =
+        new Item(
+            "charm",
+            "charm",
+            ItemTier.LEFTOVER,
+            ItemCategory.TRINKET,
+            Map.of(ItemStat.SANITY, 5.0),
+            null);
+    warrior.equip(charm, rating);
+    // Every part at a sliver, so whatever the strike hits kills or maims.
+    warrior.setCurrentHealth(0.001);
+    state.getUnitsOnTower().put(UnitStats.WARRIOR, new ArrayList<>(List.of(warrior)));
+    var enemies = new ArrayList<>(List.of(new Enemy(EnemyStats.SLIME)));
+
+    var drops = new ArrayList<Item>();
+    for (var strike = 0; strike < 50 && !warrior.isDead(); strike++) {
+      drops.addAll(combat.enemiesAttack(state, enemies, party(warrior)));
+    }
+
+    assertThat(warrior.isDead()).isTrue();
+    assertThat(drops).containsExactly(charm);
   }
 }
