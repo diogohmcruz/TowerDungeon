@@ -14,11 +14,12 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
 import io.github.diogohmcruz.towerdungeon.domain.items.Item;
+import io.github.diogohmcruz.towerdungeon.domain.random.FloorStreams;
+import io.github.diogohmcruz.towerdungeon.domain.random.Names;
 import lombok.AccessLevel;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
-import net.datafaker.Faker;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -56,9 +57,27 @@ public class Enemy extends BaseUnit implements Aimable {
       double healthMultiplier,
       double damageMultiplier,
       boolean boss,
+      FloorStreams streams,
+      GameProperties.Enemies config) {
+    this(
+        nameFor(stats, streams.cosmetic()),
+        stats,
+        healthMultiplier,
+        damageMultiplier,
+        boss,
+        streams,
+        config);
+  }
+
+  /** As above, drawing the body and the name and id from the one generator. */
+  public Enemy(
+      EnemyStats stats,
+      double healthMultiplier,
+      double damageMultiplier,
+      boolean boss,
       RandomGenerator random,
       GameProperties.Enemies config) {
-    this(nameFor(stats), stats, healthMultiplier, damageMultiplier, boss, random, config);
+    this(stats, healthMultiplier, damageMultiplier, boss, FloorStreams.of(random), config);
   }
 
   private Enemy(
@@ -67,27 +86,37 @@ public class Enemy extends BaseUnit implements Aimable {
       double healthMultiplier,
       double damageMultiplier,
       boolean boss,
-      RandomGenerator random,
+      FloorStreams streams,
       GameProperties.Enemies config) {
-    super(name);
+    super(name, streams.cosmetic());
     this.stats = stats;
     this.healthMultiplier = healthMultiplier;
     this.damageMultiplier = damageMultiplier;
     this.boss = boss;
-    layOutBody(rollParts(stats, boss, random, config), config.getWeights());
+    layOutBody(rollParts(stats, boss, streams.generation(), config), config.getWeights());
   }
 
   /**
    * A Risen: a Dead Soldier that carries the name of the Unit who fell, laid out like any other
    * Dead Soldier.
    */
+  public static Enemy risen(String name, FloorStreams streams, GameProperties.Enemies config) {
+    return new Enemy(name, EnemyStats.DEAD_SOLDIERS, 1.0, 1.0, false, streams, config);
+  }
+
+  /** As above, from the one generator. */
   public static Enemy risen(String name, RandomGenerator random, GameProperties.Enemies config) {
-    return new Enemy(name, EnemyStats.DEAD_SOLDIERS, 1.0, 1.0, false, random, config);
+    return risen(name, FloorStreams.of(random), config);
   }
 
   /** An ordinary garrison enemy at base strength. */
+  public Enemy(EnemyStats stats, FloorStreams streams, GameProperties.Enemies config) {
+    this(stats, 1.0, 1.0, false, streams, config);
+  }
+
+  /** An ordinary garrison enemy at base strength, from the one generator. */
   public Enemy(EnemyStats stats, RandomGenerator random, GameProperties.Enemies config) {
-    this(stats, 1.0, 1.0, false, random, config);
+    this(stats, FloorStreams.of(random), config);
   }
 
   private Enemy(
@@ -310,16 +339,13 @@ public class Enemy extends BaseUnit implements Aimable {
     "Granite", "Basalt", "Obsidian", "Marble", "Slate", "Iron", "Bronze", "Onyx"
   };
 
-  private static String nameFor(EnemyStats stats) {
-    var faker = new Faker();
+  private static String nameFor(EnemyStats stats, RandomGenerator cosmetic) {
+    var faker = Names.faker(cosmetic);
     return switch (stats) {
       case SLIME -> capitalize(faker.color().name()) + " Slime";
       case TOWER_BEAST -> "Tower " + capitalize(faker.animal().name());
       case CHIMERA -> capitalize(faker.animal().name()) + " Chimera";
-      case STONE_GOLEM ->
-          GOLEM_MATERIALS[
-                  java.util.concurrent.ThreadLocalRandom.current().nextInt(GOLEM_MATERIALS.length)]
-              + " Golem";
+      case STONE_GOLEM -> GOLEM_MATERIALS[cosmetic.nextInt(GOLEM_MATERIALS.length)] + " Golem";
       default -> faker.greekPhilosopher().name();
     };
   }

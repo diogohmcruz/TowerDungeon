@@ -1,5 +1,6 @@
 package io.github.diogohmcruz.towerdungeon.domain.models.healing;
 
+import static io.github.diogohmcruz.towerdungeon.testsupport.Streams.cosmetic;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
@@ -27,7 +28,7 @@ class RoundRobinFoodDistributionStrategyTest {
   }
 
   private static Unit wounded(double missing) {
-    var unit = new Unit(UnitStats.WARRIOR);
+    var unit = new Unit(UnitStats.WARRIOR, cosmetic());
     unit.setCurrentHealth(unit.getStats().getHealth() - missing);
     return unit;
   }
@@ -77,7 +78,7 @@ class RoundRobinFoodDistributionStrategyTest {
   @Test
   void skipsUnitsAtFullHealth() {
     var village = pantry(100);
-    var healthy = new Unit(UnitStats.WARRIOR);
+    var healthy = new Unit(UnitStats.WARRIOR, cosmetic());
     var hurt = wounded(10);
 
     strategy.distribute(List.of(healthy, hurt), village, CONFIG);
@@ -100,7 +101,7 @@ class RoundRobinFoodDistributionStrategyTest {
   @Test
   void recoverySpendsTheBudgetOnTheLowestRatioPartAndStopsAtItsMaximum() {
     var village = pantry(100);
-    var unit = new Unit(UnitStats.WARRIOR);
+    var unit = new Unit(UnitStats.WARRIOR, cosmetic());
     unit.damagePart(BodyPart.HEAD, 1.0);
     unit.damagePart(BodyPart.TORSO, 4.0);
 
@@ -115,7 +116,7 @@ class RoundRobinFoodDistributionStrategyTest {
   @Test
   void recoveryNeverBringsBackALostPartAndDoesNotCountItAsMissing() {
     var village = pantry(100);
-    var unit = new Unit(UnitStats.WARRIOR);
+    var unit = new Unit(UnitStats.WARRIOR, cosmetic());
     unit.damagePart(BodyPart.LEFT_LEG, 100);
 
     var spent = strategy.distribute(List.of(unit), village, CONFIG);

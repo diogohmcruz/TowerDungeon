@@ -25,12 +25,15 @@ import io.github.diogohmcruz.towerdungeon.domain.models.GameState;
 import io.github.diogohmcruz.towerdungeon.domain.models.TowerFloor;
 import io.github.diogohmcruz.towerdungeon.domain.models.Unit;
 import io.github.diogohmcruz.towerdungeon.domain.models.UnitStats;
+import io.github.diogohmcruz.towerdungeon.domain.random.FloorStreams;
+import io.github.diogohmcruz.towerdungeon.domain.random.RandomSource;
 
 class PartyCombatTest {
   private static final double COST = 1.0;
 
   private final GameProperties config = new GameProperties();
-  private final GameState state = new GameState(config);
+  private final GameState state =
+      new GameState(config, RandomSource.scripted(new SplittableRandom(7)));
   private final RandomGenerator random = new SplittableRandom(7);
 
   {
@@ -47,11 +50,16 @@ class PartyCombatTest {
     aiming.setLegMiss(0);
   }
 
+  private int enemyCount;
+
   private Enemy enemy(EnemyStats stats) {
-    return new Enemy(stats, new SplittableRandom(3), config.getEnemies());
+    // The body is rolled from seed 3 as ever; each enemy gets its own id, as in the game, where one
+    // cosmetic stream numbers a whole Garrison.
+    var streams = new FloorStreams(new SplittableRandom(3), new SplittableRandom(++enemyCount));
+    return new Enemy(stats, streams, config.getEnemies());
   }
 
-  private final PartyCombat combat = new PartyCombat(new SplittableRandom(7));
+  private final PartyCombat combat = new PartyCombat();
 
   private Unit recruited(UnitStats stats) {
     // These tests pin exact numbers from type stats, so recruits here are unrolled (factor 1.0).
@@ -331,7 +339,8 @@ class PartyCombatTest {
             return 0;
           }
         };
-    var combat = new PartyCombat(alwaysFirst);
+    var combat = new PartyCombat();
+    var state = new GameState(config, RandomSource.scripted(alwaysFirst));
     var warrior = recruited(UnitStats.WARRIOR);
     var mage = recruited(UnitStats.MAGE);
     var dying = enemy(EnemyStats.DEAD_SOLDIERS);

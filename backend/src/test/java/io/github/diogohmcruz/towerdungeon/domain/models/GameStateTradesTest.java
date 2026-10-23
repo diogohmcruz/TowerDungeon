@@ -1,5 +1,6 @@
 package io.github.diogohmcruz.towerdungeon.domain.models;
 
+import static io.github.diogohmcruz.towerdungeon.testsupport.Streams.cosmetic;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
@@ -12,6 +13,7 @@ import org.junit.jupiter.api.Test;
 
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
 import io.github.diogohmcruz.towerdungeon.domain.models.architecture.ArchitecturePlan;
+import io.github.diogohmcruz.towerdungeon.domain.random.RandomSource;
 import tools.jackson.databind.json.JsonMapper;
 
 /** Trades at the level of the Campaign: named Starvation, The Count, Emergency Tilling, loads. */
@@ -22,7 +24,7 @@ class GameStateTradesTest {
     config.getVillage().setStartingVillagers(villagers);
     var state = new GameState(config);
     for (var i = 0; i < warriors; i++) {
-      state.addUnits(UnitStats.WARRIOR, List.of(new Unit(UnitStats.WARRIOR, "Tomas")));
+      state.addUnits(UnitStats.WARRIOR, List.of(new Unit(UnitStats.WARRIOR, "Tomas", cosmetic())));
     }
     return state;
   }
@@ -196,7 +198,7 @@ class GameStateTradesTest {
     var back =
         mapper.readValue(
             json, io.github.diogohmcruz.towerdungeon.domain.models.snapshot.GameSnapshot.class);
-    var restored = GameState.restore(back, config, new SplittableRandom(5), plan);
+    var restored = GameState.restore(back, config, new RandomSource(5), plan);
 
     assertThat(restored.getVillage().tomeLevel(Tome.SEAM_CHARTS)).isEqualTo(2);
     assertThat(restored.getVillage().postLevel(Trade.SCRIBE)).isEqualTo(3);
@@ -227,7 +229,7 @@ class GameStateTradesTest {
     var back =
         mapper.readValue(
             json, io.github.diogohmcruz.towerdungeon.domain.models.snapshot.GameSnapshot.class);
-    var restored = GameState.restore(back, config, random, plan);
+    var restored = GameState.restore(back, config, new RandomSource(5), plan);
 
     assertThat(restored.toSnapshot()).isEqualTo(state.toSnapshot());
     assertThat(restored.getVillage().hands(Trade.BREAKER)).isEqualTo(2);

@@ -6,7 +6,6 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Function;
 import java.util.random.RandomGenerator;
 
@@ -736,10 +735,6 @@ public class Village {
     villagersLost++;
     clampTrades();
     return Optional.of(lost);
-  }
-
-  public void starve() {
-    starve(ThreadLocalRandom.current());
   }
 
   /** Records a Reserve lost to Starvation, for The Count. */

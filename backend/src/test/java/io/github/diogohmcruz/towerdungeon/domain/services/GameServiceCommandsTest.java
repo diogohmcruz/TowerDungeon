@@ -10,7 +10,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.SplittableRandom;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,6 +25,7 @@ import io.github.diogohmcruz.towerdungeon.domain.models.Unit;
 import io.github.diogohmcruz.towerdungeon.domain.models.UnitStats;
 import io.github.diogohmcruz.towerdungeon.domain.models.architecture.ArchitecturePlan;
 import io.github.diogohmcruz.towerdungeon.domain.observation.EventLog;
+import io.github.diogohmcruz.towerdungeon.domain.random.SeedSource;
 import io.github.diogohmcruz.towerdungeon.persistence.CampaignStore;
 import reactor.core.publisher.Mono;
 import tools.jackson.databind.ObjectMapper;
@@ -51,9 +51,9 @@ class GameServiceCommandsTest {
         new GameService(
             config,
             new ObjectMapper(),
-            new SplittableRandom(7),
+            SeedSource.fixed(7),
             mock(ArchitecturePlan.class),
-            new PartyCombat(new SplittableRandom(7)),
+            new PartyCombat(),
             store,
             mock(FloorBundle.class),
             mock(AutosaveCoordinator.class));

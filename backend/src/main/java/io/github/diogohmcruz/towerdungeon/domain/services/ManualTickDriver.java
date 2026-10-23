@@ -14,14 +14,13 @@ import io.github.diogohmcruz.towerdungeon.domain.models.GameState;
  * and Starvation damage are proportional to part health. The state's lock is taken per second, so a
  * long advance never blocks a reader for its whole length.
  *
- * <p>Draws are not yet seeded: until the seeded-run work lands, a run is deterministic in its tick
- * order only, and {@link #DETERMINISM_NOTE} says so.
+ * <p>A Sandbox is seeded, so a run is deterministic in its draws as well as its tick order: the
+ * same seed and the same commands and ticks make the same run. {@link #DETERMINISM_NOTE} says so.
  */
 public final class ManualTickDriver implements TickDriver {
-  /** Said in every Sandbox response until seeded runs exist. */
+  /** Said in every Sandbox response. */
   public static final String DETERMINISM_NOTE =
-      "Draw determinism arrives with the seeded-run work: until then a run is deterministic in"
-          + " its tick order only, not in its random draws.";
+      "Draws are seeded: the same seed, commands and ticks always make the same run.";
 
   /** Why an advance stopped. */
   public enum Stop {

@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.SplittableRandom;
 
 import org.junit.jupiter.api.Test;
 
@@ -12,6 +11,7 @@ import io.github.diogohmcruz.towerdungeon.config.GameProperties;
 import io.github.diogohmcruz.towerdungeon.domain.models.GameState;
 import io.github.diogohmcruz.towerdungeon.domain.models.Tower;
 import io.github.diogohmcruz.towerdungeon.domain.models.architecture.ArchitecturePlan;
+import io.github.diogohmcruz.towerdungeon.domain.random.RandomSource;
 
 /**
  * The opening of the game must be gentle: the four configured Founders (Yuva, two Warriors and an
@@ -25,7 +25,7 @@ class FoundersFirstReachTest {
   /** Floors cleared (0 to FLOORS) by one seeded run of the Founders from Floor 1. */
   private static int floorsCleared(long seed) {
     var config = new GameProperties();
-    var random = new SplittableRandom(seed);
+    var random = new RandomSource(seed);
     var plan =
         ArchitecturePlan.generate(
             config.getArchitecture().getSeed(),
@@ -33,12 +33,12 @@ class FoundersFirstReachTest {
             config.getBoss().getInterval(),
             config.getEnemies().getSurgeInterval());
     var tower = new Tower(100, config.getBoss(), config.getEnemies(), random, plan);
-    var state = new GameState(config);
-    var combat = new PartyCombat(random);
+    var state = new GameState(config, random);
+    var combat = new PartyCombat();
 
     var founders =
         config.getStart().getFounders().stream()
-            .map(founder -> state.recruitFounder(founder, random))
+            .map(founder -> state.recruitFounder(founder))
             .toList();
     for (var unit : founders) {
       state.getUnitsOnTower().computeIfAbsent(unit.getStats(), _ -> new ArrayList<>()).add(unit);

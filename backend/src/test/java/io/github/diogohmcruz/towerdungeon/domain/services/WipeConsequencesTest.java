@@ -23,6 +23,8 @@ import io.github.diogohmcruz.towerdungeon.domain.models.Unit;
 import io.github.diogohmcruz.towerdungeon.domain.models.UnitStats;
 import io.github.diogohmcruz.towerdungeon.domain.models.architecture.ArchitecturePlan;
 import io.github.diogohmcruz.towerdungeon.domain.models.snapshot.GameSnapshot;
+import io.github.diogohmcruz.towerdungeon.domain.random.RandomSource;
+import io.github.diogohmcruz.towerdungeon.domain.random.SeedSource;
 import io.github.diogohmcruz.towerdungeon.persistence.FileCampaignStore;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -53,16 +55,18 @@ class WipeConsequencesTest {
         new GameService(
             config,
             mapper,
-            random,
+            SeedSource.fixed(9),
             plan,
-            new PartyCombat(random),
+            new PartyCombat(),
             store,
             mock(FloorBundle.class),
             new AutosaveCoordinator(
                 store, mapper, config.getPersistence(), "test", System::nanoTime));
     service.attach(PLAYER, "ws-1").block();
     state = service.playerState(PLAYER);
-    tower = new Tower(100, config.getBoss().copy(), config.getEnemies().copy(), random, plan);
+    tower =
+        new Tower(
+            100, config.getBoss().copy(), config.getEnemies().copy(), state.getRandom(), plan);
     state.setTower(tower);
     tower.startNewRun();
     state.setExpeditionActive(true);
@@ -296,7 +300,8 @@ class WipeConsequencesTest {
 
     var json = mapper.writeValueAsString(state.toSnapshot());
     var restored =
-        GameState.restore(mapper.readValue(json, GameSnapshot.class), config, random, plan);
+        GameState.restore(
+            mapper.readValue(json, GameSnapshot.class), config, new RandomSource(5), plan);
 
     assertThat(restored.getWallOfNames()).isEqualTo(state.getWallOfNames()).hasSize(4);
     assertThat(restored.getTower().getFloorMemory().risenOn(7)).isEqualTo(risenOn(7)).hasSize(2);
@@ -311,7 +316,8 @@ class WipeConsequencesTest {
     assertThat(old).doesNotContain("wallOfNames").doesNotContain("\"risen\"");
 
     var restored =
-        GameState.restore(mapper.readValue(old, GameSnapshot.class), config, random, plan);
+        GameState.restore(
+            mapper.readValue(old, GameSnapshot.class), config, new RandomSource(5), plan);
 
     assertThat(restored.getWallOfNames()).isEmpty();
   }

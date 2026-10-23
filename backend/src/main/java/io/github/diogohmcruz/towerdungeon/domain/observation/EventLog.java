@@ -1,9 +1,11 @@
 package io.github.diogohmcruz.towerdungeon.domain.observation;
 
 import java.util.ArrayDeque;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 
 /**
  * A bounded ring of what happened in one Campaign, newest last. It is a developer-facing event
@@ -20,7 +22,9 @@ public final class EventLog {
    */
   public record Event(long id, long stateSeq, String type, Map<String, Object> data) {
     public Event {
-      data = Map.copyOf(data);
+      // In key order, so that the same event reads the same in every launch of the server (an
+      // immutable Map.of orders its entries differently each time the JVM starts).
+      data = Collections.unmodifiableMap(new TreeMap<>(data));
     }
   }
 

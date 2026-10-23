@@ -1,5 +1,6 @@
 package io.github.diogohmcruz.towerdungeon.domain.observation;
 
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.TreeMap;
@@ -53,9 +54,9 @@ public final class AimTally {
     data.put("hits", hits);
     data.put("misses", misses);
     data.put("partsLost", partsLost);
-    data.put("aims", Map.copyOf(aims));
-    data.put("partsHit", Map.copyOf(partsHit));
-    data.put("partsMissed", Map.copyOf(partsMissed));
+    data.put("aims", Collections.unmodifiableMap(aims));
+    data.put("partsHit", Collections.unmodifiableMap(partsHit));
+    data.put("partsMissed", Collections.unmodifiableMap(partsMissed));
     return data;
   }
 }

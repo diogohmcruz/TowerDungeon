@@ -1,5 +1,6 @@
 package io.github.diogohmcruz.towerdungeon.domain.models;
 
+import static io.github.diogohmcruz.towerdungeon.testsupport.Streams.cosmetic;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
@@ -25,7 +26,7 @@ class SanityAndPhobiaTest {
 
   @Test
   void sanityIsClampedAtZero() {
-    var unit = new Unit(UnitStats.WARRIOR);
+    var unit = new Unit(UnitStats.WARRIOR, cosmetic());
 
     unit.changeSanity(-250);
 
@@ -34,7 +35,7 @@ class SanityAndPhobiaTest {
 
   @Test
   void aGainBeyondFullHealsTheLowestRatioPart() {
-    var unit = new Unit(UnitStats.WARRIOR);
+    var unit = new Unit(UnitStats.WARRIOR, cosmetic());
     unit.damagePart(BodyPart.TORSO, 10);
     var wounded = unit.getCurrentHealth();
     unit.changeSanity(-3);
@@ -47,7 +48,7 @@ class SanityAndPhobiaTest {
 
   @Test
   void severityRunsFromAQuarterAtFullSanityToOneAtZero() {
-    var unit = new Unit(UnitStats.WARRIOR);
+    var unit = new Unit(UnitStats.WARRIOR, cosmetic());
     assertThat(unit.getSeverity()).isEqualTo(0.25, within(1e-9));
 
     unit.changeSanity(-50);
@@ -59,7 +60,7 @@ class SanityAndPhobiaTest {
 
   @Test
   void aPhobicUnitScalesDamageAndTakenOnlyAgainstItsFearedType() {
-    var unit = new Unit(UnitStats.WARRIOR);
+    var unit = new Unit(UnitStats.WARRIOR, cosmetic());
     unit.addPhobia(EnemyStats.SLIME);
 
     assertThat(unit.damageFactorAgainst(EnemyStats.SLIME)).isEqualTo(0.875, within(1e-9));
@@ -102,7 +103,7 @@ class SanityAndPhobiaTest {
 
   @Test
   void aFixedStrengthUnitAndTheFoundersDrawNoPhobias() {
-    var fixed = new Unit(UnitStats.WARRIOR);
+    var fixed = new Unit(UnitStats.WARRIOR, cosmetic());
     fixed.setFixedStrengths(true);
     for (var seed = 0; seed < 200; seed++) {
       fixed.rollPhobias(new SplittableRandom(seed));
@@ -119,7 +120,7 @@ class SanityAndPhobiaTest {
 
   @Test
   void aPhobiaShowsNoTypeUntilItIsKnown() throws Exception {
-    var unit = new Unit(UnitStats.WARRIOR);
+    var unit = new Unit(UnitStats.WARRIOR, cosmetic());
     unit.addPhobia(EnemyStats.CHIMERA);
     var mapper = JsonMapper.builder().build();
 

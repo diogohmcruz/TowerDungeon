@@ -12,7 +12,6 @@ import static org.mockito.Mockito.when;
 
 import java.time.Duration;
 import java.util.Map;
-import java.util.SplittableRandom;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
@@ -26,6 +25,8 @@ import io.github.diogohmcruz.towerdungeon.domain.models.BaseUnit;
 import io.github.diogohmcruz.towerdungeon.domain.models.GameState;
 import io.github.diogohmcruz.towerdungeon.domain.models.UnitStats;
 import io.github.diogohmcruz.towerdungeon.domain.models.architecture.ArchitecturePlan;
+import io.github.diogohmcruz.towerdungeon.domain.random.RandomSource;
+import io.github.diogohmcruz.towerdungeon.domain.random.SeedSource;
 import io.github.diogohmcruz.towerdungeon.domain.services.ManualTickDriver.Stop;
 import io.github.diogohmcruz.towerdungeon.domain.services.SandboxRegistry.Status;
 import io.github.diogohmcruz.towerdungeon.persistence.CampaignStore;
@@ -54,9 +55,9 @@ class SandboxCampaignTest {
         new GameService(
             config,
             mapper,
-            new SplittableRandom(7),
+            SeedSource.fixed(7),
             mock(ArchitecturePlan.class),
-            new PartyCombat(new SplittableRandom(7)),
+            new PartyCombat(),
             store,
             mock(FloorBundle.class),
             saves);
@@ -131,10 +132,7 @@ class SandboxCampaignTest {
     assertThat(onTower.hasUnitsOnTower()).isTrue();
     var twin =
         GameState.restore(
-            onTower.toSnapshot(),
-            config.copy(),
-            new SplittableRandom(7),
-            mock(ArchitecturePlan.class));
+            onTower.toSnapshot(), config.copy(), new RandomSource(7), mock(ArchitecturePlan.class));
 
     var before = health(onTower);
 
@@ -278,8 +276,8 @@ class SandboxCampaignTest {
     var opened = registry.open(GRANT, null, null);
     var advance = registry.advance(GRANT, opened.sandboxId(), 1, null);
 
-    assertThat(opened.note()).contains("Draw determinism arrives");
-    assertThat(advance.note()).contains("Draw determinism arrives");
+    assertThat(opened.note()).contains("Draws are seeded");
+    assertThat(advance.note()).contains("Draws are seeded");
   }
 
   // ---- one configuration each

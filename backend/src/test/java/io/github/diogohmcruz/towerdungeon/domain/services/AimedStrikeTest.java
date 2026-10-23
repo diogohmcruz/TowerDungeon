@@ -1,5 +1,6 @@
 package io.github.diogohmcruz.towerdungeon.domain.services;
 
+import static io.github.diogohmcruz.towerdungeon.testsupport.Streams.cosmetic;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
@@ -55,7 +56,7 @@ class AimedStrikeTest {
 
   /** A unit with no weakness to a null attack type, so damage numbers read straight off. */
   private static Unit tank() {
-    return new Unit(UnitStats.TANK);
+    return new Unit(UnitStats.TANK, cosmetic());
   }
 
   @Test
@@ -180,7 +181,7 @@ class AimedStrikeTest {
 
   @Test
   void weaknessScalesTheWholeHitBeforeItIsSplit() {
-    var warrior = new Unit(UnitStats.WARRIOR);
+    var warrior = new Unit(UnitStats.WARRIOR, cosmetic());
     // A Warrior takes half from melee.
     new AimedStrike(script(0.0, 0.99, 0.99, 0.99, 0.99, 0.99, 0.99), config)
         .strike(warrior, 12.0, AttackType.MELEE, only(Aim.BODY), 0, 1.0);
@@ -239,11 +240,11 @@ class AimedStrikeTest {
 
   @Test
   void baseAccuracyAndEvasionFollowTheType() {
-    assertThat(new Unit(UnitStats.ARCHER).getAccuracy()).isEqualTo(10);
-    assertThat(new Unit(UnitStats.ROGUE).getAccuracy()).isEqualTo(10);
-    assertThat(new Unit(UnitStats.ROGUE).getEvasion()).isEqualTo(10);
-    assertThat(new Unit(UnitStats.WARRIOR).getAccuracy()).isZero();
-    assertThat(new Unit(UnitStats.WARRIOR).getEvasion()).isZero();
+    assertThat(new Unit(UnitStats.ARCHER, cosmetic()).getAccuracy()).isEqualTo(10);
+    assertThat(new Unit(UnitStats.ROGUE, cosmetic()).getAccuracy()).isEqualTo(10);
+    assertThat(new Unit(UnitStats.ROGUE, cosmetic()).getEvasion()).isEqualTo(10);
+    assertThat(new Unit(UnitStats.WARRIOR, cosmetic()).getAccuracy()).isZero();
+    assertThat(new Unit(UnitStats.WARRIOR, cosmetic()).getEvasion()).isZero();
   }
 
   @Test

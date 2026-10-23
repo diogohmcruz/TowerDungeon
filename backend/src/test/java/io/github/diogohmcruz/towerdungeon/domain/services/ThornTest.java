@@ -1,5 +1,6 @@
 package io.github.diogohmcruz.towerdungeon.domain.services;
 
+import static io.github.diogohmcruz.towerdungeon.testsupport.Streams.cosmetic;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
@@ -21,11 +22,12 @@ import io.github.diogohmcruz.towerdungeon.domain.models.EnemyStats;
 import io.github.diogohmcruz.towerdungeon.domain.models.GameState;
 import io.github.diogohmcruz.towerdungeon.domain.models.Unit;
 import io.github.diogohmcruz.towerdungeon.domain.models.UnitStats;
+import io.github.diogohmcruz.towerdungeon.domain.random.RandomSource;
 
 class ThornTest {
   private final GameProperties config = noMisses();
   private final GameState state = new GameState(config);
-  private final PartyCombat combat = new PartyCombat(new SplittableRandom(7));
+  private final PartyCombat combat = new PartyCombat();
 
   private static GameProperties noMisses() {
     var config = new GameProperties();
@@ -39,7 +41,7 @@ class ThornTest {
   }
 
   private static Unit thornWearer() {
-    var unit = new Unit(UnitStats.TANK);
+    var unit = new Unit(UnitStats.TANK, cosmetic());
     unit.setHealthFactor(100);
     unit.equip(
         new Item("thorn", "Thorn", ItemTier.TALISMAN, ItemCategory.TRINKET, Map.of(), "thorn"),
@@ -84,7 +86,8 @@ class ThornTest {
     var beast = enemy(EnemyStats.TOWER_BEAST);
     var healthBefore = beast.getCurrentHealth();
     // Every draw is zero, below any miss chance, so every blow misses.
-    var missing = new PartyCombat(() -> 0L);
+    var missing = new PartyCombat();
+    var state = new GameState(config, RandomSource.scripted(() -> 0L));
     var unitHealth = unit.getCurrentHealth();
 
     missing.enemiesAttack(state, new ArrayList<>(List.of(beast)), party(unit));
@@ -110,7 +113,7 @@ class ThornTest {
 
   @Test
   void aWearerWithoutThornReturnsNothing() {
-    var unit = new Unit(UnitStats.TANK);
+    var unit = new Unit(UnitStats.TANK, cosmetic());
     unit.setHealthFactor(100);
     var beast = enemy(EnemyStats.TOWER_BEAST);
     var healthBefore = beast.getCurrentHealth();
@@ -122,7 +125,7 @@ class ThornTest {
 
   @Test
   void attritionOnTheTowerIsHalvedBySaltSatchelOnly() {
-    var wearer = new Unit(UnitStats.WARRIOR);
+    var wearer = new Unit(UnitStats.WARRIOR, cosmetic());
     wearer.equip(
         new Item(
             "yuvas-salt-satchel",
@@ -132,7 +135,7 @@ class ThornTest {
             Map.of(),
             ItemEffect.YUVAS_SALT_SATCHEL.id()),
         new ItemRating(config.getItems().getWeights()));
-    var bare = new Unit(UnitStats.WARRIOR);
+    var bare = new Unit(UnitStats.WARRIOR, cosmetic());
     var party = new LinkedHashMap<UnitStats, List<Unit>>();
     party.put(UnitStats.WARRIOR, new ArrayList<>(List.of(wearer, bare)));
     state.setUnitsOnTower(party);

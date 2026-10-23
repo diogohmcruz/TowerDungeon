@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
 import io.github.diogohmcruz.towerdungeon.domain.models.architecture.ArchitecturePlan;
 import io.github.diogohmcruz.towerdungeon.domain.models.snapshot.GameSnapshot;
+import io.github.diogohmcruz.towerdungeon.domain.random.RandomSource;
 import tools.jackson.databind.json.JsonMapper;
 
 /** Trust earned on Extraction, the Thought-Binding Ring it buys and Survivors' Notes. */
@@ -32,7 +33,7 @@ class TrustRingTest {
             100,
             config.getBoss().getInterval(),
             config.getEnemies().getSurgeInterval());
-    var tower = new Tower(100, config.getBoss(), config.getEnemies(), random, plan);
+    var tower = new Tower(100, config.getBoss(), config.getEnemies(), new RandomSource(3), plan);
     tower.startNewRunAt(floor);
     return tower;
   }
@@ -195,7 +196,7 @@ class TrustRingTest {
 
     var mapper = JsonMapper.builder().build();
     var back = mapper.readValue(mapper.writeValueAsString(state.toSnapshot()), GameSnapshot.class);
-    var restored = GameState.restore(back, config, random, plan);
+    var restored = GameState.restore(back, config, new RandomSource(5), plan);
 
     assertThat(restored.getVillage().getTrust()).isEqualTo(21.5d);
     assertThat(restored.getVillage().getRingLevel()).isEqualTo(3);

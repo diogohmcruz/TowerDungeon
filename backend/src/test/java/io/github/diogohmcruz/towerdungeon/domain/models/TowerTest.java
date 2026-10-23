@@ -3,8 +3,6 @@ package io.github.diogohmcruz.towerdungeon.domain.models;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
-import java.util.SplittableRandom;
-import java.util.random.RandomGenerator;
 import java.util.stream.IntStream;
 
 import org.junit.jupiter.api.Test;
@@ -12,15 +10,16 @@ import org.junit.jupiter.api.Test;
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
 import io.github.diogohmcruz.towerdungeon.domain.models.architecture.Architecture;
 import io.github.diogohmcruz.towerdungeon.domain.models.architecture.ArchitecturePlan;
+import io.github.diogohmcruz.towerdungeon.domain.random.RandomSource;
 
 class TowerTest {
   private static final int FLOORS = 30;
 
-  private static Tower tower(RandomGenerator random) {
+  private static Tower tower(RandomSource random) {
     return tower(random, new GameProperties());
   }
 
-  private static Tower tower(RandomGenerator random, GameProperties config) {
+  private static Tower tower(RandomSource random, GameProperties config) {
     var plan =
         ArchitecturePlan.generate(
             config.getArchitecture().getSeed(),
@@ -30,7 +29,7 @@ class TowerTest {
     return new Tower(100, config.getBoss(), config.getEnemies(), random, plan);
   }
 
-  private static List<List<String>> climb(RandomGenerator random) {
+  private static List<List<String>> climb(RandomSource random) {
     var tower = tower(random);
     return IntStream.range(0, FLOORS)
         .<List<String>>mapToObj(
@@ -45,17 +44,17 @@ class TowerTest {
 
   @Test
   void sameSeedBuildsTheSameGarrisons() {
-    assertThat(climb(new SplittableRandom(42))).isEqualTo(climb(new SplittableRandom(42)));
+    assertThat(climb(new RandomSource(42))).isEqualTo(climb(new RandomSource(42)));
   }
 
   @Test
   void differentSeedsBuildDifferentGarrisons() {
-    assertThat(climb(new SplittableRandom(1))).isNotEqualTo(climb(new SplittableRandom(2)));
+    assertThat(climb(new RandomSource(1))).isNotEqualTo(climb(new RandomSource(2)));
   }
 
   @Test
   void everyDiscoveredFloorCarriesItsArchitectureAndVariant() {
-    var tower = tower(new SplittableRandom(1));
+    var tower = tower(new RandomSource(1));
 
     tower.moveToNextFloor();
     tower.moveToNextFloor();
@@ -69,7 +68,7 @@ class TowerTest {
   @Test
   void garrisonsFollowThePartRangesAndGuardiansAlwaysHaveSixParts() {
     var config = new GameProperties();
-    var tower = tower(new SplittableRandom(11), config);
+    var tower = tower(new RandomSource(11), config);
     var seenGuardians = 0;
 
     for (var i = 0; i < 100; i++) {
@@ -101,7 +100,7 @@ class TowerTest {
   }
 
   private static List<Integer> bodyLayoutsOfAClimb(long seed) {
-    var tower = tower(new SplittableRandom(seed));
+    var tower = tower(new RandomSource(seed));
     return IntStream.range(0, FLOORS)
         .boxed()
         .flatMap(
@@ -115,7 +114,7 @@ class TowerTest {
 
   @Test
   void undiscoveredFloorsAreNeverPartOfTheTower() {
-    var tower = tower(new SplittableRandom(1));
+    var tower = tower(new RandomSource(1));
 
     tower.moveToNextFloor();
 
@@ -124,7 +123,7 @@ class TowerTest {
 
   @Test
   void layoutVersionBumpsWhenAFloorIsAddedButNotWhenItIsRepopulated() {
-    var tower = tower(new SplittableRandom(1));
+    var tower = tower(new RandomSource(1));
     var initial = tower.getLayoutVersion();
 
     tower.moveToNextFloor();
@@ -138,7 +137,7 @@ class TowerTest {
 
   @Test
   void layoutVersionBumpsWhenAGuardianIsSlainOnceOnly() {
-    var tower = tower(new SplittableRandom(1));
+    var tower = tower(new RandomSource(1));
     var initial = tower.getLayoutVersion();
 
     tower.markBossCleared(10);
@@ -151,7 +150,7 @@ class TowerTest {
 
   @Test
   void slainGuardiansAreExposedInAscendingOrder() {
-    var tower = tower(new SplittableRandom(1));
+    var tower = tower(new RandomSource(1));
 
     tower.markBossCleared(30);
     tower.markBossCleared(10);
@@ -161,7 +160,7 @@ class TowerTest {
 
   @Test
   void startingAtAShortcutFloorAddsItToTheTower() {
-    var tower = tower(new SplittableRandom(1));
+    var tower = tower(new RandomSource(1));
 
     tower.startNewRunAt(15);
 
@@ -191,7 +190,7 @@ class TowerTest {
 
   @Test
   void firstReachFloorsAreDiscountedAndFloorTenOnwardIsNot() {
-    var tower = tower(new SplittableRandom(1), noVariance());
+    var tower = tower(new RandomSource(1), noVariance());
     climbTo(tower, 9);
     tower.moveToNextFloor();
     tower.moveToNextFloor();
@@ -209,12 +208,12 @@ class TowerTest {
 
   @Test
   void aSlainGuardianBelowAFloorRaisesItsBudgetOneStepEach() {
-    var plain = tower(new SplittableRandom(1), noVariance());
+    var plain = tower(new RandomSource(1), noVariance());
     plain.startNewRunAt(11);
-    var oneStep = tower(new SplittableRandom(1), noVariance());
+    var oneStep = tower(new RandomSource(1), noVariance());
     oneStep.markBossCleared(10);
     oneStep.startNewRunAt(11);
-    var twoSteps = tower(new SplittableRandom(1), noVariance());
+    var twoSteps = tower(new RandomSource(1), noVariance());
     twoSteps.markBossCleared(5);
     twoSteps.markBossCleared(10);
     twoSteps.startNewRunAt(11);
@@ -227,7 +226,7 @@ class TowerTest {
 
   @Test
   void aSlainGuardianAboveAFloorEasesItInsteadOfSteppingItUp() {
-    var tower = tower(new SplittableRandom(1), noVariance());
+    var tower = tower(new RandomSource(1), noVariance());
     tower.markBossCleared(20);
     tower.startNewRunAt(11);
 

@@ -1,15 +1,16 @@
 package io.github.diogohmcruz.towerdungeon.domain.models;
 
+import static io.github.diogohmcruz.towerdungeon.testsupport.Streams.cosmetic;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
 import java.util.List;
-import java.util.SplittableRandom;
 
 import org.junit.jupiter.api.Test;
 
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
 import io.github.diogohmcruz.towerdungeon.domain.models.architecture.ArchitecturePlan;
+import io.github.diogohmcruz.towerdungeon.domain.random.RandomSource;
 
 /** Salt Pans, salted Supplies and the Loadout's preview. */
 class SaltTest {
@@ -25,7 +26,7 @@ class SaltTest {
     config.getVillage().setStartingVillagers(villagers);
     var state = new GameState(config);
     for (var i = 0; i < warriors; i++) {
-      state.addUnits(UnitStats.WARRIOR, List.of(new Unit(UnitStats.WARRIOR, "Tomas")));
+      state.addUnits(UnitStats.WARRIOR, List.of(new Unit(UnitStats.WARRIOR, "Tomas", cosmetic())));
     }
     state.recordFloorReached(highestFloor);
     state.setVillageTier(tier);
@@ -200,7 +201,7 @@ class SaltTest {
   @Test
   void theLoadoutStatesCapacityAndWhatSettingOutLeavesInThePantry() {
     var state = state(140, 20, 6, 5);
-    state.addUnits(UnitStats.PORTER, List.of(new Unit(UnitStats.PORTER, "Hale")));
+    state.addUnits(UnitStats.PORTER, List.of(new Unit(UnitStats.PORTER, "Hale", cosmetic())));
 
     var loadout = state.getLoadout();
 
@@ -241,7 +242,7 @@ class SaltTest {
         GameState.restore(
             snapshot,
             config,
-            new SplittableRandom(1),
+            new RandomSource(1),
             ArchitecturePlan.generate(
                 config.getArchitecture().getSeed(),
                 config.getTower().getMaxFloor(),

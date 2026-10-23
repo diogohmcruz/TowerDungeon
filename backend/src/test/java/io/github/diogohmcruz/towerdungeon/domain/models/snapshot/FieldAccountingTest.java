@@ -57,7 +57,8 @@ class FieldAccountingTest {
           Map.entry("tally", "CampaignSnapshot.tally"),
           Map.entry("villageTier", "CampaignSnapshot.villageTier"),
           Map.entry("runFallen", "ExpeditionSnapshot.runFallen"),
-          Map.entry("wallOfNames", "CampaignSnapshot.wallOfNames"));
+          Map.entry("wallOfNames", "CampaignSnapshot.wallOfNames"),
+          Map.entry("random", "GameSnapshot.random"));
 
   private static final Map<String, String> GAME_STATE_TRANSIENT =
       Map.of(
@@ -115,7 +116,9 @@ class FieldAccountingTest {
                   + " ExpeditionSnapshot.garrison",
           "bossConfig", "per-campaign copy of the config, supplied on restore",
           "enemiesConfig", "per-campaign copy of the config, supplied on restore",
-          "random", "a source of randomness, supplied on restore",
+          "random",
+              "the Campaign's RandomSource, which lives on GameState and is saved as"
+                  + " GameSnapshot.random; the visits to each floor are RandomSnapshot.floorVisits",
           "architecturePlan", "derived from the architecture seed in config",
           "layoutVersion", "client redraw counter, recomputed on restore");
 

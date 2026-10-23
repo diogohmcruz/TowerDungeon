@@ -1,5 +1,6 @@
 package io.github.diogohmcruz.towerdungeon.domain.services;
 
+import static io.github.diogohmcruz.towerdungeon.testsupport.Streams.cosmetic;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 import static org.mockito.Mockito.mockingDetails;
@@ -26,12 +27,20 @@ import io.github.diogohmcruz.towerdungeon.domain.models.Tower;
 import io.github.diogohmcruz.towerdungeon.domain.models.Unit;
 import io.github.diogohmcruz.towerdungeon.domain.models.UnitStats;
 import io.github.diogohmcruz.towerdungeon.domain.models.architecture.ArchitecturePlan;
+import io.github.diogohmcruz.towerdungeon.domain.random.RandomSource;
 
 class FloorBundleTest {
   private final GameProperties config = new GameProperties();
 
-  private FloorBundle bundle(RandomGenerator random) {
-    return new FloorBundle(random, config, new LeftoverGenerator(random, config));
+  /** A bundle together with the stream its draws come from. */
+  private record Seeded(FloorBundle bundle, RandomGenerator random) {
+    void resolve(GameState state, int floor, boolean guardian) {
+      bundle.resolve(state, floor, guardian, random);
+    }
+  }
+
+  private Seeded bundle(RandomGenerator random) {
+    return new Seeded(new FloorBundle(config, new LeftoverGenerator(config)), random);
   }
 
   private static Item weapon(String id, double power) {
@@ -48,13 +57,13 @@ class FloorBundleTest {
             config.getBoss().getInterval(),
             config.getEnemies().getSurgeInterval());
     state.setTower(
-        new Tower(100, config.getBoss(), config.getEnemies(), new SplittableRandom(0), plan));
+        new Tower(100, config.getBoss(), config.getEnemies(), new RandomSource(0), plan));
     state.dropGear(3, List.of(waiting));
     for (var i = 0; i < size; i++) {
       state
           .getUnitsOnTower()
           .computeIfAbsent(UnitStats.WARRIOR, _ -> new ArrayList<>())
-          .add(new Unit(UnitStats.WARRIOR, "W" + i));
+          .add(new Unit(UnitStats.WARRIOR, "W" + i, cosmetic()));
     }
     return state;
   }
@@ -76,8 +85,8 @@ class FloorBundleTest {
   void aGuardianFloorNeverGeneratesALeftover() {
     config.getItems().getBundle().setLeftoverChance(1.0);
     var random = new SplittableRandom(1);
-    var generator = spy(new LeftoverGenerator(random, config));
-    var bundle = new FloorBundle(random, config, generator);
+    var generator = spy(new LeftoverGenerator(config));
+    var bundle = new Seeded(new FloorBundle(config, generator), random);
 
     for (var i = 0; i < 50; i++) {
       bundle.resolve(partyOf(1), 10, true);
@@ -90,8 +99,8 @@ class FloorBundleTest {
   void aClearedFloorGeneratesALeftoverAboutTwentyPercentOfTheTime() {
     config.getItems().getDropRates().setTalisman(0.0);
     var random = new SplittableRandom(2);
-    var generator = spy(new LeftoverGenerator(random, config));
-    var bundle = new FloorBundle(random, config, generator);
+    var generator = spy(new LeftoverGenerator(config));
+    var bundle = new Seeded(new FloorBundle(config, generator), random);
 
     var clears = 10_000;
     for (var i = 0; i < clears; i++) {

@@ -30,8 +30,16 @@ public class SandboxRegistry {
     GLOBAL_CAP
   }
 
-  /** The answer to opening a Sandbox; {@code sandboxId} is null unless it opened. */
-  public record Opened(Status status, String sandboxId, long maxSimulatedSeconds, String note) {}
+  /**
+   * The answer to opening a Sandbox; {@code sandboxId} is null unless it opened. {@code seed} is
+   * the seed the Sandbox runs on, which is public: open another with it to replay the run.
+   */
+  public record Opened(
+      Status status, String sandboxId, long maxSimulatedSeconds, String note, Long seed) {
+    Opened(Status status, String sandboxId, long maxSimulatedSeconds, String note) {
+      this(status, sandboxId, maxSimulatedSeconds, note, null);
+    }
+  }
 
   private static final String PREFIX = "sandbox-";
 
@@ -51,6 +59,15 @@ public class SandboxRegistry {
    */
   public synchronized Opened open(
       String grantId, Consumer<GameProperties> override, Long maxSimulatedSeconds) {
+    return open(grantId, override, maxSimulatedSeconds, null);
+  }
+
+  /**
+   * As {@link #open(String, Consumer, Long)}, on the given seed (null for a fresh one, which is
+   * reported in the answer). Only a Sandbox takes a seed: a human Campaign never does.
+   */
+  public synchronized Opened open(
+      String grantId, Consumer<GameProperties> override, Long maxSimulatedSeconds, Long seed) {
     var rules = config.getAgent().getSandbox();
     if (!rules.isEnabled()) {
       return new Opened(Status.DISABLED, null, 0, "Sandbox Campaigns are switched off here.");
@@ -74,9 +91,9 @@ public class SandboxRegistry {
     var limit =
         maxSimulatedSeconds == null ? ceiling : Math.min(ceiling, Math.max(0, maxSimulatedSeconds));
     var id = PREFIX + UUID.randomUUID();
-    service.openSandbox(id, campaignConfig, limit);
+    var sandboxSeed = service.openSandbox(id, campaignConfig, limit, seed);
     owners.put(id, grantId);
-    return new Opened(Status.OPENED, id, limit, ManualTickDriver.DETERMINISM_NOTE);
+    return new Opened(Status.OPENED, id, limit, ManualTickDriver.DETERMINISM_NOTE, sandboxSeed);
   }
 
   /** Closes a Sandbox the grant holds. False when the grant holds no such Sandbox. */

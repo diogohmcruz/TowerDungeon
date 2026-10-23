@@ -1,5 +1,6 @@
 package io.github.diogohmcruz.towerdungeon.domain.services;
 
+import static io.github.diogohmcruz.towerdungeon.testsupport.Streams.cosmetic;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
@@ -19,14 +20,21 @@ import io.github.diogohmcruz.towerdungeon.domain.models.UnitStats;
 class FloorBundleArtifactsTest {
   private final GameProperties config = new GameProperties();
 
-  private FloorBundle bundle(long seed) {
-    var random = new SplittableRandom(seed);
-    return new FloorBundle(random, config, new LeftoverGenerator(random, config));
+  /** A bundle together with the stream its draws come from. */
+  private record Seeded(FloorBundle bundle, SplittableRandom random) {
+    void resolve(GameState state, int floor, boolean guardian) {
+      bundle.resolve(state, floor, guardian, random);
+    }
+  }
+
+  private Seeded bundle(long seed) {
+    return new Seeded(
+        new FloorBundle(config, new LeftoverGenerator(config)), new SplittableRandom(seed));
   }
 
   private static GameState partyOfOne() {
     var state = new GameState(new GameProperties());
-    var unit = new Unit(UnitStats.WARRIOR, "W");
+    var unit = new Unit(UnitStats.WARRIOR, "W", cosmetic());
     state.getUnitsOnTower().computeIfAbsent(UnitStats.WARRIOR, _ -> new ArrayList<>()).add(unit);
     return state;
   }

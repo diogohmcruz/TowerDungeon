@@ -1,5 +1,6 @@
 package io.github.diogohmcruz.towerdungeon.domain.services;
 
+import static io.github.diogohmcruz.towerdungeon.testsupport.Streams.cosmetic;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
@@ -22,7 +23,7 @@ import io.github.diogohmcruz.towerdungeon.domain.models.UnitStats;
 class SanityEventsTest {
   private final GameProperties config = noMisses();
   private final GameState state = new GameState(config);
-  private final PartyCombat combat = new PartyCombat(new SplittableRandom(7));
+  private final PartyCombat combat = new PartyCombat();
 
   /** Enemy strikes are aimed and can miss; these tests measure damage, so nothing may miss. */
   private static GameProperties noMisses() {
@@ -72,7 +73,7 @@ class SanityEventsTest {
 
   @Test
   void aKillGivesTheKillerTwoSanity() {
-    var unit = new Unit(UnitStats.WARRIOR);
+    var unit = new Unit(UnitStats.WARRIOR, cosmetic());
     unit.changeSanity(-50);
     var floor = floorWith(1, EnemyStats.SLIME);
     floor.getEnemies().getFirst().setCurrentHealth(0.001);
@@ -85,9 +86,9 @@ class SanityEventsTest {
 
   @Test
   void anAllyDyingDrainsTenFromEveryLivingMember() {
-    var doomed = new Unit(UnitStats.WARRIOR);
-    var one = new Unit(UnitStats.ARCHER);
-    var two = new Unit(UnitStats.WARRIOR);
+    var doomed = new Unit(UnitStats.WARRIOR, cosmetic());
+    var one = new Unit(UnitStats.ARCHER, cosmetic());
+    var two = new Unit(UnitStats.WARRIOR, cosmetic());
     state.setUnitsOnTower(partyOf(doomed, one, two));
 
     state.removeUnit(doomed);
@@ -98,8 +99,8 @@ class SanityEventsTest {
 
   @Test
   void climbingAFloorGivesEveryPartyMemberFive() {
-    var one = new Unit(UnitStats.WARRIOR);
-    var two = new Unit(UnitStats.ARCHER);
+    var one = new Unit(UnitStats.WARRIOR, cosmetic());
+    var two = new Unit(UnitStats.ARCHER, cosmetic());
     one.changeSanity(-20);
     two.changeSanity(-1);
     state.setUnitsOnTower(partyOf(one, two));
@@ -112,7 +113,7 @@ class SanityEventsTest {
 
   @Test
   void depthDrainsOneHundredthOfTheFloorNumberEachTick() {
-    var unit = new Unit(UnitStats.WARRIOR);
+    var unit = new Unit(UnitStats.WARRIOR, cosmetic());
     state.setUnitsOnTower(partyOf(unit));
 
     state.drainDepthSanity(40);
@@ -122,7 +123,7 @@ class SanityEventsTest {
 
   @Test
   void meetingAFearedEnemyCostsFiveOncePerFloorAndRevealsThePhobia() {
-    var unit = new Unit(UnitStats.WARRIOR);
+    var unit = new Unit(UnitStats.WARRIOR, cosmetic());
     unit.addPhobia(EnemyStats.STONE_GOLEM);
     unit.addPhobia(EnemyStats.DRAGON);
     var party = partyOf(unit);
@@ -142,7 +143,7 @@ class SanityEventsTest {
 
   @Test
   void aFloorWithoutTheFearedTypeRevealsAndCostsNothing() {
-    var unit = new Unit(UnitStats.WARRIOR);
+    var unit = new Unit(UnitStats.WARRIOR, cosmetic());
     unit.addPhobia(EnemyStats.DRAGON);
 
     tick(partyOf(unit), floorWith(2, EnemyStats.STONE_GOLEM));
@@ -153,35 +154,35 @@ class SanityEventsTest {
 
   @Test
   void aPhobicUnitDealsLessAtFullSanityAndHalfAtZero() {
-    var plain = new Unit(UnitStats.WARRIOR);
+    var plain = new Unit(UnitStats.WARRIOR, cosmetic());
     var base = damageDealt(plain, EnemyStats.STONE_GOLEM);
 
-    var phobic = new Unit(UnitStats.WARRIOR);
+    var phobic = new Unit(UnitStats.WARRIOR, cosmetic());
     phobic.addPhobia(EnemyStats.STONE_GOLEM);
     // The meeting itself costs 5 sanity before the strike, so compare at the sanity it strikes at.
     var expectedAtStrike = 1 - 0.5 * (0.25 + 0.75 * (1 - 95.0 / 100.0));
     assertThat(damageDealt(phobic, EnemyStats.STONE_GOLEM))
         .isEqualTo(base * expectedAtStrike, within(1e-9));
 
-    var broken = new Unit(UnitStats.WARRIOR);
+    var broken = new Unit(UnitStats.WARRIOR, cosmetic());
     broken.addPhobia(EnemyStats.STONE_GOLEM);
     broken.changeSanity(-100);
     assertThat(damageDealt(broken, EnemyStats.STONE_GOLEM)).isEqualTo(base * 0.5, within(1e-9));
 
-    var elsewhere = new Unit(UnitStats.WARRIOR);
+    var elsewhere = new Unit(UnitStats.WARRIOR, cosmetic());
     elsewhere.addPhobia(EnemyStats.DRAGON);
     assertThat(damageDealt(elsewhere, EnemyStats.STONE_GOLEM)).isEqualTo(base, within(1e-9));
   }
 
   @Test
   void aPhobicUnitTakesMoreAtFullSanityAndOneAndAHalfTimesAtZero() {
-    var base = damageTaken(new Unit(UnitStats.WARRIOR), EnemyStats.STONE_GOLEM);
+    var base = damageTaken(new Unit(UnitStats.WARRIOR, cosmetic()), EnemyStats.STONE_GOLEM);
 
-    var phobic = new Unit(UnitStats.WARRIOR);
+    var phobic = new Unit(UnitStats.WARRIOR, cosmetic());
     phobic.addPhobia(EnemyStats.STONE_GOLEM);
     assertThat(damageTaken(phobic, EnemyStats.STONE_GOLEM)).isEqualTo(base * 1.125, within(1e-9));
 
-    var broken = new Unit(UnitStats.WARRIOR);
+    var broken = new Unit(UnitStats.WARRIOR, cosmetic());
     broken.addPhobia(EnemyStats.STONE_GOLEM);
     broken.changeSanity(-100);
     assertThat(damageTaken(broken, EnemyStats.STONE_GOLEM)).isEqualTo(base * 1.5, within(1e-9));
@@ -189,9 +190,9 @@ class SanityEventsTest {
 
   @Test
   void reservesRecoverTwoSanityForHalfAFoodEachTickAndStopWhenThePantryIsEmpty() {
-    var unit = new Unit(UnitStats.WARRIOR);
+    var unit = new Unit(UnitStats.WARRIOR, cosmetic());
     unit.changeSanity(-50);
-    var full = new Unit(UnitStats.ARCHER);
+    var full = new Unit(UnitStats.ARCHER, cosmetic());
     state.addUnits(UnitStats.WARRIOR, List.of(unit));
     state.addUnits(UnitStats.ARCHER, List.of(full));
     var food = state.getVillage().getFood();

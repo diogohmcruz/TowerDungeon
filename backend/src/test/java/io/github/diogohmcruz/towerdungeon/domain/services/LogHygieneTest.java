@@ -5,8 +5,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import java.util.SplittableRandom;
-
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -19,6 +17,7 @@ import ch.qos.logback.core.read.ListAppender;
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
 import io.github.diogohmcruz.towerdungeon.domain.commands.Command;
 import io.github.diogohmcruz.towerdungeon.domain.models.architecture.ArchitecturePlan;
+import io.github.diogohmcruz.towerdungeon.domain.random.SeedSource;
 import io.github.diogohmcruz.towerdungeon.persistence.CampaignStore;
 import reactor.core.publisher.Mono;
 import tools.jackson.databind.ObjectMapper;
@@ -53,9 +52,9 @@ class LogHygieneTest {
         new GameService(
             new GameProperties(),
             new ObjectMapper(),
-            new SplittableRandom(7),
+            SeedSource.fixed(7),
             mock(ArchitecturePlan.class),
-            new PartyCombat(new SplittableRandom(7)),
+            new PartyCombat(),
             store,
             mock(FloorBundle.class),
             mock(AutosaveCoordinator.class));

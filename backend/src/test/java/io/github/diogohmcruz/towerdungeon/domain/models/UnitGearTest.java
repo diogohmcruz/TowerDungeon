@@ -1,5 +1,6 @@
 package io.github.diogohmcruz.towerdungeon.domain.models;
 
+import static io.github.diogohmcruz.towerdungeon.testsupport.Streams.cosmetic;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
@@ -23,7 +24,7 @@ class UnitGearTest {
   }
 
   private static Unit warrior() {
-    return new Unit(UnitStats.WARRIOR);
+    return new Unit(UnitStats.WARRIOR, cosmetic());
   }
 
   @Test

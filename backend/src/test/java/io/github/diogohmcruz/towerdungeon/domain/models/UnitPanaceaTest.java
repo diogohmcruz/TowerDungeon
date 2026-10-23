@@ -1,5 +1,6 @@
 package io.github.diogohmcruz.towerdungeon.domain.models;
 
+import static io.github.diogohmcruz.towerdungeon.testsupport.Streams.cosmetic;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
@@ -8,7 +9,7 @@ import org.junit.jupiter.api.Test;
 /** The Panacea's death-save and the reattachment of a lost part, on one Unit. */
 class UnitPanaceaTest {
   private static Unit warrior(Panacea panacea) {
-    var unit = new Unit(UnitStats.WARRIOR, "Tomas");
+    var unit = new Unit(UnitStats.WARRIOR, "Tomas", cosmetic());
     unit.setPanacea(panacea);
     return unit;
   }

@@ -3,14 +3,13 @@ package io.github.diogohmcruz.towerdungeon.domain.models;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
-import java.util.SplittableRandom;
-import java.util.random.RandomGenerator;
 
 import org.junit.jupiter.api.Test;
 
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
 import io.github.diogohmcruz.towerdungeon.domain.models.architecture.ArchitecturePlan;
 import io.github.diogohmcruz.towerdungeon.domain.prestige.Tally;
+import io.github.diogohmcruz.towerdungeon.domain.random.RandomSource;
 
 /** The Tally counters and the Village Tiers they open. */
 class GameStateTallyTest {
@@ -37,7 +36,7 @@ class GameStateTallyTest {
             100,
             config.getBoss().getInterval(),
             config.getEnemies().getSurgeInterval());
-    RandomGenerator random = new SplittableRandom(1);
+    var random = new RandomSource(1);
     var tower = new Tower(100, config.getBoss(), config.getEnemies(), random, plan);
     tower.startNewRunAt(floor);
     return tower;

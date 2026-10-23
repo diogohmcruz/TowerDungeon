@@ -3,7 +3,7 @@ package io.github.diogohmcruz.towerdungeon.domain.services;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
+import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -14,7 +14,6 @@ import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.ToLongFunction;
-import java.util.random.RandomGenerator;
 
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -42,6 +41,8 @@ import io.github.diogohmcruz.towerdungeon.domain.observation.EventLog;
 import io.github.diogohmcruz.towerdungeon.domain.observation.StateProjection;
 import io.github.diogohmcruz.towerdungeon.domain.prestige.TollCalculator;
 import io.github.diogohmcruz.towerdungeon.domain.prestige.TollContext;
+import io.github.diogohmcruz.towerdungeon.domain.random.RandomSource;
+import io.github.diogohmcruz.towerdungeon.domain.random.SeedSource;
 import io.github.diogohmcruz.towerdungeon.persistence.CampaignSchema;
 import io.github.diogohmcruz.towerdungeon.persistence.CampaignSchema.SchemaNewerException;
 import io.github.diogohmcruz.towerdungeon.persistence.CampaignStore;
@@ -57,7 +58,7 @@ import tools.jackson.databind.ObjectMapper;
 public class GameService {
   private final GameProperties config;
   private final ObjectMapper objectMapper;
-  private final RandomGenerator random;
+  private final SeedSource seeds;
   private final ArchitecturePlan architecturePlan;
   private final PartyCombat partyCombat;
   private final CampaignStore store;
@@ -71,18 +72,32 @@ public class GameService {
   public record Attachment(Mono<Void> replaced) {}
 
   /**
-   * Starts a brand-new campaign: an empty {@link GameState} with the configured Founders recruited
-   * into Reserves at no cost. Restoring a saved campaign must not go through here.
+   * Starts a brand-new human campaign: an empty {@link GameState} with the configured Founders
+   * recruited into Reserves at no cost. Its seed is drawn from the server secret; a client can
+   * never choose it. Restoring a saved campaign must not go through here.
    */
   GameState newCampaign() {
-    return newCampaign(config.copy());
+    return newCampaign(config.copy(), seeds.forHumanCampaign());
   }
 
   /** A brand-new Campaign that owns {@code campaignConfig}: nobody else's tuning can reach it. */
   GameState newCampaign(GameProperties campaignConfig) {
-    var gameState = new GameState(campaignConfig);
+    return newCampaign(campaignConfig, seeds.forHumanCampaign());
+  }
+
+  /**
+   * Starts a brand-new Sandbox campaign from a chosen seed, for the Sandbox driver. Only a Sandbox
+   * may do this: the seed of a human campaign is never taken from a client. The same seed and the
+   * same commands always make the same campaign.
+   */
+  public GameState newSandboxCampaign(long seed) {
+    return newCampaign(config.copy(), new RandomSource(seed));
+  }
+
+  private GameState newCampaign(GameProperties campaignConfig, RandomSource random) {
+    var gameState = new GameState(campaignConfig, random);
     for (var founder : campaignConfig.getStart().getFounders()) {
-      gameState.addUnits(founder.getUnitType(), List.of(gameState.recruitFounder(founder, random)));
+      gameState.addUnits(founder.getUnitType(), List.of(gameState.recruitFounder(founder)));
     }
     return gameState;
   }
@@ -95,15 +110,19 @@ public class GameService {
   /**
    * Opens a Sandbox Campaign under a synthetic id: a manual clock, its own copy of the
    * configuration, and no connection, so nothing but the manual driver advances it and the autosave
-   * coordinator never writes it. Its simulated time may not pass {@code simulatedLimit}.
+   * coordinator never writes it. Its simulated time may not pass {@code simulatedLimit}. It runs on
+   * {@code seed}, or on a fresh one when that is null; the seed in use is returned.
    */
-  void openSandbox(String sandboxId, GameProperties campaignConfig, long simulatedLimit) {
+  long openSandbox(
+      String sandboxId, GameProperties campaignConfig, long simulatedLimit, Long seed) {
     var slot = new PlayerSlot(sandboxId, ClockMode.MANUAL);
-    var state = newCampaign(campaignConfig);
+    var random = seed == null ? seeds.forHumanCampaign() : new RandomSource(seed);
+    var state = newCampaign(campaignConfig, random);
     slot.simulatedLimit(simulatedLimit);
     slot.loaded(state, false, null, CampaignSchema.CURRENT);
     slot.loading(Mono.just(state));
     players.put(sandboxId, slot);
+    return state.getRandom().snapshot().seed();
   }
 
   /** Forgets a Sandbox Campaign. A human's Campaign is never closed through here. */
@@ -266,7 +285,8 @@ public class GameService {
       return fresh;
     }
     var snapshot = objectMapper.readValue(result.payload(), GameSnapshot.class);
-    var state = GameState.restore(snapshot, config.copy(), random, architecturePlan);
+    var state =
+        GameState.restore(snapshot, config.copy(), seeds.forHumanCampaign(), architecturePlan);
     if (!result.quarantined().isEmpty()) {
       slot.addNotice(
           new Notice("SAVE_DAMAGED", "A damaged save was set aside and an older one was loaded."));
@@ -492,7 +512,7 @@ public class GameService {
     var cost = unitStats.getCost();
     while (gameState.getSpendableCredit() > cost && quantity > 0) {
       gameState.spendCredit(cost);
-      var unit = gameState.recruit(unitStats, random);
+      var unit = gameState.recruit(unitStats);
       newUnits.add(unit);
       quantity--;
     }
@@ -726,7 +746,7 @@ public class GameService {
               gameState.getConfig().getTower().getMaxFloor(),
               gameState.getConfig().getBoss().copy(),
               gameState.getConfig().getEnemies().copy(),
-              random,
+              gameState.getRandom(),
               architecturePlan));
     }
     gameState.getTower().startNewRunAt(requestedFloor);
@@ -816,6 +836,16 @@ public class GameService {
         : invadeUnits.getOrDefault(bearer, 0) > 0;
   }
 
+  /**
+   * A copy in {@code UnitStats} order. Enum hash codes differ between JVM runs, so a hashed map's
+   * iteration order would feed the random picks differently from one launch to the next.
+   */
+  private static Map<UnitStats, List<Unit>> inOrder(Map<UnitStats, List<Unit>> units) {
+    var copy = new EnumMap<UnitStats, List<Unit>>(UnitStats.class);
+    copy.putAll(units);
+    return copy;
+  }
+
   private static void sendAllToTower(
       Map<UnitStats, List<Unit>> units, Map<UnitStats, List<Unit>> unitsOnTower) {
     var unitsTemp = mergeAllArmy(units, unitsOnTower);
@@ -842,9 +872,9 @@ public class GameService {
         });
   }
 
-  private static HashMap<UnitStats, List<Unit>> mergeAllArmy(
+  private static Map<UnitStats, List<Unit>> mergeAllArmy(
       Map<UnitStats, List<Unit>> units, Map<UnitStats, List<Unit>> unitsOnTower) {
-    var unitsTemp = new HashMap<>(units);
+    var unitsTemp = inOrder(units);
     unitsOnTower.forEach(
         (key, value) ->
             unitsTemp.merge(
@@ -941,7 +971,7 @@ public class GameService {
         return;
       }
     }
-    var unitsOnTower = new HashMap<>(gameState.getUnitsOnTower());
+    var unitsOnTower = inOrder(gameState.getUnitsOnTower());
     var currentTowerFloor = tower.getCurrentTowerFloor();
     if (currentTowerFloor == null || currentTowerFloor.getEnemies().isEmpty()) {
       var clearedFloor = tower.getCurrentFloor();
@@ -1079,7 +1109,8 @@ public class GameService {
    */
   public boolean replaceIfIdle(
       String playerId, GameSnapshot snapshot, ToLongFunction<OptionalLong> persist) {
-    var replacement = GameState.restore(snapshot, config, random, architecturePlan);
+    var replacement =
+        GameState.restore(snapshot, config, seeds.forHumanCampaign(), architecturePlan);
     var slot = players.get(playerId);
     if (slot == null || slot.state() == null) {
       persist.applyAsLong(OptionalLong.empty());

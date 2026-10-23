@@ -3,6 +3,8 @@ package io.github.diogohmcruz.towerdungeon.domain.models;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
+import java.util.SplittableRandom;
+
 import org.junit.jupiter.api.Test;
 
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
@@ -61,8 +63,8 @@ class VillageTest {
   void starveCostsOneVillagerAndNeverGoesNegative() {
     var village = village(0, 1);
 
-    village.starve();
-    village.starve();
+    village.starve(new SplittableRandom(1));
+    village.starve(new SplittableRandom(1));
 
     assertThat(village.getVillagersCount()).isZero();
   }

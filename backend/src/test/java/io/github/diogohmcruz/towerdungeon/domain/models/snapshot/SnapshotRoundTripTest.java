@@ -28,6 +28,7 @@ import io.github.diogohmcruz.towerdungeon.domain.models.UnitStats;
 import io.github.diogohmcruz.towerdungeon.domain.models.VillageTier;
 import io.github.diogohmcruz.towerdungeon.domain.models.architecture.ArchitecturePlan;
 import io.github.diogohmcruz.towerdungeon.domain.models.upgrade.UpgradeType;
+import io.github.diogohmcruz.towerdungeon.domain.random.RandomSource;
 import tools.jackson.databind.json.JsonMapper;
 
 class SnapshotRoundTripTest {
@@ -57,8 +58,8 @@ class SnapshotRoundTripTest {
     var wounded = state.getUnits().get(UnitStats.WARRIOR).getFirst();
     wounded.receiveAttack(4d, null);
     var rating = new ItemRating(config.getItems().getWeights());
-    wounded.equip(new LeftoverGenerator(random, config).generate(12), rating);
-    wounded.equip(new LeftoverGenerator(random, config).generate(12), rating);
+    wounded.equip(new LeftoverGenerator(config).generate(12, random), rating);
+    wounded.equip(new LeftoverGenerator(config).generate(12, random), rating);
     var mage = state.getUnits().get(UnitStats.MAGE).getFirst();
     mage.spendMana(2d);
     state.getResources().put(ResourceType.MATERIALS, 400d);
@@ -88,7 +89,7 @@ class SnapshotRoundTripTest {
             config.getTower().getMaxFloor(),
             config.getBoss().copy(),
             config.getEnemies().copy(),
-            random,
+            state.getRandom(),
             plan);
     state.setTower(tower);
     state.enlistRandom(UnitStats.WARRIOR);
@@ -100,7 +101,7 @@ class SnapshotRoundTripTest {
     for (var i = 0; i < 3; i++) {
       tower.moveToNextFloor();
     }
-    state.dropGear(2, List.of(new LeftoverGenerator(random, config).generate(2)));
+    state.dropGear(2, List.of(new LeftoverGenerator(config).generate(2, random)));
     var garrison = tower.getCurrentTowerFloor().getEnemies();
     garrison.getFirst().receiveAttack(3d, null);
     garrison.getFirst().damagePart(BodyPart.TORSO, 0.25);
@@ -120,7 +121,7 @@ class SnapshotRoundTripTest {
     var mapper = JsonMapper.builder().build();
     var json = mapper.writeValueAsString(state.toSnapshot());
     var back = mapper.readValue(json, GameSnapshot.class);
-    return GameState.restore(back, config, random, plan);
+    return GameState.restore(back, config, new RandomSource(5), plan);
   }
 
   @Test
@@ -170,7 +171,7 @@ class SnapshotRoundTripTest {
                 null),
             null);
 
-    var restored = GameState.restore(older, config, random, plan);
+    var restored = GameState.restore(older, config, new RandomSource(5), plan);
 
     assertThat(restored.getTally().getFoodGrown()).isZero();
     assertThat(restored.getTally().getPeakVillagers()).isEqualTo(6);
@@ -262,7 +263,7 @@ class SnapshotRoundTripTest {
                 snapshot.campaign().wallOfNames()),
             null);
 
-    var restored = GameState.restore(stripped, config, random, plan);
+    var restored = GameState.restore(stripped, config, new RandomSource(5), plan);
 
     assertThat(restored.isStartFloorUnlocked(5)).isTrue();
   }
@@ -334,7 +335,7 @@ class SnapshotRoundTripTest {
             });
     var snapshot = mapper.treeToValue(tree, GameSnapshot.class);
 
-    var restored = GameState.restore(snapshot, config, random, plan);
+    var restored = GameState.restore(snapshot, config, new RandomSource(5), plan);
 
     var warrior = restored.getUnits().get(UnitStats.WARRIOR).getFirst();
     assertThat(warrior.getParts()).hasSize(6).noneMatch(part -> part.isLost());
@@ -457,7 +458,8 @@ class SnapshotRoundTripTest {
 
   @Test
   void theTowerOfARestoredCampaignGetsItsOwnConfigCopies() {
-    var restored = GameState.restore(midExpedition().toSnapshot(), config, random, plan);
+    var restored =
+        GameState.restore(midExpedition().toSnapshot(), config, new RandomSource(5), plan);
 
     assertThat(restored.getTower().getBossConfig()).isNotSameAs(config.getBoss());
     assertThat(restored.getTower().getBossConfig()).isEqualTo(config.getBoss());

@@ -1,5 +1,6 @@
 package io.github.diogohmcruz.towerdungeon.domain.models;
 
+import static io.github.diogohmcruz.towerdungeon.testsupport.Streams.cosmetic;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
@@ -11,7 +12,7 @@ class UnitBodyTest {
   private static final double EPS = 1e-9;
 
   private static Unit warrior() {
-    return new Unit(UnitStats.WARRIOR);
+    return new Unit(UnitStats.WARRIOR, cosmetic());
   }
 
   private static Part part(Unit unit, BodyPart kind) {
@@ -89,7 +90,7 @@ class UnitBodyTest {
 
   @Test
   void theWeaknessMultiplierAppliesToTheWholeHit() {
-    var healer = new Unit(UnitStats.HEALER);
+    var healer = new Unit(UnitStats.HEALER, cosmetic());
     var multiplier = UnitStats.HEALER.getWeaknesses().get(AttackType.MELEE);
 
     healer.receiveAttack(2.0, AttackType.MELEE);
@@ -127,7 +128,7 @@ class UnitBodyTest {
 
   @Test
   void aLostArmDoesNotWeakenACaster() {
-    var mage = new Unit(UnitStats.MAGE);
+    var mage = new Unit(UnitStats.MAGE, cosmetic());
     var damage = mage.getDamage();
 
     mage.damagePart(BodyPart.LEFT_ARM, 100);

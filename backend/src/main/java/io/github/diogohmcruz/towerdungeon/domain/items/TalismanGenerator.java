@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
 import lombok.RequiredArgsConstructor;
 
-/** Makes Talismans and decides which tier a find is, drawing from the injected random source. */
+/** Makes Talismans and decides which tier a find is, drawing from the stream it is handed. */
 @Component
 @RequiredArgsConstructor
 public class TalismanGenerator {
@@ -19,11 +19,10 @@ public class TalismanGenerator {
           .filter(effect -> effect.tier() == ItemTier.TALISMAN)
           .toArray(ItemEffect[]::new);
 
-  private final RandomGenerator random;
   private final GameProperties properties;
 
   /** One Talisman with an effect drawn uniformly from the eight starters. */
-  public Item generate() {
+  public Item generate(RandomGenerator random) {
     var effect = TALISMAN_EFFECTS[random.nextInt(TALISMAN_EFFECTS.length)];
     return new Item(
         new UUID(random.nextLong(), random.nextLong()).toString(),
@@ -35,7 +34,7 @@ public class TalismanGenerator {
   }
 
   /** Which tier of find a drop is, by the configured drop rates: Leftover or Talisman. */
-  public ItemTier rollTier() {
+  public ItemTier rollTier(RandomGenerator random) {
     var rates = properties.getItems().getDropRates();
     var total = rates.getLeftover() + rates.getTalisman();
     return random.nextDouble() * total < rates.getTalisman()

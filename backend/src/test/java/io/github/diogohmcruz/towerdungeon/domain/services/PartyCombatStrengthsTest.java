@@ -1,5 +1,6 @@
 package io.github.diogohmcruz.towerdungeon.domain.services;
 
+import static io.github.diogohmcruz.towerdungeon.testsupport.Streams.cosmetic;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
@@ -20,7 +21,7 @@ import io.github.diogohmcruz.towerdungeon.domain.models.UnitStats;
 class PartyCombatStrengthsTest {
   private final GameProperties config = noMisses(new GameProperties());
   private final GameState state = new GameState(config);
-  private final PartyCombat combat = new PartyCombat(new SplittableRandom(7));
+  private final PartyCombat combat = new PartyCombat();
 
   /** The scaling checks compare exact damage, so no strike may miss. */
   private static GameProperties noMisses(GameProperties config) {
@@ -46,8 +47,8 @@ class PartyCombatStrengthsTest {
 
   @Test
   void aUnitRolledAtOnePointThreeDealsThirtyPercentMoreThanAnAverageOne() {
-    var average = new Unit(UnitStats.WARRIOR);
-    var strong = new Unit(UnitStats.WARRIOR);
+    var average = new Unit(UnitStats.WARRIOR, cosmetic());
+    var strong = new Unit(UnitStats.WARRIOR, cosmetic());
     strong.setDamageFactor(1.3);
 
     var base = damageDealtBy(average, EnemyStats.STONE_GOLEM);
@@ -64,7 +65,7 @@ class PartyCombatStrengthsTest {
     for (var i = 0; i < 2; i++) {
       var healer = state.recruit(UnitStats.HEALER, new SplittableRandom(1));
       healer.setDamageFactor(factors[i]);
-      var warrior = new Unit(UnitStats.WARRIOR);
+      var warrior = new Unit(UnitStats.WARRIOR, cosmetic());
       warrior.setCurrentHealth(warrior.getMaxHealth() - 30);
       var floor = TowerFloor.builder().id(1).difficulty(1).build();
       floor

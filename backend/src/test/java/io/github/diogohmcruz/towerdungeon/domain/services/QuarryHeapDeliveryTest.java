@@ -18,6 +18,8 @@ import io.github.diogohmcruz.towerdungeon.domain.models.GameState;
 import io.github.diogohmcruz.towerdungeon.domain.models.ResourceType;
 import io.github.diogohmcruz.towerdungeon.domain.models.Tower;
 import io.github.diogohmcruz.towerdungeon.domain.models.architecture.ArchitecturePlan;
+import io.github.diogohmcruz.towerdungeon.domain.random.RandomSource;
+import io.github.diogohmcruz.towerdungeon.domain.random.SeedSource;
 import io.github.diogohmcruz.towerdungeon.persistence.FileCampaignStore;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -46,9 +48,9 @@ class QuarryHeapDeliveryTest {
         new GameService(
             config,
             mapper,
-            random,
+            SeedSource.fixed(9),
             plan,
-            new PartyCombat(random),
+            new PartyCombat(),
             store,
             mock(FloorBundle.class),
             new AutosaveCoordinator(
@@ -65,7 +67,7 @@ class QuarryHeapDeliveryTest {
             config.getTower().getMaxFloor(),
             config.getBoss().copy(),
             config.getEnemies().copy(),
-            random,
+            new RandomSource(9),
             plan);
     state.setTower(tower);
     tower.startNewRun();

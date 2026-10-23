@@ -1,5 +1,6 @@
 package io.github.diogohmcruz.towerdungeon.domain.items;
 
+import static io.github.diogohmcruz.towerdungeon.testsupport.Streams.cosmetic;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
@@ -40,7 +41,7 @@ class TalismansAndArtifactsTest {
   }
 
   private Unit wearing(UnitStats type, Item... items) {
-    var unit = new Unit(type);
+    var unit = new Unit(type, cosmetic());
     for (var item : items) {
       unit.equip(item, rating);
     }
@@ -86,7 +87,7 @@ class TalismansAndArtifactsTest {
 
   @Test
   void talismansTakeTrinketSlotsFirstThenAnyEmptySlot() {
-    var unit = new Unit(UnitStats.WARRIOR);
+    var unit = new Unit(UnitStats.WARRIOR, cosmetic());
     var slots = new ArrayList<Slot>();
     for (var effect : List.of(ItemEffect.KEEN, ItemEffect.WARY, ItemEffect.EMBER)) {
       slots.add(unit.equip(talisman(effect), rating).slot());
@@ -118,7 +119,7 @@ class TalismansAndArtifactsTest {
 
   @Test
   void keenAndWaryAddAccuracyAndEvasion() {
-    var bare = new Unit(UnitStats.ARCHER);
+    var bare = new Unit(UnitStats.ARCHER, cosmetic());
     var unit = wearing(UnitStats.ARCHER, talisman(ItemEffect.KEEN), talisman(ItemEffect.WARY));
     assertThat(unit.getAccuracy()).isEqualTo(bare.getAccuracy() + 10);
     assertThat(unit.getEvasion()).isEqualTo(bare.getEvasion() + 10);
@@ -127,11 +128,11 @@ class TalismansAndArtifactsTest {
   @Test
   void emberAddsDamageToMagicAttacksOnly() {
     var mage = wearing(UnitStats.MAGE, talisman(ItemEffect.EMBER));
-    var plainMage = new Unit(UnitStats.MAGE);
+    var plainMage = new Unit(UnitStats.MAGE, cosmetic());
     assertThat(mage.getDamage()).isEqualTo(plainMage.getDamage() + 1);
 
     var warrior = wearing(UnitStats.WARRIOR, talisman(ItemEffect.EMBER));
-    assertThat(warrior.getDamage()).isEqualTo(new Unit(UnitStats.WARRIOR).getDamage());
+    assertThat(warrior.getDamage()).isEqualTo(new Unit(UnitStats.WARRIOR, cosmetic()).getDamage());
     assertThat(UnitStats.MAGE.getAttackType()).isEqualTo(AttackType.MAGIC);
   }
 
@@ -149,7 +150,7 @@ class TalismansAndArtifactsTest {
     var unit = wearing(talisman(ItemEffect.THORN), talisman(ItemEffect.LANTERN));
     assertThat(unit.thornDamage()).isEqualTo(1.0);
     assertThat(unit.floorClimbedSanityBonus()).isEqualTo(2.0);
-    var bare = new Unit(UnitStats.WARRIOR);
+    var bare = new Unit(UnitStats.WARRIOR, cosmetic());
     assertThat(bare.thornDamage()).isZero();
     assertThat(bare.floorClimbedSanityBonus()).isZero();
   }
@@ -166,14 +167,14 @@ class TalismansAndArtifactsTest {
     assertThat(unit.getSanity()).isZero();
     assertThat(unit.getPhobias()).allMatch(phobia -> !phobia.isKnown());
 
-    var bare = new Unit(UnitStats.WARRIOR);
+    var bare = new Unit(UnitStats.WARRIOR, cosmetic());
     bare.addPhobia(EnemyStats.SLIME);
     assertThat(bare.damageFactorAgainst(EnemyStats.SLIME)).isLessThan(1.0);
   }
 
   @Test
   void manaVesselAddsMaximumManaToCastersOnly() {
-    var mage = new Unit(UnitStats.MAGE);
+    var mage = new Unit(UnitStats.MAGE, cosmetic());
     mage.chargeToFull(5.0);
     mage.equip(artifact(ItemEffect.LILICENS_MANA_VESSEL), rating);
 
@@ -197,7 +198,7 @@ class TalismansAndArtifactsTest {
 
   @Test
   void saltSatchelHalvesAttritionButNotOtherDamage() {
-    var bare = new Unit(UnitStats.WARRIOR);
+    var bare = new Unit(UnitStats.WARRIOR, cosmetic());
     var unit = wearing(artifact(ItemEffect.YUVAS_SALT_SATCHEL));
 
     bare.receiveAttrition(10);
@@ -214,7 +215,7 @@ class TalismansAndArtifactsTest {
 
   @Test
   void anArtifactIsNeverSurplusAndNeverDisplaced() {
-    var unit = new Unit(UnitStats.WARRIOR);
+    var unit = new Unit(UnitStats.WARRIOR, cosmetic());
     for (var slot : Slot.values()) {
       unit.equip(
           new Item("w" + slot, "w", ItemTier.TALISMAN, ItemCategory.TRINKET, Map.of(), "keen"),
@@ -279,27 +280,29 @@ class TalismansAndArtifactsTest {
   @Test
   void generatedTalismansCarryOneOfTheEightEffectsDeterministically() {
     var seen = EnumSet.noneOf(ItemEffect.class);
-    var generator = new TalismanGenerator(new SplittableRandom(3), config);
+    var generator = new TalismanGenerator(config);
+    var random = new SplittableRandom(3);
     for (var i = 0; i < 200; i++) {
-      var item = generator.generate();
+      var item = generator.generate(random);
       assertThat(item.tier()).isEqualTo(ItemTier.TALISMAN);
       assertThat(item.hasEffect()).isTrue();
       seen.add(ItemEffect.of(item.effectId()).orElseThrow());
     }
     assertThat(seen).hasSize(8).allMatch(effect -> effect.tier() == ItemTier.TALISMAN);
 
-    var a = new TalismanGenerator(new SplittableRandom(9), config).generate();
-    var b = new TalismanGenerator(new SplittableRandom(9), config).generate();
+    var a = new TalismanGenerator(config).generate(new SplittableRandom(9));
+    var b = new TalismanGenerator(config).generate(new SplittableRandom(9));
     assertThat(a).isEqualTo(b);
   }
 
   @Test
   void talismansDropRarerThanLeftoversAndAtTheConfiguredRate() {
-    var generator = new TalismanGenerator(new SplittableRandom(5), config);
+    var generator = new TalismanGenerator(config);
+    var random = new SplittableRandom(5);
     var talismans = 0;
     var rolls = 10_000;
     for (var i = 0; i < rolls; i++) {
-      if (generator.rollTier() == ItemTier.TALISMAN) {
+      if (generator.rollTier(random) == ItemTier.TALISMAN) {
         talismans++;
       }
     }
@@ -308,9 +311,9 @@ class TalismansAndArtifactsTest {
         .isLessThan(config.getItems().getDropRates().getLeftover());
 
     config.getItems().getDropRates().setTalisman(0.0);
-    var never = new TalismanGenerator(new SplittableRandom(5), config);
+    var never = new TalismanGenerator(config);
     for (var i = 0; i < 100; i++) {
-      assertThat(never.rollTier()).isEqualTo(ItemTier.LEFTOVER);
+      assertThat(never.rollTier(random)).isEqualTo(ItemTier.LEFTOVER);
     }
   }
 
@@ -325,7 +328,7 @@ class TalismansAndArtifactsTest {
   void floorClimbedGainIncludesLanternForTheWearer() {
     var state = new GameState(config);
     var lantern = wearing(talisman(ItemEffect.LANTERN));
-    var bare = new Unit(UnitStats.WARRIOR);
+    var bare = new Unit(UnitStats.WARRIOR, cosmetic());
     lantern.changeSanity(-50);
     bare.changeSanity(-50);
     state.setUnitsOnTower(Map.of(UnitStats.WARRIOR, new ArrayList<>(List.of(lantern, bare))));

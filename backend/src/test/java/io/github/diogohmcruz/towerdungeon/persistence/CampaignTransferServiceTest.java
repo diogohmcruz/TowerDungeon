@@ -112,6 +112,29 @@ class CampaignTransferServiceTest {
   }
 
   @Test
+  void anImportedFileCannotChooseTheSeed() {
+    assertThat(new GameState(config).toSnapshot().random()).isNotNull();
+
+    service.importFile(PLAYER, fileOf(5)).block();
+
+    assertThat(installed.random()).isNull();
+  }
+
+  @Test
+  void anExportedFileCarriesNoSeed() {
+    installed = new GameState(config).toSnapshot();
+    assertThat(installed.random()).isNotNull();
+
+    var file = service.export(PLAYER).block();
+    var exported = CampaignFile.decode(file.content());
+    var decoded =
+        codec.decode(exported.schema(), exported.payload(), CampaignCodec.PreMigrationSink.NONE);
+
+    assertThat(decoded.snapshot().random()).isNull();
+    assertThat(new String(exported.payload())).doesNotContain("combatState");
+  }
+
+  @Test
   void theProductionProfileStopsStartupWithoutASealKey() {
     var persistence = new PersistenceConfig();
     var production = new MockEnvironment();

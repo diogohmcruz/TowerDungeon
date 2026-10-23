@@ -2,10 +2,10 @@ package io.github.diogohmcruz.towerdungeon.domain.models;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.random.RandomGenerator;
 
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
 import io.github.diogohmcruz.towerdungeon.domain.models.architecture.Architecture;
+import io.github.diogohmcruz.towerdungeon.domain.random.FloorStreams;
 import lombok.Builder;
 import lombok.Data;
 
@@ -28,12 +28,12 @@ public class TowerFloor {
    * at its difficulty.
    */
   public void populateEnemies(
-      double budget, RandomGenerator random, GameProperties.Enemies enemiesConfig) {
+      double budget, FloorStreams streams, GameProperties.Enemies enemiesConfig) {
     double remaining = budget;
     while (remaining > 0) {
-      var randomEnemyStatsIndex = Math.floor(random.nextDouble(difficulty));
+      var randomEnemyStatsIndex = Math.floor(streams.generation().nextDouble(difficulty));
       Enemy enemy =
-          new Enemy(EnemyStats.values()[(int) randomEnemyStatsIndex], random, enemiesConfig);
+          new Enemy(EnemyStats.values()[(int) randomEnemyStatsIndex], streams, enemiesConfig);
       enemies.add(enemy);
       remaining -= enemy.getStats().getWeight();
     }
@@ -41,15 +41,13 @@ public class TowerFloor {
 
   /** Stands a Dead Soldier on the floor for each name, on top of the garrison already there. */
   public void addRisen(
-      List<String> names, RandomGenerator random, GameProperties.Enemies enemiesConfig) {
-    names.forEach(name -> enemies.add(Enemy.risen(name, random, enemiesConfig)));
+      List<String> names, FloorStreams streams, GameProperties.Enemies enemiesConfig) {
+    names.forEach(name -> enemies.add(Enemy.risen(name, streams, enemiesConfig)));
   }
 
   /** Puts the floor's guardian on it; a guardian always has all six body parts. */
   public void populateBoss(
-      GameProperties.Boss bossConfig,
-      GameProperties.Enemies enemiesConfig,
-      RandomGenerator random) {
+      GameProperties.Boss bossConfig, GameProperties.Enemies enemiesConfig, FloorStreams streams) {
     var values = EnemyStats.values();
     int archetypeIndex = Math.min(difficulty, values.length - 1);
     var bossStats = values[archetypeIndex];
@@ -61,7 +59,7 @@ public class TowerFloor {
             healthMultiplier,
             bossConfig.getDamageMultiplier(),
             true,
-            random,
+            streams,
             enemiesConfig));
   }
 

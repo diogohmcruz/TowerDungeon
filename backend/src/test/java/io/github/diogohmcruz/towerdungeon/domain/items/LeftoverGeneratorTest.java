@@ -12,8 +12,22 @@ import io.github.diogohmcruz.towerdungeon.config.GameProperties;
 class LeftoverGeneratorTest {
   private final GameProperties config = new GameProperties();
 
-  private LeftoverGenerator generator(long seed) {
-    return new LeftoverGenerator(new SplittableRandom(seed), config);
+  /** A generator with its own seeded stream, so a test can draw from it without passing one. */
+  private final class Seeded {
+    private final LeftoverGenerator generator = new LeftoverGenerator(config);
+    private final SplittableRandom random;
+
+    private Seeded(long seed) {
+      this.random = new SplittableRandom(seed);
+    }
+
+    Item generate(int floor) {
+      return generator.generate(floor, random);
+    }
+  }
+
+  private Seeded generator(long seed) {
+    return new Seeded(seed);
   }
 
   @Test

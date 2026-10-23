@@ -25,7 +25,6 @@ import io.github.diogohmcruz.towerdungeon.domain.models.Unit;
  */
 @Component
 public class FloorBundle {
-  private final RandomGenerator random;
   private final GameProperties.Items.Bundle config;
   private final GameProperties.Items.Affinity affinity;
   private final LeftoverGenerator generator;
@@ -33,26 +32,22 @@ public class FloorBundle {
   private final TalismanGenerator talismans;
   private final ArtifactProvider artifacts;
 
-  public FloorBundle(
-      RandomGenerator random, GameProperties properties, LeftoverGenerator generator) {
+  public FloorBundle(GameProperties properties, LeftoverGenerator generator) {
     this(
-        random,
         properties,
         generator,
-        new TalismanGenerator(random, properties),
+        new TalismanGenerator(properties),
         new HomeFloorArtifacts(properties));
   }
 
   @Autowired
   public FloorBundle(
-      RandomGenerator random,
       GameProperties properties,
       LeftoverGenerator generator,
       TalismanGenerator talismans,
       ArtifactProvider artifacts) {
     this.talismans = talismans;
     this.artifacts = artifacts;
-    this.random = random;
     this.config = properties.getItems().getBundle();
     this.affinity = properties.getItems().getAffinity();
     this.generator = generator;
@@ -65,14 +60,19 @@ public class FloorBundle {
    * the store if they were waiting there.
    */
   public void resolve(GameState gameState, int floor, boolean guardian) {
+    resolve(gameState, floor, guardian, gameState.getRandom().combat());
+  }
+
+  /** As {@link #resolve(GameState, int, boolean)}, with every draw taken from {@code random}. */
+  public void resolve(GameState gameState, int floor, boolean guardian, RandomGenerator random) {
     var store = gameState.floorGear();
     var stored = new ArrayList<>(store.takeAll(floor));
     var pool = new ArrayList<>(stored);
     if (!guardian && random.nextDouble() < config.getLeftoverChance()) {
       pool.add(
-          talismans.rollTier() == ItemTier.TALISMAN
-              ? talismans.generate()
-              : generator.generate(floor));
+          talismans.rollTier(random) == ItemTier.TALISMAN
+              ? talismans.generate(random)
+              : generator.generate(floor, random));
     }
     // An Artifact comes back to its home floor, guardian or not, until it is taken.
     pool.addAll(artifacts.artifactsFor(floor, gameState.getArtifactsTaken()));

@@ -6,13 +6,13 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.util.HashMap;
-import java.util.SplittableRandom;
 
 import org.junit.jupiter.api.Test;
 
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
 import io.github.diogohmcruz.towerdungeon.domain.commands.Command;
 import io.github.diogohmcruz.towerdungeon.domain.models.architecture.ArchitecturePlan;
+import io.github.diogohmcruz.towerdungeon.domain.random.SeedSource;
 import io.github.diogohmcruz.towerdungeon.persistence.CampaignStore;
 import reactor.core.publisher.Mono;
 import tools.jackson.databind.ObjectMapper;
@@ -28,9 +28,9 @@ class SettingOutWithSaltTest {
         new GameService(
             config,
             new ObjectMapper(),
-            new SplittableRandom(7),
+            SeedSource.fixed(7),
             mock(ArchitecturePlan.class),
-            new PartyCombat(new SplittableRandom(7)),
+            new PartyCombat(),
             store,
             mock(FloorBundle.class),
             new AutosaveCoordinator(
@@ -85,7 +85,9 @@ class SettingOutWithSaltTest {
         io.github.diogohmcruz.towerdungeon.domain.models.UnitStats.TANK,
         java.util.List.of(
             new io.github.diogohmcruz.towerdungeon.domain.models.Unit(
-                io.github.diogohmcruz.towerdungeon.domain.models.UnitStats.TANK, "Brann")));
+                io.github.diogohmcruz.towerdungeon.domain.models.UnitStats.TANK,
+                "Brann",
+                io.github.diogohmcruz.towerdungeon.testsupport.Streams.cosmetic())));
 
     var result =
         service.execute(

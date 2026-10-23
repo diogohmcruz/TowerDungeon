@@ -1,5 +1,6 @@
 package io.github.diogohmcruz.towerdungeon.domain.services;
 
+import static io.github.diogohmcruz.towerdungeon.testsupport.Streams.cosmetic;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -7,7 +8,6 @@ import static org.mockito.Mockito.when;
 
 import java.util.HashMap;
 import java.util.List;
-import java.util.SplittableRandom;
 
 import org.junit.jupiter.api.Test;
 
@@ -19,6 +19,7 @@ import io.github.diogohmcruz.towerdungeon.domain.models.ResourceType;
 import io.github.diogohmcruz.towerdungeon.domain.models.Unit;
 import io.github.diogohmcruz.towerdungeon.domain.models.UnitStats;
 import io.github.diogohmcruz.towerdungeon.domain.models.architecture.ArchitecturePlan;
+import io.github.diogohmcruz.towerdungeon.domain.random.SeedSource;
 import io.github.diogohmcruz.towerdungeon.persistence.CampaignStore;
 import reactor.core.publisher.Mono;
 import tools.jackson.databind.ObjectMapper;
@@ -34,9 +35,9 @@ class SporeCommandsTest {
         new GameService(
             config,
             new ObjectMapper(),
-            new SplittableRandom(7),
+            SeedSource.fixed(7),
             mock(ArchitecturePlan.class),
-            new PartyCombat(new SplittableRandom(7)),
+            new PartyCombat(),
             store,
             mock(FloorBundle.class),
             new AutosaveCoordinator(
@@ -47,7 +48,7 @@ class SporeCommandsTest {
 
   private static Unit wounded(GameService service) {
     var state = service.playerState("session");
-    var unit = new Unit(UnitStats.WARRIOR, "Tomas");
+    var unit = new Unit(UnitStats.WARRIOR, "Tomas", cosmetic());
     state.addUnits(UnitStats.WARRIOR, List.of(unit));
     unit.damagePart(BodyPart.TORSO, 4.0);
     return unit;

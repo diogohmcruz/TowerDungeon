@@ -11,15 +11,14 @@ import org.springframework.stereotype.Component;
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
 import lombok.RequiredArgsConstructor;
 
-/** Makes Leftover items for a floor, drawing every number from the injected random source. */
+/** Makes Leftover items for a floor, drawing every number from the stream it is handed. */
 @Component
 @RequiredArgsConstructor
 public class LeftoverGenerator {
-  private final RandomGenerator random;
   private final GameProperties properties;
 
   /** One Leftover: uniform category, one or two stats of its table, scaled by the floor. */
-  public Item generate(int floor) {
+  public Item generate(int floor, RandomGenerator random) {
     var config = properties.getItems().getLeftover();
     var categories = ItemCategory.values();
     var category = categories[random.nextInt(categories.length)];

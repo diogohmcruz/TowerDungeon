@@ -19,6 +19,7 @@ import io.github.diogohmcruz.towerdungeon.domain.models.GameState;
 import io.github.diogohmcruz.towerdungeon.domain.models.Tower;
 import io.github.diogohmcruz.towerdungeon.domain.models.UnitStats;
 import io.github.diogohmcruz.towerdungeon.domain.models.architecture.ArchitecturePlan;
+import io.github.diogohmcruz.towerdungeon.domain.random.RandomSource;
 import tools.jackson.databind.json.JsonMapper;
 
 /** The projection must stay small however big the roster is, and must not leak hidden facts. */
@@ -60,7 +61,7 @@ class StateProjectionTest {
               config.getTower().getMaxFloor(),
               config.getBoss().copy(),
               config.getEnemies().copy(),
-              random,
+              new RandomSource(11),
               ArchitecturePlan.generate(1L, 100, 10, 5));
       state.setTower(tower);
       state.setUnitsOnTower(new HashMap<>(state.getUnits()));

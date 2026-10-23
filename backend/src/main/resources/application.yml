@@ -24,6 +24,9 @@ server:
   port: 8080
 
 game:
+  # Secret the seeds of human Campaigns are drawn from. Unset: a random one is made at each start,
+  # which is safe because every Campaign saves its own seed. Never put a seed itself here.
+  # seed-secret: ${GAME_SEED_SECRET}
   start:
     credit: 10.0
   loop:

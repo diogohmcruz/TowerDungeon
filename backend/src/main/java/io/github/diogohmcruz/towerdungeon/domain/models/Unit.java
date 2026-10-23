@@ -114,8 +114,8 @@ public class Unit extends BaseUnit implements Aimable {
   /** The floor on which a feared enemy last cost this unit sanity (-1 for none). */
   @JsonIgnore private int fearFloor = -1;
 
-  public Unit(UnitStats stats) {
-    super();
+  public Unit(UnitStats stats, RandomGenerator cosmetic) {
+    super(cosmetic);
     this.stats = stats;
     layOutBody();
   }
@@ -158,8 +158,8 @@ public class Unit extends BaseUnit implements Aimable {
     return Collections.unmodifiableList(parts);
   }
 
-  public Unit(UnitStats stats, String name) {
-    super(name);
+  public Unit(UnitStats stats, String name, RandomGenerator cosmetic) {
+    super(name, cosmetic);
     this.stats = stats;
     this.setMaxHealth(stats.getHealth());
     this.setCurrentHealth(stats.getHealth());

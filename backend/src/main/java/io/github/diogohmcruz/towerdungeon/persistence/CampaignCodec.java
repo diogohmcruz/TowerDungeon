@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
 import io.github.diogohmcruz.towerdungeon.domain.models.GameState;
 import io.github.diogohmcruz.towerdungeon.domain.models.snapshot.GameSnapshot;
+import io.github.diogohmcruz.towerdungeon.domain.random.RandomSource;
 import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -134,7 +135,8 @@ public class CampaignCodec {
       if (snapshot == null || snapshot.campaign() == null) {
         throw new IllegalArgumentException("no campaign");
       }
-      GameState.restore(snapshot, config);
+      // Only to prove the record can be restored; this state is thrown away, so any seed will do.
+      GameState.restore(snapshot, config, new RandomSource(0));
       return new Decoded(snapshot, meta, List.copyOf(notices), false);
     } catch (RuntimeException e) {
       log.warn("Migrated record failed validation: {}", e.toString());

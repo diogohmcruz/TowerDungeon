@@ -1,5 +1,6 @@
 package io.github.diogohmcruz.towerdungeon.domain.models;
 
+import static io.github.diogohmcruz.towerdungeon.testsupport.Streams.cosmetic;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Map;
@@ -21,7 +22,7 @@ class UnitJsonTest {
 
   @Test
   void aUnitSerialisesItsBodyMindAndWornItemsForTheCard() {
-    var unit = new Unit(UnitStats.WARRIOR);
+    var unit = new Unit(UnitStats.WARRIOR, cosmetic());
     unit.addPhobia(EnemyStats.values()[0]);
     var helm =
         new Item(

@@ -1,5 +1,6 @@
 package io.github.diogohmcruz.towerdungeon.domain.models;
 
+import static io.github.diogohmcruz.towerdungeon.testsupport.Streams.cosmetic;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
@@ -20,7 +21,7 @@ class GameStateLifecycleTest {
       state
           .getUnits()
           .computeIfAbsent(UnitStats.WARRIOR, _ -> new ArrayList<>())
-          .add(new Unit(UnitStats.WARRIOR));
+          .add(new Unit(UnitStats.WARRIOR, cosmetic()));
     }
     return state;
   }

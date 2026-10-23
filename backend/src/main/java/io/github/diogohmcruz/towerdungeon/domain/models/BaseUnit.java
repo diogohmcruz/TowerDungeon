@@ -1,9 +1,9 @@
 package io.github.diogohmcruz.towerdungeon.domain.models;
 
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.random.RandomGenerator;
 
+import io.github.diogohmcruz.towerdungeon.domain.random.Names;
 import lombok.Data;
-import net.datafaker.Faker;
 
 @Data
 public class BaseUnit {
@@ -12,12 +12,14 @@ public class BaseUnit {
   private Double currentHealth = 0.0;
   private Double maxHealth = 0.0;
 
-  public BaseUnit() {
-    this(new Faker().greekPhilosopher().name());
+  /** A new unit named and numbered from the cosmetic stream. */
+  public BaseUnit(RandomGenerator cosmetic) {
+    this(Names.philosopher(cosmetic), cosmetic);
   }
 
-  public BaseUnit(String name) {
-    this(ThreadLocalRandom.current().nextInt(), name);
+  /** A new unit with the given name, numbered from the cosmetic stream. */
+  public BaseUnit(String name, RandomGenerator cosmetic) {
+    this(cosmetic.nextInt(), name);
   }
 
   /** Restores a unit that already has an identity (loaded from a snapshot). */

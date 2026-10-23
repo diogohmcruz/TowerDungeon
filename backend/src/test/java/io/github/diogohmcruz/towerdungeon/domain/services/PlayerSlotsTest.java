@@ -8,7 +8,6 @@ import static org.mockito.Mockito.mock;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
-import java.util.SplittableRandom;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,6 +20,7 @@ import io.github.diogohmcruz.towerdungeon.domain.commands.CommandResult.Reason;
 import io.github.diogohmcruz.towerdungeon.domain.commands.Notice;
 import io.github.diogohmcruz.towerdungeon.domain.models.UnitStats;
 import io.github.diogohmcruz.towerdungeon.domain.models.architecture.ArchitecturePlan;
+import io.github.diogohmcruz.towerdungeon.domain.random.SeedSource;
 import io.github.diogohmcruz.towerdungeon.persistence.CampaignSchema;
 import io.github.diogohmcruz.towerdungeon.persistence.CampaignSchema.SchemaNewerException;
 import io.github.diogohmcruz.towerdungeon.persistence.CampaignStore.Rotation;
@@ -45,9 +45,9 @@ class PlayerSlotsTest {
         new GameService(
             config,
             mapper,
-            new SplittableRandom(7),
+            SeedSource.fixed(7),
             mock(ArchitecturePlan.class),
-            new PartyCombat(new SplittableRandom(7)),
+            new PartyCombat(),
             store,
             mock(FloorBundle.class),
             new AutosaveCoordinator(

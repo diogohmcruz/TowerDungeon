@@ -1,5 +1,6 @@
 package io.github.diogohmcruz.towerdungeon.domain.models;
 
+import static io.github.diogohmcruz.towerdungeon.testsupport.Streams.cosmetic;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
@@ -56,7 +57,7 @@ class RolledStrengthsTest {
 
   @Test
   void aUnitWithFixedStrengthsSkipsTheRollAndKeepsItsPresetFactors() {
-    var unit = new Unit(UnitStats.WARRIOR);
+    var unit = new Unit(UnitStats.WARRIOR, cosmetic());
     unit.setFixedStrengths(true);
     unit.setHealthFactor(5.0);
     unit.setDamageFactor(5.0);
@@ -72,7 +73,7 @@ class RolledStrengthsTest {
 
   @Test
   void aFixedUnitWithoutPresetsKeepsExactlyOne() {
-    var unit = new Unit(UnitStats.WARRIOR);
+    var unit = new Unit(UnitStats.WARRIOR, cosmetic());
     unit.setFixedStrengths(true);
 
     unit.rollStrengths(new SplittableRandom(3), SPREAD);
@@ -83,7 +84,7 @@ class RolledStrengthsTest {
 
   @Test
   void aNewUnitIsAverageUntilRolled() {
-    var unit = new Unit(UnitStats.WARRIOR);
+    var unit = new Unit(UnitStats.WARRIOR, cosmetic());
 
     assertThat(unit.getHealthFactor()).isEqualTo(1.0);
     assertThat(unit.getMaxHealth()).isEqualTo(UnitStats.WARRIOR.getHealth());
@@ -92,7 +93,7 @@ class RolledStrengthsTest {
 
   @Test
   void toStringShowsTheUnitsOwnMaximum() {
-    var unit = new Unit(UnitStats.WARRIOR);
+    var unit = new Unit(UnitStats.WARRIOR, cosmetic());
     unit.setHealthFactor(1.3);
 
     assertThat(unit.toString())
@@ -103,7 +104,7 @@ class RolledStrengthsTest {
 
   @Test
   void foodHealsAUnitUpToItsOwnMaximumNotTheTypes() {
-    var unit = new Unit(UnitStats.WARRIOR);
+    var unit = new Unit(UnitStats.WARRIOR, cosmetic());
     unit.setHealthFactor(1.3);
     var own = unit.getMaxHealth();
     unit.setCurrentHealth(own - 20);
@@ -123,7 +124,7 @@ class RolledStrengthsTest {
 
   @Test
   void homePartyWoundsMeasureMissingHealthAgainstTheUnitsOwnMaximum() {
-    var unit = new Unit(UnitStats.WARRIOR);
+    var unit = new Unit(UnitStats.WARRIOR, cosmetic());
     unit.setHealthFactor(1.3);
     unit.setCurrentHealth(unit.getMaxHealth() - 7);
     state.getUnits().computeIfAbsent(UnitStats.WARRIOR, _ -> new ArrayList<>()).add(unit);

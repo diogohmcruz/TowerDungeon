@@ -6,7 +6,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.EnumSet;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -14,14 +13,12 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Predicate;
 import java.util.random.RandomGenerator;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
-import io.github.diogohmcruz.towerdungeon.config.ThreadLocalRandomGenerator;
 import io.github.diogohmcruz.towerdungeon.domain.items.FloorGearStore;
 import io.github.diogohmcruz.towerdungeon.domain.items.Item;
 import io.github.diogohmcruz.towerdungeon.domain.items.ItemRating;
@@ -46,6 +43,7 @@ import io.github.diogohmcruz.towerdungeon.domain.models.snapshot.UnitSnapshot;
 import io.github.diogohmcruz.towerdungeon.domain.models.snapshot.WaveSnapshot;
 import io.github.diogohmcruz.towerdungeon.domain.models.upgrade.UpgradeOffer;
 import io.github.diogohmcruz.towerdungeon.domain.models.upgrade.UpgradeType;
+import io.github.diogohmcruz.towerdungeon.domain.random.RandomSource;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -55,8 +53,8 @@ import lombok.extern.slf4j.Slf4j;
 @Data
 public class GameState {
   private Double credit;
-  private Map<UnitStats, List<Unit>> units = new HashMap<>();
-  private Map<UnitStats, List<Unit>> unitsOnTower = new HashMap<>();
+  private Map<UnitStats, List<Unit>> units = new EnumMap<>(UnitStats.class);
+  private Map<UnitStats, List<Unit>> unitsOnTower = new EnumMap<>(UnitStats.class);
   private Tower tower;
   private boolean expeditionActive = false;
   private GameOutcome gameOutcome = GameOutcome.PLAYING;
@@ -140,6 +138,11 @@ public class GameState {
 
   @JsonIgnore @ToString.Exclude @EqualsAndHashCode.Exclude private GameProperties config;
 
+  /**
+   * Every random draw of this Campaign. Never shown to a client: the seed would reveal the Tower.
+   */
+  @JsonIgnore @ToString.Exclude @EqualsAndHashCode.Exclude private final RandomSource random;
+
   @FunctionalInterface
   public interface LockedCall<T> {
     T call() throws Exception;
@@ -154,8 +157,14 @@ public class GameState {
     return action.call();
   }
 
+  /** A state with a fixed seed of 0: for tests. The game itself always passes the Campaign's. */
   public GameState(GameProperties config) {
+    this(config, new RandomSource(0));
+  }
+
+  public GameState(GameProperties config, RandomSource random) {
     this.config = config;
+    this.random = random;
     this.credit = config.getStart().getCredit();
     this.maxSupplies = config.getSupply().getBaseMax();
     this.village = new Village(config.getVillage(), config.getTrades());
@@ -596,7 +605,7 @@ public class GameState {
    * pantry up to its carrying capacity, then sets out from the base to climb after the party.
    */
   public void sendReinforcement(Map<UnitStats, Integer> selection) {
-    Map<UnitStats, List<Unit>> waveUnits = new HashMap<>();
+    Map<UnitStats, List<Unit>> waveUnits = new EnumMap<>(UnitStats.class);
     if (selection == null || selection.isEmpty()) {
       units.forEach(
           (stats, homeList) -> {
@@ -717,7 +726,7 @@ public class GameState {
   }
 
   public void triggerLifecycle() {
-    triggerLifecycle(ThreadLocalRandom.current());
+    triggerLifecycle(random.combat());
   }
 
   /** One tick of the village: Emergency Tilling, production and Upkeep, Starvation, Recovery. */
@@ -1238,12 +1247,17 @@ public class GameState {
     unitsOnTower.values().stream().flatMap(List::stream).forEach(unit -> unit.rechargeMana(rate));
   }
 
+  /** Raises a fresh unit with the Campaign's own combat and cosmetic streams. */
+  public Unit recruit(UnitStats unitStats) {
+    return recruit(unitStats, random.combat());
+  }
+
   /**
    * Raises a fresh unit at the village. Casters march out with a full mana reserve (drawn from
    * config); other units carry none. Health and damage strengths are rolled with {@code random}.
    */
   public Unit recruit(UnitStats unitStats, RandomGenerator random) {
-    var unit = new Unit(unitStats);
+    var unit = new Unit(unitStats, this.random.cosmetic());
     unit.setBodyWeights(config.getBody().getWeights());
     unit.rollStrengths(random, config.getRecruit().getStrengthSpread());
     unit.setSanityRules(config.getSanity());
@@ -1256,13 +1270,18 @@ public class GameState {
     return unit;
   }
 
+  /** Raises a Founder with the Campaign's own streams. */
+  public Unit recruitFounder(GameProperties.Founder founder) {
+    return recruitFounder(founder, random.combat());
+  }
+
   /**
    * Raises a Founder at the village: a named unit whose {@code statMultiplier} scales its health
    * and damage factors. Founders flagged {@code fixedStrengths} skip the recruit roll; the rest are
    * rolled like any recruit.
    */
   public Unit recruitFounder(GameProperties.Founder founder, RandomGenerator random) {
-    var unit = new Unit(founder.getUnitType(), founder.getName());
+    var unit = new Unit(founder.getUnitType(), founder.getName(), this.random.cosmetic());
     unit.setFixedStrengths(founder.isFixedStrengths());
     if (founder.getStatMultiplier() != 1.0) {
       unit.setHealthFactor(founder.getStatMultiplier());
@@ -1648,7 +1667,7 @@ public class GameState {
 
   public void enlistRandom(UnitStats unitStats) {
     var currentUnits = this.units.getOrDefault(unitStats, new ArrayList<>());
-    var randomIndex = ThreadLocalRandom.current().nextInt(currentUnits.size());
+    var randomIndex = random.combat().nextInt(currentUnits.size());
     var unitToEnlist = currentUnits.get(randomIndex);
     currentUnits.remove(unitToEnlist);
     units.put(unitStats, currentUnits);
@@ -1827,7 +1846,8 @@ public class GameState {
             tally.toSnapshot(),
             villageTier.getLevel(),
             List.copyOf(wallOfNames));
-    return new GameSnapshot(campaign, expeditionActive ? expeditionSnapshot() : null);
+    return new GameSnapshot(
+        campaign, expeditionActive ? expeditionSnapshot() : null, random.snapshot());
   }
 
   private ExpeditionSnapshot expeditionSnapshot() {
@@ -1931,7 +1951,7 @@ public class GameState {
 
   private static Map<UnitStats, List<Unit>> unitsFrom(
       List<UnitSnapshot> snapshots, GameProperties config) {
-    Map<UnitStats, List<Unit>> byType = new HashMap<>();
+    Map<UnitStats, List<Unit>> byType = new EnumMap<>(UnitStats.class);
     for (var u : snapshots) {
       var unit =
           Unit.restore(
@@ -1961,31 +1981,34 @@ public class GameState {
   }
 
   /**
-   * Rebuilds a state with a production-style random source and the Tower's Architecture plan
-   * generated from {@code config}.
+   * Rebuilds a state with the Tower's Architecture plan generated from {@code config}; a save with
+   * no random state gets {@code fallback}.
    */
-  public static GameState restore(GameSnapshot snapshot, GameProperties config) {
+  public static GameState restore(
+      GameSnapshot snapshot, GameProperties config, RandomSource fallback) {
     var plan =
         ArchitecturePlan.generate(
             config.getArchitecture().getSeed(),
             config.getTower().getMaxFloor(),
             config.getBoss().getInterval(),
             config.getEnemies().getSurgeInterval());
-    return restore(snapshot, config, new ThreadLocalRandomGenerator(), plan);
+    return restore(snapshot, config, fallback, plan);
   }
 
   /**
    * Rebuilds a state from its persisted record. Derived values (unlocked unit types, carrying
    * capacity) are recomputed; unit strengths are reapplied as saved, never re-rolled; the Tower
-   * gets its own copy of the Boss and Enemies tuning.
+   * gets its own copy of the Boss and Enemies tuning. The random streams resume where they were
+   * saved; a save from before seeded Campaigns has none and takes {@code fallback}.
    */
   public static GameState restore(
       GameSnapshot snapshot,
       GameProperties config,
-      RandomGenerator random,
+      RandomSource fallback,
       ArchitecturePlan architecturePlan) {
     var c = snapshot.campaign();
-    var state = new GameState(config);
+    var random = snapshot.random() == null ? fallback : RandomSource.restore(snapshot.random());
+    var state = new GameState(config, random);
     state.credit = c.credit();
     state.units = unitsFrom(c.reserves(), config);
     state.resources.putAll(c.vault());

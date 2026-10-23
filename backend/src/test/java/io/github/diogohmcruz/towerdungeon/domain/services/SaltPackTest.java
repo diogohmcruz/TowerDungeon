@@ -21,6 +21,7 @@ import io.github.diogohmcruz.towerdungeon.domain.models.Unit;
 import io.github.diogohmcruz.towerdungeon.domain.models.UnitStats;
 import io.github.diogohmcruz.towerdungeon.domain.models.VillageTier;
 import io.github.diogohmcruz.towerdungeon.domain.models.architecture.ArchitecturePlan;
+import io.github.diogohmcruz.towerdungeon.domain.random.RandomSource;
 
 /**
  * The Salt Pack: Salt carried against Chymus Insects, the Salt-bearer and the +50% on a salted one.
@@ -28,7 +29,7 @@ import io.github.diogohmcruz.towerdungeon.domain.models.architecture.Architectur
 class SaltPackTest {
   private final GameProperties config = new GameProperties();
   private GameState state;
-  private final PartyCombat combat = new PartyCombat(new SplittableRandom(7));
+  private final PartyCombat combat = new PartyCombat();
 
   {
     config.getRecruit().setStrengthSpread(0);
@@ -270,7 +271,7 @@ class SaltPackTest {
             config.getTower().getMaxFloor(),
             config.getBoss().copy(),
             config.getEnemies().copy(),
-            new SplittableRandom(1),
+            new RandomSource(1),
             arch());
     state.setTower(tower);
     tower.startNewRun();
@@ -283,7 +284,7 @@ class SaltPackTest {
     state.saltGarrison(garrison);
     state.saltGarrison(garrison);
 
-    var restored = GameState.restore(state.toSnapshot(), config, new SplittableRandom(1), arch());
+    var restored = GameState.restore(state.toSnapshot(), config, new RandomSource(1), arch());
 
     assertThat(state.getSaltPack()).isEqualTo(2);
     assertThat(restored.getSaltPack()).isEqualTo(2);

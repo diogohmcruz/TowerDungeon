@@ -20,6 +20,7 @@ import io.github.diogohmcruz.towerdungeon.domain.models.ResourceType;
 import io.github.diogohmcruz.towerdungeon.domain.models.UnitStats;
 import io.github.diogohmcruz.towerdungeon.domain.models.architecture.ArchitecturePlan;
 import io.github.diogohmcruz.towerdungeon.domain.models.snapshot.GameSnapshot;
+import io.github.diogohmcruz.towerdungeon.domain.random.SeedSource;
 import io.github.diogohmcruz.towerdungeon.persistence.FileCampaignStore;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -44,9 +45,9 @@ class HeldPartyTest {
     return new GameService(
         config,
         mapper,
-        new SplittableRandom(7),
+        SeedSource.fixed(7),
         plan,
-        new PartyCombat(new SplittableRandom(7)),
+        new PartyCombat(),
         store,
         mock(FloorBundle.class),
         new AutosaveCoordinator(store, mapper, config.getPersistence(), "test", System::nanoTime));

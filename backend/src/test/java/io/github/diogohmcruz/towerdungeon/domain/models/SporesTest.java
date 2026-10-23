@@ -1,5 +1,6 @@
 package io.github.diogohmcruz.towerdungeon.domain.models;
 
+import static io.github.diogohmcruz.towerdungeon.testsupport.Streams.cosmetic;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
@@ -23,7 +24,7 @@ class SporesTest {
   }
 
   private static Unit home(GameState state) {
-    var unit = new Unit(UnitStats.WARRIOR, "Tomas");
+    var unit = new Unit(UnitStats.WARRIOR, "Tomas", cosmetic());
     state.addUnits(UnitStats.WARRIOR, List.of(unit));
     return unit;
   }

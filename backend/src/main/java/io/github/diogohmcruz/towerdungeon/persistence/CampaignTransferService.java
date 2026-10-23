@@ -70,10 +70,11 @@ public class CampaignTransferService {
         .load(playerId)
         .map(
             loaded -> {
-              var snapshot = live.snapshot(playerId).orElse(loaded.snapshot());
-              if (snapshot == null) {
+              var saved = live.snapshot(playerId).orElse(loaded.snapshot());
+              if (saved == null) {
                 throw new NothingToExportException();
               }
+              var snapshot = saved.withoutRandom();
               var meta = loaded.meta();
               Instant now = clock.instant();
               byte[] payload = codec.encode(snapshot, meta);
@@ -125,11 +126,13 @@ public class CampaignTransferService {
   private Mono<Boolean> swap(String playerId, Read read, long storedSeq) {
     return Mono.fromCallable(
             () -> {
-              byte[] payload = codec.encode(read.decoded().snapshot(), read.decoded().meta());
+              // Whatever seed the file carries is ignored: the Campaign draws its own.
+              var snapshot = read.decoded().snapshot().withoutRandom();
+              byte[] payload = codec.encode(snapshot, read.decoded().meta());
               boolean swapped =
                   live.replaceIfIdle(
                       playerId,
-                      read.decoded().snapshot(),
+                      snapshot,
                       liveSeq ->
                           store
                               .save(

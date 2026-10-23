@@ -24,6 +24,7 @@ import io.github.diogohmcruz.towerdungeon.domain.models.GameState;
 import io.github.diogohmcruz.towerdungeon.domain.models.Tower;
 import io.github.diogohmcruz.towerdungeon.domain.models.UnitStats;
 import io.github.diogohmcruz.towerdungeon.domain.models.architecture.ArchitecturePlan;
+import io.github.diogohmcruz.towerdungeon.domain.random.SeedSource;
 import io.github.diogohmcruz.towerdungeon.persistence.CampaignStore;
 import reactor.core.publisher.Mono;
 import tools.jackson.databind.JsonNode;
@@ -61,15 +62,17 @@ class TollLoggingTest {
         new GameService(
             config,
             mapper,
-            random,
+            SeedSource.fixed(9),
             plan,
-            new PartyCombat(random),
+            new PartyCombat(),
             store,
             mock(FloorBundle.class),
             mock(AutosaveCoordinator.class));
     service.attach(PLAYER, "ws").block();
     state = service.playerState(PLAYER);
-    tower = new Tower(100, config.getBoss().copy(), config.getEnemies().copy(), random, plan);
+    tower =
+        new Tower(
+            100, config.getBoss().copy(), config.getEnemies().copy(), state.getRandom(), plan);
     state.setTower(tower);
     tower.startNewRun();
     state.setExpeditionActive(true);

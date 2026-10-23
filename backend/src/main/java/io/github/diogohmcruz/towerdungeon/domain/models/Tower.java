@@ -5,12 +5,13 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.random.RandomGenerator;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
 import io.github.diogohmcruz.towerdungeon.domain.models.architecture.ArchitecturePlan;
+import io.github.diogohmcruz.towerdungeon.domain.random.FloorStreams;
+import io.github.diogohmcruz.towerdungeon.domain.random.RandomSource;
 import lombok.Data;
 
 @Data
@@ -25,8 +26,12 @@ public class Tower {
   @JsonIgnore private final GameProperties.Boss bossConfig;
   @JsonIgnore private final GameProperties.Enemies enemiesConfig;
 
-  /** Source of every random draw in floor generation; seed it to make a climb reproducible. */
-  @JsonIgnore private final RandomGenerator random;
+  /**
+   * The Campaign's random source. Each building of a floor opens its own streams from it, fixed by
+   * the seed, the floor and how often the floor has been built, so a Garrison does not depend on
+   * any other draw in the Campaign.
+   */
+  @JsonIgnore private final RandomSource random;
 
   /** The gear the fallen left and the Risen they became, per floor; survives every rebuild. */
   @JsonIgnore private final FloorMemory floorMemory = new FloorMemory();
@@ -99,7 +104,7 @@ public class Tower {
       int maxFloor,
       GameProperties.Boss bossConfig,
       GameProperties.Enemies enemiesConfig,
-      RandomGenerator random,
+      RandomSource random,
       ArchitecturePlan architecturePlan,
       int currentFloor,
       int highestFloor,
@@ -146,11 +151,12 @@ public class Tower {
   /** Builds a fully populated floor (enemies or boss) for the given depth. */
   private TowerFloor buildFloor(int floor) {
     var towerFloor = newFloor(floor);
+    var streams = random.openFloor(floor);
     if (towerFloor.isBoss()) {
-      towerFloor.populateBoss(bossConfig, enemiesConfig, random);
+      towerFloor.populateBoss(bossConfig, enemiesConfig, streams);
     } else {
-      towerFloor.populateEnemies(enemyBudget(floor), random, enemiesConfig);
-      towerFloor.addRisen(floorMemory.risenOn(floor), random, enemiesConfig);
+      towerFloor.populateEnemies(enemyBudget(floor, streams), streams, enemiesConfig);
+      towerFloor.addRisen(floorMemory.risenOn(floor), streams, enemiesConfig);
     }
     return towerFloor;
   }
@@ -176,11 +182,11 @@ public class Tower {
   }
 
   /** The budget of a regular floor: its eased base, swung randomly, never below the minimum. */
-  private double enemyBudget(int floor) {
+  private double enemyBudget(int floor, FloorStreams streams) {
     var e = enemiesConfig;
     var budget = easedBaseBudget(floor);
     if (e.getVariance() > 0) {
-      budget *= 1 + random.nextDouble(-e.getVariance(), e.getVariance());
+      budget *= 1 + streams.generation().nextDouble(-e.getVariance(), e.getVariance());
     }
     return Math.max(e.getMinBudget(), budget);
   }

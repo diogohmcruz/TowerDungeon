@@ -7,7 +7,6 @@ import static org.mockito.Mockito.when;
 
 import java.util.HashMap;
 import java.util.List;
-import java.util.SplittableRandom;
 
 import org.junit.jupiter.api.Test;
 
@@ -17,6 +16,7 @@ import io.github.diogohmcruz.towerdungeon.domain.models.GameState;
 import io.github.diogohmcruz.towerdungeon.domain.models.Unit;
 import io.github.diogohmcruz.towerdungeon.domain.models.UnitStats;
 import io.github.diogohmcruz.towerdungeon.domain.models.architecture.ArchitecturePlan;
+import io.github.diogohmcruz.towerdungeon.domain.random.SeedSource;
 import io.github.diogohmcruz.towerdungeon.persistence.CampaignStore;
 import reactor.core.publisher.Mono;
 import tools.jackson.databind.ObjectMapper;
@@ -30,9 +30,9 @@ class FoundersTest {
     return new GameService(
         config,
         new ObjectMapper(),
-        new SplittableRandom(7),
+        SeedSource.fixed(7),
         mock(ArchitecturePlan.class),
-        new PartyCombat(new SplittableRandom(7)),
+        new PartyCombat(),
         store,
         mock(FloorBundle.class),
         new AutosaveCoordinator(

@@ -1,5 +1,6 @@
 package io.github.diogohmcruz.towerdungeon.domain.models;
 
+import static io.github.diogohmcruz.towerdungeon.testsupport.Streams.cosmetic;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
@@ -36,7 +37,7 @@ class AffinityTest {
   void aSeededRecruitRollsItsAffinityAfterStrengthsAndPhobias() {
     for (var seed = 0L; seed < 20; seed++) {
       var reference = new SplittableRandom(seed);
-      var unit = new Unit(UnitStats.WARRIOR);
+      var unit = new Unit(UnitStats.WARRIOR, cosmetic());
       unit.rollStrengths(reference, config.getRecruit().getStrengthSpread());
       unit.setSanityRules(config.getSanity());
       unit.rollPhobias(reference);
@@ -71,7 +72,7 @@ class AffinityTest {
 
   @Test
   void aUnitWithFixedStrengthsGetsNoAffinityAndDrawsNothing() {
-    var unit = new Unit(UnitStats.WARRIOR);
+    var unit = new Unit(UnitStats.WARRIOR, cosmetic());
     unit.setFixedStrengths(true);
     var random = new SplittableRandom(3);
 
@@ -108,7 +109,7 @@ class AffinityTest {
   @Test
   void aUnitRatesItemsWithItsOwnAffinity() {
     var rating = new ItemRating(config.getItems().getWeights());
-    var unit = new Unit(UnitStats.WARRIOR);
+    var unit = new Unit(UnitStats.WARRIOR, cosmetic());
     unit.setAffinity(ItemCategory.WEAPON);
 
     assertThat(unit.ratingOf(item(ItemCategory.WEAPON, ItemStat.POWER, 4.0), rating))

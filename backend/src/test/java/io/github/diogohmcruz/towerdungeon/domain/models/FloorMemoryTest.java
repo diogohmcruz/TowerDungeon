@@ -17,6 +17,7 @@ import io.github.diogohmcruz.towerdungeon.domain.items.ItemRating;
 import io.github.diogohmcruz.towerdungeon.domain.items.ItemStat;
 import io.github.diogohmcruz.towerdungeon.domain.items.ItemTier;
 import io.github.diogohmcruz.towerdungeon.domain.models.architecture.ArchitecturePlan;
+import io.github.diogohmcruz.towerdungeon.domain.random.RandomSource;
 import io.github.diogohmcruz.towerdungeon.domain.services.PartyCombat;
 
 class FloorMemoryTest {
@@ -34,7 +35,7 @@ class FloorMemoryTest {
             100,
             config.getBoss().getInterval(),
             config.getEnemies().getSurgeInterval());
-    tower = new Tower(100, config.getBoss(), config.getEnemies(), new SplittableRandom(1), plan);
+    tower = new Tower(100, config.getBoss(), config.getEnemies(), new RandomSource(1), plan);
     state.setTower(tower);
     for (var i = 0; i < 3; i++) {
       tower.moveToNextFloor();
@@ -110,7 +111,7 @@ class FloorMemoryTest {
     var enemies =
         new ArrayList<>(
             List.of(new Enemy(EnemyStats.SLIME, new SplittableRandom(3), config.getEnemies())));
-    var combat = new PartyCombat(new SplittableRandom(3));
+    var combat = new PartyCombat();
 
     for (var i = 0; i < 50 && !unit.isDead(); i++) {
       state.dropGearOnCurrentFloor(combat.enemiesAttack(state, enemies, state.getUnitsOnTower()));

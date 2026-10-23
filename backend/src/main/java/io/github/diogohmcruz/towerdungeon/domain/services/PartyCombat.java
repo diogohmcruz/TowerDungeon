@@ -19,12 +19,12 @@ import io.github.diogohmcruz.towerdungeon.domain.models.GameState;
 import io.github.diogohmcruz.towerdungeon.domain.models.TowerFloor;
 import io.github.diogohmcruz.towerdungeon.domain.models.Unit;
 import io.github.diogohmcruz.towerdungeon.domain.models.UnitStats;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
  * One tick of fighting on a floor: the party strikes, then the garrison strikes back. Kept apart
- * from {@link GameService} so the rules can be tested with a seeded random source.
+ * from {@link GameService} so the rules can be tested with a seeded random source. Every draw is
+ * taken from the combat stream of the Campaign's {@code RandomSource}.
  *
  * <p>A caster makes at most one cast per tick. A Healer heals a random ally who was wounded when
  * the tick began; if there was none it strikes a random enemy that a Heal hit would harm. Because
@@ -33,10 +33,7 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class PartyCombat {
-  private final RandomGenerator random;
-
   public void unitsAttack(
       Map<UnitStats, List<Unit>> unitsOnTower,
       List<Enemy> currentEnemies,
@@ -59,6 +56,7 @@ public class PartyCombat {
     var enemiesAtStart = List.copyOf(currentEnemies);
     var healersThatCast = new HashSet<Integer>();
     var aiming = gameState.getConfig().getAiming();
+    var random = gameState.getRandom().combat();
     var aimedStrike = new AimedStrike(random, aiming);
 
     meetFearedEnemies(party, currentEnemies, currentTowerFloor);
@@ -147,13 +145,14 @@ public class PartyCombat {
       Map<UnitStats, List<Unit>> unitsOnTower,
       Consumer<AimedStrike.Strike> onStrike) {
     var drops = new ArrayList<Item>();
+    var random = gameState.getRandom().combat();
     List.copyOf(currentEnemies)
         .forEach(
             currentEnemy -> {
               if (currentEnemy.isDead()) {
                 return;
               }
-              var targetUnitElement = carrierTarget(gameState, currentEnemy);
+              var targetUnitElement = carrierTarget(gameState, currentEnemy, random);
               if (targetUnitElement == null) {
                 var unitStatsKeys = new ArrayList<>(unitsOnTower.keySet());
                 Collections.shuffle(unitStatsKeys, random);
@@ -196,7 +195,7 @@ public class PartyCombat {
    * The target bias: an enemy the Salt Pack works on aims at the Salt-bearer, with the configured
    * chance. Null leaves the choice to the usual draw. Nothing is drawn unless the bias applies.
    */
-  private Unit carrierTarget(GameState gameState, Enemy enemy) {
+  private Unit carrierTarget(GameState gameState, Enemy enemy, RandomGenerator random) {
     if (!gameState.aimsAtSaltBearer(enemy)
         || random.nextDouble() >= gameState.getConfig().getSalt().getBearerTargetBias()) {
       return null;
