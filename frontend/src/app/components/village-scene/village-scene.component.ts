@@ -10,6 +10,8 @@ import {
 import { NgtCanvas } from 'angular-three/dom';
 import type { NgtCameraParameters, NgtDpr } from 'angular-three';
 
+import { VillageSelectionService } from '../../services/village-selection.service';
+import { captionFor, captionText } from '../../three/village/village-captions';
 import { GameStateService } from '../../services/game-state.service';
 import { INK_DPR } from '../../three/ink/pixel-scale';
 import { VillageInput } from '../../three/village/village-layout';
@@ -38,12 +40,32 @@ const STEP_MS = 250;
     >
       <app-village-scene-graph *canvasContent [village]="shown()" />
     </ngt-canvas>
+    @if (caption(); as text) {
+      <p class="village-caption" [class.locked]="locked()">{{ text }}</p>
+    }
   `,
   styles: `
     :host {
       display: block;
+      position: relative;
       width: 100%;
       height: 100%;
+    }
+    .village-caption {
+      position: absolute;
+      left: 8px;
+      right: 8px;
+      bottom: 8px;
+      margin: 0;
+      padding: 4px 8px;
+      background: var(--panel);
+      border: 1px solid var(--rule);
+      color: var(--text);
+      font-size: 12px;
+      pointer-events: none;
+    }
+    .village-caption.locked {
+      color: var(--bone);
     }
     :host ::ng-deep canvas {
       image-rendering: pixelated;
@@ -52,6 +74,7 @@ const STEP_MS = 250;
 })
 export class VillageScene {
   private readonly state = inject(GameStateService).state;
+  private readonly selection = inject(VillageSelectionService);
   private readonly tick = signal(0);
   /** Dev tooling: draws this state instead of the game's (see `/village-fixture`). */
   readonly fixture = input<VillageInput | null>(null);
@@ -72,6 +95,19 @@ export class VillageScene {
   };
   protected readonly dpr: NgtDpr = INK_DPR;
 
+  /** The caption of what is hovered, or else what is selected. */
+  private readonly subject = computed(
+    () => this.selection.hovered() ?? this.selection.selected(),
+  );
+  private readonly captionOf = computed(() =>
+    captionFor(this.subject(), this.state()),
+  );
+  protected readonly caption = computed(() => {
+    const c = this.captionOf();
+    return c ? captionText(c) : null;
+  });
+  protected readonly locked = computed(() => !!this.captionOf()?.lock);
+
   /** The state the Village draws; the renderer wakes only when this changes. */
   protected readonly shown = computed<VillageInput>(() => {
     const fixed = this.fixture();
@@ -83,6 +119,8 @@ export class VillageScene {
           this.highlightedShortcut() ?? fixed.highlightedShortcut,
         tick: t,
         flicker: (t * STEP_MS) / 1000,
+        hovered: this.selection.hovered()?.id ?? null,
+        selected: this.selection.selected()?.id ?? null,
       };
     }
     const s = this.state();
@@ -123,6 +161,8 @@ export class VillageScene {
       tick,
       flicker: (tick * STEP_MS) / 1000,
       still: this.still,
+      hovered: this.selection.hovered()?.id ?? null,
+      selected: this.selection.selected()?.id ?? null,
     };
   });
 

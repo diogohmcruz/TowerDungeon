@@ -61,7 +61,22 @@
   </p>
 
   <div class="trades">
-    <div class="trade-row">
+    <div
+      class="trade-row"
+      [class.linked]="this.selection.isHovered('TILLER')"
+      [class.chosen]="this.selection.isSelected('TILLER')"
+      [attr.aria-current]="this.selection.isSelected('TILLER') ? 'true' : null"
+      role="group"
+      [attr.aria-label]="'Fields'"
+      tabindex="0"
+      [attr.data-row]="'annex:' + 'TILLER'"
+      (mouseenter)="this.hoverRow('annex', 'TILLER')"
+      (mouseleave)="this.hoverRow(null)"
+      (focusin)="this.hoverRow('annex', 'TILLER')"
+      (focusout)="this.hoverRow(null)"
+      (click)="this.pickRow('annex', 'TILLER', $event)"
+      (keydown)="this.onRowKey($event, 'annex', 'TILLER')"
+    >
       <span class="trade-name">Fields</span>
       <span class="trade-hands">Tillers {{ this.tillers() }}</span>
       <span class="trade-note">
@@ -70,7 +85,22 @@
       </span>
     </div>
     @for (view of this.trades(); track view.trade) {
-    <div class="trade-row">
+    <div
+      class="trade-row"
+      [class.linked]="this.selection.isHovered(view.trade)"
+      [class.chosen]="this.selection.isSelected(view.trade)"
+      [attr.aria-current]="this.selection.isSelected(view.trade) ? 'true' : null"
+      role="group"
+      [attr.aria-label]="view.workplace"
+      tabindex="0"
+      [attr.data-row]="'annex:' + view.trade"
+      (mouseenter)="this.hoverRow('annex', view.trade)"
+      (mouseleave)="this.hoverRow(null)"
+      (focusin)="this.hoverRow('annex', view.trade)"
+      (focusout)="this.hoverRow(null)"
+      (click)="this.pickRow('annex', view.trade, $event)"
+      (keydown)="this.onRowKey($event, 'annex', view.trade)"
+    >
       <span class="trade-name">{{ view.workplace }}</span>
       <span class="trade-hands"
         >{{ view.plural }} {{ view.hands }} of {{ view.posts }} Posts</span
@@ -219,7 +249,22 @@
   <div class="posts">
     <h4 class="tomes-title">Posts</h4>
     @for (view of this.postUpgrades(); track view.trade) {
-    <div class="tome-row">
+    <div
+      class="tome-row"
+      [class.linked]="this.selection.isHovered(view.trade)"
+      [class.chosen]="this.selection.isSelected(view.trade)"
+      [attr.aria-current]="this.selection.isSelected(view.trade) ? 'true' : null"
+      role="group"
+      [attr.aria-label]="'Posts of the ' + view.workplace"
+      tabindex="0"
+      [attr.data-row]="'upgrade:' + view.trade"
+      (mouseenter)="this.hoverRow('upgrade', view.trade)"
+      (mouseleave)="this.hoverRow(null)"
+      (focusin)="this.hoverRow('upgrade', view.trade)"
+      (focusout)="this.hoverRow(null)"
+      (click)="this.pickRow('upgrade', view.trade, $event)"
+      (keydown)="this.onRowKey($event, 'upgrade', view.trade)"
+    >
       <span class="tome-name">{{ view.workplace }}</span>
       <span class="tome-level"
         >{{ view.posts }} Posts, {{ view.nextPosts }} after the next</span

@@ -1,0 +1,87 @@
+import {
+  buildVillage,
+  EMPTY_VILLAGE,
+  villageBounds,
+  VillageInput,
+} from './village-layout';
+import { subjectOfVolume } from './village-subjects';
+
+const busy: VillageInput = {
+  ...EMPTY_VILLAGE,
+  hands: { TILLER: 6, BREAKER: 4, SCRIBE: 2, SALTER: 0, SPOREWARDEN: 0 },
+  saltPansOpen: false,
+};
+
+describe('village subjects', () => {
+  it('maps Annex and Villager volumes to their Trade', () => {
+    expect(subjectOfVolume('field-1')).toEqual({ kind: 'annex', id: 'TILLER' });
+    expect(subjectOfVolume('gantry-beam')).toEqual({
+      kind: 'annex',
+      id: 'BREAKER',
+    });
+    expect(subjectOfVolume('study-cell')?.id).toBe('SCRIBE');
+    expect(subjectOfVolume('footing-n')?.id).toBe('SALTER');
+    expect(subjectOfVolume('villager-BREAKER-2-load')).toEqual({
+      kind: 'villagers',
+      id: 'BREAKER',
+    });
+  });
+
+  it('gives the ground, the Tower and the Fort no subject', () => {
+    for (const id of ['ground', 'tower-3', 'base-slab', 'fort-keep', 'lamp-0']) {
+      expect(subjectOfVolume(id)).toBeNull();
+    }
+  });
+
+  it('draws no outline when nothing is hovered or selected', () => {
+    const ids = buildVillage(busy).map((v) => v.id);
+
+    expect(ids.some((id) => id.startsWith('outline-'))).toBeFalse();
+  });
+
+  it('outlines the Annex and the lane of a hovered Trade, and nothing scales', () => {
+    const plain = buildVillage(busy);
+    const hovered = buildVillage({ ...busy, hovered: 'BREAKER' });
+    const outline = hovered.filter((v) => v.id.startsWith('outline-'));
+
+    expect(outline.length).toBe(8);
+    expect(hovered.length).toBe(plain.length + 8);
+    // The picture itself is unchanged: same volumes, same size, same tone.
+    expect(hovered.slice(0, plain.length)).toEqual(plain);
+    // Every outline stands for the thing it frames.
+    expect(
+      outline.every((v) => subjectOfVolume(v.id)?.id === 'BREAKER'),
+    ).toBeTrue();
+  });
+
+  it('makes the selected line heavier than the hovered one', () => {
+    const thickness = (input: VillageInput) =>
+      Math.min(
+        ...buildVillage(input)
+          .filter((v) => v.id.startsWith('outline-') && v.id.endsWith('-n'))
+          .map((v) => v.h),
+      );
+
+    const hair = thickness({ ...busy, hovered: 'SCRIBE' });
+    const heavy = thickness({ ...busy, selected: 'SCRIBE' });
+
+    expect(heavy).toBeCloseTo(hair * 2, 6);
+  });
+
+  it('outlines a locked footing, so it can be pointed at', () => {
+    const outline = buildVillage({ ...busy, hovered: 'SALTER' }).filter((v) =>
+      v.id.startsWith('outline-SALTER'),
+    );
+
+    expect(outline.length).toBe(4);
+  });
+
+  it('leaves the Village bounds alone', () => {
+    const plain = villageBounds(buildVillage(busy));
+    const marked = villageBounds(
+      buildVillage({ ...busy, hovered: 'TILLER', selected: 'BREAKER' }),
+    );
+
+    expect(marked).toEqual(plain);
+  });
+});

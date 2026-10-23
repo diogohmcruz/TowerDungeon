@@ -11,9 +11,15 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { injectBeforeRender, injectStore, NgtArgs } from 'angular-three';
+import {
+  injectBeforeRender,
+  injectObjectEvents,
+  injectStore,
+  NgtArgs,
+} from 'angular-three';
 import * as THREE from 'three';
 
+import { VillageSelectionService } from '../../services/village-selection.service';
 import { createInkUniforms, setInkTheme } from '../../three/ink/ink-material';
 import { INK_FRAGMENT, INK_VERTEX } from '../../three/ink/ink.glsl';
 import { InkTheme, RAMPS } from '../../three/ink/palette';
@@ -22,6 +28,7 @@ import {
   VillageInput,
   Volume,
 } from '../../three/village/village-layout';
+import { subjectOfVolume } from '../../three/village/village-subjects';
 import { fitVillageCamera } from '../../three/village/village-camera';
 import '../../three/catalogue';
 
@@ -74,6 +81,7 @@ export class VillageSceneGraph {
   village = input.required<VillageInput>();
 
   private readonly store = injectStore();
+  private readonly selection = inject(VillageSelectionService);
   private readonly dark = signal(this.readTheme());
 
   protected readonly theme = computed<InkTheme>(() =>
@@ -120,6 +128,30 @@ export class VillageSceneGraph {
       this.store.snapshot.invalidate();
     });
 
+    // The scene points and picks; it never acts. `ngt-primitive` and the mesh
+    // take no pointer outputs in a template, so events go through injectObjectEvents.
+    injectObjectEvents(() => this.meshRef()?.nativeElement, {
+      pointermove: (event) => {
+        event.stopPropagation();
+        const subject = this.subjectAt(event.instanceId);
+        this.selection.hover(subject);
+        this.store.snapshot.gl.domElement.style.cursor = subject
+          ? 'pointer'
+          : '';
+      },
+      pointerout: () => {
+        this.selection.hover(null);
+        this.store.snapshot.gl.domElement.style.cursor = '';
+      },
+      click: (event) => {
+        event.stopPropagation();
+        const subject = this.subjectAt(event.instanceId);
+        if (subject) {
+          this.selection.selectFromScene(subject);
+        }
+      },
+    });
+
     // A fixed vantage: only the framing follows the canvas aspect.
     injectBeforeRender(({ camera }) => {
       const cam = camera as THREE.PerspectiveCamera;
@@ -128,6 +160,12 @@ export class VillageSceneGraph {
         fitVillageCamera(cam);
       }
     });
+  }
+
+  private subjectAt(instanceId: number | undefined) {
+    const volume =
+      instanceId === undefined ? undefined : this.volumes()[instanceId];
+    return volume ? subjectOfVolume(volume.id) : null;
   }
 
   private write(volumes: Volume[]): void {

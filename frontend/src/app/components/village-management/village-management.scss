@@ -103,6 +103,21 @@
   padding-top: 8px;
 }
 
+.trade-row,
+.tome-row[data-row] {
+  border: 1px solid transparent;
+
+  // Only line weight: a hairline when pointed at, a second pixel when chosen.
+  &.linked {
+    border-color: var(--bone);
+  }
+
+  &.chosen {
+    border-color: var(--bone);
+    box-shadow: inset 0 0 0 1px var(--bone);
+  }
+}
+
 .trade-row {
   display: grid;
   grid-template-columns: 9rem 11rem auto 1fr;

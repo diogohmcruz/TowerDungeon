@@ -1,4 +1,14 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  computed,
+  effect,
+  ElementRef,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
+import { VillageSelectionService } from '../../services/village-selection.service';
+import { SubjectKind } from '../../three/village/village-subjects';
 import { GameStateService } from '../../services/game-state.service';
 import { GameAction } from '../../interfaces/game-action.enum';
 import { GameWebSocketService } from '../../services/game-web-socket.service';
@@ -14,6 +24,63 @@ import { TomeId, TradeId, TradePreview } from '../../interfaces/village';
 export class VillageManagement {
   private gameStateService = inject(GameStateService);
   private ws = inject(GameWebSocketService);
+  private host = inject<ElementRef<HTMLElement>>(ElementRef);
+  protected readonly selection = inject(VillageSelectionService);
+
+  constructor() {
+    // A click in the scene brings its row into view and takes focus there.
+    effect(() => {
+      const request = this.selection.focusRequest();
+      if (!request) {
+        return;
+      }
+      untracked(() => {
+        const row = request.subject.kind === 'upgrade' ? 'upgrade' : 'annex';
+        const el = this.host.nativeElement.querySelector<HTMLElement>(
+          `[data-row="${row}:${request.subject.id}"]`,
+        );
+        if (!el) {
+          return;
+        }
+        const still =
+          typeof matchMedia === 'function' &&
+          matchMedia('(prefers-reduced-motion: reduce)').matches;
+        el.scrollIntoView({
+          block: 'nearest',
+          behavior: still ? 'auto' : 'smooth',
+        });
+        el.focus({ preventScroll: true });
+      });
+    });
+  }
+
+  /** Pointer or focus on a row: the same hover as on the scene. */
+  hoverRow(kind: SubjectKind | null, id?: string) {
+    this.selection.hover(kind && id ? { kind, id } : null);
+  }
+
+  /** A click on a row picks its thing, never acts. */
+  pickRow(kind: SubjectKind, id: string, event?: Event) {
+    if ((event?.target as HTMLElement | null)?.closest('button')) {
+      return;
+    }
+    this.selection.select({ kind, id });
+  }
+
+  /** Enter or Space on the row itself is a click; Escape lets go. */
+  onRowKey(event: KeyboardEvent, kind: SubjectKind, id: string) {
+    if (event.key === 'Escape') {
+      this.selection.select(null);
+      return;
+    }
+    if (
+      event.target === event.currentTarget &&
+      (event.key === 'Enter' || event.key === ' ')
+    ) {
+      event.preventDefault();
+      this.pickRow(kind, id);
+    }
+  }
 
   readonly gameState = this.gameStateService.state;
   readonly food = computed(() => this.gameState().village.food);

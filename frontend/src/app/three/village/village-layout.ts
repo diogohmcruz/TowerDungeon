@@ -6,6 +6,7 @@
  * camera. The Tower stands behind the Village and rises into the dither.
  */
 import type { TradeId } from '../../interfaces/village';
+import { outlineVolumes } from './village-subjects';
 
 /** Width of the frame at the Village's depth. The camera is fitted to this. */
 export const FRAME_WIDTH = 11;
@@ -102,6 +103,10 @@ export interface VillageInput {
   flicker: number;
   /** Fully still scene (`prefers-reduced-motion`). */
   still: boolean;
+  /** The id of the thing the pointer or focus is on; its outline is one pixel. */
+  hovered?: string | null;
+  /** The id of the thing chosen by a click or a row; its outline is two pixels. */
+  selected?: string | null;
 }
 
 export const EMPTY_VILLAGE: VillageInput = {
@@ -637,6 +642,12 @@ export function buildVillage(input: VillageInput): Volume[] {
   growth(out, input.upgrades ?? {});
   reserves(out, input.reserves);
   villagers(out, input.hands, input.tick, input.still);
+  if (input.hovered && input.hovered !== input.selected) {
+    out.push(...outlineVolumes(out, input.hovered, 1, 'hover'));
+  }
+  if (input.selected) {
+    out.push(...outlineVolumes(out, input.selected, 2, 'select'));
+  }
   return out;
 }
 
@@ -652,7 +663,7 @@ export function villageBounds(volumes: Volume[]): {
   let minY = Infinity;
   let maxY = -Infinity;
   for (const v of volumes) {
-    if (v.group !== 'village' || v.id === 'ground') continue;
+    if (v.group !== 'village' || v.id === 'ground' || v.id.startsWith('outline-')) continue;
     minX = Math.min(minX, v.x - v.w / 2);
     maxX = Math.max(maxX, v.x + v.w / 2);
     minY = Math.min(minY, v.y - v.h / 2);

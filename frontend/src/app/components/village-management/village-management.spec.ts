@@ -9,6 +9,7 @@ import {
   TradeView,
 } from '../../interfaces/village';
 import { GameStateService } from '../../services/game-state.service';
+import { VillageSelectionService } from '../../services/village-selection.service';
 import { GameWebSocketService } from '../../services/game-web-socket.service';
 import { VillageManagement } from './village-management';
 
@@ -376,5 +377,112 @@ describe('VillageManagement', () => {
       '. Emergency Tilling. Pantry below 20.',
       '- Starvation. 1 Breaker lost.',
     ]);
+  });
+  describe('Village selection', () => {
+    let selection: VillageSelectionService;
+    const row = (key: string): HTMLElement =>
+      fixture.nativeElement.querySelector(`[data-row="${key}"]`);
+
+    beforeEach(() => {
+      selection = TestBed.inject(VillageSelectionService);
+      load({ postUpgrades });
+    });
+
+    it('hovering a row hovers its thing and marks the row, and leaving lets go', () => {
+      row('annex:BREAKER').dispatchEvent(new Event('mouseenter'));
+      fixture.detectChanges();
+
+      expect(selection.hovered()).toEqual({ kind: 'annex', id: 'BREAKER' });
+      expect(row('annex:BREAKER').classList).toContain('linked');
+      // The Upgrade row of the same Trade answers too.
+      expect(row('upgrade:BREAKER')?.classList).toContain('linked');
+
+      row('annex:BREAKER').dispatchEvent(new Event('mouseleave'));
+      fixture.detectChanges();
+
+      expect(selection.hovered()).toBeNull();
+      expect(row('annex:BREAKER').classList).not.toContain('linked');
+    });
+
+    it('marks the row when the scene hovers the thing', () => {
+      selection.hover({ kind: 'villagers', id: 'SCRIBE' });
+      fixture.detectChanges();
+
+      expect(row('annex:SCRIBE').classList).toContain('linked');
+      expect(row('annex:BREAKER').classList).not.toContain('linked');
+    });
+
+    it('takes focus on a row as a hover, from the keyboard', () => {
+      row('annex:SCRIBE').dispatchEvent(new Event('focusin'));
+
+      expect(selection.hovered()?.id).toBe('SCRIBE');
+    });
+
+    it('picks a row with Enter or Space, and lets go with Escape', () => {
+      const el = row('annex:BREAKER');
+      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+      fixture.detectChanges();
+
+      expect(selection.selected()?.id).toBe('BREAKER');
+      expect(el.classList).toContain('chosen');
+      expect(el.getAttribute('aria-current')).toBe('true');
+
+      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+      expect(selection.selected()).toBeNull();
+
+      el.dispatchEvent(new KeyboardEvent('keydown', { key: ' ' }));
+      expect(selection.selected()?.id).toBe('BREAKER');
+    });
+
+    it('is reachable by Tab: every row has a tab stop', () => {
+      ['annex:TILLER', 'annex:BREAKER', 'annex:SCRIBE', 'upgrade:BREAKER'].forEach(
+        (key) => expect(row(key)?.getAttribute('tabindex')).toBe('0'),
+      );
+    });
+
+    it('never acts from a pick: pressing a row sends nothing', () => {
+      row('annex:BREAKER').click();
+      row('upgrade:BREAKER').click();
+
+      expect(sendAction).not.toHaveBeenCalled();
+    });
+
+    it('does not pick when a stepper inside the row is pressed, but still acts', () => {
+      const plus = fixture.nativeElement.querySelector(
+        '[aria-label="Assign one more to Quarry"]',
+      ) as HTMLButtonElement;
+
+      plus.click();
+
+      expect(selection.selected()).toBeNull();
+      expect(sendAction).toHaveBeenCalledTimes(1);
+    });
+
+    it('focuses and scrolls to the row when the scene is clicked', () => {
+      const el = row('annex:BREAKER');
+      const scroll = spyOn(el, 'scrollIntoView');
+
+      selection.selectFromScene({ kind: 'annex', id: 'BREAKER' });
+      fixture.detectChanges();
+
+      expect(scroll).toHaveBeenCalled();
+      expect(document.activeElement).toBe(el);
+      expect(el.classList).toContain('chosen');
+    });
+
+    it('sends a click on a Villager to the Trade row, an Upgrade pick to its own', () => {
+      const trade = row('annex:BREAKER');
+      const posts = row('upgrade:BREAKER');
+      spyOn(trade, 'scrollIntoView');
+      spyOn(posts, 'scrollIntoView');
+
+      selection.selectFromScene({ kind: 'villagers', id: 'BREAKER' });
+      fixture.detectChanges();
+      expect(document.activeElement).toBe(trade);
+
+      selection.selectFromScene({ kind: 'upgrade', id: 'BREAKER' });
+      fixture.detectChanges();
+      expect(document.activeElement).toBe(posts);
+    });
   });
 });
