@@ -249,7 +249,10 @@ class PartyCombatTest {
     state.getUnitsOnTower().put(UnitStats.WARRIOR, new ArrayList<>(List.of(warrior)));
     var enemies = new ArrayList<>(List.of(new Enemy(EnemyStats.SLIME)));
 
-    combat.enemiesAttack(state, enemies, party(warrior));
+    // Strikes are aimed and can miss or land on a limb, so it takes a few until a vital part falls.
+    for (var strike = 0; strike < 500 && !warrior.isDead(); strike++) {
+      combat.enemiesAttack(state, enemies, party(warrior));
+    }
 
     assertThat(warrior.isDead()).isTrue();
     assertThat(state.getUnitsOnTower().getOrDefault(UnitStats.WARRIOR, List.of()))
@@ -286,21 +289,20 @@ class PartyCombatTest {
   }
 
   @Test
-  void aStrikeThatWouldHaveKilledTheOldPoolKillsTheUnitInTheSameTick() {
+  void aUnitIsRemovedInTheSameStrikeThatKillsIt() {
     var warrior = recruited(UnitStats.WARRIOR);
-    var slime = new Enemy(EnemyStats.SLIME);
-    var hit =
-        slime.getEffectiveDamage()
-            * UnitStats.WARRIOR.getWeaknesses().getOrDefault(slime.getStats().getAttackType(), 1.0);
-    warrior.setCurrentHealth(hit);
-    var enemies = new ArrayList<>(List.of(slime));
+    warrior.setCurrentHealth(0.1);
     state.getUnitsOnTower().put(UnitStats.WARRIOR, new ArrayList<>(List.of(warrior)));
+    var enemies = new ArrayList<>(List.of(new Enemy(EnemyStats.SLIME)));
 
-    combat.enemiesAttack(state, enemies, party(warrior));
+    for (var strike = 0; strike < 500 && !warrior.isDead(); strike++) {
+      combat.enemiesAttack(state, enemies, party(warrior));
+      assertThat(
+              state.getUnitsOnTower().getOrDefault(UnitStats.WARRIOR, List.of()).contains(warrior))
+          .isEqualTo(!warrior.isDead());
+    }
 
     assertThat(warrior.isDead()).isTrue();
-    assertThat(state.getUnitsOnTower().getOrDefault(UnitStats.WARRIOR, List.of()))
-        .doesNotContain(warrior);
   }
 
   @Test
@@ -329,5 +331,35 @@ class PartyCombatTest {
     assertThat(standing.getCurrentHealth()).isEqualTo(standingHealth);
     assertThat(mage.getCurrentMana()).isEqualTo(mage.getMaxMana() - COST);
     assertThat(state.getEnemiesDefeated()).isEqualTo(1);
+  }
+
+  @Test
+  void aSlimeStrikesOnePartAtATimeAndSomeStrikesMiss() {
+    var enemies = new ArrayList<>(List.of(new Enemy(EnemyStats.SLIME)));
+    var misses = 0;
+    var landed = 0;
+    for (var strike = 0; strike < 300; strike++) {
+      var tank = recruited(UnitStats.TANK);
+      combat.enemiesAttack(state, enemies, party(tank));
+      var woundedParts = tank.getParts().stream().filter(part -> part.missing() > 0).count();
+      assertThat(woundedParts).isLessThanOrEqualTo(1);
+      if (woundedParts == 0) {
+        misses++;
+      } else {
+        landed++;
+      }
+    }
+
+    assertThat(misses).isPositive();
+    assertThat(landed).isGreaterThan(misses);
+  }
+
+  @Test
+  void environmentalDamageIsNotAimed() {
+    var tank = recruited(UnitStats.TANK);
+
+    tank.receiveAttack(5.0, null);
+
+    assertThat(tank.getParts()).allMatch(part -> part.missing() > 0);
   }
 }

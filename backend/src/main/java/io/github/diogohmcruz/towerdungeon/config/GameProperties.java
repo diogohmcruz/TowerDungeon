@@ -1,11 +1,16 @@
 package io.github.diogohmcruz.towerdungeon.config;
 
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.BeanUtils;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
+import io.github.diogohmcruz.towerdungeon.domain.models.Aim;
+import io.github.diogohmcruz.towerdungeon.domain.models.BodyPart;
+import io.github.diogohmcruz.towerdungeon.domain.models.EnemyStats;
 import io.github.diogohmcruz.towerdungeon.domain.models.UnitStats;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -28,6 +33,7 @@ public class GameProperties {
   private final Enemies enemies = new Enemies();
   private final Recruit recruit = new Recruit();
   private final Body body = new Body();
+  private final Aiming aiming = new Aiming();
   private final Magic magic = new Magic();
   private final Reinforcements reinforcements = new Reinforcements();
   private final Supply supply = new Supply();
@@ -165,7 +171,7 @@ public class GameProperties {
     /**
      * Budget multiplier on Floor 1, rising linearly to 1.0 once {@code gentleFloors} have passed.
      */
-    private double gentleStartMultiplier = 0.5;
+    private double gentleStartMultiplier = 0.45;
 
     /** Budget added per slain guardian standing below a floor (the mirror of the ease value). */
     private double stepBudgetPerBoss = 0.15;
@@ -203,6 +209,94 @@ public class GameProperties {
       private double head = 0.10;
       private double arm = 0.08;
       private double leg = 0.12;
+    }
+  }
+
+  /**
+   * How attacks are aimed at body parts and how often they miss. Chances are percentage points: 10
+   * means 10%.
+   */
+  @Data
+  public static class Aiming {
+    /** Base miss chance of a hit on each kind of part, before accuracy and evasion. */
+    private double torsoMiss = 10.0;
+
+    private double headMiss = 50.0;
+    private double armMiss = 30.0;
+    private double legMiss = 30.0;
+
+    /** A miss chance never falls below this, however accurate the attacker or clumsy the target. */
+    private double minMiss = 5.0;
+
+    /** A miss chance never rises above this. */
+    private double maxMiss = 90.0;
+
+    /** How much likelier than any other part the head is when this unit type aims at one part. */
+    private Map<UnitStats, Double> headBias = new EnumMap<>(UnitStats.class);
+
+    /** Weights over the aims for each unit type; a missing aim has weight 0. */
+    private Map<UnitStats, Map<Aim, Double>> unitProfiles = new EnumMap<>(UnitStats.class);
+
+    /** Weights over the aims for each enemy type. */
+    private Map<EnemyStats, Map<Aim, Double>> enemyProfiles = new EnumMap<>(EnemyStats.class);
+
+    public Aiming() {
+      headBias.put(UnitStats.ARCHER, 3.0);
+      headBias.put(UnitStats.ROGUE, 3.0);
+
+      unitProfiles.put(UnitStats.WARRIOR, profile(30, 0, 50, 20));
+      unitProfiles.put(UnitStats.ARCHER, profile(70, 20, 0, 10));
+      unitProfiles.put(UnitStats.PORTER, profile(100, 0, 0, 0));
+      unitProfiles.put(UnitStats.MAGE, profile(20, 0, 0, 80));
+      unitProfiles.put(UnitStats.CAPTAIN, profile(40, 0, 40, 20));
+      unitProfiles.put(UnitStats.TANK, profile(20, 30, 0, 50));
+      unitProfiles.put(UnitStats.ROGUE, profile(70, 30, 0, 0));
+      unitProfiles.put(UnitStats.NECROMANCER, profile(30, 0, 0, 70));
+      unitProfiles.put(UnitStats.DRACO_METAMORPH, profile(0, 40, 0, 60));
+      unitProfiles.put(UnitStats.HEALER, profile(100, 0, 0, 0));
+
+      enemyProfiles.put(EnemyStats.SLIME, profile(100, 0, 0, 0));
+      enemyProfiles.put(EnemyStats.CHYMUS_INSECT, profile(100, 0, 0, 0));
+      enemyProfiles.put(EnemyStats.DEAD_SOLDIERS, profile(50, 0, 30, 20));
+      enemyProfiles.put(EnemyStats.TOWER_BEAST, profile(40, 40, 0, 20));
+      enemyProfiles.put(EnemyStats.CHIMERA, profile(20, 30, 0, 50));
+      enemyProfiles.put(EnemyStats.NECROMANCER, profile(30, 0, 0, 70));
+      enemyProfiles.put(EnemyStats.STONE_GOLEM, profile(20, 0, 50, 30));
+      enemyProfiles.put(EnemyStats.DEAD_DRAGON, profile(10, 30, 0, 60));
+      enemyProfiles.put(EnemyStats.DRAGON, profile(10, 30, 0, 60));
+    }
+
+    private static Map<Aim, Double> profile(double part, double lineV, double lineH, double body) {
+      var weights = new EnumMap<Aim, Double>(Aim.class);
+      weights.put(Aim.PART, part);
+      weights.put(Aim.LINE_V, lineV);
+      weights.put(Aim.LINE_H, lineH);
+      weights.put(Aim.BODY, body);
+      return weights;
+    }
+
+    /** The base miss chance of a hit on this kind of part, in percentage points. */
+    public double baseMiss(BodyPart kind) {
+      return switch (kind) {
+        case TORSO -> torsoMiss;
+        case HEAD -> headMiss;
+        case LEFT_ARM, RIGHT_ARM -> armMiss;
+        case LEFT_LEG, RIGHT_LEG -> legMiss;
+      };
+    }
+
+    /** The aim weights of a unit type, or one that always aims at a single part. */
+    public Map<Aim, Double> profileOf(UnitStats type) {
+      return unitProfiles.getOrDefault(type, Map.of(Aim.PART, 1.0));
+    }
+
+    /** The aim weights of an enemy type, or one that always aims at a single part. */
+    public Map<Aim, Double> profileOf(EnemyStats type) {
+      return enemyProfiles.getOrDefault(type, Map.of(Aim.PART, 1.0));
+    }
+
+    public double headBiasOf(UnitStats type) {
+      return headBias.getOrDefault(type, 1.0);
     }
   }
 

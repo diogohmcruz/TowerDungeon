@@ -135,4 +135,14 @@ public enum UnitStats {
   public String getType() {
     return name();
   }
+
+  /** Percentage points taken off the miss chance of this type's hits, before items and sanity. */
+  public double baseAccuracy() {
+    return this == ARCHER || this == ROGUE ? 10.0 : 0.0;
+  }
+
+  /** Percentage points added to the miss chance of hits on this type, before items and sanity. */
+  public double baseEvasion() {
+    return this == ROGUE ? 10.0 : 0.0;
+  }
 }

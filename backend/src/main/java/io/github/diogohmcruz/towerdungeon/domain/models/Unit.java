@@ -312,15 +312,46 @@ public class Unit extends BaseUnit {
     this.currentMana = Math.min(maxMana, this.currentMana + Math.max(0, amount));
   }
 
-  public void receiveAttack(Double attack, AttackType attackType) {
-    var attackTypeOrTrueDamage =
+  /** The attack scaled by this unit's weakness to the attack type; negative means it heals. */
+  public double scaledByWeakness(double attack, AttackType attackType) {
+    var multiplier =
         attackType == null ? 1.0 : this.getStats().getWeaknesses().getOrDefault(attackType, 1.0);
-    var attackTotal = attack * attackTypeOrTrueDamage;
+    return attack * multiplier;
+  }
+
+  /** The damage-taken multiplier from the legs lost so far. */
+  public double lostLegsDamageTakenFactor() {
+    return Math.pow(LOST_LEG_DAMAGE_TAKEN_FACTOR, lostCount(BodyPart::isLeg));
+  }
+
+  /**
+   * How well this unit lands hits on the parts it aims at, in percentage points off the miss
+   * chance. Items and sanity add to this later by overriding or wrapping it.
+   */
+  @JsonIgnore
+  public double getAccuracy() {
+    return stats.baseAccuracy();
+  }
+
+  /** How well this unit avoids hits, in percentage points on the attacker's miss chance. */
+  @JsonIgnore
+  public double getEvasion() {
+    return stats.baseEvasion();
+  }
+
+  /** Whether the part with this kind is still attached. */
+  public boolean hasPart(BodyPart kind) {
+    return parts.stream().anyMatch(part -> part.getKind() == kind && !part.isLost());
+  }
+
+  /** Environmental damage: not aimed, spread over every present part in proportion to its size. */
+  public void receiveAttack(Double attack, AttackType attackType) {
+    var attackTotal = scaledByWeakness(attack, attackType);
     if (attackTotal < 0) {
       heal(-attackTotal);
       return;
     }
-    var taken = attackTotal * Math.pow(LOST_LEG_DAMAGE_TAKEN_FACTOR, lostCount(BodyPart::isLeg));
+    var taken = attackTotal * lostLegsDamageTakenFactor();
     var max = getMaxHealth();
     if (taken <= 0 || max <= 0) {
       return;

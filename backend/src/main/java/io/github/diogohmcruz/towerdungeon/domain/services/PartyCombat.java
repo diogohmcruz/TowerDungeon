@@ -112,8 +112,16 @@ public class PartyCombat {
           }
           var randomUnitOnTowerIndex = random.nextInt(targetUnit.size());
           var targetUnitElement = targetUnit.get(randomUnitOnTowerIndex);
-          targetUnitElement.receiveAttack(
-              currentEnemy.getEffectiveDamage(), currentEnemy.getStats().getAttackType());
+          // The enemy's own strikes are aimed at the unit's body; units' strikes at enemies are
+          // not until enemies have body parts.
+          new AimedStrike(random, gameState.getConfig().getAiming())
+              .strike(
+                  targetUnitElement,
+                  currentEnemy.getEffectiveDamage(),
+                  currentEnemy.getStats().getAttackType(),
+                  gameState.getConfig().getAiming().profileOf(currentEnemy.getStats()),
+                  currentEnemy.getAccuracy(),
+                  1.0);
 
           if (targetUnitElement.isDead()) {
             log.info("Enemy {} defeated unit {}", currentEnemy, targetUnitElement);

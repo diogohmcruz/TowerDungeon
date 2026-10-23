@@ -1,5 +1,7 @@
 package io.github.diogohmcruz.towerdungeon.domain.models;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import lombok.AccessLevel;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -98,6 +100,18 @@ public class Enemy extends BaseUnit {
 
   public double getEffectiveDamage() {
     return stats.getDamage() * damageMultiplier;
+  }
+
+  /** Enemies have no accuracy of their own to add to yet. */
+  @JsonIgnore
+  public double getAccuracy() {
+    return 0.0;
+  }
+
+  /** Enemies have no evasion yet. */
+  @JsonIgnore
+  public double getEvasion() {
+    return 0.0;
   }
 
   public void receiveAttack(Double attack, AttackType attackType) {
