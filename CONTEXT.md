@@ -77,7 +77,7 @@ The highest floor any party has reached during the campaign; it drives floor-bas
 _Avoid_: Deepest floor, max depth, record
 
 **Floor Difficulty**:
-How many enemy types are allowed to appear on a floor; it rises with height and drops as guardians above are slain.
+How many enemy types are allowed to appear on a floor; it rises with height and drops as guardians above are slain. Planned: the floors below the first guardian are deliberately gentle so a thin party can climb far, and each slain guardian raises the difficulty of the floors above it.
 _Avoid_: Tier (on its own, which means village tier), threat level
 
 **Architecture**:
@@ -189,7 +189,7 @@ _Avoid_: Return home, cancel
 ### Units and combat
 
 **Unit**:
-A single player-controlled fighter with a name, health, and a unit type.
+A single player-controlled fighter with a name, health, and a unit type; planned to also have body parts, sanity, phobias, gear, and strengths rolled when recruited, so no two units of a type are exactly alike.
 _Avoid_: Soldier, character, member, troop, recruit, delver
 
 **Unit Type**:
@@ -203,6 +203,10 @@ _Avoid_: Hire list, unlocked units
 **Recruit**:
 Buying a new unit of an unlocked type with credits; the new unit joins the reserves.
 _Avoid_: Buy, hire, raise, enlist
+
+**Founder**:
+One of the four units a campaign begins with, already in the reserves: the conscript Yuva (a Warrior), two more Warriors, and an Archer. Founders are ordinary units under every rule except that Yuva is not rolled and has no phobias; the word marks where they came from. Planned.
+_Avoid_: Starter, initial unit, starting party
 
 **Reserves**:
 The units waiting in the village rather than on the tower; they eat food, recover health, and recharge mana there.
@@ -244,8 +248,68 @@ One step of the game's clock, once a second, in which the party and the garrison
 _Avoid_: Turn, round, frame
 
 **Wounded**:
-Having less health than one's maximum.
+Having less health than one's maximum; once units have body parts, having any body part below its maximum.
 _Avoid_: Hurt, damaged, injured
+
+### Bodies, gear and mind
+
+All planned: the terms for the per-unit depth inspired by _Fear and Hunger_'s grim bodies.
+
+**Body Part**:
+One of the six parts a creature is made of (head, torso, two arms, two legs), each with its own health; some creatures have fewer. A part at zero health is lost, and losing the head or the torso kills the creature.
+_Avoid_: Limb (arms and legs only), hit location
+
+**Maimed**:
+Having permanently lost a body part other than the head or torso, and living on weaker for it.
+_Avoid_: Crippled, injured, wounded (which means below maximum health)
+
+**Aim**:
+How an attack is spread over its target's body parts: at a single part, along a line (vertical is head, torso and legs; horizontal is torso and arms), or at the whole body.
+_Avoid_: Targeting, target mode, hit zone
+
+**Accuracy**:
+How well an attacker lands hits on the parts it aims at; the head is the hardest part to hit.
+_Avoid_: Hit chance, to-hit
+
+**Evasion**:
+How well a creature avoids hits on its body parts.
+_Avoid_: Dodge, defence
+
+**Sanity**:
+A unit's mental steadiness: it falls with deaths, losses, depth, and meeting what the unit fears, and rises with kills, items found, and floors climbed; sanity gained beyond full restores health. Low sanity worsens phobias and accuracy.
+_Avoid_: Morale, stress, fear
+
+**Phobia**:
+A fear of one enemy type that a unit is recruited with and does not know of until it first meets that enemy: it deals less to that enemy and suffers more from it, the more so the lower its sanity.
+_Avoid_: Fear (on its own), weakness (which is per attack type)
+
+**Affinity**:
+A unit's gift for one category of item: such items are better for it, and it is likelier to find them.
+_Avoid_: Proficiency, specialty
+
+**Item**:
+Something a unit carries in a slot, bound to the unit that found it; there are three tiers (leftover, talisman, artifact) and any slot can hold an item with a special effect.
+_Avoid_: Equipment, gear (as a noun for a single piece), loot (which is reserved)
+
+**Slot**:
+One of the eight places a unit carries an item: one for each body part, and two for trinkets such as a necklace, a ring, or a bracelet. A lost body part drops its item; death drops them all.
+_Avoid_: Equipment slot
+
+**Leftover**:
+The commonest tier of item: a plain weapon or piece of kit left behind by an earlier expedition, often by the player's own dead.
+_Avoid_: Junk, scrap
+
+**Talisman**:
+The middle tier of item, made special by an effect.
+_Avoid_: Charm, enchanted item
+
+**Artifact**:
+The rarest tier of item: a unique, named item from the tower's ancient magic, of which the campaign holds one each; it returns to the floor where it was first found in every generation. Not a relic.
+_Avoid_: Relic, unique
+
+**Bundle**:
+The items waiting on a cleared floor: those the tower yields there plus the gear left by the dead of this and earlier expeditions. Each living party member gets one chance to take an item from it; what the dead left stays if untaken, the rest is gone.
+_Avoid_: Drop, loot pile, haul
 
 ### Magic
 
@@ -312,8 +376,8 @@ The common loot dropped on every cleared floor, used to pay for most upgrades or
 _Avoid_: Resources, scrap, ore
 
 **Relics**:
-The rare loot found only on high floors, used to pay for the most powerful unlock upgrades or sold for credits.
-_Avoid_: Artifacts, treasure
+The rare loot found only on high floors, used to pay for the most powerful unlock upgrades or sold for credits. Planned: relics come from surplus items, those a unit finds that are no better than what it already carries, counted during the expedition and turned into relics when extraction banks them. A wipe loses them. An artifact is a different thing and is never a relic.
+_Avoid_: Treasure
 
 **Loot**:
 The credits, materials, and relics a party gathers while clearing floors; it is carried until extraction banks it and lost on a wipe.

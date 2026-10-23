@@ -87,7 +87,7 @@ The structure comes from Tower Wizard [TW, section 3b]: one shared pool of hands
 
 Caveat: the opportunity cost is weak today. A Villager costs n Credits and eats nothing, so a player can buy the pool back quickly (one Floor-10 Expedition funds about 26 more Villagers if every Material is sold; **Correction**, the earlier draft said 24). The real governors are the Posts, the Tiller minimum and the Starvation rules below. Starvation must therefore be made legible, since a cheap loss is easily ignored. Each Villager lost is stated, by Trade, in the Ledger, and The Count keeps the total for the Campaign. The Villager price curve is re-measured after R01, and a steeper curve is the first lever. No new Food rate is added.
 
-**The Tiller minimum is a floor, not a safeguard.** At the start, 8 Reserves eat 8 Food/tick, so the Fields cover Upkeep only with 16 Tillers. A player may legally move 15 hands off the Fields (5 Tillers, 2.5 Food/tick, d = 5.5) and begin a Starvation clock. That is the wager. It stays legible and avoidable because the assignment row previews the margin before the move (section 8.3), Emergency Tilling answers it (R01), and nothing blocks the player.
+**The Tiller minimum is a floor, not a safeguard.** At the start, the 4 Founders in Reserves eat 4 Food/tick, so the Fields cover Upkeep only with 8 Tillers. A player may legally move 15 hands off the Fields (5 Tillers, 2.5 Food/tick, d = 1.5) and begin a Starvation clock. That is the wager. It stays legible and avoidable because the assignment row previews the margin before the move (section 8.3), Emergency Tilling answers it (R01), and nothing blocks the player.
 
 The loop is Labour, then Loadout, then the gamble, then Extraction, then Labour again:
 
@@ -255,7 +255,7 @@ Scores are fun / fit / feasibility, then the average (all averages re-checked). 
 - **Pitch:**
   - A flat panel in plain text columns with an icon per resource, the stock, the net rate and a tooltip listing each source and sink. Sections: Pantry, Vault, Stockroom, Tally.
   - Numbers change in steps. There is no count-up animation, no "+N" floaters and no flash on income.
-  - The margin is shown before the gain. **Pantry holds** means the time until Starvation begins, computed from the code in section 1: with d = max(0, Upkeep - Fields) and r the Recovery spend (5.0 ceiling while any Reserve is wounded), it is (Pantry - d) / (d + r), rounded down. **Correction:** the earlier example, 8 Reserves with Recovery at -5.0 and "Pantry holds 33 s", was wrong twice. With 8 Reserves the Fields (+10.0) cover Upkeep (-8.0), so no Starvation is possible and the Pantry only stops Recovery when it empties. Example now: 14 Reserves, Fields +10.0, Upkeep -14.0, Recovery -5.0 (the maximum, since it heals one Unit per tick), net -9.0, and "Pantry holds 10 s at current rates." in crimson at 100 Food ((100 - 4) / 9). With no wounded Reserve the net is -4.0 and the Pantry holds 24 s. With 8 Reserves the line reads "Pantry holds. Fields cover Upkeep."
+  - The margin is shown before the gain. **Pantry holds** means the time until Starvation begins, computed from the code in section 1: with d = max(0, Upkeep - Fields) and r the Recovery spend (5.0 ceiling while any Reserve is wounded), it is (Pantry - d) / (d + r), rounded down. **Correction:** the earlier example, 8 Reserves with Recovery at -5.0 and "Pantry holds 33 s", was wrong twice. With 8 Reserves the Fields (+10.0) cover Upkeep (-8.0), so no Starvation is possible and the Pantry only stops Recovery when it empties. Example now: 14 Reserves, Fields +10.0, Upkeep -14.0, Recovery -5.0 (the maximum, since it heals one Unit per tick), net -9.0, and "Pantry holds 10 s at current rates." in crimson at 100 Food ((100 - 4) / 9). With no wounded Reserve the net is -4.0 and the Pantry holds 24 s. With 4 Reserves the line reads "Pantry holds. Fields cover Upkeep."
   - The Pantry line carries its remedy when it is grim (copy in section 8.3).
   - `Village` already separates `getProductionRate` and `upkeepFor`, but Recovery spend is **not** exposed. `healHomePartyWithFood` returns void and the strategy's return value is discarded, so the panel needs a small instrumentation change.
 - **Recommendation:** Ship the panel. Defer Autobuy or lock it behind a Milestone with a minimum Credits balance and a cost cap. A [TW] reviewer (one 5/10 review) criticises Autobuy as decision removal.
@@ -559,7 +559,7 @@ These ideas were drafted in the dread pass. The two rejected ideas are listed la
 | D2's Pall follows from Starvation | The only idea downstream of Starvation. Held in C behind a decision gate. Pall touches only Study, Quarry and Reserve Recharge, caps at II and lifts on Rites. |
 | D1 adds Garrison on a Floor | Per-Floor, hard cap min(3, 30% of the eased base budget), so 2 on Floors 4 and 6 and 3 on Floors 5 and 7 upward before Easing, cleared by one clean pass, never on Guardian Floors in B. A Dead Soldier weighs 1.0. Verify against the real budget before building. |
 | Sealed Stores blocks setting out | The Loadout never blocks in B and only warns. The hard floor waits for C. |
-| Trade assignment can starve the Village (Tiller minimum of 5 protects nothing at 8 Reserves) | Preview the margin on every move, warn when Fields no longer cover Upkeep, and let Emergency Tilling pull hands back at Pantry below 20 with d > 0. Nothing blocks. |
+| Trade assignment can starve the Village (Tiller minimum of 5 protects nothing at 4 Reserves) | Preview the margin on every move, warn when Fields no longer cover Upkeep, and let Emergency Tilling pull hands back at Pantry below 20 with d > 0. Nothing blocks. |
 | Starvation trivialised by Trade order, or by cheap Villagers | Keep random Villager selection weighted by headcount. Name and count every loss. Emergency Tilling has hysteresis (below 20 Food to 60), a Ledger line and the Settling cooldown. Re-measure the price curve and steepen it first. |
 | Villager pool is cheap (n Credits, no Upkeep), so Trade opportunity cost is weak | Posts, the Tiller minimum and the Stockroom caps do the limiting. Re-measure the price curve after R01. |
 | Dead currencies | Relics (11 Relics of sinks, covered by one Floor-16 Expedition): R16 Repairs, Relic-cost Tomes, Writs (D7), and the Village Tier IV buildings once specified. Trust: Ring capped at 5 levels, 264 Trust in total with a base of 20, plus a second effect. Knowledge: two Tomes from step 2, a tower-facing Tome later. Salt: dump-valve sale at 2. |
@@ -664,7 +664,7 @@ The tone audit proposed alternates for the Tomes (Roll of the Lean Years, Cut Re
 
 ### 8.3 Copy
 
-Stock panel, opening state (20 Villagers in the Fields, 8 Reserves none wounded, Pantry 100). **Correction:** the earlier copy showed Recovery at -5.0 and a net of -3.0 with no wounded Reserve, and "Pantry holds 33 s", which would have told a safe player that Starvation was coming.
+Stock panel, opening state (20 Villagers in the Fields, 4 Reserves none wounded, Pantry 100). **Correction:** the earlier copy showed Recovery at -5.0 and a net of -3.0 with no wounded Reserve, and "Pantry holds 33 s", which would have told a safe player that Starvation was coming.
 
 ```
 STOCK
@@ -673,9 +673,9 @@ Credits        10
 Materials       0
 Relics          0
 Villagers      20
-Reserves        8
+Reserves        4
 
-Fields +10.0 · Upkeep -8.0 (8 Reserves) · Recovery 0.0 (none wounded) · net +2.0/s
+Fields +10.0 · Upkeep -4.0 (4 Reserves) · Recovery 0.0 (none wounded) · net +6.0/s
 Pantry holds. Fields cover Upkeep.
 ```
 
