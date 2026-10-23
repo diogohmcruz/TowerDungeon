@@ -1,8 +1,14 @@
 package io.github.diogohmcruz.towerdungeon.config;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
+import io.github.diogohmcruz.towerdungeon.domain.models.UnitStats;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  * Externalised game-balance configuration. Every tuning value that used to be a {@code static
@@ -42,6 +48,35 @@ public class GameProperties {
   @Data
   public static class Start {
     private double credit = 10.0;
+
+    /**
+     * The Founders every new campaign starts with in Reserves, free of charge, in order. Empty the
+     * list to start a campaign with none.
+     */
+    private List<Founder> founders =
+        new ArrayList<>(
+            List.of(
+                new Founder("Yuva", UnitStats.WARRIOR, 5.0, true),
+                new Founder("Fanro", UnitStats.WARRIOR, 1.0, false),
+                new Founder("Bazen", UnitStats.WARRIOR, 1.0, false),
+                new Founder("Calix", UnitStats.ARCHER, 1.0, false)));
+  }
+
+  /**
+   * One Founder: a named unit seeded into Reserves at the start of a campaign.
+   *
+   * <p>{@code statMultiplier} scales every per-unit combat stat (health and damage now; later stat
+   * issues multiply by the same factor). {@code fixedStrengths} keeps the unit out of the recruit
+   * roll.
+   */
+  @Data
+  @NoArgsConstructor
+  @AllArgsConstructor
+  public static class Founder {
+    private String name;
+    private UnitStats unitType;
+    private double statMultiplier = 1.0;
+    private boolean fixedStrengths = false;
   }
 
   /** Game-loop cadence and per-tick expedition costs. */

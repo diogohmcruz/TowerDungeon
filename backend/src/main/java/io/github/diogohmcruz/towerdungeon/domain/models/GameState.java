@@ -496,6 +496,25 @@ public class GameState {
     return unit;
   }
 
+  /**
+   * Raises a Founder at the village: a named unit whose {@code statMultiplier} scales its health
+   * and damage factors. Founders flagged {@code fixedStrengths} skip the recruit roll; the rest are
+   * rolled like any recruit.
+   */
+  public Unit recruitFounder(GameProperties.Founder founder, RandomGenerator random) {
+    var unit = new Unit(founder.getUnitType(), founder.getName());
+    unit.setFixedStrengths(founder.isFixedStrengths());
+    if (founder.getStatMultiplier() != 1.0) {
+      unit.setHealthFactor(founder.getStatMultiplier());
+      unit.setDamageFactor(founder.getStatMultiplier());
+    }
+    unit.rollStrengths(random, config.getRecruit().getStrengthSpread());
+    if (unit.isCaster()) {
+      unit.chargeToFull(config.getMagic().getMaxMana());
+    }
+    return unit;
+  }
+
   public void addCredit(Double amount) {
     credit += amount;
   }

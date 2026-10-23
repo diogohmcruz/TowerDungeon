@@ -43,8 +43,25 @@ public class GameService {
   private final PartyCombat partyCombat;
   private final Map<String, GameState> players = new ConcurrentHashMap<>();
 
+  /**
+   * Starts a brand-new campaign: an empty {@link GameState} with the configured Founders recruited
+   * into Reserves at no cost. Restoring a saved campaign must not go through here.
+   */
+  GameState newCampaign() {
+    var gameState = new GameState(config);
+    for (var founder : config.getStart().getFounders()) {
+      gameState.addUnits(founder.getUnitType(), List.of(gameState.recruitFounder(founder, random)));
+    }
+    return gameState;
+  }
+
+  /** The live state of a session, if it has one. Test hook. */
+  GameState playerState(String sessionId) {
+    return players.get(sessionId);
+  }
+
   private <T> T access(String sessionId, StateFn<T> body) {
-    var gameState = players.computeIfAbsent(sessionId, _ -> new GameState(config));
+    var gameState = players.computeIfAbsent(sessionId, _ -> newCampaign());
     try {
       return gameState.callLocked(() -> body.apply(gameState));
     } catch (RuntimeException e) {

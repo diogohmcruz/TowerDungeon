@@ -34,6 +34,13 @@ public class Unit extends BaseUnit {
     this.setCurrentHealth(stats.getHealth());
   }
 
+  public Unit(UnitStats stats, String name) {
+    super(name);
+    this.stats = stats;
+    this.setMaxHealth(stats.getHealth());
+    this.setCurrentHealth(stats.getHealth());
+  }
+
   /**
    * Sets the health factor and resets maximum and current health to the type's health scaled by it.
    * Meant for a freshly created unit, not one already wounded.
