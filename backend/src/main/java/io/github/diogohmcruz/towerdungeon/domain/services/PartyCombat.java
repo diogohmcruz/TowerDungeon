@@ -19,6 +19,7 @@ import io.github.diogohmcruz.towerdungeon.domain.models.GameState;
 import io.github.diogohmcruz.towerdungeon.domain.models.TowerFloor;
 import io.github.diogohmcruz.towerdungeon.domain.models.Unit;
 import io.github.diogohmcruz.towerdungeon.domain.models.UnitStats;
+import io.github.diogohmcruz.towerdungeon.domain.observation.ExpeditionMeter;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -80,6 +81,7 @@ public class PartyCombat {
               var target = candidates.get(random.nextInt(candidates.size()));
               target.receiveAttack(healer.getDamage(), AttackType.HEAL);
               healer.spendMana(manaCost);
+              gameState.getMeter().manaSpent(manaCost);
             });
 
     party.stream()
@@ -103,6 +105,7 @@ public class PartyCombat {
               var targetEnemy = targets.get(random.nextInt(targets.size()));
               var wasAlive = !targetEnemy.isDead();
               var unitType = currentUnit.getStats();
+              var enemyHealthBefore = targetEnemy.getCurrentHealth();
               var strike =
                   aimedStrike.resolve(
                       targetEnemy,
@@ -115,8 +118,10 @@ public class PartyCombat {
                       currentUnit.getAccuracy(),
                       aiming.headBiasOf(unitType));
               onStrike.accept(strike);
+              gameState.getMeter().dealt(enemyHealthBefore - targetEnemy.getCurrentHealth());
               if (currentUnit.isCaster()) {
                 currentUnit.spendMana(manaCost);
+                gameState.getMeter().manaSpent(manaCost);
               }
               if (wasAlive && targetEnemy.isDead()) {
                 log.info("Unit {} defeated enemy {}", currentUnit, targetEnemy);
@@ -178,6 +183,15 @@ public class PartyCombat {
                           1.0);
               onStrike.accept(strike);
               drops.addAll(strike.dropped());
+              gameState
+                  .getMeter()
+                  .taken(
+                      ExpeditionMeter.Cause.COMBAT,
+                      healthBefore - targetUnitElement.getCurrentHealth());
+              gameState
+                  .getMeter()
+                  .partsLost(
+                      (int) strike.parts().stream().filter(AimedStrike.PartOutcome::lost).count());
 
               returnThorns(
                   gameState, currentEnemies, currentEnemy, targetUnitElement, healthBefore);
@@ -185,7 +199,9 @@ public class PartyCombat {
               if (targetUnitElement.isDead()) {
                 log.info("Enemy {} defeated unit {}", currentEnemy, targetUnitElement);
                 drops.addAll(targetUnitElement.dropAll());
+                gameState.getMeter().causeIs(ExpeditionMeter.Cause.COMBAT);
                 gameState.removeUnit(targetUnitElement);
+                gameState.getMeter().causeIs(ExpeditionMeter.Cause.OTHER);
               }
             });
     return drops;

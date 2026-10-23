@@ -82,6 +82,8 @@ final class PlayerSlot {
 
   private long simulatedLimit = Long.MAX_VALUE;
 
+  private volatile TickObserver observer;
+
   PlayerSlot(String playerId) {
     this(playerId, ClockMode.REALTIME);
   }
@@ -106,6 +108,15 @@ final class PlayerSlot {
 
   long simulatedLimit() {
     return simulatedLimit;
+  }
+
+  /** Who watches this Sandbox's ticks, or null. */
+  TickObserver observer() {
+    return observer;
+  }
+
+  void observer(TickObserver observer) {
+    this.observer = observer;
   }
 
   void simulatedLimit(long limit) {

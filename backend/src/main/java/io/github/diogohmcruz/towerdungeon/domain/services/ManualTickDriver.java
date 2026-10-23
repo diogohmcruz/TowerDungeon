@@ -19,6 +19,12 @@ import io.github.diogohmcruz.towerdungeon.domain.models.GameState;
  * same seed and the same commands and ticks make the same run. {@link #DETERMINISM_NOTE} says so.
  */
 public final class ManualTickDriver implements TickDriver {
+  /** The engine a manual run is made on: it changes when the tick order or any rule does. */
+  public static final String ENGINE = "td-1";
+
+  /** What one simulated second is, recorded in every telemetry row. */
+  public static final String TICK_MODEL = "attrition1000-then-lifecycle";
+
   /** Said in every Sandbox response. */
   public static final String DETERMINISM_NOTE =
       "Draws are seeded: the same seed, commands and ticks always make the same run.";
@@ -111,10 +117,17 @@ public final class ManualTickDriver implements TickDriver {
             if (slot.simulatedSeconds() >= slot.simulatedLimit()) {
               return Stop.SIMULATED_TIME_CAP;
             }
+            var watcher = slot.observer();
+            if (watcher != null) {
+              watcher.beforeTick(state, slot.simulatedSeconds() + 1);
+            }
             service.attritionTick(state, SECOND_MS);
             service.lifecycleTick(slot, state);
             service.settleEnded(slot, state);
             slot.addSimulatedSeconds(1);
+            if (watcher != null) {
+              watcher.afterTick(state, slot.simulatedSeconds());
+            }
             return until != null && until.test(state) ? Stop.CONDITION : Stop.COMPLETED;
           });
     } catch (RuntimeException e) {

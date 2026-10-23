@@ -25,6 +25,7 @@ import io.github.diogohmcruz.towerdungeon.agent.auth.RateLimiter;
 import io.github.diogohmcruz.towerdungeon.agent.auth.Scope;
 import io.github.diogohmcruz.towerdungeon.agent.observe.Observations;
 import io.github.diogohmcruz.towerdungeon.agent.resources.Glossary;
+import io.github.diogohmcruz.towerdungeon.agent.telemetry.SandboxTelemetry;
 import io.github.diogohmcruz.towerdungeon.domain.services.SandboxRegistry;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
 import tools.jackson.databind.json.JsonMapper;
@@ -60,6 +61,7 @@ class ToolCatalogueTest {
             observations,
             actions,
             mock(SandboxRegistry.class),
+            mock(SandboxTelemetry.class),
             new RateLimiter(nanos::get),
             new AuditLog(auditFile, Clock.systemUTC()));
   }
@@ -91,6 +93,7 @@ class ToolCatalogueTest {
             "td_get_ledger",
             "td_get_rules",
             "td_get_state",
+            "td_get_telemetry",
             "td_get_tower",
             "td_recruit",
             "td_sandbox_close",
@@ -312,7 +315,12 @@ class ToolCatalogueTest {
                 null));
     var local =
         new ToolCatalogue(
-            observations, actions, sandboxes, new RateLimiter(nanos::get), AuditLog.none());
+            observations,
+            actions,
+            sandboxes,
+            mock(SandboxTelemetry.class),
+            new RateLimiter(nanos::get),
+            AuditLog.none());
 
     var result = local.call(dev, "td_sandbox_new", Map.of()).block();
 
@@ -425,7 +433,12 @@ class ToolCatalogueTest {
   void toolListsAreStableAcrossInstances() {
     var other =
         new ToolCatalogue(
-            observations, actions, mock(SandboxRegistry.class), new RateLimiter(), AuditLog.none());
+            observations,
+            actions,
+            mock(SandboxRegistry.class),
+            mock(SandboxTelemetry.class),
+            new RateLimiter(),
+            AuditLog.none());
 
     assertThat(other.manifestJson()).isEqualTo(catalogue.manifestJson());
     assertThat(List.copyOf(other.tools())).hasSameSizeAs(catalogue.tools());

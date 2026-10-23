@@ -3,6 +3,8 @@ package io.github.diogohmcruz.towerdungeon.agent.mcp;
 import java.util.List;
 
 import io.github.diogohmcruz.towerdungeon.agent.auth.Principal;
+import io.github.diogohmcruz.towerdungeon.agent.auth.Scope;
+import io.github.diogohmcruz.towerdungeon.agent.prompts.PromptCatalogue;
 import io.github.diogohmcruz.towerdungeon.agent.resources.ResourceCatalogue;
 import io.github.diogohmcruz.towerdungeon.agent.tools.ToolCatalogue;
 import io.github.diogohmcruz.towerdungeon.agent.tools.ToolDef;
@@ -76,6 +78,18 @@ public final class McpBinding {
         .toList();
   }
 
+  public static List<McpStatelessServerFeatures.AsyncPromptSpecification> statelessPrompts(
+      PromptCatalogue catalogue) {
+    return catalogue.prompts().stream()
+        .map(
+            def ->
+                new McpStatelessServerFeatures.AsyncPromptSpecification(
+                    promptOf(def),
+                    (context, request) ->
+                        prompt(catalogue, def, principalOf(context), request.arguments())))
+        .toList();
+  }
+
   // ---------------------------------------------------------------- stateful (stdio)
 
   public static List<McpServerFeatures.AsyncToolSpecification> statefulTools(
@@ -112,7 +126,66 @@ public final class McpBinding {
         .toList();
   }
 
+  public static List<McpServerFeatures.AsyncPromptSpecification> statefulPrompts(
+      PromptCatalogue catalogue) {
+    return catalogue.prompts().stream()
+        .map(
+            def ->
+                new McpServerFeatures.AsyncPromptSpecification(
+                    promptOf(def),
+                    (exchange, request) ->
+                        prompt(catalogue, def, Principal.stdio(), request.arguments())))
+        .toList();
+  }
+
   // ---------------------------------------------------------------- shared
+
+  private static McpSchema.Prompt promptOf(PromptCatalogue.Def def) {
+    return McpSchema.Prompt.builder(def.name())
+        .title(def.title())
+        .description(def.description())
+        .arguments(
+            def.arguments().stream()
+                .map(a -> new McpSchema.PromptArgument(a.name(), a.description(), a.required()))
+                .toList())
+        .build();
+  }
+
+  /**
+   * Writes a prompt for a caller who may observe. A refusal is a fixed JSON-RPC error; nothing else
+   * about a failure reaches the caller.
+   */
+  private static Mono<McpSchema.GetPromptResult> prompt(
+      PromptCatalogue catalogue,
+      PromptCatalogue.Def def,
+      Principal principal,
+      java.util.Map<String, Object> arguments) {
+    return Mono.fromCallable(
+            () -> {
+              if (principal == null) {
+                throw new ToolFailure("UNAUTHENTICATED", "No caller was identified.");
+              }
+              if (!principal.has(Scope.OBSERVE)) {
+                throw new ToolFailure("FORBIDDEN", "This grant may not use that prompt.");
+              }
+              var text = catalogue.render(def.name(), arguments);
+              return new McpSchema.GetPromptResult(
+                  def.description(),
+                  List.of(
+                      McpSchema.PromptMessage.builder(
+                              McpSchema.Role.USER, McpSchema.TextContent.builder(text).build())
+                          .build()),
+                  null);
+            })
+        .subscribeOn(Schedulers.boundedElastic())
+        .onErrorMap(
+            e ->
+                e instanceof ToolFailure failure
+                    ? McpError.builder(McpSchema.ErrorCodes.INVALID_PARAMS)
+                        .message(failure.getMessage())
+                        .build()
+                    : fixedError(e));
+  }
 
   private static McpSchema.Resource resourceOf(ResourceCatalogue.Def def) {
     return McpSchema.Resource.builder(def.uri(), def.name())

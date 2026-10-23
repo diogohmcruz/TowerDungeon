@@ -147,6 +147,17 @@ public class GameProperties {
   @Data
   public static class Agent {
     private final Sandbox sandbox = new Sandbox();
+    private final Telemetry telemetry = new Telemetry();
+
+    /** The balance telemetry: JSON Lines files, one per batch of Campaigns. */
+    @Data
+    public static class Telemetry {
+      /** Where the batch files are written. Never take a path from an agent. */
+      private String dir = "./data/telemetry";
+
+      /** The most rows one {@code td_get_telemetry} answer carries. */
+      private int maxRowsPerRead = 200;
+    }
 
     /** Sandbox Campaigns: headless Campaigns that advance only when a driver ticks them. */
     @Data

@@ -1,0 +1,32 @@
+# The playtest profile: plays scripted bots on Sandbox Campaigns, writes balance telemetry under
+# data/telemetry, prints the per-Floor table and exits. No web server, no MCP, no Campaign files of
+# the developer's own game (a data directory of its own). Local runs only.
+#
+#   mvn spring-boot:run -Dspring-boot.run.profiles=playtest \
+#     -Dspring-boot.run.arguments="--playtest.campaigns=1000 --playtest.seed=1"
+spring:
+  main:
+    web-application-type: none
+    banner-mode: "off"
+  output:
+    ansi:
+      enabled: never
+
+playtest:
+  run: true
+
+game:
+  agent:
+    enabled: true
+    sandbox:
+      enabled: true
+      max-per-grant: 8
+  persistence:
+    data-dir: ./data/playtest
+
+logging:
+  level:
+    # A bot plays millions of Floors: the game's own INFO lines would bury the output.
+    root: WARN
+    # The game warns on every Wipe; a bot Wipes by the million.
+    io.github.diogohmcruz.towerdungeon.domain: ERROR

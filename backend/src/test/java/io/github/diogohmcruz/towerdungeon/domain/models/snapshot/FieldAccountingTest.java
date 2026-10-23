@@ -103,7 +103,10 @@ class FieldAccountingTest {
               "config", "game balance, supplied on restore",
               "doorOpen", "derived: Blood of the Door is on the player's Roll, in the meta",
               "ledger",
-                  "a log of what just happened, not a fact of the Campaign; starts empty on load"));
+                  "a log of what just happened, not a fact of the Campaign; starts empty on load",
+              "meter",
+                  "running totals for the balance telemetry, counted by the Sandbox run; never"
+                      + " saved"));
 
   private static Map<String, String> merged(Map<String, String> first, Map<String, String> more) {
     var all = new java.util.HashMap<>(first);

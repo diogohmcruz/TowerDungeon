@@ -106,6 +106,14 @@ public class SandboxRegistry {
     return true;
   }
 
+  /**
+   * Has {@code observer} told of every tick of a Sandbox the grant holds (null to stop). False when
+   * the grant holds no such Sandbox.
+   */
+  public synchronized boolean watch(String grantId, String sandboxId, TickObserver observer) {
+    return holds(grantId, sandboxId) && service.watchSandbox(sandboxId, observer);
+  }
+
   /** Closes every Sandbox of a grant (it ended or expired). Returns how many were closed. */
   public synchronized int closeAll(String grantId) {
     var mine = owners.entrySet().stream().filter(e -> e.getValue().equals(grantId)).toList();

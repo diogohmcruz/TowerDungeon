@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import io.github.diogohmcruz.towerdungeon.agent.AgentEnabled;
+import io.github.diogohmcruz.towerdungeon.agent.prompts.PromptCatalogue;
 import io.github.diogohmcruz.towerdungeon.agent.resources.ResourceCatalogue;
 import io.github.diogohmcruz.towerdungeon.agent.tools.ToolCatalogue;
 import io.modelcontextprotocol.server.McpServerFeatures;
@@ -36,5 +37,10 @@ public class AgentStdioConfig {
   public List<McpServerFeatures.AsyncResourceTemplateSpecification> mcpResourceTemplates(
       ResourceCatalogue resources) {
     return McpBinding.statefulTemplates(resources);
+  }
+
+  @Bean
+  public List<McpServerFeatures.AsyncPromptSpecification> mcpPrompts(PromptCatalogue prompts) {
+    return McpBinding.statefulPrompts(prompts);
   }
 }

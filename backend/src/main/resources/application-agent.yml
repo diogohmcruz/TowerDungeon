@@ -9,6 +9,9 @@ spring:
         enabled: true
         protocol: STATELESS
         type: ASYNC
+        capabilities:
+          # The playtest and balance prompts (design 4.9).
+          prompt: true
 
 game:
   agent:

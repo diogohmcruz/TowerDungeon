@@ -65,6 +65,7 @@ class McpEndpointTest {
     registry.add("game.agent.http.audit-file", AUDIT::toString);
     registry.add("game.agent.http.dev-campaign", () -> HUMAN);
     registry.add("game.agent.sandbox.enabled", () -> "true");
+    registry.add("game.agent.telemetry.dir", () -> DATA_DIR.resolve("telemetry").toString());
   }
 
   /** Every call finds a full bucket: the limits themselves are tested on their own. */
@@ -309,6 +310,78 @@ class McpEndpointTest {
     var after = call("td_get_state", "{\"campaign\":\"" + sandbox + "\"}");
     assertThat(after.get("isError").asBoolean()).isTrue();
     assertThat(after.get("structuredContent").get("code").asString()).isEqualTo("NO_CAMPAIGN");
+  }
+
+  @Test
+  void aSandboxIsRecordedAndItsTelemetryIsReadBackThroughTheTool() {
+    var opened = ok("td_sandbox_new", "{\"seed\":123}");
+    var sandbox = opened.get("campaign").asString();
+    var batch = opened.get("telemetry_batch").asString();
+    assertThat(batch).matches("^[a-z0-9-]{8,40}$");
+
+    ok("td_recruit", "{\"request_id\":\"tel-recruit-1\",\"unit_type\":\"WARRIOR\",\"quantity\":1}");
+    ok("td_start_expedition", "{\"request_id\":\"tel-start-001\",\"party\":\"all_reserves\"}");
+    // A few ticks only: every event of the wait comes back in the answer.
+    ok("td_wait", "{\"conditions\":[{\"type\":\"ticks\",\"value\":6}],\"max_ticks\":6}");
+    var floors = ok("td_get_telemetry", "{\"kind\":\"floor\",\"limit\":50}");
+
+    assertThat(floors.get("batch_id").asString()).isEqualTo(batch);
+    assertThat(floors.get("count").asInt()).isGreaterThan(0);
+    floors
+        .get("rows")
+        .forEach(
+            row -> {
+              assertThat(row.get("engine").asString()).isEqualTo("td-1");
+              assertThat(row.get("config_hash").asString()).isNotBlank();
+              assertThat(row.get("seed").asLong()).isEqualTo(123L);
+              assertThat(row.get("policy").asString()).isEqualTo("agent");
+            });
+    assertThat(ok("td_get_telemetry", "{}").get("batch_id").asString()).isEqualTo(batch);
+
+    var closed = ok("td_sandbox_close", "{\"campaign\":\"" + sandbox + "\"}");
+    assertThat(closed.get("telemetry_batch").asString()).isEqualTo(batch);
+    var campaign = ok("td_get_telemetry", "{\"batch_id\":\"" + batch + "\",\"kind\":\"campaign\"}");
+    assertThat(campaign.get("count").asInt()).isEqualTo(1);
+    assertThat(campaign.get("rows").get(0).get("stop").asString()).isEqualTo("CLOSED");
+  }
+
+  @Test
+  void telemetryWithNoSandboxListsTheBatchesAndAPathIsNeverAnId() {
+    var listed = ok("td_get_telemetry", "{\"batch_id\":\"tb-0000000000000000\"}");
+    assertThat(listed.get("count").asInt()).isZero();
+
+    var bad = call("td_get_telemetry", "{\"batch_id\":\"../../etc/passwd\"}");
+    // The schema's pattern or the tool's own check refuses it: either way it is an error result.
+    assertThat(bad.get("isError").asBoolean()).isTrue();
+    assertThat(bad.toString()).doesNotContain("passwd\"}", "root:");
+  }
+
+  @Test
+  void promptsAreListedAndTheBalanceReportComputesItsTableFromABatch() {
+    var names = new ArrayList<String>();
+    rpc("prompts/list", "{}")
+        .at("/result/prompts")
+        .forEach(p -> names.add(p.get("name").asString()));
+    assertThat(names).containsExactlyInAnyOrder("td_playtest_brief", "td_balance_report");
+
+    var opened = ok("td_sandbox_new", "{\"seed\":9}");
+    var batch = opened.get("telemetry_batch").asString();
+    ok("td_start_expedition", "{\"request_id\":\"prm-start-001\",\"party\":\"all_reserves\"}");
+    ok("td_wait", "{\"conditions\":[{\"type\":\"ticks\",\"value\":6}],\"max_ticks\":6}");
+    ok("td_sandbox_close", "{\"campaign\":\"" + opened.get("campaign").asString() + "\"}");
+
+    var report =
+        rpc(
+            "prompts/get",
+            "{\"name\":\"td_balance_report\",\"arguments\":{\"batches\":\"%s\",\"min_samples\":\"1\"}}"
+                .formatted(batch));
+    var text = report.at("/result/messages/0/content/text").asString();
+    assertThat(text).contains("computed by the server", "engine td-1", "| Floor |");
+
+    var refused =
+        rpc("prompts/get", "{\"name\":\"td_balance_report\",\"arguments\":{\"batches\":\"../x\"}}");
+    assertThat(refused.has("error")).isTrue();
+    assertNoTrace(refused.toString());
   }
 
   @Test

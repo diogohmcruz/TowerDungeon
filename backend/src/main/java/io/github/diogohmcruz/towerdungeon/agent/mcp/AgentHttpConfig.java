@@ -15,6 +15,7 @@ import io.github.diogohmcruz.towerdungeon.agent.auth.AgentAccess;
 import io.github.diogohmcruz.towerdungeon.agent.auth.AuditLog;
 import io.github.diogohmcruz.towerdungeon.agent.auth.Principal;
 import io.github.diogohmcruz.towerdungeon.agent.auth.RateLimiter;
+import io.github.diogohmcruz.towerdungeon.agent.prompts.PromptCatalogue;
 import io.github.diogohmcruz.towerdungeon.agent.resources.ResourceCatalogue;
 import io.github.diogohmcruz.towerdungeon.agent.tools.ToolCatalogue;
 import io.modelcontextprotocol.common.McpTransportContext;
@@ -74,6 +75,12 @@ public class AgentHttpConfig {
   public List<McpStatelessServerFeatures.AsyncResourceTemplateSpecification> mcpResourceTemplates(
       ResourceCatalogue resources) {
     return McpBinding.statelessTemplates(resources);
+  }
+
+  @Bean
+  public List<McpStatelessServerFeatures.AsyncPromptSpecification> mcpPrompts(
+      PromptCatalogue prompts) {
+    return McpBinding.statelessPrompts(prompts);
   }
 
   @Bean

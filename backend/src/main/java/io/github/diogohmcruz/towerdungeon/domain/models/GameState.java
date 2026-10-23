@@ -44,6 +44,7 @@ import io.github.diogohmcruz.towerdungeon.domain.models.snapshot.UnitSnapshot;
 import io.github.diogohmcruz.towerdungeon.domain.models.snapshot.WaveSnapshot;
 import io.github.diogohmcruz.towerdungeon.domain.models.upgrade.UpgradeOffer;
 import io.github.diogohmcruz.towerdungeon.domain.models.upgrade.UpgradeType;
+import io.github.diogohmcruz.towerdungeon.domain.observation.ExpeditionMeter;
 import io.github.diogohmcruz.towerdungeon.domain.prestige.RollEffects;
 import io.github.diogohmcruz.towerdungeon.domain.prestige.SavedLoadout;
 import io.github.diogohmcruz.towerdungeon.domain.prestige.SuccessionReport;
@@ -210,6 +211,10 @@ public class GameState {
       new RoundRobinFoodDistributionStrategy();
 
   @JsonIgnore @ToString.Exclude @EqualsAndHashCode.Exclude private GameProperties config;
+
+  /** What the Expeditions of this Campaign did, counted for the telemetry; never saved. */
+  @JsonIgnore @ToString.Exclude @EqualsAndHashCode.Exclude
+  private final ExpeditionMeter meter = new ExpeditionMeter();
 
   /**
    * Every random draw of this Campaign. Never shown to a client: the seed would reveal the Tower.
@@ -610,6 +615,7 @@ public class GameState {
     var before = supplies;
     var saltedBefore = saltedSupplies;
     drainSupplies(units * perUnit);
+    meter.suppliesDrained(before - supplies);
     this.saltedSupplies = Math.max(0d, saltedBefore - (before - supplies) * share);
   }
 
@@ -732,6 +738,7 @@ public class GameState {
 
   /** Counts one item that did not fit on anyone: kept per tier, banked like loot on extraction. */
   public void addSurplus(ItemTier tier) {
+    meter.surplusItem();
     surplus.merge(tier, 1, Integer::sum);
   }
 
@@ -2277,6 +2284,7 @@ public class GameState {
         unitsOnTower.remove(targetUnit.getStats());
       }
       runUnitsLost++;
+      meter.unitLost(targetUnit.getStats().name());
       if (targetUnit.getId().equals(saltBearerId)) {
         loseSaltPack();
       }
@@ -2370,10 +2378,17 @@ public class GameState {
     var unitsToRemove =
         unitsOnTower.values().stream()
             .flatMap(List::stream)
-            .peek(unit -> dropGearOnCurrentFloor(unit.receiveAttrition(attack)))
+            .peek(
+                unit -> {
+                  var before = unit.getCurrentHealth();
+                  dropGearOnCurrentFloor(unit.receiveAttrition(attack));
+                  meter.taken(ExpeditionMeter.Cause.ATTRITION, before - unit.getCurrentHealth());
+                })
             .filter(BaseUnit::isDead)
             .toList();
+    meter.causeIs(ExpeditionMeter.Cause.ATTRITION);
     unitsToRemove.forEach(this::removeUnit);
+    meter.causeIs(ExpeditionMeter.Cause.OTHER);
   }
 
   /**

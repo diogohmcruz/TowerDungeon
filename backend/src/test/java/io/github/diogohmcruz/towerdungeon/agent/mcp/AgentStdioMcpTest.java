@@ -71,7 +71,9 @@ class AgentStdioMcpTest {
     try (var context =
         new SpringApplicationBuilder(TowerDungeonApplication.class)
             .profiles("agent-stdio")
-            .run("--game.persistence.data-dir=" + dataDir)) {
+            .run(
+                "--game.persistence.data-dir=" + dataDir,
+                "--game.agent.telemetry.dir=" + dataDir.resolve("telemetry"))) {
       System.setOut(realOut);
       System.setIn(realIn);
 
@@ -108,6 +110,16 @@ class AgentStdioMcpTest {
       send(
           "{\"jsonrpc\":\"2.0\",\"id\":6,\"method\":\"resources/read\",\"params\":{\"uri\":\"td://state\"}}");
       assertThat(reply(6).at("/result/contents/0/text").asString()).contains("\"seq\":3");
+
+      send("{\"jsonrpc\":\"2.0\",\"id\":7,\"method\":\"prompts/list\"}");
+      var prompts = new ArrayList<String>();
+      reply(7).at("/result/prompts").forEach(p -> prompts.add(p.get("name").asString()));
+      assertThat(prompts).containsExactlyInAnyOrder("td_playtest_brief", "td_balance_report");
+      send(
+          "{\"jsonrpc\":\"2.0\",\"id\":8,\"method\":\"prompts/get\",\"params\":{\"name\":"
+              + "\"td_playtest_brief\",\"arguments\":{\"seed\":\"5\"}}}");
+      assertThat(reply(8).at("/result/messages/0/content/text").asString())
+          .contains("seed 5", "td_get_telemetry");
     } finally {
       System.setOut(realOut);
       System.setIn(realIn);

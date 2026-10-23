@@ -127,6 +127,7 @@ public class FloorBundle {
     if (item.tier() == ItemTier.ARTIFACT) {
       gameState.recordArtifactTaken(item.id());
     }
+    gameState.getMeter().itemFound();
     var result = finder.equip(item, rating);
     if (result.hasSurplus()) {
       gameState.addSurplus(result.surplus().tier());

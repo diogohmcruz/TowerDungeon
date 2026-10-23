@@ -43,6 +43,7 @@ import io.github.diogohmcruz.towerdungeon.domain.models.snapshot.GameSnapshot;
 import io.github.diogohmcruz.towerdungeon.domain.models.upgrade.UpgradeType;
 import io.github.diogohmcruz.towerdungeon.domain.observation.AimTally;
 import io.github.diogohmcruz.towerdungeon.domain.observation.EventLog;
+import io.github.diogohmcruz.towerdungeon.domain.observation.ExpeditionMeter;
 import io.github.diogohmcruz.towerdungeon.domain.observation.StateProjection;
 import io.github.diogohmcruz.towerdungeon.domain.prestige.FallenName;
 import io.github.diogohmcruz.towerdungeon.domain.prestige.InheritanceType;
@@ -291,6 +292,16 @@ public class GameService {
           return closed[0] ? null : slot;
         });
     return closed[0];
+  }
+
+  /** Sets who watches a Sandbox's ticks (null for nobody). False for anything but a Sandbox. */
+  boolean watchSandbox(String sandboxId, TickObserver observer) {
+    var slot = players.get(sandboxId);
+    if (slot == null || !slot.isManual()) {
+      return false;
+    }
+    slot.observer(observer);
+    return true;
   }
 
   /** The Campaign slot of an id, if any; manual or real-time. */
@@ -949,6 +960,10 @@ public class GameService {
     if (result.changedState()) {
       slot.bumpSeq();
       slot.collectSummary(gameState);
+      var watcher = slot.observer();
+      if (watcher != null) {
+        watcher.afterCommand(gameState);
+      }
     }
     return result.withStateSeq(slot.stateSeq());
   }
@@ -2139,11 +2154,16 @@ public class GameService {
   private void applyStarvation(GameState gameState) {
     var starving =
         gameState.getUnitsOnTower().values().stream().flatMap(Collection::stream).toList();
+    var meter = gameState.getMeter();
     starving.forEach(
-        unit ->
-            gameState.dropGearOnCurrentFloor(
-                unit.receiveAttack(gameState.starvationDamage(), null)));
+        unit -> {
+          var before = unit.getCurrentHealth();
+          gameState.dropGearOnCurrentFloor(unit.receiveAttack(gameState.starvationDamage(), null));
+          meter.taken(ExpeditionMeter.Cause.STARVATION, before - unit.getCurrentHealth());
+        });
+    meter.causeIs(ExpeditionMeter.Cause.STARVATION);
     starving.stream().filter(BaseUnit::isDead).toList().forEach(gameState::removeUnit);
+    meter.causeIs(ExpeditionMeter.Cause.OTHER);
   }
 
   private void endRunOnWipe(GameState gameState) {

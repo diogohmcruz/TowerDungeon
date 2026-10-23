@@ -14,6 +14,9 @@ spring:
         enabled: true
         stdio: true
         type: ASYNC
+        capabilities:
+          # The playtest and balance prompts (design 4.9).
+          prompt: true
 
 game:
   agent:
