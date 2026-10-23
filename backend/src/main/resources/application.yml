@@ -219,6 +219,9 @@ game:
     # Must be a mounted volume: on an ephemeral filesystem every deploy deletes every Campaign.
     data-dir: ./data
     linger: 30s
+    # Seals the spoiler-sensitive part of exported files. Must be stable across deploys; the app
+    # refuses to start in the prod profile without it (set GAME_PERSISTENCE_SEAL_KEY).
+    seal-key: ${GAME_PERSISTENCE_SEAL_KEY:}
   security:
     # Empty allows any Origin. In production list the site, e.g. https://play.example.com
     allowed-origins: []

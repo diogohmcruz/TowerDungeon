@@ -1,0 +1,214 @@
+{
+  "campaign" : {
+    "credit" : 250.0,
+    "reserves" : [ {
+      "id" : 1258646124,
+      "name" : "Pythagoras",
+      "type" : "WARRIOR",
+      "healthFactor" : 0.889746635752545,
+      "damageFactor" : 0.857419091064231,
+      "fixedStrengths" : false,
+      "maxMana" : 0.0,
+      "currentMana" : 0.0,
+      "parts" : [ {
+        "kind" : "TORSO",
+        "maxHealth" : 8.897466357525449,
+        "currentHealth" : 6.897466357525449,
+        "lost" : false
+      }, {
+        "kind" : "HEAD",
+        "maxHealth" : 1.77949327150509,
+        "currentHealth" : 1.37949327150509,
+        "lost" : false
+      }, {
+        "kind" : "LEFT_ARM",
+        "maxHealth" : 1.4235946172040719,
+        "currentHealth" : 1.1035946172040718,
+        "lost" : false
+      }, {
+        "kind" : "RIGHT_ARM",
+        "maxHealth" : 1.4235946172040719,
+        "currentHealth" : 1.1035946172040718,
+        "lost" : false
+      }, {
+        "kind" : "LEFT_LEG",
+        "maxHealth" : 2.1353919258061076,
+        "currentHealth" : 1.6553919258061076,
+        "lost" : false
+      }, {
+        "kind" : "RIGHT_LEG",
+        "maxHealth" : 2.1353919258061076,
+        "currentHealth" : 1.6553919258061076,
+        "lost" : false
+      } ],
+      "sanity" : 100.0,
+      "maxSanity" : 100.0,
+      "phobias" : [ {
+        "enemyType" : "NECROMANCER",
+        "known" : false
+      } ],
+      "fearFloor" : -1,
+      "gear" : { },
+      "affinity" : "HELM"
+    }, {
+      "id" : -500546848,
+      "name" : "Posidonius",
+      "type" : "ARCHER",
+      "healthFactor" : 0.7603086874341569,
+      "damageFactor" : 1.1679892273741983,
+      "fixedStrengths" : false,
+      "maxMana" : 0.0,
+      "currentMana" : 0.0,
+      "parts" : [ {
+        "kind" : "TORSO",
+        "maxHealth" : 3.8015434371707846,
+        "currentHealth" : 3.8015434371707846,
+        "lost" : false
+      }, {
+        "kind" : "HEAD",
+        "maxHealth" : 0.7603086874341569,
+        "currentHealth" : 0.7603086874341569,
+        "lost" : false
+      }, {
+        "kind" : "LEFT_ARM",
+        "maxHealth" : 0.6082469499473255,
+        "currentHealth" : 0.6082469499473255,
+        "lost" : false
+      }, {
+        "kind" : "RIGHT_ARM",
+        "maxHealth" : 0.6082469499473255,
+        "currentHealth" : 0.6082469499473255,
+        "lost" : false
+      }, {
+        "kind" : "LEFT_LEG",
+        "maxHealth" : 0.9123704249209883,
+        "currentHealth" : 0.9123704249209883,
+        "lost" : false
+      }, {
+        "kind" : "RIGHT_LEG",
+        "maxHealth" : 0.9123704249209883,
+        "currentHealth" : 0.9123704249209883,
+        "lost" : false
+      } ],
+      "sanity" : 100.0,
+      "maxSanity" : 100.0,
+      "phobias" : [ ],
+      "fearFloor" : -1,
+      "gear" : { },
+      "affinity" : null
+    }, {
+      "id" : 1594166764,
+      "name" : "Diogenes",
+      "type" : "MAGE",
+      "healthFactor" : 0.798293829435321,
+      "damageFactor" : 0.8525354329380598,
+      "fixedStrengths" : false,
+      "maxMana" : 5.0,
+      "currentMana" : 5.0,
+      "parts" : [ {
+        "kind" : "TORSO",
+        "maxHealth" : 3.991469147176605,
+        "currentHealth" : 3.991469147176605,
+        "lost" : false
+      }, {
+        "kind" : "HEAD",
+        "maxHealth" : 0.798293829435321,
+        "currentHealth" : 0.798293829435321,
+        "lost" : false
+      }, {
+        "kind" : "LEFT_ARM",
+        "maxHealth" : 0.6386350635482568,
+        "currentHealth" : 0.6386350635482568,
+        "lost" : false
+      }, {
+        "kind" : "RIGHT_ARM",
+        "maxHealth" : 0.6386350635482568,
+        "currentHealth" : 0.6386350635482568,
+        "lost" : false
+      }, {
+        "kind" : "LEFT_LEG",
+        "maxHealth" : 0.9579525953223852,
+        "currentHealth" : 0.9579525953223852,
+        "lost" : false
+      }, {
+        "kind" : "RIGHT_LEG",
+        "maxHealth" : 0.9579525953223852,
+        "currentHealth" : 0.9579525953223852,
+        "lost" : false
+      } ],
+      "sanity" : 100.0,
+      "maxSanity" : 100.0,
+      "phobias" : [ {
+        "enemyType" : "CHYMUS_INSECT",
+        "known" : false
+      }, {
+        "enemyType" : "DRAGON",
+        "known" : false
+      } ],
+      "fearFloor" : -1,
+      "gear" : { },
+      "affinity" : "WEAPON"
+    } ],
+    "vault" : {
+      "MATERIALS" : 360.0,
+      "RELICS" : 5.0
+    },
+    "upgrades" : {
+      "UNLOCK_HEALER" : 1
+    },
+    "milestones" : [ "SARGAN_JOINS", "RELIC_LORE" ],
+    "shortcutsOpened" : [ ],
+    "tower" : null,
+    "highestFloor" : 12,
+    "expeditionsCompleted" : 1,
+    "enemiesDefeated" : 0,
+    "outcome" : "PLAYING",
+    "lastExpeditionSummary" : {
+      "outcome" : "EXTRACTED",
+      "startFloor" : 0,
+      "highestFloor" : 0,
+      "floorsCleared" : 0,
+      "enemiesDefeated" : 0,
+      "creditsGained" : 0.0,
+      "materialsGained" : 0.0,
+      "relicsGained" : 0.0,
+      "unitsLost" : 0,
+      "survivors" : 0,
+      "fallen" : [ ]
+    },
+    "villageFood" : 37.5,
+    "villagers" : 6,
+    "trades" : {
+      "breakers" : 0,
+      "scribes" : 0,
+      "settlingTillers" : [ ],
+      "settlingBreakers" : [ ],
+      "settlingScribes" : [ ],
+      "knowledge" : 0.0,
+      "quarryHeap" : 0.0,
+      "emergencyTilling" : false,
+      "villagersLost" : 0,
+      "reservesLost" : 0,
+      "tomes" : { },
+      "postLevels" : { },
+      "salters" : 0,
+      "settlingSalters" : [ ],
+      "salt" : 0.0
+    },
+    "artifactsTaken" : [ ],
+    "tally" : {
+      "foodGrown" : 0.0,
+      "creditsBanked" : 0.0,
+      "materialsBanked" : 0.0,
+      "relicsBanked" : 0.0,
+      "floorsCleared" : 0,
+      "peakVillagers" : 20
+    },
+    "villageTier" : 1,
+    "wallOfNames" : [ ]
+  },
+  "expedition" : null,
+  "meta" : {
+    "chronicle" : "kept"
+  }
+}

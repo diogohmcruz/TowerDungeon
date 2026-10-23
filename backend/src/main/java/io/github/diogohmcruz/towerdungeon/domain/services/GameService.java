@@ -1,5 +1,6 @@
 package io.github.diogohmcruz.towerdungeon.domain.services;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -7,10 +8,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalLong;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
+import java.util.function.ToLongFunction;
 import java.util.random.RandomGenerator;
 
 import org.springframework.scheduling.annotation.Scheduled;
@@ -210,6 +213,14 @@ public class GameService {
   private GameState restoreCampaign(PlayerSlot slot, LoadResult result) {
     if (result.schema() > CampaignSchema.CURRENT) {
       throw new SchemaNewerException(result.schema());
+    }
+    result.notices().forEach(text -> slot.addNotice(new Notice("SAVE_MIGRATED", text)));
+    if (result.campaignLost()) {
+      // The record could not be read any more; a copy of it is kept. Start over where it left off.
+      var fresh = newCampaign();
+      slot.loaded(fresh, false, null, CampaignSchema.CURRENT);
+      saves.opened(slot, result.seq());
+      return fresh;
     }
     var snapshot = objectMapper.readValue(result.payload(), GameSnapshot.class);
     var state = GameState.restore(snapshot, config, random, architecturePlan);
@@ -908,6 +919,44 @@ public class GameService {
     } catch (RuntimeException e) {
       log.warn("Could not write the Expedition's Toll to the log.", e);
     }
+  }
+
+  /**
+   * The persisted record of a player's live Campaign, or empty when the player has no loaded slot.
+   */
+  public Optional<GameSnapshot> snapshotOf(String playerId) {
+    return access(playerId, GameState::toSnapshot);
+  }
+
+  /**
+   * Replaces a player's live Campaign with {@code snapshot}, under the state's lock, unless an
+   * Expedition is active or the Party is Held. {@code persist} writes the new Campaign and returns
+   * the sequence number it was saved at; it is given the sequence the live slot is at, or empty
+   * when the player has no live slot (then only the file changes, and the next connection loads
+   * it). If it fails nothing changes.
+   *
+   * @return false, changing nothing, when an Expedition is active or Held
+   */
+  public boolean replaceIfIdle(
+      String playerId, GameSnapshot snapshot, ToLongFunction<OptionalLong> persist) {
+    var replacement = GameState.restore(snapshot, config, random, architecturePlan);
+    var slot = players.get(playerId);
+    if (slot == null || slot.state() == null) {
+      persist.applyAsLong(OptionalLong.empty());
+      return true;
+    }
+    return access(
+            slot,
+            state -> {
+              if (state.isExpeditionActive() || slot.isHeld()) {
+                return Boolean.FALSE;
+              }
+              long seq = persist.applyAsLong(OptionalLong.of(slot.saves().seq()));
+              slot.loaded(replacement, true, Instant.now(), CampaignSchema.CURRENT);
+              saves.opened(slot, seq);
+              return Boolean.TRUE;
+            })
+        .orElse(Boolean.FALSE);
   }
 
   /** A body that reads or mutates a locked {@link GameState} and produces a result; may throw. */

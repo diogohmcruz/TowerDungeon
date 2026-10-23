@@ -1,7 +1,5 @@
 package io.github.diogohmcruz.towerdungeon.persistence;
 
-import static java.nio.charset.StandardCharsets.US_ASCII;
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -10,14 +8,13 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HexFormat;
+import java.util.Comparator;
 import java.util.List;
 import java.util.function.Supplier;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
@@ -38,12 +35,11 @@ import reactor.core.scheduler.Schedulers;
 public class FileCampaignStore implements CampaignStore, AutoCloseable {
   private static final Logger log = LoggerFactory.getLogger(FileCampaignStore.class);
 
-  static final String MAGIC = "TDC1";
   static final int BACKUPS = 5;
   static final int MAX_CORRUPT = 3;
 
   private static final Pattern PLAYER_ID = Pattern.compile("[0-9a-f]{32}");
-  private static final Pattern GAME_VERSION = Pattern.compile("[A-Za-z0-9._+-]{1,64}");
+  private static final Pattern PRE_MIGRATION = Pattern.compile("pre-migration-v([0-9]{1,9})\\.tdc");
   private static final String HEAD_FILE = "campaign.tdc";
 
   private final Path playersDir;
@@ -73,7 +69,8 @@ public class FileCampaignStore implements CampaignStore, AutoCloseable {
     return Mono.defer(
             () -> {
               requireValidId(playerId);
-              if (gameVersion == null || !GAME_VERSION.matcher(gameVersion).matches()) {
+              if (gameVersion == null
+                  || !CampaignFile.GAME_VERSION.matcher(gameVersion).matches()) {
                 throw new IllegalArgumentException("Invalid game version: " + gameVersion);
               }
               byte[] bytes = payload.clone();
@@ -95,13 +92,34 @@ public class FileCampaignStore implements CampaignStore, AutoCloseable {
     return Mono.defer(
             () -> {
               requireValidId(playerId);
-              if (gameVersion == null || !GAME_VERSION.matcher(gameVersion).matches()) {
+              if (gameVersion == null
+                  || !CampaignFile.GAME_VERSION.matcher(gameVersion).matches()) {
                 throw new IllegalArgumentException("Invalid game version: " + gameVersion);
               }
               return Mono.fromCallable(
                   () ->
                       saveBlocking(
                           playerId, expectedSeq, rotation, schema, gameVersion, payload.get()));
+            })
+        .subscribeOn(writer);
+  }
+
+  @Override
+  public Mono<Void> savePreMigration(
+      String playerId, int schema, String gameVersion, byte[] payload) {
+    return Mono.defer(
+            () -> {
+              requireValidId(playerId);
+              if (gameVersion == null
+                  || !CampaignFile.GAME_VERSION.matcher(gameVersion).matches()) {
+                throw new IllegalArgumentException("Invalid game version: " + gameVersion);
+              }
+              byte[] bytes = payload.clone();
+              return Mono.<Void>fromCallable(
+                  () -> {
+                    savePreMigrationBlocking(playerId, schema, gameVersion, bytes);
+                    return null;
+                  });
             })
         .subscribeOn(writer);
   }
@@ -158,7 +176,7 @@ public class FileCampaignStore implements CampaignStore, AutoCloseable {
       Path head = dir.resolve(HEAD_FILE);
       Path temp = Files.createTempFile(dir, "campaign-", ".tmp");
       try {
-        writeDurably(temp, encode(schema, seq, Instant.now(), gameVersion, payload));
+        writeDurably(temp, CampaignFile.encode(schema, seq, Instant.now(), gameVersion, payload));
         beforeCommit.run();
         if (rotation == Rotation.ROTATE && Files.exists(head)) {
           rotate(dir, head);
@@ -169,6 +187,45 @@ public class FileCampaignStore implements CampaignStore, AutoCloseable {
       }
       syncDirectory(dir);
       return seq;
+    }
+  }
+
+  private void savePreMigrationBlocking(
+      String playerId, int schema, String gameVersion, byte[] payload) throws IOException {
+    Path dir = playerDir(playerId);
+    synchronized (lockFor(playerId)) {
+      Path target = preMigrationFile(dir, schema);
+      if (Files.exists(target)) {
+        return;
+      }
+      Files.createDirectories(dir);
+      Path temp = Files.createTempFile(dir, "pre-migration-", ".tmp");
+      try {
+        writeDurably(temp, CampaignFile.encode(schema, 0, Instant.now(), gameVersion, payload));
+        Files.move(temp, target, StandardCopyOption.ATOMIC_MOVE);
+      } finally {
+        Files.deleteIfExists(temp);
+      }
+      syncDirectory(dir);
+    }
+  }
+
+  private static Path preMigrationFile(Path dir, int schema) {
+    return dir.resolve("pre-migration-v" + schema + ".tdc");
+  }
+
+  /** The schemas that have a pre-migration copy, newest first. */
+  private static List<Integer> preMigrationSchemas(Path dir) throws IOException {
+    if (!Files.isDirectory(dir)) {
+      return List.of();
+    }
+    try (Stream<Path> files = Files.list(dir)) {
+      return files
+          .map(f -> PRE_MIGRATION.matcher(f.getFileName().toString()))
+          .filter(Matcher::matches)
+          .map(m -> Integer.parseInt(m.group(1)))
+          .sorted(Comparator.reverseOrder())
+          .toList();
     }
   }
 
@@ -211,19 +268,31 @@ public class FileCampaignStore implements CampaignStore, AutoCloseable {
     }
   }
 
+  private static Record decode(byte[] content, Source source) {
+    CampaignFile file = CampaignFile.decode(content);
+    return new Record(
+        file.payload(), file.schema(), file.gameVersion(), file.seq(), file.savedAt(), source);
+  }
+
   private Record firstReadable(Path dir, List<Source> quarantined) throws IOException {
+    List<Source> candidates = new ArrayList<>();
     for (int n = 0; n <= BACKUPS; n++) {
-      Path file = n == 0 ? dir.resolve(HEAD_FILE) : backupFile(dir, n);
+      candidates.add(new Source(n));
+    }
+    for (int schema : preMigrationSchemas(dir)) {
+      candidates.add(Source.preMigration(schema));
+    }
+    for (Source source : candidates) {
+      Path file = fileOf(dir, source);
       byte[] content;
       try {
         content = Files.readAllBytes(file);
       } catch (NoSuchFileException e) {
         continue;
       }
-      Source source = new Source(n);
       try {
         return decode(content, source);
-      } catch (CorruptRecordException e) {
+      } catch (CampaignFile.CorruptFileException e) {
         log.warn("Quarantining unreadable record {}: {}", file, e.getMessage());
         quarantine(dir, file, source);
         quarantined.add(source);
@@ -232,10 +301,20 @@ public class FileCampaignStore implements CampaignStore, AutoCloseable {
     return null;
   }
 
+  private static Path fileOf(Path dir, Source source) {
+    if (source.isPreMigration()) {
+      return preMigrationFile(dir, -source.backup());
+    }
+    return source.isHead() ? dir.resolve(HEAD_FILE) : backupFile(dir, source.backup());
+  }
+
   private void quarantine(Path dir, Path file, Source source) throws IOException {
     Path corrupt = dir.resolve("corrupt");
     Files.createDirectories(corrupt);
-    String label = source.isHead() ? "head" : "backup" + source.backup();
+    String label =
+        source.isPreMigration()
+            ? "pre-migration-v" + -source.backup()
+            : source.isHead() ? "head" : "backup" + source.backup();
     long now = System.currentTimeMillis();
     Path target;
     int suffix = 0;
@@ -270,83 +349,6 @@ public class FileCampaignStore implements CampaignStore, AutoCloseable {
     }
   }
 
-  private static byte[] encode(
-      int schema, long seq, Instant savedAt, String gameVersion, byte[] payload) {
-    String header =
-        "%s schema=%d seq=%d savedAt=%s gameVersion=%s bytes=%d sha256=%s\n"
-            .formatted(
-                MAGIC,
-                schema,
-                seq,
-                savedAt,
-                gameVersion,
-                payload.length,
-                HexFormat.of().formatHex(sha256(payload)));
-    byte[] head = header.getBytes(US_ASCII);
-    byte[] out = Arrays.copyOf(head, head.length + payload.length);
-    System.arraycopy(payload, 0, out, head.length, payload.length);
-    return out;
-  }
-
-  private static Record decode(byte[] content, Source source) {
-    int newline = -1;
-    for (int i = 0; i < content.length && i < 512; i++) {
-      if (content[i] == '\n') {
-        newline = i;
-        break;
-      }
-    }
-    if (newline < 0) {
-      throw new CorruptRecordException("no header line");
-    }
-    String[] parts = new String(content, 0, newline, US_ASCII).split(" ", -1);
-    if (parts.length != 7 || !parts[0].equals(MAGIC)) {
-      throw new CorruptRecordException("bad header");
-    }
-    try {
-      int schema = Integer.parseInt(field(parts[1], "schema"));
-      long seq = Long.parseLong(field(parts[2], "seq"));
-      Instant savedAt = Instant.parse(field(parts[3], "savedAt"));
-      String gameVersion = field(parts[4], "gameVersion");
-      int bytes = Integer.parseInt(field(parts[5], "bytes"));
-      String sha = field(parts[6], "sha256");
-      byte[] payload = Arrays.copyOfRange(content, newline + 1, content.length);
-      if (payload.length != bytes) {
-        throw new CorruptRecordException("byte count mismatch");
-      }
-      if (!HexFormat.of().formatHex(sha256(payload)).equals(sha)) {
-        throw new CorruptRecordException("checksum mismatch");
-      }
-      return new Record(payload, schema, gameVersion, seq, savedAt, source);
-    } catch (CorruptRecordException e) {
-      throw e;
-    } catch (RuntimeException e) {
-      throw new CorruptRecordException("unparseable header");
-    }
-  }
-
-  private static String field(String part, String name) {
-    String prefix = name + "=";
-    if (!part.startsWith(prefix)) {
-      throw new CorruptRecordException("missing " + name);
-    }
-    return part.substring(prefix.length());
-  }
-
-  private static byte[] sha256(byte[] data) {
-    try {
-      return MessageDigest.getInstance("SHA-256").digest(data);
-    } catch (NoSuchAlgorithmException e) {
-      throw new IllegalStateException(e);
-    }
-  }
-
   private record Record(
       byte[] payload, int schema, String gameVersion, long seq, Instant savedAt, Source source) {}
-
-  private static class CorruptRecordException extends RuntimeException {
-    CorruptRecordException(String message) {
-      super(message);
-    }
-  }
 }

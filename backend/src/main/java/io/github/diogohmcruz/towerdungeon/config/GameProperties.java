@@ -101,6 +101,13 @@ public class GameProperties {
 
     /** Longest the shutdown flush waits for the writes to finish. */
     private Duration shutdownWait = Duration.ofSeconds(20);
+
+    /**
+     * Key that seals the spoiler-sensitive parts of exported Campaign files. Must stay the same
+     * across deploys. Required in the {@code prod} profile; elsewhere a fixed development key is
+     * used when unset.
+     */
+    private String sealKey;
   }
 
   /** Who may open the game socket. */
