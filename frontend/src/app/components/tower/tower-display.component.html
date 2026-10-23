@@ -2,8 +2,6 @@
   <div class="depth-header">
     <div class="depth-title">
       <span class="depth-current">Floor {{ currentFloor() }}</span>
-      <span class="depth-sep">/</span>
-      <span class="depth-max">{{ maxFloor() }}</span>
       @if (currentFloorIsBoss()) {
         <span class="boss-flag">GUARDIAN</span>
       }
@@ -29,13 +27,13 @@
       [maxSupplies]="maxSupplies()"
     />
     <section class="expedition-party">
-      <header class="exp-head">Party on the tower</header>
+      <header class="exp-head">Party</header>
       <app-army [army]="party()" />
     </section>
   }
   @if (active()) {
     @if (enemyCount() === 0) {
-      <p class="cleared">No enemies here — advancing…</p>
+      <p class="cleared">Floor clear. Advancing.</p>
     }
     <div class="enemy-groups">
       @for (group of groupedEnemyEntries(); track group[0]) {

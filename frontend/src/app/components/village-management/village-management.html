@@ -1,6 +1,6 @@
 <section class="village-panel">
   <header class="village-header">
-    <h3>Village</h3>
+    <h3>Stock</h3>
   </header>
 
   <div class="stat-grid">
@@ -13,9 +13,9 @@
       </div>
     </div>
 
-    <div class="stat-tile food">
+    <div class="stat-tile food" [class.low]="this.pantryHoldsShort()">
       <div class="stat-body">
-        <span class="stat-label">Food pantry</span>
+        <span class="stat-label">Pantry</span>
         <span class="stat-value">{{ this.food() | number: '1.0-1' }}</span>
         <span class="stat-rate" [class.negative]="this.netFood() < 0">
           {{ this.netFood() >= 0 ? '+' : '' }}{{ this.netFood() | number:
@@ -50,40 +50,36 @@
 
   <p class="food-breakdown">
     Fields <b class="pos">+{{ this.production() | number: '1.0-1' }}</b>
-    · Upkeep ({{ this.homeUnits() }} idle units)
-    <b class="neg">−{{ this.upkeep() | number: '1.0-1' }}</b>
-    · Recovery <b class="neg">−{{ this.recovery() | number: '1.0-1' }}</b>
-    food/s
+    · Upkeep ({{ this.homeUnits() }} Reserves)
+    <b class="neg">-{{ this.upkeep() | number: '1.0-1' }}</b>
+    · Recovery <b class="neg">-{{ this.recovery() | number: '1.0-1' }}</b>
+    Food/s
   </p>
   <p class="food-hold" [class.short]="this.pantryHoldsShort()">
     @if (this.pantryHoldSeconds() === null) { Pantry holds. Fields cover Upkeep.
     } @else { Pantry holds {{ this.pantryHoldSeconds() }} s at current rates. }
   </p>
-  <p class="food-note">
-    Villagers grow food; idle units eat it on standby, and expeditions carry it
-    as supplies. Buy more villagers to stay ahead.
-  </p>
 
   <div class="village-actions">
     <button class="btn btn-primary" (click)="this.onClickBuyVillager()">
-      Buy villagers
+      Take in Villager
     </button>
     <button class="btn btn-ghost" (click)="this.onClickSellFood()">
-      Sell food
+      Sell Food
     </button>
     <button
       class="btn btn-ghost"
       [disabled]="this.materials() <= 0"
       (click)="this.onClickSellMaterials()"
     >
-      Sell materials
+      Sell Materials
     </button>
     <button
       class="btn btn-ghost"
       [disabled]="this.relics() <= 0"
       (click)="this.onClickSellRelics()"
     >
-      Sell relics
+      Sell Relics
     </button>
   </div>
 </section>

@@ -1,116 +1,31 @@
-:root {
-  color-scheme: light;
-
-  --bg: #eef2f8;
-  --text: #33415c;
-  --text-strong: #2b3750;
-  --text-muted: #7a879c;
-
-  --surface: #ffffff;
-  --surface-2: #f7f9fc;
-  --surface-3: #f2f7ff;
-
-  --border: #e2e8f2;
-  --border-strong: #d9e4f2;
-  --chip-bg: #eef2f8;
-
-  --accent: #4c7dc0;
-  --accent-hover: #3a6bad;
-  --on-accent: #ffffff;
-
-  --gold: #d4a24c;
-  --gold-bright: #e7c063;
-
-  --positive: #2f8f5b;
-  --positive-bg: #e2f4ea;
-  --negative: #c0564c;
-
-  --enemy-title: #a23b2d;
-  --enemy-surface: #fef6f4;
-  --enemy-border: #f3d9d2;
-  --enemy-chip-bg: #f6e7e3;
-  --enemy-chip-text: #8a5a50;
-  --enemy-track: #f0e2df;
-
-  --materials: #4c7a3a;
-  --materials-bg: #eaf1e6;
-  --relics: #9a3b7a;
-  --relics-bg: #f5e7f0;
-
-  --shadow-sm: 0 1px 3px rgba(60, 70, 90, 0.06);
-  --shadow-md: 0 2px 8px rgba(60, 70, 90, 0.12);
-
-  /* Tower scene - day */
-  --sky: linear-gradient(
-    to top,
-    #dfe7f2 0%,
-    #cdd9ec 32%,
-    #b9c9e6 58%,
-    #9fb4dd 100%
-  );
-  --star-color: rgba(255, 255, 255, 0.85);
-  --star-opacity: 0.35;
-  --stone-top: #9a9a9a;
-  --stone-bottom: #808080;
-  --stone-edge: #7c7c7c;
-  --stone-edge-dark: #6c6c6c;
-  --mortar: rgba(0, 0, 0, 0.14);
-  --window-glass-top: #2f3646;
-  --window-glass-bottom: #262c3a;
-  --window-frame: #6b6b6b;
-  --floor-label: #282828;
-  --floor-label-shadow: 0 0 2px #fff, 0 2px 2px #bbb;
-  --cloud-opacity: 0.97;
-  --base-top: #8f8f8f;
-  --base-mid: #6f6f6f;
-  --base-bottom: #545454;
-  --cloud-1: #ffffff;
-  --cloud-2: #f4f7fc;
-  --cloud-3: #e6edf7;
-  --candle-opacity: 0;
+@font-face {
+  font-family: "Fusion Pixel";
+  src: url("/fonts/fusion-pixel/fusion-pixel-12px-proportional-latin-subset.woff2")
+    format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
 }
 
+/* Dark is the default (night). Tokens from docs/brainstorm/village-resources.md 8.4. */
+:root,
 :root[data-theme="dark"] {
   color-scheme: dark;
 
-  --bg: #10131c;
-  --text: #c2cbe0;
-  --text-strong: #e8edf8;
-  --text-muted: #8892a6;
+  --void: #07090f;
+  --ink: #0e1424;
+  --panel: #0b0e17;
+  --rule: #2e3546; /* decoration only, 1.6:1 */
+  --text: #aab3c7; /* 9.2:1 on --panel */
+  --bone: #e7dcc4; /* 14.2:1, numbers and selection */
+  --muted: #7b869c; /* 5.3:1 */
+  --cold: #8fb7ff; /* rim light only, 10 to 35% alpha */
+  --ember: #7a2230; /* borders and fills, never text */
+  --ember-dim: #4a1620;
+  --ember-text: #d0556a; /* 4.8:1, loss or danger text */
 
-  --surface: #1a1e2a;
-  --surface-2: #202636;
-  --surface-3: #1d2536;
-
-  --border: #2e3546;
-  --border-strong: #384259;
-  --chip-bg: #2a3245;
-
-  --accent: #5c86c8;
-  --accent-hover: #7099d8;
-  --on-accent: #0f1420;
-
-  --gold: #d9ab57;
-  --gold-bright: #f0cf74;
-
-  --positive: #52c088;
-  --positive-bg: #17352a;
-  --negative: #e0847a;
-
-  --enemy-title: #ec9284;
-  --enemy-surface: #271b1f;
-  --enemy-border: #482e31;
-  --enemy-chip-bg: #382528;
-  --enemy-chip-text: #d6a49b;
-  --enemy-track: #3d2a2c;
-
-  --materials: #8fc46f;
-  --materials-bg: #24331d;
-  --relics: #d987bd;
-  --relics-bg: #351f2e;
-
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 3px 10px rgba(0, 0, 0, 0.5);
+  --font-pixel: "Fusion Pixel", ui-monospace, monospace;
+  --font-body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 
   /* Tower scene - night */
   --sky: linear-gradient(
@@ -142,6 +57,52 @@
   --candle-opacity: 1;
 }
 
+/* Light variant: overcast, desaturated ash with the same crimson slabs. */
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --void: #bbbec2;
+  --ink: #b3b6bb;
+  --panel: #c9c9c4;
+  --rule: #8a8e96;
+  --text: #232a38;
+  --bone: #0b0e17;
+  --muted: #444b5a;
+  --cold: #3a5a99;
+  --ember: #7a2230;
+  --ember-dim: #a98d8d;
+  --ember-text: #7a2230;
+
+  /* Tower scene - day */
+  --sky: linear-gradient(
+    to top,
+    #dfe7f2 0%,
+    #cdd9ec 32%,
+    #b9c9e6 58%,
+    #9fb4dd 100%
+  );
+  --star-color: rgba(255, 255, 255, 0.85);
+  --star-opacity: 0.35;
+  --stone-top: #9a9a9a;
+  --stone-bottom: #808080;
+  --stone-edge: #7c7c7c;
+  --stone-edge-dark: #6c6c6c;
+  --mortar: rgba(0, 0, 0, 0.14);
+  --window-glass-top: #2f3646;
+  --window-glass-bottom: #262c3a;
+  --window-frame: #6b6b6b;
+  --floor-label: #282828;
+  --floor-label-shadow: 0 0 2px #fff, 0 2px 2px #bbb;
+  --cloud-opacity: 0.97;
+  --base-top: #8f8f8f;
+  --base-mid: #6f6f6f;
+  --base-bottom: #545454;
+  --cloud-1: #ffffff;
+  --cloud-2: #f4f7fc;
+  --cloud-3: #e6edf7;
+  --candle-opacity: 0;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -153,22 +114,57 @@ body {
 }
 
 body {
-  background: var(--bg);
+  background: var(--void);
   color: var(--text);
-  font-family:
-    system-ui,
-    -apple-system,
-    "Segoe UI",
-    Roboto,
-    sans-serif;
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.5;
   transition:
-    background-color 0.3s ease,
-    color 0.3s ease;
+    background-color 0.2s ease,
+    color 0.2s ease;
 }
 
 hr {
   border: none;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--rule);
+}
+
+button {
+  font-family: var(--font-body);
+}
+
+/* Headings and numerals use the pixel face at integer sizes (12, 24). */
+h2,
+h3,
+h4 {
+  font-family: var(--font-pixel);
+  font-weight: 400;
+}
+
+/* Flat buttons: 1 px border, hover brightens the border only. */
+.btn,
+button.btn {
+  color: var(--text);
+  background: transparent;
+  border: 1px solid var(--muted);
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.btn:hover:not(:disabled) {
+  border-color: var(--bone);
+}
+
+.btn-primary {
+  color: var(--bone);
+  border-color: var(--bone);
+}
+
+.btn:disabled,
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .theme-toggle {
@@ -176,32 +172,29 @@ hr {
   top: 12px;
   right: 14px;
   z-index: 1000;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--text);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  box-shadow: var(--shadow-sm);
+  padding: 4px 10px;
+  font-family: var(--font-pixel);
+  font-size: 12px;
+  color: var(--bone);
+  background: var(--panel);
+  border: 1px solid var(--muted);
   cursor: pointer;
-  transition:
-    background-color 0.2s ease,
-    border-color 0.2s ease,
-    color 0.2s ease;
 }
 
 .theme-toggle:hover {
-  border-color: var(--accent);
+  border-color: var(--bone);
 }
 
 .theme-toggle .toggle-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: var(--gold);
-  box-shadow: 0 0 6px var(--gold-bright);
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
+  }
 }

@@ -32,63 +32,58 @@
 }
 
 .campaign-banner {
-  border-radius: 12px;
   padding: 14px 18px;
   margin: 0 0 10px;
-  border: 2px solid var(--border-strong);
+  border: 1px solid var(--rule);
   text-align: center;
 
   h2 {
     margin: 0 0 6px;
-    font-size: 1.2em;
+    font-size: 24px;
   }
 
   p {
     margin: 0;
-    font-size: 0.86em;
+    font-size: 12px;
     color: var(--text);
   }
 
   &.victory {
-    background: var(--gold-bg, rgba(212, 175, 55, 0.16));
-    border-color: var(--gold);
+    border-color: var(--bone);
 
     h2 {
-      color: var(--gold);
+      color: var(--bone);
     }
   }
 
   &.defeat {
-    background: var(--negative-bg, rgba(200, 60, 60, 0.14));
-    border-color: var(--negative);
+    border-color: var(--ember);
 
     h2 {
-      color: var(--negative);
+      color: var(--ember-text);
     }
   }
 }
 
 .run-hud {
-  background: var(--surface-3);
-  border: 1px solid var(--border-strong);
-  border-radius: 10px;
+  background: var(--panel);
+  border: 1px solid var(--rule);
   padding: 6px 10px;
   margin: 6px 0;
 
   p {
     margin: 3px 0;
-    font-size: 0.82em;
+    font-size: 12px;
     color: var(--text);
   }
 
   .heal-hint {
-    color: var(--text-muted);
-    font-style: italic;
+    color: var(--muted);
   }
 
   .heal-preview b,
   .heal-summary b {
-    color: var(--positive);
+    color: var(--text);
   }
 
   .heal-summary {
@@ -98,23 +93,23 @@
   .reinforcements {
     margin-top: 6px;
     padding-top: 6px;
-    border-top: 1px dashed var(--border-strong);
+    border-top: 1px solid var(--rule);
 
     h4 {
       margin: 0 0 4px;
-      font-size: 0.82em;
-      color: var(--gold, #d4af37);
+      font-size: 12px;
+      color: var(--bone);
     }
 
     .reinforcement-line b {
-      color: var(--gold, #d4af37);
+      color: var(--bone);
     }
   }
 }
 
 .home-heal {
-  font-size: 0.8em;
-  color: var(--positive);
+  font-size: 12px;
+  color: var(--text);
   margin: 4px 0;
 }
 
@@ -122,8 +117,9 @@
   margin: 10px 0;
 
   h3 {
-    font-size: 0.95em;
-    color: var(--text);
+    font-family: var(--font-pixel);
+    font-size: 12px;
+    color: var(--bone);
     margin: 0 0 8px;
   }
 
@@ -144,8 +140,9 @@
   margin: 10px 0;
 
   h3 {
-    font-size: 0.95em;
-    color: var(--text);
+    font-family: var(--font-pixel);
+    font-size: 12px;
+    color: var(--bone);
     margin: 0 0 8px;
     display: flex;
     flex-wrap: wrap;
@@ -154,9 +151,9 @@
   }
 
   .progress-note {
-    font-size: 0.72em;
+    font-size: 12px;
     font-weight: 500;
-    color: var(--text-muted);
+    color: var(--muted);
   }
 
   .milestone-list {
@@ -176,8 +173,9 @@
   margin: 10px 0;
 
   h3 {
-    font-size: 0.95em;
-    color: var(--text);
+    font-family: var(--font-pixel);
+    font-size: 12px;
+    color: var(--bone);
     margin: 0 0 8px;
   }
 
@@ -185,7 +183,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 0.85em;
+    font-size: 12px;
     color: var(--text);
     padding: 4px 0;
     cursor: pointer;
@@ -200,8 +198,9 @@
   margin: 10px 0;
 
   h3 {
-    font-size: 0.95em;
-    color: var(--text);
+    font-family: var(--font-pixel);
+    font-size: 12px;
+    color: var(--bone);
     margin: 0 0 8px;
     display: flex;
     flex-wrap: wrap;
@@ -210,14 +209,14 @@
   }
 
   .progress-note {
-    font-size: 0.72em;
+    font-size: 12px;
     font-weight: 500;
-    color: var(--text-muted);
+    color: var(--muted);
   }
 
   .shortcut-hint {
-    font-size: 0.78em;
-    color: var(--text-muted);
+    font-size: 12px;
+    color: var(--muted);
     margin: 0 0 8px;
   }
 

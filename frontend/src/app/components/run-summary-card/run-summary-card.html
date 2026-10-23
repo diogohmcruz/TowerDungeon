@@ -16,17 +16,17 @@
       <span class="stat-label">Survivors</span>
       <span class="stat-value">{{ summary().survivors }}</span>
     </div>
-    <div class="stat">
+    <div class="stat loss">
       <span class="stat-label">Units lost</span>
       <span class="stat-value">{{ summary().unitsLost }}</span>
     </div>
-    <div class="stat">
+    <div class="stat" [class.loss]="wiped()">
       <span class="stat-label">{{ wiped() ? 'Credits lost' : 'Credits' }}</span>
       <span class="stat-value"
         >{{ summary().creditsGained | number: '1.0-0' }}</span
       >
     </div>
-    <div class="stat">
+    <div class="stat" [class.loss]="wiped()">
       <span class="stat-label"
         >{{ wiped() ? 'Materials lost' : 'Materials' }}</span
       >
@@ -34,7 +34,7 @@
         >{{ summary().materialsGained | number: '1.0-0' }}</span
       >
     </div>
-    <div class="stat">
+    <div class="stat" [class.loss]="wiped()">
       <span class="stat-label">{{ wiped() ? 'Relics lost' : 'Relics' }}</span>
       <span class="stat-value"
         >{{ summary().relicsGained | number: '1.0-0' }}</span

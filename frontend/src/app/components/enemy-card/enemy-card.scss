@@ -1,75 +1,50 @@
 :host {
   display: block;
-  --card-bg: var(--enemy-surface);
-  --card-border: var(--enemy-border);
   --card-pad: 6px 8px;
-  --card-radius: 8px;
-  --card-shadow: var(--shadow-sm);
-  --card-title-size: 0.85em;
-  --card-title-color: var(--enemy-title);
-  --card-badge-size: 0.75em;
-  --card-badge-color: var(--text-muted);
+  --card-title-color: var(--ember-text);
 }
 
 app-card.boss {
-  --card-bg: #2e2230;
-  --card-border: #7a3b6b;
-  --card-accent: #d4a24c;
-  --card-accent-width: 3px;
-  --card-shadow: 0 2px 8px rgba(60, 20, 50, 0.35);
-  --card-title-color: #f5d98c;
-  --card-badge-color: #d9b8c8;
+  --card-border: var(--ember);
+  --card-title-color: var(--ember-text);
 }
 
 .enemy-type {
-  letter-spacing: 0.02em;
   text-transform: capitalize;
 }
 
 .boss-crown {
-  color: var(--gold-bright);
+  color: var(--ember-text);
 }
 
 .hp-bar {
-  height: 7px;
+  height: 6px;
   width: 100%;
-  background: var(--enemy-track);
-  border-radius: 4px;
+  background: var(--void);
+  border: 1px solid var(--rule);
   overflow: hidden;
 
   .hp-fill {
     height: 100%;
-    background: linear-gradient(90deg, #ff7a6b, #ffbf7a);
-    transition: width 0.25s ease;
-  }
-}
-
-app-card.boss .hp-bar {
-  background: #4a3548;
-
-  .hp-fill {
-    background: linear-gradient(90deg, #c9457f, #e7c063);
+    background: var(--ember);
   }
 }
 
 .enemy-meta {
-  flex-direction: row;
   display: flex;
+  flex-direction: row;
   flex-wrap: wrap;
   gap: 6px;
 
   .tag {
-    font-size: 0.68em;
-    background: var(--enemy-chip-bg);
-    color: var(--enemy-chip-text);
-    border-radius: 4px;
-    padding: 1px 6px;
+    font-size: 12px;
+    color: var(--text);
+    border: 1px solid var(--rule);
+    padding: 0 6px;
   }
 
   .boss-tag {
-    background: var(--gold);
-    color: #2e2230;
-    font-weight: 700;
-    letter-spacing: 0.05em;
+    color: var(--ember-text);
+    border-color: var(--ember);
   }
 }

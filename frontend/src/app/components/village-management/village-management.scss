@@ -1,9 +1,7 @@
 .village-panel {
-  background: linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%);
-  border: 1px solid var(--border);
-  border-radius: 14px;
+  background: var(--panel);
+  border: 1px solid var(--rule);
   padding: 12px 14px 14px;
-  box-shadow: var(--shadow-md);
 }
 
 .village-header {
@@ -12,17 +10,11 @@
   gap: 8px;
   margin: 0 0 10px;
 
-  .village-icon {
-    font-size: 1.15rem;
-    line-height: 1;
-  }
-
   h3 {
     margin: 0;
-    font-size: 0.95rem;
-    font-weight: 700;
-    color: var(--text-strong);
-    letter-spacing: 0.02em;
+    font-size: 12px;
+    color: var(--bone);
+    text-transform: uppercase;
   }
 }
 
@@ -36,20 +28,9 @@
   display: flex;
   align-items: center;
   gap: 9px;
-  padding: 9px 11px 9px 13px;
-  border-radius: 11px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-left: 4px solid var(--border-strong);
-  box-shadow: var(--shadow-sm);
-  transition:
-    transform 0.12s ease,
-    box-shadow 0.12s ease;
-
-  &:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 3px 8px rgba(60, 80, 120, 0.1);
-  }
+  padding: 9px 11px;
+  background: var(--panel);
+  border: 1px solid var(--rule);
 
   .stat-body {
     display: flex;
@@ -58,148 +39,60 @@
   }
 
   .stat-label {
-    font-size: 0.68rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--text-muted);
-    font-weight: 600;
+    font-size: 12px;
+    color: var(--muted);
   }
 
   .stat-value {
-    font-size: 1.15rem;
-    font-weight: 700;
-    color: var(--text-strong);
-    line-height: 1.15;
+    font-family: var(--font-pixel);
+    font-size: 24px;
+    color: var(--bone);
+    line-height: 1.2;
     font-variant-numeric: tabular-nums;
   }
 
   .stat-rate {
-    font-size: 0.72rem;
-    font-weight: 600;
-    color: var(--positive);
+    font-size: 12px;
+    color: var(--text);
     font-variant-numeric: tabular-nums;
 
     &.negative {
-      color: var(--negative);
+      color: var(--ember-text);
     }
   }
 }
 
-.stat-tile.credits {
-  background: var(--surface-2);
-  border-color: var(--border);
-  border-left-color: var(--gold);
-}
-
-.stat-tile.food {
-  background: var(--surface-2);
-  border-color: var(--border);
-  border-left-color: var(--positive);
-}
-
-.stat-tile.villagers {
-  background: var(--surface-2);
-  border-color: var(--border);
-  border-left-color: var(--accent);
-}
-
-.stat-tile.materials {
-  background: var(--surface-2);
-  border-color: var(--border);
-  border-left-color: var(--gold);
-}
-
-.stat-tile.relics {
-  background: var(--surface-2);
-  border-color: var(--border);
-  border-left-color: var(--gold-bright);
+.stat-tile.low {
+  border-color: var(--ember);
 }
 
 .food-breakdown {
-  font-size: 0.76rem;
-  color: var(--text-muted);
+  color: var(--muted);
   margin: 10px 0 2px;
 
   .pos {
-    color: var(--positive);
+    font-weight: 400;
+    color: var(--text);
   }
 
   .neg {
-    color: var(--negative);
+    font-weight: 400;
+    color: var(--ember-text);
   }
-}
-
-.food-note {
-  font-size: 0.72rem;
-  color: var(--text-muted);
-  font-style: italic;
-  margin: 2px 0 12px;
 }
 
 .village-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-}
-
-.btn {
-  border: none;
-  border-radius: 9px;
-  padding: 8px 14px;
-  font-size: 0.82rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition:
-    transform 0.1s ease,
-    box-shadow 0.12s ease,
-    filter 0.12s ease;
-
-  &:hover {
-    transform: translateY(-1px);
-  }
-
-  &:active {
-    transform: translateY(0);
-  }
-}
-
-.btn-primary {
-  color: #fff;
-  background: linear-gradient(
-    180deg,
-    var(--accent) 0%,
-    var(--accent-hover) 100%
-  );
-  box-shadow: 0 2px 6px rgba(58, 111, 192, 0.3);
-
-  &:hover {
-    filter: brightness(1.05);
-  }
-}
-
-.btn-ghost {
-  color: var(--accent);
-  background: var(--surface);
-  border: 1px solid var(--border);
-
-  &:hover {
-    background: var(--surface-2);
-  }
-}
-
-.btn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-  transform: none;
-  filter: none;
+  margin-top: 12px;
 }
 
 .food-hold {
-  font-size: 0.76rem;
-  color: var(--text-muted);
+  color: var(--bone);
   margin: 0 0 2px;
 
   &.short {
-    color: var(--negative);
+    color: var(--ember-text);
   }
 }

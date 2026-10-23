@@ -1,7 +1,5 @@
 :host {
   display: block;
-  --card-radius: 10px;
-  --card-title-size: 0.9em;
 }
 
 .unit-type {
@@ -10,14 +8,7 @@
 
 .unit-badges {
   display: inline-flex;
-  gap: 4px;
-}
-
-.unit-count,
-.unit-cost {
-  background: var(--chip-bg);
-  border-radius: 10px;
-  padding: 1px 8px;
+  gap: 6px;
 }
 
 .stat-list {
@@ -31,29 +22,27 @@
   li {
     display: flex;
     justify-content: space-between;
-    font-size: 0.74em;
     color: var(--text);
 
     b {
-      color: var(--text-strong);
+      font-weight: 400;
+      color: var(--bone);
+      font-variant-numeric: tabular-nums;
     }
   }
 }
 
 button {
   cursor: pointer;
-  border: none;
-  border-radius: 8px;
   padding: 5px 8px;
-  font-size: 0.78em;
-  font-weight: 600;
+  font-size: 12px;
   text-transform: capitalize;
   overflow-wrap: anywhere;
-  color: var(--on-accent);
-  background: var(--accent);
-  transition: background 0.2s ease;
+  color: var(--bone);
+  background: transparent;
+  border: 1px solid var(--muted);
 
-  &:hover {
-    background: var(--accent-hover);
+  &:hover:not(:disabled) {
+    border-color: var(--bone);
   }
 }

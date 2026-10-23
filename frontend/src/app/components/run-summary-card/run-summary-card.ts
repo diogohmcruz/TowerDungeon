@@ -18,11 +18,11 @@ export class RunSummaryCard {
   titleText = computed(() => {
     switch (this.summary().outcome) {
       case 'WIPED':
-        return 'Party Wiped';
+        return 'Wipe';
       case 'VICTORY':
-        return 'Tower Conquered';
+        return 'Summit Conquered';
       default:
-        return 'Extraction Complete';
+        return 'Extraction';
     }
   });
 }

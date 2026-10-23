@@ -9,7 +9,8 @@
     "test": "ng test",
     "lint": "prettier --write .",
     "sprites": "node tools/generate-sprites.mjs",
-    "sprites:test": "node --test tools/"
+    "sprites:test": "node --test tools/",
+    "theme:test": "node --test tools/theme.test.mjs"
   },
   "private": true,
   "dependencies": {

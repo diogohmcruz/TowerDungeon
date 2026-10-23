@@ -5,17 +5,14 @@
   padding: 4px 0;
 
   .empty {
-    font-style: italic;
-    opacity: 0.6;
+    color: var(--muted);
     margin: 4px 0;
   }
 
   .unit-group {
-    background: var(--surface-2);
-    border: 1px solid var(--border);
-    border-radius: 10px;
+    background: var(--panel);
+    border: 1px solid var(--rule);
     padding: 8px 10px;
-    box-shadow: var(--shadow-sm);
 
     .group-head {
       display: flex;
@@ -28,19 +25,17 @@
         flex: 1 1 auto;
         min-width: 0;
         overflow-wrap: anywhere;
-        font-weight: 700;
-        font-size: 0.85em;
+        font-family: var(--font-pixel);
+        font-size: 12px;
         text-transform: capitalize;
-        color: var(--text-strong);
+        color: var(--bone);
       }
 
       .unit-count {
         flex: 0 0 auto;
-        font-size: 0.78em;
-        color: var(--text-muted);
-        background: var(--chip-bg);
-        border-radius: 10px;
-        padding: 1px 8px;
+        font-size: 12px;
+        color: var(--muted);
+        font-variant-numeric: tabular-nums;
       }
     }
 
