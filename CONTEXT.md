@@ -409,7 +409,7 @@ _Avoid_: Ship, ferry, caravan
 
 **Arrivals**:
 The named group that steps off the Boat into the reserves: Iscale (a Draco Metamorph), his silent assistant (a Porter), the pyromancer (a Mage) and the battle maiden (a Tank). Like the Founders they are ordinary units under every rule, and the word marks where they came from. Any unit type they carry that was not yet recruitable becomes recruitable from then on. Planned.
-_Avoid_: Newcomers, recruits, reinforcements (reserved for reinforcement waves)
+_Avoid_: Newcomers, reinforcements (reserved for reinforcement waves)
 
 **Voyage**:
 One round trip of the Boat, lasting one Quarter in real time. Relics loaded at departure come back as Salt or Spores at a fixed rate, unless the sea takes the cargo. The chance of loss is taken once, at departure, from the Year, so the player chooses when to sail. Planned.
