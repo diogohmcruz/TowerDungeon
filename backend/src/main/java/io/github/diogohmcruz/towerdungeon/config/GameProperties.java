@@ -53,6 +53,7 @@ public class GameProperties {
   private final Trust trust = new Trust();
   private final Spores spores = new Spores();
   private final Port port = new Port();
+  private final Boat boat = new Boat();
   private final Architecture architecture = new Architecture();
   private final Prestige prestige = new Prestige();
   private final Persistence persistence = new Persistence();
@@ -1055,6 +1056,25 @@ public class GameProperties {
 
     /** Credits from the Vault that finish the Port. */
     private double creditsCost = 300.0;
+  }
+
+  /**
+   * The Boat: it docks a fixed number of connected lifecycle ticks after the Port is finished, and
+   * the Arrivals step into the Reserves. The time is a placeholder until Voyages are measured.
+   */
+  @Data
+  public static class Boat {
+    /** Lifecycle ticks between the Port being finished and the Boat docking. */
+    private int dockTicks = 600;
+
+    /** The named group that steps off the Boat, as ordinary units; raised like the Founders. */
+    private List<Founder> arrivals =
+        new ArrayList<>(
+            List.of(
+                new Founder("Iscale", UnitStats.DRACO_METAMORPH, 1.0, false),
+                new Founder("The Silent Assistant", UnitStats.PORTER, 1.0, false),
+                new Founder("The Pyromancer", UnitStats.MAGE, 1.0, false),
+                new Founder("The Battle Maiden", UnitStats.TANK, 1.0, false)));
   }
 
   /** Floor Architectures: the seeded plan, and the switch for their gameplay effects. */

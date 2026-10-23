@@ -1877,7 +1877,12 @@ public class GameService {
     }
     var slainBefore = gameState.getEnemiesDefeated();
     var floorBefore = floorOf(gameState);
+    var boatBefore = gameState.getBoat().state();
     gameState.triggerLifecycle();
+    if (boatBefore != gameState.getBoat().state()
+        && gameState.getBoat().state() == GameState.BoatState.DOCKED) {
+      slot.emit("BOAT_DOCKED", Map.of());
+    }
     var party = new AimTally();
     var garrison = new AimTally();
     updateInvasion(gameState, party, garrison);

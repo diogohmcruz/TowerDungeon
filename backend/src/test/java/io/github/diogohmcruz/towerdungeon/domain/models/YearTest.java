@@ -205,6 +205,8 @@ class YearTest {
             c.pending(),
             c.choices(),
             c.portBuilt(),
+            c.boatTicks(),
+            c.arrivalsCame(),
             0,
             0);
     var loaded =

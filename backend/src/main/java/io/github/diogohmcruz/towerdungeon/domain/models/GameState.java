@@ -151,6 +151,12 @@ public class GameState {
   /** Whether the Port has been finished. Its footing is derived from the Expedition count. */
   private boolean portBuilt;
 
+  /** Connected lifecycle ticks since the Port was finished, counted until the Boat docks. */
+  private int boatTicks;
+
+  /** Whether the Boat has docked and the Arrivals have stepped into the Reserves. Once only. */
+  private boolean arrivalsCame;
+
   /** The Trial this Campaign is; null for a real Campaign. Shown to the client without a seed. */
   @JsonInclude(JsonInclude.Include.NON_NULL)
   private TrialRun trial;
@@ -996,6 +1002,7 @@ public class GameState {
     recoverHomeSanity();
     rechargeHomeCasters();
     refreshVillageTier();
+    advanceBoat();
   }
 
   private void writeStarvation(Optional<Trade> lostTrade, Unit lostReserve) {
@@ -1188,6 +1195,38 @@ public class GameState {
         expeditionsCompleted,
         rules.getMaterialsCost(),
         rules.getCreditsCost());
+  }
+
+  /** The Boat as the frame shows it: not built, due (the Port is finished) or docked. */
+  public BoatView getBoat() {
+    var dockTicks = config.getBoat().getDockTicks();
+    var state = arrivalsCame ? BoatState.DOCKED : portBuilt ? BoatState.DUE : BoatState.NOT_BUILT;
+    var remaining = state == BoatState.DUE ? Math.max(0, dockTicks - boatTicks) : 0;
+    return new BoatView(state, dockTicks, remaining);
+  }
+
+  /**
+   * Counts a connected lifecycle tick toward the Boat's docking. When the configured time since the
+   * Port was finished has passed, the Boat docks, once per Campaign, and the Arrivals step into the
+   * Reserves. A Trial has no Port and so no Boat.
+   */
+  private void advanceBoat() {
+    if (trial != null || !portBuilt || arrivalsCame) {
+      return;
+    }
+    boatTicks++;
+    if (boatTicks < config.getBoat().getDockTicks()) {
+      return;
+    }
+    arrivalsCame = true;
+    writeLedger("The Boat docks at the pier.", false);
+    for (var arrival : config.getBoat().getArrivals()) {
+      var unit = recruitFounder(arrival, random.founders());
+      addUnits(arrival.getUnitType(), List.of(unit));
+      unlockedUnits.add(arrival.getUnitType());
+      writeLedger(
+          arrival.getName() + ", " + typeName(arrival.getUnitType()) + ", steps ashore.", false);
+    }
   }
 
   private PortState portState() {
@@ -1557,6 +1596,16 @@ public class GameState {
       int capacityBonus,
       int capacityPerLevel,
       String blocked) {}
+
+  /** Where the Boat stands: not built, due to dock, or docked. */
+  public enum BoatState {
+    NOT_BUILT,
+    DUE,
+    DOCKED
+  }
+
+  /** The Boat for the frame: its state, the dock time and the lifecycle ticks still to go. */
+  public record BoatView(BoatState state, int dockTicks, int ticksToDock) {}
 
   /** Where the Port stands: out of sight, a footing to build on, or finished. */
   public enum PortState {
@@ -2396,6 +2445,8 @@ public class GameState {
             pending,
             Map.copyOf(choices),
             portBuilt,
+            boatTicks,
+            arrivalsCame,
             yearRuns() ? yearNumber : 1,
             yearRuns() ? tickInYear : 0);
     return new GameSnapshot(
@@ -2578,6 +2629,8 @@ public class GameState {
     state.highestFloor = c.highestFloor();
     state.expeditionsCompleted = c.expeditionsCompleted();
     state.portBuilt = Boolean.TRUE.equals(c.portBuilt()) && snapshot.trial() == null;
+    state.boatTicks = snapshot.trial() == null && c.boatTicks() != null ? c.boatTicks() : 0;
+    state.arrivalsCame = snapshot.trial() == null && Boolean.TRUE.equals(c.arrivalsCame());
     state.enemiesDefeated = c.enemiesDefeated();
     state.gameOutcome = c.outcome();
     state.lastRunSummary = c.lastExpeditionSummary();
@@ -2705,5 +2758,8 @@ public class GameState {
         .map(MilestoneType::getUnlockUnit)
         .filter(Objects::nonNull)
         .forEach(unlockedUnits::add);
+    if (arrivalsCame) {
+      config.getBoat().getArrivals().forEach(arrival -> unlockedUnits.add(arrival.getUnitType()));
+    }
   }
 }

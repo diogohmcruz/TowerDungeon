@@ -35,6 +35,8 @@ import io.github.diogohmcruz.towerdungeon.domain.prestige.SuccessionReport;
  *     saves
  * @param portBuilt whether the Port was finished; absent in older saves, which read as not built
  *     (the footing is derived from the Expedition count)
+ * @param boatTicks connected lifecycle ticks since the Port was finished; absent in older saves
+ * @param arrivalsCame whether the Boat has docked and the Arrivals have come; absent in older saves
  * @param year the Year the Campaign is in, from 1; absent in older saves, which read as Year 1
  * @param yearTick connected lifecycle ticks gone in the Year; absent in older saves, which read as
  *     the first tick, in Spring
@@ -63,6 +65,8 @@ public record CampaignSnapshot(
     SuccessionReport pending,
     Map<String, String> choices,
     Boolean portBuilt,
+    Integer boatTicks,
+    Boolean arrivalsCame,
     int year,
     int yearTick) {
 
@@ -73,6 +77,8 @@ public record CampaignSnapshot(
     phase = phase == null ? CampaignPhase.ACTIVE : phase;
     choices = choices == null ? Map.of() : choices;
     portBuilt = Boolean.TRUE.equals(portBuilt);
+    boatTicks = boatTicks == null ? 0 : boatTicks;
+    arrivalsCame = Boolean.TRUE.equals(arrivalsCame);
     year = Math.max(1, year);
     yearTick = Math.max(0, yearTick);
   }
@@ -106,6 +112,8 @@ public record CampaignSnapshot(
         pending,
         choices,
         portBuilt,
+        boatTicks,
+        arrivalsCame,
         1,
         0);
   }

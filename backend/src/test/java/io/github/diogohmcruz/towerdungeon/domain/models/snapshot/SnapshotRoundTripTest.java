@@ -173,6 +173,8 @@ class SnapshotRoundTripTest {
                 null,
                 null,
                 false,
+                null,
+                null,
                 0,
                 0),
             null);
@@ -271,6 +273,8 @@ class SnapshotRoundTripTest {
                 snapshot.campaign().pending(),
                 snapshot.campaign().choices(),
                 snapshot.campaign().portBuilt(),
+                snapshot.campaign().boatTicks(),
+                snapshot.campaign().arrivalsCame(),
                 snapshot.campaign().year(),
                 snapshot.campaign().yearTick()),
             null);

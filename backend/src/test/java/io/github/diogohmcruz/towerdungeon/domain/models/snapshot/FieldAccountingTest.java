@@ -41,6 +41,8 @@ class FieldAccountingTest {
           Map.entry("pending", "CampaignSnapshot.pending"),
           Map.entry("choices", "CampaignSnapshot.choices"),
           Map.entry("portBuilt", "CampaignSnapshot.portBuilt"),
+          Map.entry("boatTicks", "CampaignSnapshot.boatTicks"),
+          Map.entry("arrivalsCame", "CampaignSnapshot.arrivalsCame"),
           Map.entry("yearNumber", "CampaignSnapshot.year"),
           Map.entry("tickInYear", "CampaignSnapshot.yearTick"),
           Map.entry("village", "CampaignSnapshot.villageFood"),

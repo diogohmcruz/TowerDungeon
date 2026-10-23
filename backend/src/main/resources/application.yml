@@ -245,6 +245,9 @@ game:
     footing-expeditions: 12
     materials-cost: 600.0
     credits-cost: 300.0
+  boat:
+    # Placeholder: lifecycle ticks from the Port being finished to the Boat docking.
+    dock-ticks: 600
   architecture:
     enabled: false
     seed: 362108372306
