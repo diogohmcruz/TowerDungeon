@@ -1,6 +1,7 @@
 package io.github.diogohmcruz.towerdungeon.domain.services;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 import java.nio.file.Path;
 import java.util.HashMap;
@@ -45,7 +46,8 @@ class QuarryHeapDeliveryTest {
             random,
             plan,
             new PartyCombat(random),
-            new FileCampaignStore(config.getPersistence()));
+            new FileCampaignStore(config.getPersistence()),
+            mock(FloorBundle.class));
   }
 
   /** A state mid-Expedition, three Floors up from the base, with a 40-Material Heap at home. */

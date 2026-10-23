@@ -24,7 +24,13 @@ class UnitJsonTest {
     var unit = new Unit(UnitStats.WARRIOR);
     unit.addPhobia(EnemyStats.values()[0]);
     var helm =
-        new Item("h1", "Rusty Helm", ItemTier.LEFTOVER, ItemCategory.HELM, Map.of(ItemStat.ARMOUR, 1.5), null);
+        new Item(
+            "h1",
+            "Rusty Helm",
+            ItemTier.LEFTOVER,
+            ItemCategory.HELM,
+            Map.of(ItemStat.ARMOUR, 1.5),
+            null);
     unit.equip(helm, new ItemRating(new GameProperties().getItems().getWeights()));
 
     JsonNode json = mapper.valueToTree(unit);
