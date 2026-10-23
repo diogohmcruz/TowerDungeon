@@ -7,3 +7,4 @@ frontend/.angular
 
 # Claude Code agent worktrees
 .claude/worktrees/
+data/

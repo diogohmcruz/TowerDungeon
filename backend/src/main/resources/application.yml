@@ -88,3 +88,6 @@ game:
       credits-banked: {marks: 3.0, par: 6800.0}
       relics-banked: {marks: 4.0, par: 320.0}
       expeditions: {marks: 3.0, par: 17.0}
+  persistence:
+    # Must be a mounted volume: on an ephemeral filesystem every deploy deletes every Campaign.
+    data-dir: ./data

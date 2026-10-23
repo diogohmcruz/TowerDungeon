@@ -26,6 +26,16 @@ public class GameProperties {
   private final Village village = new Village();
   private final Architecture architecture = new Architecture();
   private final Prestige prestige = new Prestige();
+  private final Persistence persistence = new Persistence();
+
+  /** Where Campaigns are kept. */
+  @Data
+  public static class Persistence {
+    /**
+     * Root of the Campaign files; must be a mounted volume wherever the filesystem is ephemeral.
+     */
+    private String dataDir = "./data";
+  }
 
   /** Values a freshly created player starts the game with. */
   @Data

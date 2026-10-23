@@ -71,6 +71,12 @@ For full manga reference material used by this project, see:
 - `frontend/`: Angular client.
 - `target/`: build artifacts.
 
+## Persistence
+
+The backend has a `CampaignStore` port with a file-based implementation (`FileCampaignStore`), not yet wired into gameplay. Campaigns are written under `game.persistence.data-dir` (default `./data`, git-ignored).
+
+`game.persistence.data-dir` must point at a mounted volume. On an ephemeral filesystem every deploy deletes every Campaign.
+
 ## Notes for Agents
 
 - This repository is organized as a monorepo-style split (`backend` + `frontend`).
