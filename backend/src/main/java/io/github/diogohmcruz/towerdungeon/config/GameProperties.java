@@ -39,6 +39,7 @@ public class GameProperties {
   private final Aiming aiming = new Aiming();
   private final Sanity sanity = new Sanity();
   private final Items items = new Items();
+  private final Wipe wipe = new Wipe();
   private final Magic magic = new Magic();
   private final Reinforcements reinforcements = new Reinforcements();
   private final Supply supply = new Supply();
@@ -50,6 +51,16 @@ public class GameProperties {
   private final Prestige prestige = new Prestige();
   private final Persistence persistence = new Persistence();
   private final Security security = new Security();
+
+  /** What a Wipe leaves on the Tower: the Risen. */
+  @Data
+  public static class Wipe {
+    /** Most Risen one floor can hold, however many fell there. */
+    private int risenCapMax = 3;
+
+    /** Share of the floor's eased base budget the Risen may weigh at most. */
+    private double risenCapFraction = 0.30;
+  }
 
   /** Where Campaigns are kept. */
   @Data

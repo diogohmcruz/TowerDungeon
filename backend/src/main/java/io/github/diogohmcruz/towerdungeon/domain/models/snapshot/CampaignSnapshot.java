@@ -3,6 +3,7 @@ package io.github.diogohmcruz.towerdungeon.domain.models.snapshot;
 import java.util.List;
 import java.util.Map;
 
+import io.github.diogohmcruz.towerdungeon.domain.models.Fallen;
 import io.github.diogohmcruz.towerdungeon.domain.models.GameOutcome;
 import io.github.diogohmcruz.towerdungeon.domain.models.ResourceType;
 import io.github.diogohmcruz.towerdungeon.domain.models.RunSummary;
@@ -24,6 +25,7 @@ import io.github.diogohmcruz.towerdungeon.domain.models.upgrade.UpgradeType;
  * @param artifactsTaken ids of the Artifacts taken this generation; absent in older saves
  * @param tally the never-spent counters; null in older saves
  * @param villageTier the Village Tier level reached, 1 to 4 (0 in older saves reads as Tier I)
+ * @param wallOfNames every Unit that fell on the Tower or starved at home, in the order they fell
  */
 public record CampaignSnapshot(
     double credit,
@@ -43,11 +45,13 @@ public record CampaignSnapshot(
     TradesSnapshot trades,
     List<String> artifactsTaken,
     TallySnapshot tally,
-    int villageTier) {
+    int villageTier,
+    List<Fallen> wallOfNames) {
 
-  /** A save from before Artifacts has none taken. */
+  /** A save from before Artifacts has none taken, and before the Wall of Names no names on it. */
   public CampaignSnapshot {
     artifactsTaken = artifactsTaken == null ? List.of() : artifactsTaken;
+    wallOfNames = wallOfNames == null ? List.of() : wallOfNames;
   }
 
   /** The same record with the reserves cleared, for comparing everything but who is in them. */
@@ -70,6 +74,7 @@ public record CampaignSnapshot(
         trades,
         artifactsTaken,
         tally,
-        villageTier);
+        villageTier,
+        wallOfNames);
   }
 }

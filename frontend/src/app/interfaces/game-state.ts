@@ -50,6 +50,12 @@ export interface ShortcutOffer {
   unlocked: boolean;
 }
 
+export interface Fallen {
+  name: string;
+  type: string;
+  floor: number;
+}
+
 export interface RunSummary {
   outcome: string;
   startFloor: number;
@@ -61,6 +67,7 @@ export interface RunSummary {
   relicsGained: number;
   unitsLost: number;
   survivors: number;
+  fallen: Fallen[];
 }
 
 export interface Reinforcement {

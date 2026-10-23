@@ -99,6 +99,12 @@ public class GameState {
   private int runUnitsLost = 0;
   private RunSummary lastRunSummary;
 
+  /** The Units that fell on the current Expedition, in the order they fell. */
+  private List<Fallen> runFallen = new ArrayList<>();
+
+  /** The Wall of Names: every Unit that fell on the Tower or starved at home, oldest first. */
+  private List<Fallen> wallOfNames = new ArrayList<>();
+
   @JsonIgnore private Set<MilestoneType> achievedMilestones = EnumSet.noneOf(MilestoneType.class);
 
   /** Shortcuts ever opened; a ratchet, so a rebalance of the thresholds never closes one. */
@@ -155,6 +161,7 @@ public class GameState {
     this.lastFoodReturned = 0d;
     this.runEnemiesDefeated = 0;
     this.runUnitsLost = 0;
+    this.runFallen = new ArrayList<>();
     partyMembers().forEach(Unit::forgetFearFloor);
   }
 
@@ -560,6 +567,7 @@ public class GameState {
         units.get(lostReserve.getStats()).remove(lostReserve);
         village.recordReserveLost();
         log.warn("Village is starving! Unit {} starved!", lostReserve);
+        wallOfNames.add(fallenAt(lostReserve, 0));
       }
       writeStarvation(lostTrade, lostReserve);
     }
@@ -1010,9 +1018,65 @@ public class GameState {
             carriedLoot.getOrDefault(ResourceType.RELICS, 0d)
                 + (RunSummary.WIPED.equals(outcome) ? 0d : surplusRelics()),
             runUnitsLost,
-            survivors);
+            survivors,
+            List.copyOf(runFallen));
     if (!RunSummary.WIPED.equals(outcome)) {
       tally.addFloorsCleared(floorsCleared);
+    }
+  }
+
+  private static Fallen fallenAt(Unit unit, int floor) {
+    return new Fallen(unit.getName(), unit.getStats().name(), floor);
+  }
+
+  /**
+   * A Wipe ends on the floor where the last Unit fell, and that floor gains Risen: Dead Soldiers
+   * carrying the names of the Units that fell there, one third of them rounded up and never fewer
+   * than one, capped by {@code risen-cap-max} and by the share {@code risen-cap-fraction} of the
+   * floor's eased base budget. Nothing is raised on a guardian floor, above the Highest Floor, or
+   * on a floor already holding its cap, so repeated Wipes never compound. Call it before the
+   * Expedition is torn down.
+   */
+  public void raiseRisenOnWipe() {
+    if (tower == null) {
+      return;
+    }
+    var floor = tower.getCurrentFloor();
+    var here = tower.getFloors().get(floor);
+    if (floor < 1 || floor > highestFloor || here == null || here.isBoss()) {
+      return;
+    }
+    var names = runFallen.stream().filter(f -> f.floor() == floor).map(Fallen::name).toList();
+    if (names.isEmpty()) {
+      return;
+    }
+    var rules = config.getWipe();
+    var cap =
+        Math.max(
+            1,
+            Math.min(
+                rules.getRisenCapMax(),
+                (int) Math.floor(rules.getRisenCapFraction() * tower.easedBaseBudget(floor))));
+    var wanted = (names.size() + 2) / 3;
+    var memory = tower.getFloorMemory();
+    var raised = memory.raiseRisen(floor, names.subList(0, wanted), cap);
+    if (raised > 0) {
+      writeLedger("They stay on the Floor.", true);
+      writeLedger(
+          "Floor "
+              + floor
+              + " holds "
+              + raised
+              + (raised == 1 ? " more Dead Soldier" : " more Dead Soldiers")
+              + " until cleared.",
+          true);
+    }
+  }
+
+  /** Lays the Risen of a floor to rest: the party has cleared it. */
+  public void layRisenToRest(int floor) {
+    if (tower != null) {
+      tower.getFloorMemory().layRisenToRest(floor);
     }
   }
 
@@ -1185,6 +1249,9 @@ public class GameState {
         unitsOnTower.remove(targetUnit.getStats());
       }
       runUnitsLost++;
+      var floor = tower == null ? 0 : tower.getCurrentFloor();
+      runFallen.add(fallenAt(targetUnit, floor));
+      wallOfNames.add(fallenAt(targetUnit, floor));
       dropGearOnCurrentFloor(targetUnit.dropAll());
       recalculateSupplyCapacity();
       partyMembers().forEach(unit -> unit.changeSanity(-config.getSanity().getAllyDeathDrain()));
@@ -1306,7 +1373,8 @@ public class GameState {
                 : new TowerSnapshot(
                     tower.getCurrentFloor(),
                     tower.getSlainGuardians(),
-                    tower.getFloorMemory().gearByFloor()),
+                    tower.getFloorMemory().gearByFloor(),
+                    tower.getFloorMemory().risenByFloor()),
             highestFloor,
             expeditionsCompleted,
             enemiesDefeated,
@@ -1329,7 +1397,8 @@ public class GameState {
                 new EnumMap<>(village.getPostLevels())),
             List.copyOf(artifactsTaken),
             tally.toSnapshot(),
-            villageTier.getLevel());
+            villageTier.getLevel(),
+            List.copyOf(wallOfNames));
     return new GameSnapshot(campaign, expeditionActive ? expeditionSnapshot() : null);
   }
 
@@ -1369,6 +1438,7 @@ public class GameState {
         runStartFloor,
         runEnemiesDefeated,
         runUnitsLost,
+        List.copyOf(runFallen),
         garrison,
         waves);
   }
@@ -1490,6 +1560,7 @@ public class GameState {
     state.enemiesDefeated = c.enemiesDefeated();
     state.gameOutcome = c.outcome();
     state.lastRunSummary = c.lastExpeditionSummary();
+    state.wallOfNames = new ArrayList<>(c.wallOfNames());
     state.village.restore(c.villageFood(), c.villagers());
     var t = c.trades();
     if (t != null) {
@@ -1527,6 +1598,7 @@ public class GameState {
       state.runStartFloor = e.runStartFloor();
       state.runEnemiesDefeated = e.runEnemiesDefeated();
       state.runUnitsLost = e.runUnitsLost();
+      state.runFallen = new ArrayList<>(e.runFallen());
       e.waves()
           .forEach(
               w ->
@@ -1565,6 +1637,7 @@ public class GameState {
               new HashSet<>(c.tower().clearedBosses()),
               garrison);
       state.tower.getFloorMemory().restoreGear(c.tower().floorGear());
+      state.tower.getFloorMemory().restoreRisen(c.tower().risen());
     }
     state.maxSupplies = state.computeSupplyCapacity();
     return state;

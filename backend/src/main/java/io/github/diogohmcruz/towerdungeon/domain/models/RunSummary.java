@@ -1,9 +1,12 @@
 package io.github.diogohmcruz.towerdungeon.domain.models;
 
+import java.util.List;
+
 /**
  * A post-run report shown back in the village once an expedition ends. Captures how the delve went
- * — how deep the party pushed, what they slew and hauled out, and who they lost — snapshotted at
- * the moment the run resolves (before loot is banked on extract or forfeited on a wipe).
+ * — how deep the party pushed, what they slew and hauled out, and who they lost and where each fell
+ * — snapshotted at the moment the run resolves (before loot is banked on extract or forfeited on a
+ * wipe).
  */
 public record RunSummary(
     String outcome,
@@ -15,7 +18,13 @@ public record RunSummary(
     double materialsGained,
     double relicsGained,
     int unitsLost,
-    int survivors) {
+    int survivors,
+    List<Fallen> fallen) {
+
+  /** A summary saved before the fallen were recorded names none. */
+  public RunSummary {
+    fallen = fallen == null ? List.of() : fallen;
+  }
 
   public static final String EXTRACTED = "EXTRACTED";
   public static final String WIPED = "WIPED";

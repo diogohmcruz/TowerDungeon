@@ -39,3 +39,10 @@ app-card.victory {
   color: var(--bone);
   font-variant-numeric: tabular-nums;
 }
+
+.fallen {
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+  color: var(--ember-text);
+}

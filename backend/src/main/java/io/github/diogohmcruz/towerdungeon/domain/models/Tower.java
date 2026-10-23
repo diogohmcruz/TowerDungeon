@@ -28,7 +28,7 @@ public class Tower {
   /** Source of every random draw in floor generation; seed it to make a climb reproducible. */
   @JsonIgnore private final RandomGenerator random;
 
-  /** The gear the fallen left on each floor; survives every rebuild of a floor. */
+  /** The gear the fallen left and the Risen they became, per floor; survives every rebuild. */
   @JsonIgnore private final FloorMemory floorMemory = new FloorMemory();
 
   /** Backend-only: the frontend only ever sees the Architectures of discovered floors. */
@@ -146,22 +146,21 @@ public class Tower {
   /** Builds a fully populated floor (enemies or boss) for the given depth. */
   private TowerFloor buildFloor(int floor) {
     var towerFloor = newFloor(floor);
-    var easingSteps = easingStepsFor(floor);
     if (towerFloor.isBoss()) {
       towerFloor.populateBoss(bossConfig, enemiesConfig, random);
     } else {
-      towerFloor.populateEnemies(
-          enemyBudget(floor, easingSteps, stepUpsFor(floor)), random, enemiesConfig);
+      towerFloor.populateEnemies(enemyBudget(floor), random, enemiesConfig);
+      towerFloor.addRisen(floorMemory.risenOn(floor), random, enemiesConfig);
     }
     return towerFloor;
   }
 
   /**
-   * Weighted garrison budget for a regular floor: a base plus linear and quadratic growth with
-   * depth, discounted on the first floors, boosted on periodic "surge" floors, swung randomly, then
-   * thinned once for every cleared guardian above it and raised once for every one below it.
+   * The garrison budget of a regular floor before its random swing: a base plus linear and
+   * quadratic growth with depth, discounted on the first floors, boosted on periodic "surge"
+   * floors, thinned once for every cleared guardian above it and raised once for every one below.
    */
-  private double enemyBudget(int floor, int easingSteps, int stepUps) {
+  public double easedBaseBudget(int floor) {
     var e = enemiesConfig;
     var budget =
         e.getBaseBudget()
@@ -171,11 +170,18 @@ public class Tower {
     if (e.getSurgeInterval() > 0 && floor % e.getSurgeInterval() == 0) {
       budget *= e.getSurgeMultiplier();
     }
+    budget *= Math.pow(1 - e.getEaseBudgetPerBoss(), easingStepsFor(floor));
+    budget *= Math.pow(1 + e.getStepBudgetPerBoss(), stepUpsFor(floor));
+    return budget;
+  }
+
+  /** The budget of a regular floor: its eased base, swung randomly, never below the minimum. */
+  private double enemyBudget(int floor) {
+    var e = enemiesConfig;
+    var budget = easedBaseBudget(floor);
     if (e.getVariance() > 0) {
       budget *= 1 + random.nextDouble(-e.getVariance(), e.getVariance());
     }
-    budget *= Math.pow(1 - e.getEaseBudgetPerBoss(), easingSteps);
-    budget *= Math.pow(1 + e.getStepBudgetPerBoss(), stepUps);
     return Math.max(e.getMinBudget(), budget);
   }
 

@@ -163,7 +163,8 @@ class SnapshotRoundTripTest {
                 c.trades(),
                 c.artifactsTaken(),
                 null,
-                0),
+                0,
+                null),
             null);
 
     var restored = GameState.restore(older, config, random, plan);
@@ -254,7 +255,8 @@ class SnapshotRoundTripTest {
                 snapshot.campaign().trades(),
                 snapshot.campaign().artifactsTaken(),
                 snapshot.campaign().tally(),
-                snapshot.campaign().villageTier()),
+                snapshot.campaign().villageTier(),
+                snapshot.campaign().wallOfNames()),
             null);
 
     var restored = GameState.restore(stripped, config, random, plan);

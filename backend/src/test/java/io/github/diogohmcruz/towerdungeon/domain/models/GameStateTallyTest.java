@@ -112,7 +112,7 @@ class GameStateTallyTest {
   void theQuarryHeapCarriedHomeCountsAsMaterialsBanked() {
     var state = state();
     state.getVillage().restoreTrades(5, 0, java.util.Map.of(), 0, 100, false, 0, 0);
-    state.setLastRunSummary(new RunSummary(RunSummary.EXTRACTED, 0, 3, 3, 0, 0, 0, 0, 0, 1));
+    state.setLastRunSummary(new RunSummary(RunSummary.EXTRACTED, 0, 3, 3, 0, 0, 0, 0, 0, 1, null));
 
     state.deliverQuarryHeap();
 

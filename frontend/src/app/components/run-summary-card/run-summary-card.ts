@@ -15,6 +15,11 @@ export class RunSummaryCard {
 
   wiped = computed(() => this.summary().outcome === 'WIPED');
   victory = computed(() => this.summary().outcome === 'VICTORY');
+  typeName(type: string): string {
+    const words = type.replace(/_/g, ' ').toLowerCase();
+    return words.charAt(0).toUpperCase() + words.slice(1);
+  }
+
   titleText = computed(() => {
     switch (this.summary().outcome) {
       case 'WIPED':

@@ -39,6 +39,12 @@ public class TowerFloor {
     }
   }
 
+  /** Stands a Dead Soldier on the floor for each name, on top of the garrison already there. */
+  public void addRisen(
+      List<String> names, RandomGenerator random, GameProperties.Enemies enemiesConfig) {
+    names.forEach(name -> enemies.add(Enemy.risen(name, random, enemiesConfig)));
+  }
+
   /** Puts the floor's guardian on it; a guardian always has all six body parts. */
   public void populateBoss(
       GameProperties.Boss bossConfig,

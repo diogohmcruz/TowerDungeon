@@ -183,6 +183,9 @@ game:
     sheltered: {food-grown: 1000.0, highest-floor: 5}
     fortified: {materials-banked: 1000.0, highest-floor: 10, expeditions: 6}
     entrenched: {relics-banked: 60.0, highest-floor: 25}
+  wipe:
+    risen-cap-max: 3
+    risen-cap-fraction: 0.30
   architecture:
     enabled: false
     seed: 362108372306

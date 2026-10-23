@@ -12,11 +12,14 @@ import io.github.diogohmcruz.towerdungeon.domain.items.ItemRating;
 
 /**
  * What the Tower remembers about each floor beyond its rebuilt garrison, for the whole campaign.
- * For now that is the gear the fallen left behind; it is kept apart from {@link TowerFloor} because
- * a floor is rebuilt from scratch every time the party arrives.
+ * That is the gear the fallen left behind and the Risen they became; it is kept apart from {@link
+ * TowerFloor} because a floor is rebuilt from scratch every time the party arrives.
  */
 public class FloorMemory {
   private final Map<Integer, List<Item>> gear = new TreeMap<>();
+
+  /** The names carried by the Risen standing on each floor until it is cleared once. */
+  private final Map<Integer, List<String>> risen = new TreeMap<>();
 
   /**
    * Leaves {@code items} on {@code floor}. The floor keeps at most {@code cap} items: when more
@@ -57,6 +60,51 @@ public class FloorMemory {
         (floor, items) -> {
           if (!items.isEmpty()) {
             gear.put(floor, new ArrayList<>(items));
+          }
+        });
+  }
+
+  /**
+   * Raises Risen on {@code floor} carrying {@code names}, in that order, until the floor holds
+   * {@code cap}; a floor already at its cap gains none, so repeated Wipes never compound. Returns
+   * how many were raised.
+   */
+  public int raiseRisen(int floor, List<String> names, int cap) {
+    var standing = new ArrayList<>(risen.getOrDefault(floor, List.of()));
+    var room = Math.max(0, cap - standing.size());
+    var raised = names.subList(0, Math.min(room, names.size()));
+    if (raised.isEmpty()) {
+      return 0;
+    }
+    standing.addAll(raised);
+    risen.put(floor, standing);
+    return raised.size();
+  }
+
+  /** The names of the Risen standing on {@code floor}. */
+  public List<String> risenOn(int floor) {
+    return List.copyOf(risen.getOrDefault(floor, List.of()));
+  }
+
+  /** Lays the Risen of {@code floor} to rest: the floor has been cleared. */
+  public void layRisenToRest(int floor) {
+    risen.remove(floor);
+  }
+
+  /** A copy of the Risen standing on every floor that has any. */
+  public Map<Integer, List<String>> risenByFloor() {
+    var copy = new TreeMap<Integer, List<String>>();
+    risen.forEach((floor, names) -> copy.put(floor, List.copyOf(names)));
+    return copy;
+  }
+
+  /** Replaces the Risen with a persisted copy. */
+  public void restoreRisen(Map<Integer, List<String>> saved) {
+    risen.clear();
+    saved.forEach(
+        (floor, names) -> {
+          if (!names.isEmpty()) {
+            risen.put(floor, new ArrayList<>(names));
           }
         });
   }

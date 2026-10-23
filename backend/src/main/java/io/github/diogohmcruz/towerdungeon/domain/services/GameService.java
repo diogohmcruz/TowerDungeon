@@ -664,6 +664,7 @@ public class GameService {
       gameState.gatherCredits(clearedFloor * reward.getCreditPerFloor() * rewardMultiplier);
       gatherFloorLoot(gameState, clearedFloor, rewardMultiplier);
       floorBundle.resolve(gameState, clearedFloor, bossCleared);
+      gameState.layRisenToRest(clearedFloor);
       if (bossCleared) {
         tower.markBossCleared(clearedFloor);
         log.info(
@@ -709,6 +710,7 @@ public class GameService {
 
   private static void endRunOnWipe(GameState gameState) {
     gameState.buildRunSummary(RunSummary.WIPED);
+    gameState.raiseRisenOnWipe();
     gameState.forfeitLoot();
     gameState.returnReinforcementsHome();
     gameState.setExpeditionActive(false);

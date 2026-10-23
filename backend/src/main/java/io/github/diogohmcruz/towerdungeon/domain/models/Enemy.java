@@ -55,12 +55,31 @@ public class Enemy extends BaseUnit implements Aimable {
       boolean boss,
       RandomGenerator random,
       GameProperties.Enemies config) {
-    super(nameFor(stats));
+    this(nameFor(stats), stats, healthMultiplier, damageMultiplier, boss, random, config);
+  }
+
+  private Enemy(
+      String name,
+      EnemyStats stats,
+      double healthMultiplier,
+      double damageMultiplier,
+      boolean boss,
+      RandomGenerator random,
+      GameProperties.Enemies config) {
+    super(name);
     this.stats = stats;
     this.healthMultiplier = healthMultiplier;
     this.damageMultiplier = damageMultiplier;
     this.boss = boss;
     layOutBody(rollParts(stats, boss, random, config), config.getWeights());
+  }
+
+  /**
+   * A Risen: a Dead Soldier that carries the name of the Unit who fell, laid out like any other
+   * Dead Soldier.
+   */
+  public static Enemy risen(String name, RandomGenerator random, GameProperties.Enemies config) {
+    return new Enemy(name, EnemyStats.DEAD_SOLDIERS, 1.0, 1.0, false, random, config);
   }
 
   /** An ordinary garrison enemy at base strength. */

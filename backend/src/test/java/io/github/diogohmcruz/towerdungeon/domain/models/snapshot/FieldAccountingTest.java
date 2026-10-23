@@ -50,7 +50,9 @@ class FieldAccountingTest {
           Map.entry("openedShortcuts", "CampaignSnapshot.shortcutsOpened"),
           Map.entry("artifactsTaken", "CampaignSnapshot.artifactsTaken"),
           Map.entry("tally", "CampaignSnapshot.tally"),
-          Map.entry("villageTier", "CampaignSnapshot.villageTier"));
+          Map.entry("villageTier", "CampaignSnapshot.villageTier"),
+          Map.entry("runFallen", "ExpeditionSnapshot.runFallen"),
+          Map.entry("wallOfNames", "CampaignSnapshot.wallOfNames"));
 
   private static final Map<String, String> GAME_STATE_TRANSIENT =
       Map.of(
@@ -88,6 +90,8 @@ class FieldAccountingTest {
           "currentFloor", "TowerSnapshot.currentFloor",
           "clearedBosses", "TowerSnapshot.clearedBosses",
           "floorMemory", "TowerSnapshot.floorGear");
+
+  // floorMemory also carries the Risen, persisted as TowerSnapshot.risen.
 
   private static final Map<String, String> TOWER_TRANSIENT =
       Map.of(
