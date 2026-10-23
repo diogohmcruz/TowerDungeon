@@ -65,6 +65,12 @@ public class GameState {
   private boolean expeditionActive = false;
   private GameOutcome gameOutcome = GameOutcome.PLAYING;
 
+  /** The Year the Campaign is in, counted from 1; the Year restarts in Spring each Generation. */
+  @JsonIgnore private int yearNumber = 1;
+
+  /** Connected lifecycle ticks gone in the current Year, 0 up to one less than a Year. */
+  @JsonIgnore private int tickInYear = 0;
+
   /** {@code OFFER} once the Campaign has ended: the game loops no longer tick it. */
   private CampaignPhase phase = CampaignPhase.ACTIVE;
 
@@ -601,9 +607,87 @@ public class GameState {
     this.saltedSupplies = Math.max(0d, saltedBefore - (before - supplies) * share);
   }
 
-  /** What the Expedition's Supplies drain is multiplied by: Overreach, while it is on. */
+  /**
+   * What the Expedition's Supplies drain is multiplied by: Overreach while it is on, and Summer's
+   * lighter drain.
+   */
   public double drainMultiplier() {
-    return overreachApplies() ? overreachRule.supplyDrain() : 1d;
+    var plain = overreachApplies() ? overreachRule.supplyDrain() : 1d;
+    return plain * (yearRuns() ? yearRules().suppliesDrain(currentQuarter()) : 1d);
+  }
+
+  /** A Trial has no Year: nothing of it counts, shows or applies there. */
+  private boolean yearRuns() {
+    return trial == null;
+  }
+
+  private YearRules yearRules() {
+    return new YearRules(config.getYear());
+  }
+
+  private Quarter currentQuarter() {
+    return yearRules().quarterAt(tickInYear);
+  }
+
+  /** The Year, from 1; null in a Trial. */
+  public Integer getYear() {
+    return yearRuns() ? yearNumber : null;
+  }
+
+  /** Connected lifecycle ticks gone in the Year; null in a Trial. */
+  public Integer getYearTick() {
+    return yearRuns() ? tickInYear : null;
+  }
+
+  /** The Quarter now; null in a Trial. */
+  public Quarter getQuarter() {
+    return yearRuns() ? currentQuarter() : null;
+  }
+
+  /** The Quarter that follows; null in a Trial. */
+  public Quarter getNextQuarter() {
+    return yearRuns() ? currentQuarter().next() : null;
+  }
+
+  /** The danger at sea now, as a share; null in a Trial. */
+  public Double getSeaRisk() {
+    return yearRuns() ? yearRules().seaRisk(tickInYear) : null;
+  }
+
+  /** The danger at sea on the first tick of the next Quarter; null in a Trial. */
+  public Double getNextSeaRisk() {
+    return yearRuns() ? yearRules().seaRisk(yearRules().nextQuarterStart(tickInYear)) : null;
+  }
+
+  /** What the Sanity drains are multiplied by now (Spring's lighter drain); 1 in a Trial. */
+  public double sanityDrainScale() {
+    return yearRuns() ? yearRules().sanityDrain(currentQuarter()) : 1d;
+  }
+
+  /** What Attrition is multiplied by now (Winter's heavier hand); 1 in a Trial. */
+  public double attritionScale() {
+    return yearRuns() ? yearRules().attrition(currentQuarter()) : 1d;
+  }
+
+  /**
+   * Counts one connected lifecycle tick into the Year. Called once at the end of the tick, so every
+   * part of a tick reads the same Quarter. A Trial, and a Campaign that has ended, keep no Year.
+   */
+  public void advanceYear() {
+    if (!yearRuns() || phase != CampaignPhase.ACTIVE || gameOutcome != GameOutcome.PLAYING) {
+      return;
+    }
+    tickInYear++;
+    if (tickInYear >= yearRules().ticksPerYear()) {
+      tickInYear = 0;
+      yearNumber++;
+    }
+    applyQuarter();
+  }
+
+  /** Hands the Quarter's effect on the Fields to the Village. */
+  private void applyQuarter() {
+    village.setQuarterYield(yearRuns() ? yearRules().fieldsYield(currentQuarter()) : 1d);
   }
 
   /** The damage Starvation does to a Unit on the Tower, doubled by Overreach while it is on. */
@@ -2152,7 +2236,8 @@ public class GameState {
       wallOfNames.add(fallenAt(targetUnit, floor));
       dropGearOnCurrentFloor(targetUnit.dropAll());
       recalculateSupplyCapacity();
-      partyMembers().forEach(unit -> unit.changeSanity(-config.getSanity().getAllyDeathDrain()));
+      var drain = config.getSanity().getAllyDeathDrain() * sanityDrainScale();
+      partyMembers().forEach(unit -> unit.changeSanity(-drain));
     } else {
       log.warn("Unit {} not found on tower. Failed to remove.", targetUnit);
     }
@@ -2204,7 +2289,7 @@ public class GameState {
 
   /** The tower wears on the party: every member loses a little sanity, more the deeper it is. */
   public void drainDepthSanity(int floor) {
-    var drain = config.getSanity().getDepthDrainPerFloor() * floor;
+    var drain = config.getSanity().getDepthDrainPerFloor() * floor * sanityDrainScale();
     partyMembers().forEach(unit -> unit.changeSanity(-drain));
   }
 
@@ -2232,7 +2317,7 @@ public class GameState {
   }
 
   public void passingTime(Long interval) {
-    Double attack = Double.valueOf(interval) / 1000;
+    Double attack = Double.valueOf(interval) / 1000 * attritionScale();
     var unitsToRemove =
         unitsOnTower.values().stream()
             .flatMap(List::stream)
@@ -2310,7 +2395,9 @@ public class GameState {
             phase,
             pending,
             Map.copyOf(choices),
-            portBuilt);
+            portBuilt,
+            yearRuns() ? yearNumber : 1,
+            yearRuns() ? tickInYear : 0);
     return new GameSnapshot(
         campaign,
         expeditionActive ? expeditionSnapshot() : null,
@@ -2496,9 +2583,12 @@ public class GameState {
     state.lastRunSummary = c.lastExpeditionSummary();
     state.wallOfNames = new ArrayList<>(c.wallOfNames());
     state.phase = c.phase();
+    state.yearNumber = Math.max(1, c.year());
+    state.tickInYear = Math.floorMod(c.yearTick(), config.getYear().ticksPerYear());
     state.pending = c.pending();
     state.choices = new java.util.LinkedHashMap<>(c.choices());
     state.village.restore(c.villageFood(), c.villagers());
+    state.applyQuarter();
     var t = c.trades();
     if (t != null) {
       state.village.restoreTrades(

@@ -41,6 +41,8 @@ class FieldAccountingTest {
           Map.entry("pending", "CampaignSnapshot.pending"),
           Map.entry("choices", "CampaignSnapshot.choices"),
           Map.entry("portBuilt", "CampaignSnapshot.portBuilt"),
+          Map.entry("yearNumber", "CampaignSnapshot.year"),
+          Map.entry("tickInYear", "CampaignSnapshot.yearTick"),
           Map.entry("village", "CampaignSnapshot.villageFood"),
           Map.entry("resources", "CampaignSnapshot.vault"),
           Map.entry("carriedLoot", "ExpeditionSnapshot.carriedLoot"),
@@ -131,6 +133,7 @@ class FieldAccountingTest {
   private static final Map<String, String> VILLAGE_TRANSIENT =
       Map.of(
           "villagerFoodProduction", "game balance, copied from config on creation",
+          "quarterYield", "derived from the Year tick (saved) on load and on every tick",
           "unitFoodConsumption", "game balance, copied from config on creation",
           "trades", "game balance, copied from config on creation",
           "saltRules", "game balance, copied from config on creation",

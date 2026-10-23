@@ -218,6 +218,23 @@ class TrialTest {
   }
 
   @Test
+  void aTrialHasNoYearAndNoQuarterEffects() {
+    var id = enter(ALICE);
+    var state = service.playerState(id);
+
+    for (var i = 0; i < 160; i++) {
+      service.gameLoop();
+    }
+
+    assertThat(state.getYear()).isNull();
+    assertThat(state.getQuarter()).isNull();
+    assertThat(state.getSeaRisk()).isNull();
+    assertThat(state.sanityDrainScale()).isEqualTo(1d);
+    assertThat(state.attritionScale()).isEqualTo(1d);
+    assertThat(state.toSnapshot().campaign().yearTick()).isZero();
+  }
+
+  @Test
   void theClockStopsOnAHeldParty() {
     var id = enter(ALICE);
     var state = service.playerState(id);

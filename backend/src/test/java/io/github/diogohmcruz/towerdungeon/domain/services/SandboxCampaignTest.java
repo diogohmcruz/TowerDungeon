@@ -23,6 +23,7 @@ import io.github.diogohmcruz.towerdungeon.domain.commands.Command;
 import io.github.diogohmcruz.towerdungeon.domain.commands.CommandResult.Outcome;
 import io.github.diogohmcruz.towerdungeon.domain.models.BaseUnit;
 import io.github.diogohmcruz.towerdungeon.domain.models.GameState;
+import io.github.diogohmcruz.towerdungeon.domain.models.Quarter;
 import io.github.diogohmcruz.towerdungeon.domain.models.UnitStats;
 import io.github.diogohmcruz.towerdungeon.domain.models.architecture.ArchitecturePlan;
 import io.github.diogohmcruz.towerdungeon.domain.random.RandomSource;
@@ -111,6 +112,20 @@ class SandboxCampaignTest {
     var b = service.playerState(second);
     assertThat(a.getVillage().getFood()).isEqualTo(b.getVillage().getFood());
     assertThat(a.getCredit()).isEqualTo(b.getCredit());
+    assertThat(a.getYearTick()).isEqualTo(300).isEqualTo(b.getYearTick());
+    assertThat(a.getQuarter()).isEqualTo(Quarter.AUTUMN).isEqualTo(b.getQuarter());
+    assertThat(a.getSeaRisk()).isEqualTo(b.getSeaRisk());
+  }
+
+  @Test
+  void aSandboxRunsTheYearThroughItsManualTick() {
+    var sandbox = open();
+
+    registry.advance(GRANT, sandbox, 600, null);
+
+    var state = service.playerState(sandbox);
+    assertThat(state.getYear()).isEqualTo(2);
+    assertThat(state.getQuarter()).isEqualTo(Quarter.SPRING);
   }
 
   @Test

@@ -172,7 +172,9 @@ class SnapshotRoundTripTest {
                 null,
                 null,
                 null,
-                false),
+                false,
+                0,
+                0),
             null);
 
     var restored = GameState.restore(older, config, new RandomSource(5), plan);
@@ -268,7 +270,9 @@ class SnapshotRoundTripTest {
                 snapshot.campaign().phase(),
                 snapshot.campaign().pending(),
                 snapshot.campaign().choices(),
-                snapshot.campaign().portBuilt()),
+                snapshot.campaign().portBuilt(),
+                snapshot.campaign().year(),
+                snapshot.campaign().yearTick()),
             null);
 
     var restored = GameState.restore(stripped, config, new RandomSource(5), plan);

@@ -35,6 +35,9 @@ import io.github.diogohmcruz.towerdungeon.domain.prestige.SuccessionReport;
  *     saves
  * @param portBuilt whether the Port was finished; absent in older saves, which read as not built
  *     (the footing is derived from the Expedition count)
+ * @param year the Year the Campaign is in, from 1; absent in older saves, which read as Year 1
+ * @param yearTick connected lifecycle ticks gone in the Year; absent in older saves, which read as
+ *     the first tick, in Spring
  */
 public record CampaignSnapshot(
     double credit,
@@ -59,7 +62,9 @@ public record CampaignSnapshot(
     CampaignPhase phase,
     SuccessionReport pending,
     Map<String, String> choices,
-    Boolean portBuilt) {
+    Boolean portBuilt,
+    int year,
+    int yearTick) {
 
   /** A save from before Artifacts has none taken, and before the Wall of Names no names on it. */
   public CampaignSnapshot {
@@ -68,9 +73,14 @@ public record CampaignSnapshot(
     phase = phase == null ? CampaignPhase.ACTIVE : phase;
     choices = choices == null ? Map.of() : choices;
     portBuilt = Boolean.TRUE.equals(portBuilt);
+    year = Math.max(1, year);
+    yearTick = Math.max(0, yearTick);
   }
 
-  /** The same record with the reserves cleared, for comparing everything but who is in them. */
+  /**
+   * The same record with the reserves cleared and the Year reset, for comparing everything but who
+   * is in them and how long the Campaign has been connected.
+   */
   public CampaignSnapshot withoutReserves() {
     return new CampaignSnapshot(
         credit,
@@ -95,6 +105,8 @@ public record CampaignSnapshot(
         phase,
         pending,
         choices,
-        portBuilt);
+        portBuilt,
+        1,
+        0);
   }
 }

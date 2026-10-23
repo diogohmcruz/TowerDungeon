@@ -692,6 +692,11 @@ public class Unit extends BaseUnit implements Aimable {
    * revealed, and the first such meeting on this floor costs the configured sanity.
    */
   public void meetEnemies(int floorId, Collection<EnemyStats> present) {
+    meetEnemies(floorId, present, 1d);
+  }
+
+  /** As above, the sanity it costs multiplied by {@code drainScale} (the Quarter's say). */
+  public void meetEnemies(int floorId, Collection<EnemyStats> present, double drainScale) {
     if (isImmuneToPhobias()) {
       return;
     }
@@ -702,7 +707,7 @@ public class Unit extends BaseUnit implements Aimable {
     met.forEach(Phobia::reveal);
     if (fearFloor != floorId) {
       fearFloor = floorId;
-      changeSanity(-sanityRules.getFearMeetDrain());
+      changeSanity(-sanityRules.getFearMeetDrain() * drainScale);
     }
   }
 

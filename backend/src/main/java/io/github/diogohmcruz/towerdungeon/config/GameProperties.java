@@ -59,6 +59,7 @@ public class GameProperties {
   private final Security security = new Security();
   private final Agent agent = new Agent();
   private final Trial trial = new Trial();
+  private final Year year = new Year();
 
   /**
    * An independent deep copy of the whole configuration, so one Campaign's overrides never reach
@@ -910,6 +911,45 @@ public class GameProperties {
 
     /** Each further Post upgrade costs this many times the one before. */
     private double postCostGrowth = 1.6;
+  }
+
+  /**
+   * The Year and its Quarters. A Campaign's connected lifecycle ticks count the Year; each Quarter
+   * leans on one part of the Village or the Expedition. Provisional for the scaling pass.
+   */
+  @Data
+  public static class Year {
+    /** Lifecycle ticks in one Quarter; a Year is four of them. */
+    private int ticksPerQuarter = 150;
+
+    /** Spring: what the Sanity drains are multiplied by. Gains and recovery are unchanged. */
+    private double springSanityDrain = 0.80;
+
+    /** Summer: what the Expedition's Supplies drain is multiplied by. */
+    private double summerSuppliesDrain = 0.95;
+
+    /** Autumn: what the Fields' Food yield is multiplied by. */
+    private double autumnFieldsYield = 1.20;
+
+    /** Winter: what Attrition is multiplied by. Starvation damage is never touched. */
+    private double winterAttrition = 1.10;
+
+    /** The danger at sea at the middle of the sine, as a share. */
+    private double seaRiskMean = 0.105;
+
+    /** How far the danger at sea swings either side of its mean, as a share. */
+    private double seaRiskAmplitude = 0.095;
+
+    /** The tick of the Year at which the danger at sea crosses its mean, falling to Summer. */
+    private int seaRiskPhaseTicks = 75;
+
+    /** The danger at sea is held for this many ticks before it is worked out again. */
+    private int seaRiskRefreshTicks = 10;
+
+    /** Lifecycle ticks in one Year. */
+    public int ticksPerYear() {
+      return 4 * Math.max(1, ticksPerQuarter);
+    }
   }
 
   /** Salt: made in the Salt Pans, spent at the Loadout to salt Supplies. */

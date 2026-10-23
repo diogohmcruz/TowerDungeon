@@ -1881,6 +1881,7 @@ public class GameService {
     var party = new AimTally();
     var garrison = new AimTally();
     updateInvasion(gameState, party, garrison);
+    gameState.advanceYear();
     slot.bumpSeq();
     recordTick(slot, gameState, slainBefore, floorBefore);
     emitStrikes(slot, "PARTY", party);

@@ -30,6 +30,8 @@ class SanityEventsTest {
     var config = new GameProperties();
     config.getAiming().setMinMiss(0);
     config.getAiming().setMaxMiss(0);
+    // These tests measure the plain drains; Spring (the first Quarter) is covered by YearTest.
+    config.getYear().setSpringSanityDrain(1d);
     return config;
   }
 

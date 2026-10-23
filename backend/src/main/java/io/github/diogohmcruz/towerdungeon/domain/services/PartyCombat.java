@@ -59,7 +59,7 @@ public class PartyCombat {
     var random = gameState.getRandom().combat();
     var aimedStrike = new AimedStrike(random, aiming);
 
-    meetFearedEnemies(party, currentEnemies, currentTowerFloor);
+    meetFearedEnemies(party, currentEnemies, currentTowerFloor, gameState.sanityDrainScale());
     gameState.saltGarrison(currentEnemies);
 
     party.stream()
@@ -231,10 +231,11 @@ public class PartyCombat {
    * Lets every party member see who garrisons the floor it stands on: a feared type present reveals
    * the phobia and, once per floor, costs the unit sanity.
    */
-  private static void meetFearedEnemies(List<Unit> party, List<Enemy> enemies, TowerFloor floor) {
+  private static void meetFearedEnemies(
+      List<Unit> party, List<Enemy> enemies, TowerFloor floor, double drainScale) {
     var present = enemies.stream().map(Enemy::getStats).collect(Collectors.toSet());
     var floorId = floor.getId() == null ? 0 : floor.getId();
-    party.forEach(unit -> unit.meetEnemies(floorId, present));
+    party.forEach(unit -> unit.meetEnemies(floorId, present, drainScale));
   }
 
   /**

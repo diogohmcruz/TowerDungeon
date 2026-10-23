@@ -25,6 +25,10 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Data
 public class Village {
+  @JsonIgnore
+  @Setter(AccessLevel.NONE)
+  private double quarterYield = 1d;
+
   @Setter(AccessLevel.NONE)
   private Double food;
 
@@ -446,7 +450,14 @@ public class Village {
 
   /** Food the Tillers grow each tick. */
   public double getProductionRate() {
-    return hands(Trade.TILLER) * villagerFoodProduction * fieldsMultiplier();
+    return hands(Trade.TILLER) * villagerFoodProduction * fieldsMultiplier() * quarterYield;
+  }
+
+  /**
+   * What the Quarter multiplies the Fields' yield by; never below 1, so Food income never falls.
+   */
+  public void setQuarterYield(double quarterYield) {
+    this.quarterYield = Math.max(1d, quarterYield);
   }
 
   /** The Quarry and the Study yield more from ground the Village already knows. */

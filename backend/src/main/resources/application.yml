@@ -202,6 +202,16 @@ game:
   wipe:
     risen-cap-max: 3
     risen-cap-fraction: 0.30
+  year:
+    ticks-per-quarter: 150
+    spring-sanity-drain: 0.80
+    summer-supplies-drain: 0.95
+    autumn-fields-yield: 1.20
+    winter-attrition: 1.10
+    sea-risk-mean: 0.105
+    sea-risk-amplitude: 0.095
+    sea-risk-phase-ticks: 75
+    sea-risk-refresh-ticks: 10
   salt:
     per-salter-per-tick: 0.15
     supplies-per-salt: 10.0
