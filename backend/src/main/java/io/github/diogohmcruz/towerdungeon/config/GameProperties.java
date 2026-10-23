@@ -97,6 +97,12 @@ public class GameProperties {
     private Duration maxLimit = Duration.ofMinutes(90);
 
     /**
+     * A race's results file is closed and a new one begun once it is this large, so no file grows
+     * without bound; the closed files are read with the open one.
+     */
+    private long resultsRotateBytes = 1_048_576L;
+
+    /**
      * One race's Terms as written in configuration. The seed is server-only: leave it blank to
      * derive it from the server secret and the race id, and never log or send it.
      */

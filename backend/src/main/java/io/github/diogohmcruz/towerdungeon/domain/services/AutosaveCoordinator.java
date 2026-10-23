@@ -244,7 +244,9 @@ public class AutosaveCoordinator {
       capture =
           state.callLocked(
               () ->
-                  attempt.expectedSeq() == CampaignStore.INITIAL_SEQ && state.isPristine()
+                  attempt.expectedSeq() == CampaignStore.INITIAL_SEQ
+                          && state.isPristine()
+                          && !hasRaceRecords(slot)
                       ? null
                       : new Capture(
                           state.toSnapshot(), metaNodeOf(slot), !state.isExpeditionActive()));
@@ -281,6 +283,12 @@ public class AutosaveCoordinator {
     } catch (RuntimeException e) {
       failed(slot, attempt, e);
     }
+  }
+
+  /** A Race record is worth writing even for a Campaign nothing else has happened in. */
+  private static boolean hasRaceRecords(PlayerSlot slot) {
+    var meta = slot.meta();
+    return meta != null && !meta.raceRecords().isEmpty();
   }
 
   private ObjectNode metaNodeOf(PlayerSlot slot) {

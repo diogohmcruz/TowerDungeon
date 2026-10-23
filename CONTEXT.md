@@ -54,6 +54,14 @@ _Avoid_: Prestige screen, new game screen
 The permanent record of every ended campaign: its generation, outcome, toll, and the names of the fallen. Planned.
 _Avoid_: History, save log
 
+**Race record**:
+One plain line per Race in a player's real Campaign, shown in its own section of the Chronicle screen: the date, the Highest Floor, the place among the Contenders, the time and the Units fallen. The Chronicle's entry covers ended campaigns only, so this is a separate section; it gives no Legacy, no Toll and no effect on play. Planned.
+_Avoid_: Score, rating, rank
+
+**Order of Arrival** and **Cost**:
+The two columns of a Race result, always side by side and never added: who reached the Finish Floor first (the rest by Highest Floor, then earlier arrival), and what the climb spent (Expeditions, Wipes, Units lost, Loot banked at sell prices). Equal times are tied, and Cost never breaks a tie. Planned.
+_Avoid_: Score, rank, rating
+
 ### The tower
 
 **Tower**:

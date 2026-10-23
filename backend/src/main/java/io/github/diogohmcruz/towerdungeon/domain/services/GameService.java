@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalLong;
+import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
@@ -59,9 +60,13 @@ import io.github.diogohmcruz.towerdungeon.domain.prestige.TollContext;
 import io.github.diogohmcruz.towerdungeon.domain.prestige.TollForecast;
 import io.github.diogohmcruz.towerdungeon.domain.random.RandomSource;
 import io.github.diogohmcruz.towerdungeon.domain.random.SeedSource;
+import io.github.diogohmcruz.towerdungeon.domain.trial.Alias;
+import io.github.diogohmcruz.towerdungeon.domain.trial.ContenderLabel;
+import io.github.diogohmcruz.towerdungeon.domain.trial.RaceRecord;
 import io.github.diogohmcruz.towerdungeon.domain.trial.Terms;
 import io.github.diogohmcruz.towerdungeon.domain.trial.TermsRegistry;
 import io.github.diogohmcruz.towerdungeon.domain.trial.TrialDesk;
+import io.github.diogohmcruz.towerdungeon.domain.trial.TrialResult;
 import io.github.diogohmcruz.towerdungeon.domain.trial.TrialRun;
 import io.github.diogohmcruz.towerdungeon.persistence.CampaignSchema;
 import io.github.diogohmcruz.towerdungeon.persistence.CampaignSchema.SchemaNewerException;
@@ -381,6 +386,21 @@ public class GameService {
    * {@link TrialDesk.Refused} when the Key may not enter.
    */
   public Mono<Attachment> attachTrial(String playerId, String raceId, boolean next, String wsId) {
+    return attachTrial(playerId, raceId, next, wsId, null, ContenderLabel.HUMAN);
+  }
+
+  /**
+   * As {@link #attachTrial(String, String, boolean, String)}, under an alias (cleaned here, so a
+   * hostile one never reaches a table) and the label the Contender declares for itself.
+   */
+  public Mono<Attachment> attachTrial(
+      String playerId,
+      String raceId,
+      boolean next,
+      String wsId,
+      String alias,
+      ContenderLabel label) {
+    var shownAs = Alias.clean(alias);
     return Mono.defer(
             () -> {
               if (trials == null) {
@@ -404,7 +424,9 @@ public class GameService {
                       admission.trialId(),
                       (id, existing) -> {
                         var current =
-                            existing != null ? existing : newTrialSlot(id, playerId, admission);
+                            existing != null
+                                ? existing
+                                : newTrialSlot(id, playerId, admission, shownAs, label);
                         current.attach(connection);
                         return current;
                       });
@@ -438,9 +460,16 @@ public class GameService {
             .count();
   }
 
-  private PlayerSlot newTrialSlot(String trialId, String ownerId, TrialDesk.Admission admission) {
+  private PlayerSlot newTrialSlot(
+      String trialId,
+      String ownerId,
+      TrialDesk.Admission admission,
+      String alias,
+      ContenderLabel label) {
     var slot = new PlayerSlot(trialId);
-    slot.trial(new PlayerSlot.TrialLink(ownerId, admission.terms().raceId(), admission.attempt()));
+    slot.trial(
+        new PlayerSlot.TrialLink(
+            ownerId, admission.terms().raceId(), admission.attempt(), alias, label));
     // Every Contender climbs the Tower plan the Terms' seed makes; a Generation's meta is not
     // theirs.
     slot.plan(
@@ -717,7 +746,25 @@ public class GameService {
                         slot.takeMeta(
                             slot.isHeld() && state.isExpeditionActive(),
                             SuccessionView.of(slot.meta(), state)),
-                        tollForecast(slot, state))));
+                        tollForecast(slot, state),
+                        raceRecords(slot),
+                        pillarMarks(slot, state))));
+  }
+
+  /** The lines of the Races a player has run, for the Chronicle screen; none in a Trial. */
+  private static List<RaceRecord> raceRecords(PlayerSlot slot) {
+    var meta = slot.meta();
+    return meta == null || slot.isTrial() ? List.of() : meta.raceRecords();
+  }
+
+  /** The Finish Floors to mark on a pillar: only Floors the player has discovered. */
+  private static List<Integer> pillarMarks(PlayerSlot slot, GameState state) {
+    return raceRecords(slot).stream()
+        .map(RaceRecord::finishFloor)
+        .filter(floor -> floor <= state.getHighestFloor())
+        .distinct()
+        .sorted()
+        .toList();
   }
 
   /**
@@ -1685,7 +1732,10 @@ public class GameService {
     log.info("A Trial was won: the Guardian of its Finish Floor is slain.");
   }
 
-  /** Writes down, once, that a Trial is over: the attempts record, the event log and the save. */
+  /**
+   * Writes down, once, that a Trial is over: the result in the results store, the Race record in
+   * the player's real Campaign, the event log and the save.
+   */
   private void noteTrialClosed(PlayerSlot slot, GameState gameState) {
     var link = slot.trial();
     var trial = gameState.getTrial();
@@ -1693,19 +1743,86 @@ public class GameService {
       return;
     }
     if (trials != null) {
-      trials
-          .ledger()
-          .close(
-              link.raceId(),
-              link.ownerId(),
-              link.attempt(),
-              trial.getStatus(),
-              trial.getTicksSinceStart());
+      var result = resultOf(link, gameState, trial);
+      if (trials.ledger().close(result)) {
+        writeRaceRecord(link, result);
+      }
     }
     slot.emit(
         "TRIAL_CLOSED",
         Map.of("status", trial.getStatus().name(), "ticks", trial.getTicksSinceStart()));
     slot.saves().event(true);
+  }
+
+  /** What a closed attempt came to, in whole seconds. */
+  private TrialResult resultOf(PlayerSlot.TrialLink link, GameState gameState, TrialRun trial) {
+    var lifecycleMs = Math.max(1, config.getLoop().getLifecycleMs());
+    var arrivals = new TreeMap<Integer, Long>();
+    trial.getArrivals().forEach((floor, tick) -> arrivals.put(floor, tick * lifecycleMs / 1000));
+    return new TrialResult(
+        link.raceId(),
+        link.ownerId(),
+        link.attempt(),
+        link.alias(),
+        link.label(),
+        trial.getStatus(),
+        trial.getTicksSinceStart(),
+        trial.getTicksSinceStart() * lifecycleMs / 1000,
+        trial.getFinishFloor(),
+        gameState.getHighestFloor(),
+        gameState.getTrialCost(),
+        arrivals,
+        Instant.now());
+  }
+
+  /**
+   * Puts one plain line into the real Campaign of the Key: the place of its best attempt among the
+   * Contenders who have closed one. The real Campaign may be frozen or not loaded at all, so the
+   * line is added once it is loaded, off the Trial's thread, and saved with it.
+   */
+  private void writeRaceRecord(PlayerSlot.TrialLink link, TrialResult closed) {
+    var ledger = trials.ledger();
+    var table = ledger.table(link.raceId());
+    var row = table.rowOf(link.ownerId());
+    if (row.isEmpty()) {
+      return;
+    }
+    var at =
+        ledger.results(link.raceId()).stream()
+            .filter(r -> r.playerId().equals(link.ownerId()) && r.attempt() == row.get().attempt())
+            .map(TrialResult::closedAt)
+            .findFirst()
+            .orElse(closed.closedAt());
+    var record =
+        RaceRecord.of(
+            link.raceId(),
+            closed.finishFloor(),
+            row.get(),
+            table.contendersWith(link.ownerId()),
+            at);
+    var real =
+        players.compute(
+            link.ownerId(), (id, existing) -> existing != null ? existing : newSlot(id));
+    var limit = config.getPrestige().getChronicleLimit();
+    real.loading()
+        .publishOn(Schedulers.boundedElastic())
+        .subscribe(
+            state -> {
+              try {
+                state.callLocked(
+                    () -> {
+                      var meta = real.meta();
+                      if (meta != null) {
+                        real.meta(meta.withRaceRecord(record, limit));
+                        real.saves().event(false);
+                      }
+                      return null;
+                    });
+              } catch (Exception e) {
+                log.error("Could not write the Race record of a player", e);
+              }
+            },
+            e -> log.error("Could not load the Campaign to write its Race record", e));
   }
 
   /**

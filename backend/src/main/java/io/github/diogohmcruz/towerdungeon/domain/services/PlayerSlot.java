@@ -17,6 +17,7 @@ import io.github.diogohmcruz.towerdungeon.domain.observation.EventLog;
 import io.github.diogohmcruz.towerdungeon.domain.observation.ExpeditionSummaries;
 import io.github.diogohmcruz.towerdungeon.domain.prestige.PlayerMeta;
 import io.github.diogohmcruz.towerdungeon.domain.prestige.SuccessionView;
+import io.github.diogohmcruz.towerdungeon.domain.trial.ContenderLabel;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 
@@ -35,8 +36,12 @@ final class PlayerSlot {
   /**
    * What makes a slot a Trial's: the Key it belongs to, the race and the attempt. The slot's own id
    * is the id of the Trial's file, never the Key's player id.
+   *
+   * @param alias the sanitised name shown in tables
+   * @param label how the Contender declared itself
    */
-  record TrialLink(String ownerId, String raceId, int attempt) {}
+  record TrialLink(
+      String ownerId, String raceId, int attempt, String alias, ContenderLabel label) {}
 
   private final String playerId;
   private volatile TrialLink trial;

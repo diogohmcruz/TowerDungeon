@@ -14,6 +14,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
+import io.github.diogohmcruz.towerdungeon.domain.trial.RaceRecord;
 
 /**
  * What a player keeps across Generations: the {@code meta} half of the record. Everything else in
@@ -31,6 +32,9 @@ import io.github.diogohmcruz.towerdungeon.config.GameProperties;
  * @param openBreach the Guardian Floor the Generation in play holds open, 0 for none
  * @param towerSecret server-only; with the Generation it derives the Tower's seed. In the file it
  *     is sealed
+ * @param raceRecords one line per Race entered, oldest first, capped; shown in the Race record
+ *     section of the Chronicle screen. They belong to the player, not to a Generation: no Legacy,
+ *     no Toll, no effect on play
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record PlayerMeta(
@@ -43,7 +47,8 @@ public record PlayerMeta(
     Map<Integer, List<Integer>> slainGuardians,
     List<String> epitaphs,
     int openBreach,
-    String towerSecret) {
+    String towerSecret,
+    List<RaceRecord> raceRecords) {
 
   public PlayerMeta {
     generation = Math.max(1, generation);
@@ -57,6 +62,33 @@ public record PlayerMeta(
     slainGuardians = Collections.unmodifiableMap(slain);
     epitaphs = epitaphs == null ? List.of() : List.copyOf(epitaphs);
     openBreach = Math.max(0, openBreach);
+    raceRecords = raceRecords == null ? List.of() : List.copyOf(raceRecords);
+  }
+
+  /** A meta with no Race records. */
+  public PlayerMeta(
+      int generation,
+      int legacy,
+      List<RollEntry> roll,
+      double residue,
+      LifetimeLedger lifetime,
+      List<ChronicleEntry> chronicle,
+      Map<Integer, List<Integer>> slainGuardians,
+      List<String> epitaphs,
+      int openBreach,
+      String towerSecret) {
+    this(
+        generation,
+        legacy,
+        roll,
+        residue,
+        lifetime,
+        chronicle,
+        slainGuardians,
+        epitaphs,
+        openBreach,
+        towerSecret,
+        List.of());
   }
 
   /** A meta with no Guardians on record, no Epitaphs and no Open Breach. */
@@ -134,7 +166,8 @@ public record PlayerMeta(
         slain,
         epitaphRules == null ? epitaphs : Epitaph.granted(epitaphs, ledger, epitaphRules),
         openBreach,
-        towerSecret);
+        towerSecret,
+        raceRecords);
   }
 
   /**
@@ -168,7 +201,8 @@ public record PlayerMeta(
         slainGuardians,
         epitaphs,
         openBreach,
-        towerSecret);
+        towerSecret,
+        raceRecords);
   }
 
   /** Whether the meta has a Tower secret yet. */
@@ -189,7 +223,8 @@ public record PlayerMeta(
         slainGuardians,
         epitaphs,
         openBreach,
-        secret);
+        secret,
+        raceRecords);
   }
 
   /** The meta of the next Generation: the same record, one Generation on. */
@@ -204,7 +239,8 @@ public record PlayerMeta(
         slainGuardians,
         epitaphs,
         0,
-        towerSecret);
+        towerSecret,
+        raceRecords);
   }
 
   /** The same meta with the Guardian Floor the Generation in play holds open (0 for none). */
@@ -219,7 +255,33 @@ public record PlayerMeta(
         slainGuardians,
         epitaphs,
         floor,
-        towerSecret);
+        towerSecret,
+        raceRecords);
+  }
+
+  /**
+   * The meta with a Race's line: it replaces the earlier line of the same race (the best attempt
+   * counts), and the oldest lines drop off past {@code limit}.
+   */
+  public PlayerMeta withRaceRecord(RaceRecord record, int limit) {
+    var lines = new ArrayList<>(raceRecords);
+    lines.removeIf(line -> line.raceId().equals(record.raceId()));
+    lines.add(record);
+    while (lines.size() > Math.max(1, limit)) {
+      lines.removeFirst();
+    }
+    return new PlayerMeta(
+        generation,
+        legacy,
+        roll,
+        residue,
+        lifetime,
+        chronicle,
+        slainGuardians,
+        epitaphs,
+        openBreach,
+        towerSecret,
+        lines);
   }
 
   /** Whether the Epitaph has been earned. */

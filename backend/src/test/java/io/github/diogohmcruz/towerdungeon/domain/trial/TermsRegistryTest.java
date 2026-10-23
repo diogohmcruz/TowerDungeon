@@ -128,8 +128,9 @@ class TermsRegistryTest {
     var ledger = new AttemptLedger(dir, mapper);
     assertThat(ledger.start("r", "p")).isEqualTo(1);
     assertThat(ledger.start("r", "p")).isEqualTo(2);
-    ledger.close("r", "p", 2, ContenderStatus.FINISHED, 77);
-    ledger.close("r", "p", 1, ContenderStatus.TIMED_OUT, 5);
+    assertThat(ledger.close(result("r", "p", 2, ContenderStatus.FINISHED, 77))).isTrue();
+    assertThat(ledger.close(result("r", "p", 1, ContenderStatus.TIMED_OUT, 5))).isFalse();
+    ledger.drain();
 
     var reopened = new AttemptLedger(dir, mapper);
 
@@ -137,5 +138,23 @@ class TermsRegistryTest {
     assertThat(ledger.standing("r", "p").currentClosed()).isTrue();
     assertThat(reopened.standing("r", "other").started()).isZero();
     assertThat(reopened.standing("elsewhere", "p").started()).isZero();
+  }
+
+  private static TrialResult result(
+      String race, String player, int attempt, ContenderStatus status, long seconds) {
+    return new TrialResult(
+        race,
+        player,
+        attempt,
+        "Ada",
+        ContenderLabel.HUMAN,
+        status,
+        seconds,
+        seconds,
+        10,
+        3,
+        TrialResult.Cost.NONE,
+        java.util.Map.of(),
+        java.time.Instant.parse("2026-10-24T10:00:00Z"));
   }
 }

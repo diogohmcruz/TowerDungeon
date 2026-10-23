@@ -1,5 +1,8 @@
 package io.github.diogohmcruz.towerdungeon.domain.trial;
 
+import java.util.Map;
+import java.util.TreeMap;
+
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import io.github.diogohmcruz.towerdungeon.domain.models.snapshot.TrialSnapshot;
@@ -20,6 +23,11 @@ public final class TrialRun {
   private final long limitTicks;
   private long ticksSinceStart;
   private ContenderStatus status = ContenderStatus.RACING;
+  private int expeditions;
+  private int wipes;
+
+  /** The tick at which each Floor was first reached: the Contender's timeline. */
+  private final Map<Integer, Long> arrivals = new TreeMap<>();
 
   public TrialRun(String raceId, int attempt, int finishFloor, long limitTicks) {
     this.raceId = raceId;
@@ -34,11 +42,40 @@ public final class TrialRun {
         new TrialRun(saved.raceId(), saved.attempt(), saved.finishFloor(), saved.limitTicks());
     run.ticksSinceStart = saved.ticksSinceStart();
     run.status = saved.status();
+    run.expeditions = saved.expeditions();
+    run.wipes = saved.wipes();
+    run.arrivals.putAll(saved.arrivals());
     return run;
   }
 
   public TrialSnapshot toSnapshot() {
-    return new TrialSnapshot(raceId, attempt, finishFloor, limitTicks, ticksSinceStart, status);
+    return new TrialSnapshot(
+        raceId,
+        attempt,
+        finishFloor,
+        limitTicks,
+        ticksSinceStart,
+        status,
+        expeditions,
+        wipes,
+        arrivals);
+  }
+
+  /** An Expedition set out, however it ends. */
+  public void noteExpedition() {
+    expeditions++;
+  }
+
+  /** An Expedition ended in a Wipe. */
+  public void noteWipe() {
+    wipes++;
+  }
+
+  /** A Floor reached for the first time, now. Later arrivals at it change nothing. */
+  public void noteArrival(int floor) {
+    if (!isClosed()) {
+      arrivals.putIfAbsent(floor, ticksSinceStart);
+    }
   }
 
   @JsonIgnore

@@ -46,6 +46,7 @@ import io.github.diogohmcruz.towerdungeon.domain.models.upgrade.UpgradeOffer;
 import io.github.diogohmcruz.towerdungeon.domain.models.upgrade.UpgradeType;
 import io.github.diogohmcruz.towerdungeon.domain.prestige.SuccessionReport;
 import io.github.diogohmcruz.towerdungeon.domain.random.RandomSource;
+import io.github.diogohmcruz.towerdungeon.domain.trial.TrialResult;
 import io.github.diogohmcruz.towerdungeon.domain.trial.TrialRun;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -265,6 +266,9 @@ public class GameState {
     this.carriedSpores = 0d;
     this.doorSeen = false;
     this.expeditionActive = true;
+    if (trial != null) {
+      trial.noteExpedition();
+    }
     this.saltPack = 0;
     this.saltBearerId = null;
     var bearer =
@@ -1560,6 +1564,9 @@ public class GameState {
   public void recordFloorReached(int floor) {
     if (floor > highestFloor) {
       highestFloor = floor;
+      if (trial != null) {
+        trial.noteArrival(floor);
+      }
     }
     refreshVillageTier();
     checkMilestones();
@@ -1580,6 +1587,22 @@ public class GameState {
     refreshVillageTier();
     refreshShortcuts();
     checkMilestones();
+  }
+
+  /**
+   * What the Trial has cost so far, for the HUD and the result: Expeditions set out, Wipes, Units
+   * lost and Loot banked at sell prices. Null outside a Trial. It is a column of its own and is
+   * never added to the time.
+   */
+  @JsonInclude(JsonInclude.Include.NON_NULL)
+  public TrialResult.Cost getTrialCost() {
+    if (trial == null) {
+      return null;
+    }
+    var loot =
+        tally.getMaterialsBanked() * config.getReward().getMaterialsSellPrice()
+            + tally.getRelicsBanked() * config.getReward().getRelicsSellPrice();
+    return new TrialResult.Cost(trial.getExpeditions(), trial.getWipes(), wallOfNames.size(), loot);
   }
 
   /** Floors a Trial's Expedition must clear to count as one. */
@@ -1620,6 +1643,9 @@ public class GameState {
             survivors,
             List.copyOf(runFallen),
             RunSummary.WIPED.equals(outcome) ? 0d : carriedSpores);
+    if (RunSummary.WIPED.equals(outcome) && trial != null) {
+      trial.noteWipe();
+    }
     if (!RunSummary.WIPED.equals(outcome)) {
       tally.addFloorsCleared(floorsCleared);
       village.earnTrust(floorsCleared, survivors, survivors + runUnitsLost);

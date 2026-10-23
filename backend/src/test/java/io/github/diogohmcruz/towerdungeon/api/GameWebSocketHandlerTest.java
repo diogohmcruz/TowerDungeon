@@ -186,6 +186,28 @@ class GameWebSocketHandlerTest {
   }
 
   @Test
+  void aTrialMayDeclareAnAliasAndALabelAfterTheSelector() throws Exception {
+    var alias =
+        java.util.Base64.getUrlEncoder()
+            .withoutPadding()
+            .encodeToString("<b>Ada</b>".getBytes(UTF_8));
+    var client = connect(newKey(), "trial.season-1", "as." + alias, "agent");
+
+    await(() -> !client.frames.isEmpty());
+    assertThat(mapper.readTree(client.frames.getFirst()).path("trial").path("raceId").asString())
+        .isEqualTo("season-1");
+    client.socket.sendClose(WebSocket.NORMAL_CLOSURE, "bye");
+  }
+
+  @Test
+  void anUnknownDeclarationAfterTheSelectorIsABadKey() throws Exception {
+    var client = connect(newKey(), "trial.season-1", "human");
+
+    await(client::closed);
+    assertThat(client.closeCode.get()).isEqualTo(4400);
+  }
+
+  @Test
   void anUnknownSlotSelectorIsABadKey() throws Exception {
     var client = connect(newKey(), "campaign.x");
 

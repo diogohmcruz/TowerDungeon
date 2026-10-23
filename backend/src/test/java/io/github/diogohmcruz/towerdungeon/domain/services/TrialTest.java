@@ -20,11 +20,13 @@ import io.github.diogohmcruz.towerdungeon.domain.commands.Command;
 import io.github.diogohmcruz.towerdungeon.domain.commands.CommandResult.Reason;
 import io.github.diogohmcruz.towerdungeon.domain.models.Enemy;
 import io.github.diogohmcruz.towerdungeon.domain.models.GameState;
+import io.github.diogohmcruz.towerdungeon.domain.models.RunSummary;
 import io.github.diogohmcruz.towerdungeon.domain.models.architecture.ArchitecturePlan;
 import io.github.diogohmcruz.towerdungeon.domain.models.shortcut.ShortcutType;
 import io.github.diogohmcruz.towerdungeon.domain.random.SeedSource;
 import io.github.diogohmcruz.towerdungeon.domain.trial.AttemptLedger;
 import io.github.diogohmcruz.towerdungeon.domain.trial.ConfigHash;
+import io.github.diogohmcruz.towerdungeon.domain.trial.ContenderLabel;
 import io.github.diogohmcruz.towerdungeon.domain.trial.ContenderStatus;
 import io.github.diogohmcruz.towerdungeon.domain.trial.Terms;
 import io.github.diogohmcruz.towerdungeon.domain.trial.TermsKind;
@@ -584,5 +586,135 @@ class TrialTest {
 
     assertThat(store.load(id).block()).isNotNull();
     assertThat(store.load(ALICE).block()).isNull();
+  }
+
+  /** Wins a one-Floor race for {@code player} and returns the Trial's id. */
+  private String win(String player, String alias) {
+    build(terms(1, Duration.ofMinutes(90), 3, 20));
+    var id =
+        service
+            .attachTrial(player, RACE, false, "ws-" + player, alias, ContenderLabel.HUMAN)
+            .block()
+            .slotId();
+    var state = service.playerState(id);
+    state.getUnits().values().stream()
+        .flatMap(List::stream)
+        .forEach(unit -> unit.setDamageFactor(500));
+    service.execute(id, new Command.StartExpedition(Map.of(), 0));
+    for (var i = 0; i < 300 && !state.isTrialClosed(); i++) {
+      service.gameLoop();
+      for (var j = 0; j < 100 && state.isExpeditionActive(); j++) {
+        service.invasionTimer();
+      }
+    }
+    service.gameLoop();
+    return id;
+  }
+
+  private void awaitRaceRecord(String player) {
+    var deadline = System.nanoTime() + Duration.ofSeconds(5).toNanos();
+    while (System.nanoTime() < deadline) {
+      var meta = service.playerMeta(player);
+      if (meta != null && !meta.raceRecords().isEmpty()) {
+        return;
+      }
+      try {
+        Thread.sleep(20);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
+    }
+  }
+
+  @Test
+  void aFinishedTrialLeavesAResultInTheStoreWithItsCostAndTimeline() {
+    var id = win(ALICE, "Ada");
+    ledger.drain();
+
+    var results = ledger.results(RACE);
+    assertThat(results).hasSize(1);
+    var result = results.getFirst();
+    assertThat(result.status()).isEqualTo(ContenderStatus.FINISHED);
+    assertThat(result.alias()).isEqualTo("Ada");
+    assertThat(result.playerId()).isEqualTo(ALICE);
+    assertThat(result.seconds()).isEqualTo(service.playerState(id).getTrial().getTicksSinceStart());
+    assertThat(result.finishFloor()).isEqualTo(1);
+    assertThat(result.highestFloor()).isEqualTo(1);
+    assertThat(result.cost().expeditions()).isEqualTo(1);
+    assertThat(result.cost().wipes()).isZero();
+    assertThat(new AttemptLedger(dir.resolve("trials"), mapper).results(RACE)).hasSize(1);
+  }
+
+  @Test
+  void theCostIsCountedAsTheTrialGoesAndShownInTheFrame() {
+    var id = enter(ALICE);
+    var state = service.playerState(id);
+    service.execute(id, new Command.StartExpedition(Map.of(), 0));
+    state.buildRunSummary(RunSummary.WIPED);
+
+    var cost = state.getTrialCost();
+    assertThat(cost.expeditions()).isEqualTo(1);
+    assertThat(cost.wipes()).isEqualTo(1);
+    assertThat(service.renderState(id).orElseThrow())
+        .contains("\"trialCost\":{\"expeditions\":1,\"wipes\":1");
+    service.attach(BOB, "ws-bob").block();
+    assertThat(service.renderState(BOB).orElseThrow()).doesNotContain("trialCost");
+  }
+
+  @Test
+  void aHostileAliasIsCleanedBeforeItReachesTheStore() {
+    win(ALICE, "<script>alert('x')</script>");
+    ledger.drain();
+
+    assertThat(ledger.results(RACE).getFirst().alias())
+        .doesNotContain("<", ">", "(", ")")
+        .isEqualTo("scriptalert'x'script");
+  }
+
+  @Test
+  void theRaceRecordIsWrittenIntoTheRealCampaignAndSaved() {
+    win(ALICE, "Ada");
+    awaitRaceRecord(ALICE);
+
+    var records = service.playerMeta(ALICE).raceRecords();
+    assertThat(records).hasSize(1);
+    assertThat(records.getFirst().line())
+        .matches(
+            "Race of \\d{4}-\\d{2}-\\d{2}\\. Floor 1\\. 1st of 1\\. \\d+:\\d{2}\\. 0 fallen\\.");
+    assertThat(service.renderState(ALICE).orElseThrow())
+        .contains("\"raceRecords\":[{")
+        .contains(records.getFirst().line())
+        .contains("\"pillarMarks\":[]");
+
+    config.getPersistence().setLinger(Duration.ZERO);
+    service.evictLingering(System.nanoTime() + Duration.ofMinutes(1).toNanos());
+    awaitSaved(ALICE);
+    assertThat(new String(store.load(ALICE).block().payload())).contains(records.getFirst().line());
+  }
+
+  @Test
+  void thePillarMarkShowsOnlyOnADiscoveredFloor() {
+    win(ALICE, "Ada");
+    awaitRaceRecord(ALICE);
+    assertThat(service.renderState(ALICE).orElseThrow()).contains("\"pillarMarks\":[]");
+
+    service.playerState(ALICE).recordFloorReached(1);
+
+    assertThat(service.renderState(ALICE).orElseThrow()).contains("\"pillarMarks\":[1]");
+    // A Trial's own frame carries neither.
+    var trial = service.attachTrial(BOB, RACE, false, "ws-bob").block().slotId();
+    assertThat(service.renderState(trial).orElseThrow()).contains("\"pillarMarks\":[]");
+  }
+
+  @Test
+  void aRaceRecordGivesNoLegacyAndChangesNoToll() {
+    win(ALICE, "Ada");
+    awaitRaceRecord(ALICE);
+
+    var meta = service.playerMeta(ALICE);
+
+    assertThat(meta.legacy()).isZero();
+    assertThat(meta.chronicle()).isEmpty();
+    assertThat(meta.generation()).isEqualTo(1);
   }
 }

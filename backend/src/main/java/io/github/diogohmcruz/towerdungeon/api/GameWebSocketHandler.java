@@ -1,5 +1,6 @@
 package io.github.diogohmcruz.towerdungeon.api;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
@@ -29,6 +30,7 @@ import io.github.diogohmcruz.towerdungeon.api.dtos.UpgradeActionDTO;
 import io.github.diogohmcruz.towerdungeon.domain.commands.Command;
 import io.github.diogohmcruz.towerdungeon.domain.commands.Notice;
 import io.github.diogohmcruz.towerdungeon.domain.services.GameService;
+import io.github.diogohmcruz.towerdungeon.domain.trial.ContenderLabel;
 import io.github.diogohmcruz.towerdungeon.domain.trial.TrialDesk;
 import io.github.diogohmcruz.towerdungeon.persistence.CampaignKey;
 import io.github.diogohmcruz.towerdungeon.persistence.CampaignSchema.SchemaNewerException;
@@ -54,14 +56,16 @@ public class GameWebSocketHandler implements WebSocketHandler {
   static final int TRIAL_REFUSED = 4403;
   private static final String TRIAL_PREFIX = "trial.";
   private static final String TRIAL_NEXT = ".new";
+  private static final String ALIAS_PREFIX = "as.";
+  private static final String AGENT_TOKEN = "agent";
   private static final Pattern RACE_ID = Pattern.compile("[A-Za-z0-9_-]{1,40}");
 
   /**
    * Which slot a connection asks for: the real Campaign, or a Trial of a race (its current attempt,
    * or the next one).
    */
-  record Selector(String raceId, boolean next) {
-    static final Selector CAMPAIGN = new Selector(null, false);
+  record Selector(String raceId, boolean next, String alias, ContenderLabel label) {
+    static final Selector CAMPAIGN = new Selector(null, false, null, ContenderLabel.HUMAN);
 
     boolean isTrial() {
       return raceId != null;
@@ -91,7 +95,8 @@ public class GameWebSocketHandler implements WebSocketHandler {
     var wsId = session.getId();
     var attaching =
         selector.isTrial()
-            ? gameService.attachTrial(id, selector.raceId(), selector.next(), wsId)
+            ? gameService.attachTrial(
+                id, selector.raceId(), selector.next(), wsId, selector.alias(), selector.label())
             : gameService.attach(id, wsId);
     return attaching
         .onErrorResume(err -> refuseUnloadable(session, id, err))
@@ -121,8 +126,8 @@ public class GameWebSocketHandler implements WebSocketHandler {
   }
 
   /**
-   * The player id and slot from the {@code td.v1, <key>[, trial.<raceId>[.new]]} subprotocol offer;
-   * the key is never logged.
+   * The player id and slot from the {@code td.v1, <key>[, trial.<raceId>[.new][, as.<alias>][,
+   * agent]]} subprotocol offer; the key is never logged.
    */
   private Optional<Handshake> handshakeOf(WebSocketSession session) {
     var offered = session.getHandshakeInfo().getHeaders().get(PROTOCOL_HEADER);
@@ -134,26 +139,53 @@ public class GameWebSocketHandler implements WebSocketHandler {
             .flatMap(value -> Arrays.stream(value.split(",")))
             .map(String::trim)
             .toList();
-    if (tokens.size() < 2 || tokens.size() > 3 || !SUBPROTOCOL.equals(tokens.getFirst())) {
+    if (tokens.size() < 2 || tokens.size() > 5 || !SUBPROTOCOL.equals(tokens.getFirst())) {
       return Optional.empty();
     }
-    var selector = tokens.size() == 3 ? selectorOf(tokens.get(2)) : Optional.of(Selector.CAMPAIGN);
+    var selector =
+        tokens.size() >= 3
+            ? selectorOf(tokens.get(2), tokens.subList(3, tokens.size()))
+            : Optional.of(Selector.CAMPAIGN);
     if (selector.isEmpty()) {
       return Optional.empty();
     }
     return CampaignKey.playerId(tokens.get(1)).map(id -> new Handshake(id, selector.get()));
   }
 
-  private static Optional<Selector> selectorOf(String token) {
+  /**
+   * The slot token and what a Contender may declare after it: {@code as.<base64url alias>} (cleaned
+   * before it is used) and {@code agent}.
+   */
+  private static Optional<Selector> selectorOf(String token, List<String> declarations) {
     if (!token.startsWith(TRIAL_PREFIX)) {
       return Optional.empty();
+    }
+    String alias = null;
+    var label = ContenderLabel.HUMAN;
+    for (var declaration : declarations) {
+      if (AGENT_TOKEN.equals(declaration)) {
+        label = ContenderLabel.AGENT;
+      } else if (declaration.startsWith(ALIAS_PREFIX) && alias == null) {
+        alias = decodeAlias(declaration.substring(ALIAS_PREFIX.length()));
+      } else {
+        return Optional.empty();
+      }
     }
     var rest = token.substring(TRIAL_PREFIX.length());
     var next = rest.endsWith(TRIAL_NEXT);
     var raceId = next ? rest.substring(0, rest.length() - TRIAL_NEXT.length()) : rest;
     return RACE_ID.matcher(raceId).matches()
-        ? Optional.of(new Selector(raceId, next))
+        ? Optional.of(new Selector(raceId, next, alias, label))
         : Optional.empty();
+  }
+
+  /** The alias a client sent as base64url text; unreadable text is no alias. */
+  private static String decodeAlias(String encoded) {
+    try {
+      return new String(java.util.Base64.getUrlDecoder().decode(encoded), StandardCharsets.UTF_8);
+    } catch (IllegalArgumentException e) {
+      return null;
+    }
   }
 
   private Mono<Void> serve(
