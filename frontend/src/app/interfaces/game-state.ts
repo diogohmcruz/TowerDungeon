@@ -70,6 +70,17 @@ export interface PortView {
   creditsCost: number;
 }
 
+export type BoatState = 'NOT_BUILT' | 'DUE' | 'DOCKED';
+
+/** The Boat as the frame reports it (backend `BoatView`); always NOT_BUILT in a Trial. */
+export interface BoatView {
+  state: BoatState;
+  /** Lifecycle ticks from the finished Port to the dock. */
+  dockTicks: number;
+  /** Lifecycle ticks still to go while due; 0 otherwise. One tick is one second. */
+  ticksToDock: number;
+}
+
 export interface Fallen {
   name: string;
   type: string;
@@ -229,12 +240,8 @@ export interface GameState {
   nextSeaRisk?: number | null;
   /** The Port; absent from older frames, which means hidden. */
   port?: PortView;
-  /**
-   * True while the Boat lies docked at the pier (false on a Voyage or before it
-   * has arrived). The Boat is #83: the backend does not send this field yet, so
-   * the Village reads it as absent, no hull. Rename here when #83 names it.
-   */
-  boatDocked?: boolean;
+  /** The Boat; absent from older frames, which means not built. */
+  boat?: BoatView;
   /** What the Village Tier has opened so far, comma-separated. */
   villageTierOpens: string;
   tomeViews: TomeView[];

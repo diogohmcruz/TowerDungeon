@@ -79,7 +79,9 @@ describe('village captions', () => {
     expect(c.lock).toBe(
       'The Salt Pans open at Village Tier II, Sheltered. The Village stands at Tier 1, Huddled.',
     );
-    expect(lockOf(state, 'SPOREWARDEN')).toContain('Village Tier III, Fortified');
+    expect(lockOf(state, 'SPOREWARDEN')).toContain(
+      'Village Tier III, Fortified',
+    );
   });
 
   it('drops the lock once the Tier is reached', () => {
@@ -133,14 +135,44 @@ describe('village captions', () => {
     it('says the finished Port stands, and whether the Boat lies at the pier', () => {
       load({ port: portView('BUILT') });
       expect(captionFor({ kind: 'port', id: 'PORT' }, state)!.lock).toBeNull();
-      expect(captionText(captionFor({ kind: 'port', id: 'PORT' }, state)!)).toContain(
-        'pier stands',
-      );
+      expect(
+        captionText(captionFor({ kind: 'port', id: 'PORT' }, state)!),
+      ).toContain('pier stands');
 
-      load({ port: portView('BUILT'), boatDocked: true });
-      expect(captionText(captionFor({ kind: 'port', id: 'PORT' }, state)!)).toContain(
-        'A Boat lies at the pier',
-      );
+      load({
+        port: portView('BUILT'),
+        boat: { state: 'DOCKED', dockTicks: 600, ticksToDock: 0 },
+      });
+      expect(
+        captionText(captionFor({ kind: 'port', id: 'PORT' }, state)!),
+      ).toContain('A Boat lies at the pier');
+    });
+
+    it('says in plain words that the Boat is due, and when', () => {
+      const say = (ticksToDock: number) => {
+        load({
+          port: portView('BUILT'),
+          boat: { state: 'DUE', dockTicks: 600, ticksToDock },
+        });
+        return captionText(captionFor({ kind: 'port', id: 'PORT' }, state)!);
+      };
+      expect(say(300)).toContain('The Boat is due, in about 5 minutes.');
+      expect(say(61)).toContain('in about 2 minutes.');
+      expect(say(59)).toContain('in less than a minute.');
+    });
+
+    it('does not mention a Boat when it is not built or the frame has none', () => {
+      load({
+        port: portView('BUILT'),
+        boat: { state: 'NOT_BUILT', dockTicks: 600, ticksToDock: 0 },
+      });
+      expect(
+        captionText(captionFor({ kind: 'port', id: 'PORT' }, state)!),
+      ).not.toContain('Boat');
+      load({ port: portView('BUILT'), boat: undefined });
+      expect(
+        captionText(captionFor({ kind: 'port', id: 'PORT' }, state)!),
+      ).not.toContain('Boat');
     });
 
     it('has no caption while hidden or when the frame has no Port', () => {

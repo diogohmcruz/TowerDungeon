@@ -103,8 +103,8 @@ export interface VillageInput {
   /** The Port from the frame: hidden draws no sea at all; footing and built follow it. */
   port: PortState;
   /**
-   * The Boat lies docked at the pier. Only drawn once the Port is built. The
-   * backend sends no such field until #83; `GameState.boatDocked` is the input.
+   * The Boat lies docked at the pier (the frame's boat state is DOCKED). Only
+   * drawn once the Port is built.
    */
   boatDocked: boolean;
   /**

@@ -159,7 +159,7 @@ export class VillageScene {
         .map((sc) => ({ id: sc.id, floor: sc.floor })),
       highlightedShortcut: this.highlightedShortcut(),
       port: s.port?.state ?? 'HIDDEN',
-      boatDocked: s.boatDocked ?? false,
+      boatDocked: s.boat?.state === 'DOCKED',
       quarter: s.quarter ?? null,
       seaRisk: s.seaRisk ?? null,
       tick,

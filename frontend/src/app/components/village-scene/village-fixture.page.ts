@@ -66,12 +66,15 @@ export class VillageFixturePage {
           { id: 'b', floor: 10 },
           { id: 'c', floor: 21 },
         ],
-        // `?port=footing` or `?port=built`, with `&boat=1` for a docked Boat.
+        // `?port=footing` or `?port=built`, with `&boat=docked` for a docked Boat (any other value, or none, is no hull).
         port: portParam(),
         // `?quarter=winter` (spring, summer, autumn, winter) and `&risk=0.2` for the sea.
         quarter: quarterParam(),
-        seaRisk: Number(new URLSearchParams(location.search).get('risk') ?? 0.01),
-        boatDocked: new URLSearchParams(location.search).has('boat'),
+        seaRisk: Number(
+          new URLSearchParams(location.search).get('risk') ?? 0.01,
+        ),
+        boatDocked:
+          new URLSearchParams(location.search).get('boat') === 'docked',
         still: false,
       };
 }

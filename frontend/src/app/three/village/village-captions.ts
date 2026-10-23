@@ -92,7 +92,12 @@ const villagers: CaptionBuilder = (subject, state) => {
   if (!view) return null;
   const lock = lockOf(state, subject.id);
   if (lock) {
-    return { name: view.plural, status: 'None. The place is closed.', makes: '', lock };
+    return {
+      name: view.plural,
+      status: 'None. The place is closed.',
+      makes: '',
+      lock,
+    };
   }
   return {
     name: view.plural,
@@ -116,6 +121,22 @@ const upgrade: CaptionBuilder = (subject, state) => {
   };
 };
 
+/** Time left in plain words; one lifecycle tick is one second. */
+function inWords(ticks: number): string {
+  if (ticks < 60) return 'less than a minute';
+  const minutes = Math.ceil(ticks / 60);
+  return minutes === 1 ? 'about a minute' : `about ${minutes} minutes`;
+}
+
+function boatStatus(state: GameState): string {
+  const boat = state.boat;
+  if (boat?.state === 'DOCKED') return 'Finished. A Boat lies at the pier.';
+  if (boat?.state === 'DUE') {
+    return `Finished. The Boat is due, in ${inWords(boat.ticksToDock)}.`;
+  }
+  return 'Finished. The pier stands over the dark water.';
+}
+
 /**
  * The Port: the footing says what finishes it, from the frame's Port state; the
  * finished Port says what stands. Hidden, it has no volumes to point at.
@@ -126,9 +147,7 @@ const port: CaptionBuilder = (_subject, state) => {
   if (p.state === 'BUILT') {
     return {
       name: 'The Port',
-      status: state.boatDocked
-        ? 'Finished. A Boat lies at the pier.'
-        : 'Finished. The pier stands over the dark water.',
+      status: boatStatus(state),
       makes: '',
       lock: null,
     };
