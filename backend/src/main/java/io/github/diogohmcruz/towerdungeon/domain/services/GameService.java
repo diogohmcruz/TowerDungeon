@@ -15,6 +15,7 @@ import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.ToLongFunction;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -26,6 +27,7 @@ import io.github.diogohmcruz.towerdungeon.domain.commands.CommandResult.Reason;
 import io.github.diogohmcruz.towerdungeon.domain.commands.Notice;
 import io.github.diogohmcruz.towerdungeon.domain.exceptions.InvalidInvasion;
 import io.github.diogohmcruz.towerdungeon.domain.models.BaseUnit;
+import io.github.diogohmcruz.towerdungeon.domain.models.CampaignPhase;
 import io.github.diogohmcruz.towerdungeon.domain.models.GameOutcome;
 import io.github.diogohmcruz.towerdungeon.domain.models.GameState;
 import io.github.diogohmcruz.towerdungeon.domain.models.ResourceType;
@@ -39,6 +41,10 @@ import io.github.diogohmcruz.towerdungeon.domain.models.upgrade.UpgradeType;
 import io.github.diogohmcruz.towerdungeon.domain.observation.AimTally;
 import io.github.diogohmcruz.towerdungeon.domain.observation.EventLog;
 import io.github.diogohmcruz.towerdungeon.domain.observation.StateProjection;
+import io.github.diogohmcruz.towerdungeon.domain.prestige.FallenName;
+import io.github.diogohmcruz.towerdungeon.domain.prestige.PlayerMeta;
+import io.github.diogohmcruz.towerdungeon.domain.prestige.SuccessionReport;
+import io.github.diogohmcruz.towerdungeon.domain.prestige.Toll;
 import io.github.diogohmcruz.towerdungeon.domain.prestige.TollCalculator;
 import io.github.diogohmcruz.towerdungeon.domain.prestige.TollContext;
 import io.github.diogohmcruz.towerdungeon.domain.random.RandomSource;
@@ -47,14 +53,15 @@ import io.github.diogohmcruz.towerdungeon.persistence.CampaignSchema;
 import io.github.diogohmcruz.towerdungeon.persistence.CampaignSchema.SchemaNewerException;
 import io.github.diogohmcruz.towerdungeon.persistence.CampaignStore;
 import io.github.diogohmcruz.towerdungeon.persistence.CampaignStore.LoadResult;
-import lombok.RequiredArgsConstructor;
+import io.github.diogohmcruz.towerdungeon.persistence.MetaCodec;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ObjectNode;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class GameService {
   private final GameProperties config;
   private final ObjectMapper objectMapper;
@@ -64,9 +71,54 @@ public class GameService {
   private final CampaignStore store;
   private final FloorBundle floorBundle;
   private final AutosaveCoordinator saves;
+  private final MetaCodec metaCodec;
   private final Map<String, PlayerSlot> players = new ConcurrentHashMap<>();
   private final ManualTickDriver manualDriver = new ManualTickDriver(this, System::nanoTime);
   private volatile boolean running = true;
+
+  @Autowired
+  public GameService(
+      GameProperties config,
+      ObjectMapper objectMapper,
+      SeedSource seeds,
+      ArchitecturePlan architecturePlan,
+      PartyCombat partyCombat,
+      CampaignStore store,
+      FloorBundle floorBundle,
+      AutosaveCoordinator saves,
+      MetaCodec metaCodec) {
+    this.config = config;
+    this.objectMapper = objectMapper;
+    this.seeds = seeds;
+    this.architecturePlan = architecturePlan;
+    this.partyCombat = partyCombat;
+    this.store = store;
+    this.floorBundle = floorBundle;
+    this.saves = saves;
+    this.metaCodec = metaCodec;
+  }
+
+  /** As above, with the sealed meta under the development key: for tests and local wiring. */
+  public GameService(
+      GameProperties config,
+      ObjectMapper objectMapper,
+      SeedSource seeds,
+      ArchitecturePlan architecturePlan,
+      PartyCombat partyCombat,
+      CampaignStore store,
+      FloorBundle floorBundle,
+      AutosaveCoordinator saves) {
+    this(
+        config,
+        objectMapper,
+        seeds,
+        architecturePlan,
+        partyCombat,
+        store,
+        floorBundle,
+        saves,
+        MetaCodec.development(objectMapper));
+  }
 
   /** What a connection gets back from {@link #attach}: a signal for when it has been replaced. */
   public record Attachment(Mono<Void> replaced) {}
@@ -86,6 +138,17 @@ public class GameService {
   }
 
   /**
+   * Starts the Campaign of a human player's Generation. Its seed is derived from the player's
+   * secret and the Generation, so it is the same for a reload and cannot be chosen by a client.
+   * Every Generation begins with the same Founders; a Founder who is stronger in Generation 1 only
+   * is an ordinary recruit of the same name and type from Generation 2. A Generation that follows a
+   * Defeat starts Hollow.
+   */
+  GameState newCampaign(PlayerMeta meta, boolean hollow) {
+    return newCampaign(config.copy(), new RandomSource(meta.seed()), meta.generation(), hollow);
+  }
+
+  /**
    * Starts a brand-new Sandbox campaign from a chosen seed, for the Sandbox driver. Only a Sandbox
    * may do this: the seed of a human campaign is never taken from a client. The same seed and the
    * same commands always make the same campaign.
@@ -95,9 +158,22 @@ public class GameService {
   }
 
   private GameState newCampaign(GameProperties campaignConfig, RandomSource random) {
+    return newCampaign(campaignConfig, random, 1, false);
+  }
+
+  private GameState newCampaign(
+      GameProperties campaignConfig, RandomSource random, int generation, boolean hollow) {
     var gameState = new GameState(campaignConfig, random);
     for (var founder : campaignConfig.getStart().getFounders()) {
-      gameState.addUnits(founder.getUnitType(), List.of(gameState.recruitFounder(founder)));
+      var effective =
+          generation > 1 && founder.isFirstGenerationOnly()
+              ? new GameProperties.Founder(founder.getName(), founder.getUnitType(), 1.0, false)
+              : founder;
+      gameState.addUnits(effective.getUnitType(), List.of(gameState.recruitFounder(effective)));
+    }
+    if (hollow) {
+      var start = campaignConfig.getPrestige().getDefeatStart();
+      gameState.startHollow(start.getVillagersLost(), start.getWritCredits());
     }
     return gameState;
   }
@@ -118,11 +194,15 @@ public class GameService {
     var slot = new PlayerSlot(sandboxId, ClockMode.MANUAL);
     var random = seed == null ? seeds.forHumanCampaign() : new RandomSource(seed);
     var state = newCampaign(campaignConfig, random);
+    var used = state.getRandom().snapshot().seed();
+    // The Sandbox's own meta, from its seed, so a Generation begun in it is as repeatable as the
+    // first. Nothing of it is ever written.
+    slot.meta(PlayerMeta.first("sandbox-" + used));
     slot.simulatedLimit(simulatedLimit);
     slot.loaded(state, false, null, CampaignSchema.CURRENT);
     slot.loading(Mono.just(state));
     players.put(sandboxId, slot);
-    return state.getRandom().snapshot().seed();
+    return used;
   }
 
   /** Forgets a Sandbox Campaign. A human's Campaign is never closed through here. */
@@ -142,10 +222,56 @@ public class GameService {
     return players.get(playerId);
   }
 
+  /** The Tower's plan for the Generation the meta says is being played. */
+  private ArchitecturePlan planFor(PlayerMeta meta) {
+    return ArchitecturePlan.generate(
+        meta.seed(),
+        config.getTower().getMaxFloor(),
+        config.getBoss().getInterval(),
+        config.getEnemies().getSurgeInterval());
+  }
+
+  private void adopt(PlayerSlot slot, PlayerMeta meta) {
+    slot.meta(meta);
+    slot.plan(planFor(meta));
+  }
+
+  /**
+   * The meta of a player with nothing stored. Its secret is drawn from the {@link SeedSource}
+   * (twice, for 128 bits): from the server's own secret in production, fixed for tests and replays.
+   */
+  private PlayerMeta freshMeta() {
+    return withSecret(PlayerMeta.first(""));
+  }
+
+  private PlayerMeta withSecret(PlayerMeta meta) {
+    if (meta.hasSecret()) {
+      return meta;
+    }
+    var high = seeds.forHumanCampaign().snapshot().seed();
+    var low = seeds.forHumanCampaign().snapshot().seed();
+    return meta.withSecret("%016x%016x".formatted(high, low));
+  }
+
+  /** The player's meta as the record's payload holds it; fresh when there is none. */
+  private PlayerMeta metaOf(byte[] payload) {
+    if (payload == null || payload.length == 0) {
+      return freshMeta();
+    }
+    JsonNode root = objectMapper.readTree(payload);
+    return withSecret(metaCodec.fromNode(root.path("meta")));
+  }
+
   /** The live state of a player, if it has a loaded slot. Test hook. */
   public GameState playerState(String playerId) {
     var slot = players.get(playerId);
     return slot == null ? null : slot.state();
+  }
+
+  /** What the player keeps across Generations, if they have a loaded slot. Test hook. */
+  public PlayerMeta playerMeta(String playerId) {
+    var slot = players.get(playerId);
+    return slot == null ? null : slot.meta();
   }
 
   /** Whether a slot (attached or lingering) exists for the player. Test hook. */
@@ -265,7 +391,9 @@ public class GameService {
         .switchIfEmpty(
             Mono.fromSupplier(
                 () -> {
-                  var fresh = newCampaign();
+                  var meta = freshMeta();
+                  adopt(slot, meta);
+                  var fresh = newCampaign(meta, false);
                   slot.loaded(fresh, false, null, CampaignSchema.CURRENT);
                   saves.opened(slot, CampaignStore.INITIAL_SEQ);
                   return fresh;
@@ -279,14 +407,18 @@ public class GameService {
     result.notices().forEach(text -> slot.addNotice(new Notice("SAVE_MIGRATED", text)));
     if (result.campaignLost()) {
       // The record could not be read any more; a copy of it is kept. Start over where it left off.
-      var fresh = newCampaign();
+      var meta = freshMeta();
+      adopt(slot, meta);
+      var fresh = newCampaign(meta, false);
       slot.loaded(fresh, false, null, CampaignSchema.CURRENT);
       saves.opened(slot, result.seq());
       return fresh;
     }
     var snapshot = objectMapper.readValue(result.payload(), GameSnapshot.class);
+    var meta = metaOf(result.payload());
+    adopt(slot, meta);
     var state =
-        GameState.restore(snapshot, config.copy(), seeds.forHumanCampaign(), architecturePlan);
+        GameState.restore(snapshot, config.copy(), new RandomSource(meta.seed()), slot.plan());
     if (!result.quarantined().isEmpty()) {
       slot.addNotice(
           new Notice("SAVE_DAMAGED", "A damaged save was set aside and an older one was loaded."));
@@ -351,7 +483,13 @@ public class GameService {
         access(
             slot,
             gameState -> {
-              applyAndRecord(slot, gameState, state -> action.accept(slot, state));
+              if (gameState.getPhase() == CampaignPhase.OFFER) {
+                return Boolean.TRUE;
+              }
+              if (gameState.getGameOutcome() == GameOutcome.PLAYING) {
+                applyAndRecord(slot, gameState, state -> action.accept(slot, state));
+              }
+              settleEnded(slot, gameState);
               return Boolean.TRUE;
             });
       } catch (RuntimeException e) {
@@ -455,7 +593,12 @@ public class GameService {
           Command.BuyTome _,
           Command.BuyRing _,
           Command.BuyPosts _,
-          Command.SendReinforcements _ ->
+          Command.SendReinforcements _,
+          Command.Exodus _,
+          Command.RollBuy _,
+          Command.RollRefund _,
+          Command.Choose _,
+          Command.BeginGeneration _ ->
           false;
     };
   }
@@ -464,6 +607,10 @@ public class GameService {
       PlayerSlot slot, GameState gameState, String playerId, Command command) {
     CommandResult result;
     try {
+      if (gameState.getPhase() == CampaignPhase.OFFER && !isSuccessionCommand(command)) {
+        return CommandResult.rejected(Reason.CAMPAIGN_ENDED, "The Campaign has ended.")
+            .withStateSeq(slot.stateSeq());
+      }
       result =
           switch (command) {
             case Command.Recruit recruit -> recruit(slot, gameState, playerId, recruit);
@@ -485,6 +632,10 @@ public class GameService {
             case Command.Resume _ -> resume(slot, playerId);
             case Command.SendReinforcements wave ->
                 sendReinforcements(slot, gameState, playerId, wave);
+            case Command.Exodus _ -> exodus(slot, gameState, playerId);
+            case Command.BeginGeneration _ -> beginGeneration(slot, gameState, playerId);
+            case Command.RollBuy _, Command.RollRefund _, Command.Choose _ ->
+                rollNotOpen(gameState);
           };
     } catch (InvalidInvasion err) {
       log.warn("Rejected invasion from player {}: {}", playerId, err.getMessage());
@@ -747,7 +898,7 @@ public class GameService {
               gameState.getConfig().getBoss().copy(),
               gameState.getConfig().getEnemies().copy(),
               gameState.getRandom(),
-              architecturePlan));
+              slot.plan() == null ? architecturePlan : slot.plan()));
     }
     gameState.getTower().startNewRunAt(requestedFloor);
     gameState.setRunStartFloor(requestedFloor > 0 ? requestedFloor : 0);
@@ -885,6 +1036,194 @@ public class GameService {
                   return a;
                 }));
     return unitsTemp;
+  }
+
+  private static boolean isSuccessionCommand(Command command) {
+    return switch (command) {
+      case Command.RollBuy _, Command.RollRefund _, Command.Choose _, Command.BeginGeneration _ ->
+          true;
+      default -> false;
+    };
+  }
+
+  /** The Roll, and the choices for the next Generation, come with their own change. */
+  private static CommandResult rollNotOpen(GameState gameState) {
+    return gameState.getPhase() == CampaignPhase.OFFER
+        ? CommandResult.rejected(Reason.NOT_AVAILABLE, "The Roll has nothing to offer yet.")
+        : CommandResult.rejected(Reason.NOT_ENDED, "The Campaign has not ended.");
+  }
+
+  /** The Toll the Campaign would pay if it ended now, with the Tally it was read from. */
+  private record Forecast(
+      Toll toll, io.github.diogohmcruz.towerdungeon.domain.prestige.Tally tally, int guardians) {}
+
+  private Forecast forecast(PlayerSlot slot, GameState gameState) {
+    var meta = slot.meta();
+    var tower = gameState.getTower();
+    var guardians = tower == null ? 0 : tower.getSlainGuardians().size();
+    var tally = gameState.tollTally(guardians);
+    var context = new TollContext(0, 0, meta.residue(), meta.lifetime().bestGuardians(), 0);
+    return new Forecast(
+        TollCalculator.calculate(tally, context, gameState.getConfig().getPrestige()),
+        tally,
+        guardians);
+  }
+
+  /**
+   * Ends the Campaign in one write that is waited for: the Toll is computed and stored as {@code
+   * pending}, the Chronicle, the Lifetime Ledger and the residue are updated, a copy is kept as
+   * {@code ended-last}, and the Campaign enters the OFFER phase. If the write fails the Campaign is
+   * put back exactly as it was and the failure is thrown. A Campaign already in OFFER is left
+   * alone: its report is the one computed the first time. Call it under the state's lock.
+   */
+  private SuccessionReport endCampaign(PlayerSlot slot, GameState gameState, GameOutcome outcome) {
+    if (gameState.getPhase() == CampaignPhase.OFFER && gameState.getPending() != null) {
+      return gameState.getPending();
+    }
+    var prestige = gameState.getConfig().getPrestige();
+    var meta = slot.meta();
+    var forecast = forecast(slot, gameState);
+    var toll = forecast.toll();
+    var legacy = toll.legacy();
+    var pity = false;
+    var floor = prestige.getDefeatPity();
+    if (outcome == GameOutcome.DEFEAT
+        && legacy < floor.getPoints()
+        && forecast.tally().expeditionsCompleted() >= floor.getMinQualifyingExpeditions()) {
+      legacy = floor.getPoints();
+      pity = true;
+    }
+    var report =
+        new SuccessionReport(
+            outcome,
+            meta.generation(),
+            toll,
+            legacy,
+            pity,
+            forecast.guardians(),
+            forecast.tally().highestFloor(),
+            forecast.tally().expeditionsCompleted());
+    var wall = gameState.getWallOfNames();
+    var fallen =
+        wall.subList(Math.max(0, wall.size() - prestige.getChronicleNames()), wall.size()).stream()
+            .map(unit -> new FallenName(unit.name(), unit.type()))
+            .toList();
+    var ended =
+        meta.ended(report, forecast.tally(), wall.size(), fallen, prestige.getChronicleLimit());
+
+    var previousOutcome = gameState.getGameOutcome();
+    var previousPhase = gameState.getPhase();
+    var previousPending = gameState.getPending();
+    gameState.setGameOutcome(outcome);
+    gameState.setPhase(CampaignPhase.OFFER);
+    gameState.setPending(report);
+    try {
+      if (!slot.isManual()) {
+        saves.writeAwaited(slot, gameState.toSnapshot(), ended, true);
+      }
+    } catch (RuntimeException e) {
+      gameState.setGameOutcome(previousOutcome);
+      gameState.setPhase(previousPhase);
+      gameState.setPending(previousPending);
+      throw e;
+    }
+    slot.meta(ended);
+    slot.emit(
+        "CAMPAIGN_ENDED",
+        Map.of("outcome", outcome.name(), "generation", report.generation(), "legacy", legacy));
+    log.info(
+        "Campaign of player {} ended: {} (Generation {}, {} Legacy).",
+        slot.playerId(),
+        outcome,
+        report.generation(),
+        legacy);
+    return report;
+  }
+
+  /**
+   * A Campaign the rules have ended (Victory, Defeat) but that is not yet in OFFER: records it. A
+   * failed write is retried after a pause, and the player is told once.
+   */
+  void settleEnded(PlayerSlot slot, GameState gameState) {
+    if (gameState.getPhase() == CampaignPhase.OFFER
+        || gameState.getGameOutcome() == GameOutcome.PLAYING) {
+      return;
+    }
+    var now = System.nanoTime();
+    if (!slot.mayRetryEnd(now)) {
+      return;
+    }
+    try {
+      endCampaign(slot, gameState, gameState.getGameOutcome());
+      slot.endRecorded();
+    } catch (AutosaveCoordinator.WriteFailedException e) {
+      if (slot.endFailed(now, config.getPersistence().getRetryInitial().toNanos())) {
+        slot.addNotice(
+            new Notice(
+                "ENDING_NOT_RECORDED",
+                "The end of the Campaign could not be recorded. It will be tried again."));
+      }
+    }
+  }
+
+  private CommandResult exodus(PlayerSlot slot, GameState gameState, String playerId) {
+    if (gameState.getGameOutcome() != GameOutcome.PLAYING) {
+      return CommandResult.rejected(Reason.CAMPAIGN_ENDED, "The Campaign has ended.");
+    }
+    if (gameState.isExpeditionActive()) {
+      return CommandResult.rejected(
+          Reason.EXPEDITION_ACTIVE, "Extract first: Exodus cannot leave a Party on the Tower.");
+    }
+    if (slot.isHeld()) {
+      return CommandResult.rejected(Reason.PARTY_HELD, "A Party is Held on the Tower.");
+    }
+    var minimum = gameState.getConfig().getPrestige().getMinPointsToExodus();
+    if (forecast(slot, gameState).toll().legacy() < minimum) {
+      return CommandResult.rejected(
+          Reason.TOLL_TOO_LOW, "The Toll is not yet worth leaving for: " + minimum + " Legacy.");
+    }
+    try {
+      endCampaign(slot, gameState, GameOutcome.EXODUS);
+    } catch (AutosaveCoordinator.WriteFailedException e) {
+      log.warn("Player[{}] could not leave: the write failed.", playerId);
+      return CommandResult.rejected(Reason.WRITE_FAILED, "The Exodus could not be recorded.")
+          .withNotice(new Notice("ENDING_FAILED", "The Exodus could not be recorded. Try again."));
+    }
+    return CommandResult.applied("The village leaves in the night.");
+  }
+
+  /**
+   * Starts the next Generation from a Campaign in OFFER: the Founders again, everything else new,
+   * the player's meta kept. One write that is waited for; if it fails nothing changes. Once begun,
+   * the Campaign is no longer in OFFER and a repeat does nothing.
+   */
+  private CommandResult beginGeneration(PlayerSlot slot, GameState gameState, String playerId) {
+    if (gameState.getPhase() != CampaignPhase.OFFER) {
+      return CommandResult.rejected(Reason.NOT_ENDED, "There is no ended Campaign to begin from.");
+    }
+    var pending = gameState.getPending();
+    var meta = slot.meta().nextGeneration();
+    var fresh = newCampaign(meta, pending != null && pending.outcome() == GameOutcome.DEFEAT);
+    try {
+      if (!slot.isManual()) {
+        saves.writeAwaited(slot, fresh.toSnapshot(), meta, false);
+      }
+    } catch (AutosaveCoordinator.WriteFailedException e) {
+      log.warn(
+          "Player[{}] could not begin Generation {}: the write failed.",
+          playerId,
+          meta.generation());
+      return CommandResult.rejected(
+              Reason.WRITE_FAILED, "The next Generation could not be recorded.")
+          .withNotice(
+              new Notice("BEGIN_FAILED", "The next Generation could not be recorded. Try again."));
+    }
+    adopt(slot, meta);
+    slot.begun(fresh);
+    slot.resume();
+    slot.emit("GENERATION_BEGUN", Map.of("generation", meta.generation()));
+    log.info("Player[{}] began Generation {}.", playerId, meta.generation());
+    return CommandResult.applied("The next Generation begins.");
   }
 
   @Scheduled(fixedRateString = "${game.loop.lifecycle-ms}")
@@ -1109,13 +1448,31 @@ public class GameService {
    */
   public boolean replaceIfIdle(
       String playerId, GameSnapshot snapshot, ToLongFunction<OptionalLong> persist) {
-    var replacement =
-        GameState.restore(snapshot, config, seeds.forHumanCampaign(), architecturePlan);
+    return replaceIfIdle(playerId, snapshot, null, persist);
+  }
+
+  /**
+   * As {@link #replaceIfIdle(String, GameSnapshot, ToLongFunction)}, also replacing the player's
+   * meta with {@code meta} (the {@code meta} section of the imported file); null keeps the meta the
+   * slot has.
+   */
+  public boolean replaceIfIdle(
+      String playerId,
+      GameSnapshot snapshot,
+      ObjectNode meta,
+      ToLongFunction<OptionalLong> persist) {
     var slot = players.get(playerId);
     if (slot == null || slot.state() == null) {
       persist.applyAsLong(OptionalLong.empty());
       return true;
     }
+    var replacementMeta = meta == null ? slot.meta() : withSecret(metaCodec.fromNode(meta));
+    var replacement =
+        GameState.restore(
+            snapshot,
+            config.copy(),
+            new RandomSource(replacementMeta.seed()),
+            meta == null ? slot.plan() : planFor(replacementMeta));
     return access(
             slot,
             state -> {
@@ -1123,6 +1480,7 @@ public class GameService {
                 return Boolean.FALSE;
               }
               long seq = persist.applyAsLong(OptionalLong.of(slot.saves().seq()));
+              adopt(slot, replacementMeta);
               slot.loaded(replacement, true, Instant.now(), CampaignSchema.CURRENT);
               saves.opened(slot, seq);
               return Boolean.TRUE;

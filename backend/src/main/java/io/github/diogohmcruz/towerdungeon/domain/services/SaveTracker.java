@@ -22,7 +22,11 @@ final class SaveTracker {
 
   /** One write in progress: what it expects and what it must put back if it fails. */
   record Attempt(
-      long startedAt, long expectedSeq, boolean rotationRequested, boolean intervalRotation) {}
+      long startedAt,
+      long expectedSeq,
+      boolean rotationRequested,
+      boolean intervalRotation,
+      long token) {}
 
   private long seq = CampaignStore.INITIAL_SEQ;
   private boolean dirty;
@@ -35,6 +39,8 @@ final class SaveTracker {
   private long lastRotationAt;
   private boolean expedition;
   private boolean inFlight;
+  private boolean capturing;
+  private long token;
   private int failures;
   private long retryAt = NONE;
   private boolean noticeSent;
@@ -101,8 +107,10 @@ final class SaveTracker {
             now,
             seq,
             rotationRequested,
-            (intervalRotation || autosaveDue) && now - lastRotationAt >= cadence.rotation());
+            (intervalRotation || autosaveDue) && now - lastRotationAt >= cadence.rotation(),
+            ++token);
     inFlight = true;
+    capturing = true;
     dirty = false;
     immediate = false;
     intervalRotation = false;
@@ -111,13 +119,67 @@ final class SaveTracker {
     return attempt;
   }
 
-  /** The write was not needed (a pristine Campaign). */
-  synchronized void skipped() {
+  /**
+   * The snapshot has been taken (or could not be): the attempt is now only waiting on the store.
+   * Returns false when the attempt was taken over meanwhile, and must do nothing more.
+   */
+  synchronized boolean captured(Attempt attempt) {
+    if (attempt.token() != token) {
+      return false;
+    }
+    capturing = false;
+    return true;
+  }
+
+  /** Whether {@code attempt} is still the write this tracker is waiting on. */
+  synchronized boolean owns(Attempt attempt) {
+    return attempt.token() == token;
+  }
+
+  /**
+   * Claims the next write for a caller that will wait for it: one that must be written now whether
+   * or not anything is dirty. A write that is only waiting to take its snapshot is taken over (it
+   * gives up when it gets there); one already on its way to the store is waited for. Null when the
+   * caller must wait and ask again.
+   */
+  synchronized Attempt claimExclusive(long now) {
+    if (inFlight && !capturing) {
+      return null;
+    }
+    inFlight = true;
+    capturing = false;
+    dirty = false;
+    immediate = false;
+    intervalRotation = false;
+    purchaseFirstAt = NONE;
+    purchaseLastAt = NONE;
+    return new Attempt(now, seq, true, false, ++token);
+  }
+
+  /** An exclusive write failed and changed nothing: whatever it covered is owed again. */
+  synchronized void abandon(Attempt attempt) {
+    if (attempt.token() != token) {
+      return;
+    }
     inFlight = false;
+    capturing = false;
+    dirty = true;
+  }
+
+  /** The write was not needed (a pristine Campaign). */
+  synchronized void skipped(Attempt attempt) {
+    if (attempt.token() == token) {
+      inFlight = false;
+      capturing = false;
+    }
   }
 
   synchronized void succeeded(Attempt attempt, long newSeq, boolean rotated) {
+    if (attempt.token() != token) {
+      return;
+    }
     inFlight = false;
+    capturing = false;
     seq = newSeq;
     lastWriteAt = attempt.startedAt();
     if (rotated) {
@@ -131,7 +193,11 @@ final class SaveTracker {
 
   /** The write failed; what it covered is owed again. Returns the failures in a row. */
   synchronized int failed(Attempt attempt, long now, Cadence cadence) {
+    if (attempt.token() != token) {
+      return failures;
+    }
     inFlight = false;
+    capturing = false;
     dirty = true;
     immediate = true;
     intervalRotation |= attempt.intervalRotation();

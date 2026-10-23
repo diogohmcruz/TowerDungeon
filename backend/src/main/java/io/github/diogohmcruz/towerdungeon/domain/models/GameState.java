@@ -43,6 +43,7 @@ import io.github.diogohmcruz.towerdungeon.domain.models.snapshot.UnitSnapshot;
 import io.github.diogohmcruz.towerdungeon.domain.models.snapshot.WaveSnapshot;
 import io.github.diogohmcruz.towerdungeon.domain.models.upgrade.UpgradeOffer;
 import io.github.diogohmcruz.towerdungeon.domain.models.upgrade.UpgradeType;
+import io.github.diogohmcruz.towerdungeon.domain.prestige.SuccessionReport;
 import io.github.diogohmcruz.towerdungeon.domain.random.RandomSource;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -58,6 +59,13 @@ public class GameState {
   private Tower tower;
   private boolean expeditionActive = false;
   private GameOutcome gameOutcome = GameOutcome.PLAYING;
+
+  /** {@code OFFER} once the Campaign has ended: the game loops no longer tick it. */
+  private CampaignPhase phase = CampaignPhase.ACTIVE;
+
+  /** The Succession report computed when the Campaign ended; null while it is active. */
+  private SuccessionReport pending;
+
   private Village village;
   private Map<ResourceType, Double> resources = ResourceType.emptyWallet();
   private Map<ResourceType, Double> carriedLoot = ResourceType.emptyWallet();
@@ -440,6 +448,16 @@ public class GameState {
       return true;
     }
     return false;
+  }
+
+  /**
+   * Starts a Hollow Campaign, the start after a Defeat: fewer Villagers, and a Writ of Credits
+   * ("the Crown pays for a company, not a village"). Call it on a fresh state.
+   */
+  public void startHollow(int villagersLost, double writCredits) {
+    village.removeStartingVillagers(villagersLost);
+    credit += writCredits;
+    tally = new CampaignTally(village.getVillagersCount());
   }
 
   /** Records that the party conquered the tower's summit — the campaign is won. */
@@ -1845,7 +1863,9 @@ public class GameState {
             List.copyOf(artifactsTaken),
             tally.toSnapshot(),
             villageTier.getLevel(),
-            List.copyOf(wallOfNames));
+            List.copyOf(wallOfNames),
+            phase,
+            pending);
     return new GameSnapshot(
         campaign, expeditionActive ? expeditionSnapshot() : null, random.snapshot());
   }
@@ -2021,6 +2041,8 @@ public class GameState {
     state.gameOutcome = c.outcome();
     state.lastRunSummary = c.lastExpeditionSummary();
     state.wallOfNames = new ArrayList<>(c.wallOfNames());
+    state.phase = c.phase();
+    state.pending = c.pending();
     state.village.restore(c.villageFood(), c.villagers());
     var t = c.trades();
     if (t != null) {

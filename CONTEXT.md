@@ -19,7 +19,7 @@ The campaign outcome reached when the village has fallen: no units remain anywhe
 _Avoid_: Game over, village has fallen, loss
 
 **Exodus**:
-The campaign outcome the player chooses from the village, with no expedition out, when the village leaves the tower rather than wait for defeat. Planned.
+The campaign outcome the player chooses from the village, with no expedition out and a Toll worth at least 3 Legacy, when the village leaves the tower rather than wait for defeat.
 _Avoid_: Quit, abandon, give up
 
 **Prestige**:

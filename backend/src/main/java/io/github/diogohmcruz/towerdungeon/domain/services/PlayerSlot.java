@@ -11,8 +11,10 @@ import io.github.diogohmcruz.towerdungeon.api.dtos.GameFrame.SessionMeta;
 import io.github.diogohmcruz.towerdungeon.domain.commands.Notice;
 import io.github.diogohmcruz.towerdungeon.domain.models.GameState;
 import io.github.diogohmcruz.towerdungeon.domain.models.RunSummary;
+import io.github.diogohmcruz.towerdungeon.domain.models.architecture.ArchitecturePlan;
 import io.github.diogohmcruz.towerdungeon.domain.observation.EventLog;
 import io.github.diogohmcruz.towerdungeon.domain.observation.ExpeditionSummaries;
+import io.github.diogohmcruz.towerdungeon.domain.prestige.PlayerMeta;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 
@@ -33,6 +35,10 @@ final class PlayerSlot {
   private final Queue<Notice> notices = new ConcurrentLinkedQueue<>();
   private Mono<GameState> loading;
   private volatile GameState state;
+  private volatile PlayerMeta meta;
+  private volatile ArchitecturePlan plan;
+  private long endRetryAt;
+  private boolean endNoticeSent;
   private volatile boolean resumed;
   private volatile Instant savedAt;
   private volatile int schema;
@@ -132,6 +138,48 @@ final class PlayerSlot {
     this.schema = schema;
     this.lastSeenSummary = state.getLastRunSummary();
     this.state = state;
+  }
+
+  /** What the player keeps across Generations; null until the Campaign is loaded. */
+  PlayerMeta meta() {
+    return meta;
+  }
+
+  void meta(PlayerMeta meta) {
+    this.meta = meta;
+  }
+
+  /** The Tower's plan for the Generation being played; null until the Campaign is loaded. */
+  ArchitecturePlan plan() {
+    return plan;
+  }
+
+  void plan(ArchitecturePlan plan) {
+    this.plan = plan;
+  }
+
+  /** Whether it is time to try again to record an ending that could not be written. */
+  boolean mayRetryEnd(long nowNanos) {
+    return endRetryAt == 0 || nowNanos >= endRetryAt;
+  }
+
+  /** The write of the ending failed; returns whether the player has not been told yet. */
+  boolean endFailed(long nowNanos, long retryAfterNanos) {
+    endRetryAt = nowNanos + retryAfterNanos;
+    var first = !endNoticeSent;
+    endNoticeSent = true;
+    return first;
+  }
+
+  void endRecorded() {
+    endRetryAt = 0;
+    endNoticeSent = false;
+  }
+
+  /** The next Generation's Campaign takes the slot; the Expedition summaries start again. */
+  void begun(GameState next) {
+    this.lastSeenSummary = next.getLastRunSummary();
+    this.state = next;
   }
 
   long stateSeq() {

@@ -129,6 +129,12 @@ public class Village {
     }
   }
 
+  /** A Hollow start: the Village begins with fewer Villagers than the Fields were made for. */
+  public void removeStartingVillagers(int count) {
+    setVillagersCount(villagersCount - Math.max(0, count));
+    clampTrades();
+  }
+
   /** Restores the persisted facts; the production and upkeep rates stay as configured. */
   public void restore(double food, int villagers) {
     setFood(food);

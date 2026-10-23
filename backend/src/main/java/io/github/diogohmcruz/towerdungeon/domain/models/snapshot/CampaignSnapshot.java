@@ -3,6 +3,7 @@ package io.github.diogohmcruz.towerdungeon.domain.models.snapshot;
 import java.util.List;
 import java.util.Map;
 
+import io.github.diogohmcruz.towerdungeon.domain.models.CampaignPhase;
 import io.github.diogohmcruz.towerdungeon.domain.models.Fallen;
 import io.github.diogohmcruz.towerdungeon.domain.models.GameOutcome;
 import io.github.diogohmcruz.towerdungeon.domain.models.ResourceType;
@@ -10,6 +11,7 @@ import io.github.diogohmcruz.towerdungeon.domain.models.RunSummary;
 import io.github.diogohmcruz.towerdungeon.domain.models.milestone.MilestoneType;
 import io.github.diogohmcruz.towerdungeon.domain.models.shortcut.ShortcutType;
 import io.github.diogohmcruz.towerdungeon.domain.models.upgrade.UpgradeType;
+import io.github.diogohmcruz.towerdungeon.domain.prestige.SuccessionReport;
 
 /**
  * The facts of a Campaign that are always saved. Derived numbers (unlocked unit types, damage
@@ -26,6 +28,9 @@ import io.github.diogohmcruz.towerdungeon.domain.models.upgrade.UpgradeType;
  * @param tally the never-spent counters; null in older saves
  * @param villageTier the Village Tier level reached, 1 to 4 (0 in older saves reads as Tier I)
  * @param wallOfNames every Unit that fell on the Tower or starved at home, in the order they fell
+ * @param phase {@code ACTIVE} while the Campaign is played, {@code OFFER} once it has ended; absent
+ *     in older saves, which read as active
+ * @param pending the Succession report computed when the Campaign ended; null while it is active
  */
 public record CampaignSnapshot(
     double credit,
@@ -46,12 +51,15 @@ public record CampaignSnapshot(
     List<String> artifactsTaken,
     TallySnapshot tally,
     int villageTier,
-    List<Fallen> wallOfNames) {
+    List<Fallen> wallOfNames,
+    CampaignPhase phase,
+    SuccessionReport pending) {
 
   /** A save from before Artifacts has none taken, and before the Wall of Names no names on it. */
   public CampaignSnapshot {
     artifactsTaken = artifactsTaken == null ? List.of() : artifactsTaken;
     wallOfNames = wallOfNames == null ? List.of() : wallOfNames;
+    phase = phase == null ? CampaignPhase.ACTIVE : phase;
   }
 
   /** The same record with the reserves cleared, for comparing everything but who is in them. */
@@ -75,6 +83,8 @@ public record CampaignSnapshot(
         artifactsTaken,
         tally,
         villageTier,
-        wallOfNames);
+        wallOfNames,
+        phase,
+        pending);
   }
 }

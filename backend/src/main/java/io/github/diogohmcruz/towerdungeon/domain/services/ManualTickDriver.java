@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.util.function.LongSupplier;
 import java.util.function.Predicate;
 
+import io.github.diogohmcruz.towerdungeon.domain.models.CampaignPhase;
 import io.github.diogohmcruz.towerdungeon.domain.models.GameState;
 
 /**
@@ -34,6 +35,8 @@ public final class ManualTickDriver implements TickDriver {
     SIMULATED_TIME_CAP,
     /** The call used up its wall-time budget. */
     WALL_TIME_CAP,
+    /** The Campaign has ended and waits for its next Generation: no tick runs. */
+    CAMPAIGN_ENDED,
     /** There is no such Sandbox Campaign. */
     NOT_FOUND
   }
@@ -79,7 +82,7 @@ public final class ManualTickDriver implements TickDriver {
     var stop = ticks > maxTicksPerWait ? Stop.TICK_CAP : Stop.COMPLETED;
     while (ran < wanted) {
       var step = step(slot, until);
-      if (step == Stop.SIMULATED_TIME_CAP) {
+      if (step == Stop.SIMULATED_TIME_CAP || step == Stop.CAMPAIGN_ENDED) {
         stop = step;
         break;
       }
@@ -102,11 +105,15 @@ public final class ManualTickDriver implements TickDriver {
     try {
       return state.callLocked(
           () -> {
+            if (state.getPhase() == CampaignPhase.OFFER) {
+              return Stop.CAMPAIGN_ENDED;
+            }
             if (slot.simulatedSeconds() >= slot.simulatedLimit()) {
               return Stop.SIMULATED_TIME_CAP;
             }
             service.attritionTick(state, SECOND_MS);
             service.lifecycleTick(slot, state);
+            service.settleEnded(slot, state);
             slot.addSimulatedSeconds(1);
             return until != null && until.test(state) ? Stop.CONDITION : Stop.COMPLETED;
           });

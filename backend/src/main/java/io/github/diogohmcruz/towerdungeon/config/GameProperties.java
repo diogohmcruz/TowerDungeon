@@ -142,6 +142,12 @@ public class GameProperties {
     private Duration shutdownWait = Duration.ofSeconds(20);
 
     /**
+     * Longest the end of a Campaign, or the start of a Generation, waits for its write to finish
+     * before the player is told it failed and nothing changes.
+     */
+    private Duration endWriteWait = Duration.ofSeconds(10);
+
+    /**
      * Key that seals the spoiler-sensitive parts of exported Campaign files. Must stay the same
      * across deploys. Required in the {@code prod} profile; elsewhere a fixed development key is
      * used when unset.
@@ -174,7 +180,7 @@ public class GameProperties {
     private List<Founder> founders =
         new ArrayList<>(
             List.of(
-                new Founder("Yuva", UnitStats.WARRIOR, 5.0, true),
+                new Founder("Yuva", UnitStats.WARRIOR, 5.0, true, true),
                 new Founder("Fanro", UnitStats.WARRIOR, 1.0, false),
                 new Founder("Bazen", UnitStats.WARRIOR, 1.0, false),
                 new Founder("Calix", UnitStats.ARCHER, 1.0, false)));
@@ -195,6 +201,16 @@ public class GameProperties {
     private UnitStats unitType;
     private double statMultiplier = 1.0;
     private boolean fixedStrengths = false;
+
+    /**
+     * Whether the multiplier and fixed strengths apply in Generation 1 only: from Generation 2 the
+     * Founder is an ordinary recruit of the same name and type.
+     */
+    private boolean firstGenerationOnly = false;
+
+    public Founder(String name, UnitStats unitType, double statMultiplier, boolean fixedStrengths) {
+      this(name, unitType, statMultiplier, fixedStrengths, false);
+    }
   }
 
   /** Game-loop cadence and per-tick expedition costs. */
@@ -915,6 +931,35 @@ public class GameProperties {
 
     /** Whether each ended Expedition writes its Toll to the log, for the balance refit. */
     private boolean logToll = true;
+
+    /** Legacy the forecast must reach before the player may choose Exodus. */
+    private int minPointsToExodus = 3;
+
+    /** The floor a Defeat pays once the Campaign has done enough. */
+    private final DefeatPity defeatPity = new DefeatPity();
+
+    /** What a Generation that follows a Defeat starts with. */
+    private final DefeatStart defeatStart = new DefeatStart();
+
+    /** Most names of the fallen kept in a Chronicle entry. */
+    private int chronicleNames = 5;
+
+    /** Most Campaigns the Chronicle keeps; the oldest drop off. */
+    private int chronicleLimit = 50;
+
+    /** The Legacy a Defeat pays at least, and the Expeditions it takes to earn it. */
+    @Data
+    public static class DefeatPity {
+      private int points = 1;
+      private int minQualifyingExpeditions = 3;
+    }
+
+    /** The Hollow start after a Defeat: fewer Villagers, and a Writ of Credits. */
+    @Data
+    public static class DefeatStart {
+      private int villagersLost = 5;
+      private double writCredits = 100.0;
+    }
 
     private final Counters counters = new Counters();
 

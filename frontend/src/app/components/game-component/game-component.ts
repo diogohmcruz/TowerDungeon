@@ -69,7 +69,10 @@ export class GameComponent {
 
   readonly gameWon = computed(() => this.gameState().gameOutcome === 'VICTORY');
   readonly gameLost = computed(() => this.gameState().gameOutcome === 'DEFEAT');
-  readonly gameOver = computed(() => this.gameWon() || this.gameLost());
+  readonly gameLeft = computed(() => this.gameState().gameOutcome === 'EXODUS');
+  readonly gameOver = computed(
+    () => this.gameWon() || this.gameLost() || this.gameLeft(),
+  );
   unitStats: Signal<Map<Unit, UnitStats>> = toSignal(
     this.unitStatsService.getUnitStats(),
     { initialValue: new Map<Unit, UnitStats>() },
@@ -158,9 +161,5 @@ export class GameComponent {
       (cost.MATERIALS ?? 0) <= banked.MATERIALS &&
       (cost.RELICS ?? 0) <= banked.RELICS
     );
-  }
-
-  prestige() {
-    this.ws.sendAction(GameAction.PRESTIGE, null);
   }
 }

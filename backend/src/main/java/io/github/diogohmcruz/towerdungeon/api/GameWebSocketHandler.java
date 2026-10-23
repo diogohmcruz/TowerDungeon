@@ -23,6 +23,7 @@ import io.github.diogohmcruz.towerdungeon.api.dtos.InvadeActionDTO;
 import io.github.diogohmcruz.towerdungeon.api.dtos.ReattachActionDTO;
 import io.github.diogohmcruz.towerdungeon.api.dtos.ReinforceActionDTO;
 import io.github.diogohmcruz.towerdungeon.api.dtos.RemedyActionDTO;
+import io.github.diogohmcruz.towerdungeon.api.dtos.SuccessionActionDTO;
 import io.github.diogohmcruz.towerdungeon.api.dtos.UpgradeActionDTO;
 import io.github.diogohmcruz.towerdungeon.domain.commands.Command;
 import io.github.diogohmcruz.towerdungeon.domain.commands.Notice;
@@ -214,6 +215,20 @@ public class GameWebSocketHandler implements WebSocketHandler {
       case REINFORCE -> {
         var reinforce = payload(message, new TypeReference<GameActionDTO<ReinforceActionDTO>>() {});
         yield new Command.SendReinforcements(reinforce.units());
+      }
+      case EXODUS -> new Command.Exodus();
+      case BEGIN_GENERATION -> new Command.BeginGeneration();
+      case ROLL_BUY -> {
+        var buy = payload(message, new TypeReference<GameActionDTO<SuccessionActionDTO>>() {});
+        yield new Command.RollBuy(buy == null ? null : buy.id());
+      }
+      case ROLL_REFUND -> {
+        var refund = payload(message, new TypeReference<GameActionDTO<SuccessionActionDTO>>() {});
+        yield new Command.RollRefund(refund == null ? null : refund.id());
+      }
+      case CHOOSE -> {
+        var choice = payload(message, new TypeReference<GameActionDTO<SuccessionActionDTO>>() {});
+        yield new Command.Choose(choice == null ? null : choice.id());
       }
       case UPGRADE -> {
         var upgrade = payload(message, new TypeReference<GameActionDTO<UpgradeActionDTO>>() {});

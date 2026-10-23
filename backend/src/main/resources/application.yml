@@ -228,6 +228,11 @@ game:
     load-cap: 8
     door-floor: 99
     log-toll: true
+    min-points-to-exodus: 3
+    defeat-pity: {points: 1, min-qualifying-expeditions: 3}
+    defeat-start: {villagers-lost: 5, writ-credits: 100.0}
+    chronicle-names: 5
+    chronicle-limit: 50
     counters:
       food-grown: {marks: 3.0, par: 60000.0}
       materials-banked: {marks: 6.0, par: 17000.0}
@@ -238,6 +243,8 @@ game:
     # Must be a mounted volume: on an ephemeral filesystem every deploy deletes every Campaign.
     data-dir: ./data
     linger: 30s
+    # How long ending a Campaign or beginning a Generation waits for its write before failing.
+    end-write-wait: 10s
     # Seals the spoiler-sensitive part of exported files. Must be stable across deploys; the app
     # refuses to start in the prod profile without it (set GAME_PERSISTENCE_SEAL_KEY).
     seal-key: ${GAME_PERSISTENCE_SEAL_KEY:}

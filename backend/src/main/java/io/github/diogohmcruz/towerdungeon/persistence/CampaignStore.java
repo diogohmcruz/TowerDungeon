@@ -58,6 +58,15 @@ public interface CampaignStore {
   }
 
   /**
+   * Keeps a copy of the record a Campaign ended with, as {@code ended-last}, replacing the one
+   * before it. It is what a player is left with if the file is lost between the end and the next
+   * Generation. The default keeps nothing, for stores that have no files (test doubles).
+   */
+  default Mono<Void> saveEnded(String playerId, int schema, String gameVersion, byte[] payload) {
+    return Mono.empty();
+  }
+
+  /**
    * The newest readable record, looked for in the head, then backups 1 to 5, then the pre-migration
    * copies (newest schema first); empty when none is recoverable.
    */

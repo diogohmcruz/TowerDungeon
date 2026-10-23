@@ -14,14 +14,17 @@ import io.github.diogohmcruz.towerdungeon.domain.commands.Notice;
 import io.github.diogohmcruz.towerdungeon.domain.models.GameOutcome;
 import io.github.diogohmcruz.towerdungeon.domain.models.GameState;
 import io.github.diogohmcruz.towerdungeon.domain.models.snapshot.GameSnapshot;
+import io.github.diogohmcruz.towerdungeon.domain.prestige.PlayerMeta;
 import io.github.diogohmcruz.towerdungeon.persistence.CampaignConflictException;
 import io.github.diogohmcruz.towerdungeon.persistence.CampaignSchema;
 import io.github.diogohmcruz.towerdungeon.persistence.CampaignStore;
 import io.github.diogohmcruz.towerdungeon.persistence.CampaignStore.Rotation;
 import io.github.diogohmcruz.towerdungeon.persistence.GameVersion;
+import io.github.diogohmcruz.towerdungeon.persistence.MetaCodec;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
 import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ObjectNode;
 
 /**
  * Decides when each Campaign is written and writes it without ever doing I/O on a game thread. A
@@ -43,11 +46,22 @@ public class AutosaveCoordinator {
     }
   }
 
-  /** The copy taken under the lock, and whether the Campaign was settled (no Expedition). */
-  private record Capture(GameSnapshot snapshot, boolean settled) {}
+  /**
+   * The copy taken under the lock, the player's meta at that moment, and whether the Campaign was
+   * settled (no Expedition).
+   */
+  private record Capture(GameSnapshot snapshot, ObjectNode meta, boolean settled) {}
+
+  /** A write the caller waited for did not finish: nothing was changed. */
+  public static class WriteFailedException extends RuntimeException {
+    WriteFailedException(String message, Throwable cause) {
+      super(message, cause);
+    }
+  }
 
   private final CampaignStore store;
   private final ObjectMapper mapper;
+  private final MetaCodec metaCodec;
   private final GameProperties.Persistence config;
   private final String gameVersion;
   private final LongSupplier clock;
@@ -55,8 +69,13 @@ public class AutosaveCoordinator {
 
   @Autowired
   public AutosaveCoordinator(
-      CampaignStore store, ObjectMapper mapper, GameProperties properties, GameVersion version) {
-    this(store, mapper, properties.getPersistence(), version.current(), System::nanoTime);
+      CampaignStore store,
+      ObjectMapper mapper,
+      GameProperties properties,
+      GameVersion version,
+      MetaCodec metaCodec) {
+    this(
+        store, mapper, properties.getPersistence(), version.current(), System::nanoTime, metaCodec);
   }
 
   AutosaveCoordinator(
@@ -65,8 +84,19 @@ public class AutosaveCoordinator {
       GameProperties.Persistence config,
       String gameVersion,
       LongSupplier clock) {
+    this(store, mapper, config, gameVersion, clock, MetaCodec.development(mapper));
+  }
+
+  AutosaveCoordinator(
+      CampaignStore store,
+      ObjectMapper mapper,
+      GameProperties.Persistence config,
+      String gameVersion,
+      LongSupplier clock,
+      MetaCodec metaCodec) {
     this.store = store;
     this.mapper = mapper;
+    this.metaCodec = metaCodec;
     this.config = config;
     this.gameVersion = gameVersion;
     this.clock = clock;
@@ -216,18 +246,26 @@ public class AutosaveCoordinator {
               () ->
                   attempt.expectedSeq() == CampaignStore.INITIAL_SEQ && state.isPristine()
                       ? null
-                      : new Capture(state.toSnapshot(), !state.isExpeditionActive()));
+                      : new Capture(
+                          state.toSnapshot(), metaNodeOf(slot), !state.isExpeditionActive()));
     } catch (Exception e) {
       log.error("Could not capture the Campaign of player {}", slot.playerId(), e);
-      failed(slot, attempt, e);
+      if (tracker.captured(attempt)) {
+        failed(slot, attempt, e);
+      }
+      return;
+    }
+    if (!tracker.captured(attempt)) {
+      // An awaited write took this one over while it waited for the lock.
       return;
     }
     if (capture == null) {
-      tracker.skipped();
+      tracker.skipped(attempt);
       return;
     }
     var rotate = capture.settled() && (attempt.rotationRequested() || attempt.intervalRotation());
     var snapshot = capture.snapshot();
+    var meta = capture.meta();
     try {
       store
           .save(
@@ -236,7 +274,7 @@ public class AutosaveCoordinator {
               rotate ? Rotation.ROTATE : Rotation.KEEP,
               CampaignSchema.CURRENT,
               gameVersion,
-              () -> mapper.writeValueAsBytes(snapshot))
+              () -> encode(snapshot, meta))
           .switchIfEmpty(Mono.error(new IllegalStateException("The store saved nothing")))
           .subscribe(
               seq -> tracker.succeeded(attempt, seq, rotate), err -> failed(slot, attempt, err));
@@ -245,8 +283,84 @@ public class AutosaveCoordinator {
     }
   }
 
+  private ObjectNode metaNodeOf(PlayerSlot slot) {
+    var meta = slot.meta();
+    return meta == null ? null : metaCodec.toNode(meta);
+  }
+
+  /** The record's bytes: the Campaign, and the player's meta when there is one. */
+  private byte[] encode(GameSnapshot snapshot, ObjectNode meta) {
+    if (meta == null) {
+      return mapper.writeValueAsBytes(snapshot);
+    }
+    ObjectNode root = mapper.valueToTree(snapshot);
+    root.set("meta", meta);
+    return mapper.writeValueAsBytes(root);
+  }
+
+  /**
+   * Writes the Campaign and the player's meta now, and waits until the store has them. Call it
+   * under the state's lock with the state exactly as it should be saved. On failure nothing has
+   * changed on disk (the head is replaced atomically), the tracker owes the write again, and the
+   * exception says so: the caller undoes what it did.
+   *
+   * @param keepAsEnded also keep a copy as {@code ended-last}, written first so that a head that
+   *     says "ended" always has its copy
+   */
+  void writeAwaited(PlayerSlot slot, GameSnapshot snapshot, PlayerMeta meta, boolean keepAsEnded) {
+    var tracker = slot.saves();
+    var wait = config.getEndWriteWait();
+    var deadline = clock.getAsLong() + wait.toNanos();
+    SaveTracker.Attempt attempt;
+    while ((attempt = tracker.claimExclusive(clock.getAsLong())) == null) {
+      if (clock.getAsLong() >= deadline) {
+        throw new WriteFailedException("A write is still in flight", null);
+      }
+      pause();
+    }
+    try {
+      var payload = encode(snapshot, metaCodec.toNode(meta));
+      if (keepAsEnded) {
+        store
+            .saveEnded(slot.playerId(), CampaignSchema.CURRENT, gameVersion, payload)
+            .toFuture()
+            .get(wait.toNanos(), TimeUnit.NANOSECONDS);
+      }
+      var seq =
+          store
+              .save(
+                  slot.playerId(),
+                  attempt.expectedSeq(),
+                  Rotation.ROTATE,
+                  CampaignSchema.CURRENT,
+                  gameVersion,
+                  payload)
+              .toFuture()
+              .get(wait.toNanos(), TimeUnit.NANOSECONDS);
+      tracker.succeeded(attempt, seq, true);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      tracker.abandon(attempt);
+      throw new WriteFailedException("Interrupted while writing", e);
+    } catch (Exception e) {
+      var cause =
+          e instanceof java.util.concurrent.ExecutionException && e.getCause() != null
+              ? e.getCause()
+              : e;
+      if (cause instanceof CampaignConflictException conflict) {
+        tracker.resync(conflict.getActualSeq());
+      }
+      tracker.abandon(attempt);
+      log.warn("The awaited write for player {} failed", slot.playerId(), cause);
+      throw new WriteFailedException("The Campaign could not be written", cause);
+    }
+  }
+
   private void failed(PlayerSlot slot, SaveTracker.Attempt attempt, Throwable cause) {
     var tracker = slot.saves();
+    if (!tracker.owns(attempt)) {
+      return;
+    }
     if (cause instanceof CampaignConflictException conflict) {
       tracker.resync(conflict.getActualSeq());
     }

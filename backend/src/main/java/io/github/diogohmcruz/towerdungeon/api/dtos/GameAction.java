@@ -17,5 +17,10 @@ public enum GameAction {
   BUY_POSTS,
   BUY_RING,
   REMEDY,
-  REATTACH
+  REATTACH,
+  EXODUS,
+  ROLL_BUY,
+  ROLL_REFUND,
+  CHOOSE,
+  BEGIN_GENERATION
 }

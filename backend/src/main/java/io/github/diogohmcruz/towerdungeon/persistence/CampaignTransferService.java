@@ -133,6 +133,7 @@ public class CampaignTransferService {
                   live.replaceIfIdle(
                       playerId,
                       snapshot,
+                      read.decoded().meta(),
                       liveSeq ->
                           store
                               .save(

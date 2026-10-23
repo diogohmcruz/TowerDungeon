@@ -5,6 +5,7 @@ import java.util.OptionalLong;
 import java.util.function.ToLongFunction;
 
 import io.github.diogohmcruz.towerdungeon.domain.models.snapshot.GameSnapshot;
+import tools.jackson.databind.node.ObjectNode;
 
 /** The Campaigns currently held in memory, as far as export and import need them. */
 public interface LiveCampaigns {
@@ -21,4 +22,16 @@ public interface LiveCampaigns {
    */
   boolean replaceIfIdle(
       String playerId, GameSnapshot snapshot, ToLongFunction<OptionalLong> persist);
+
+  /**
+   * As {@link #replaceIfIdle(String, GameSnapshot, ToLongFunction)}, also replacing the player's
+   * live meta with {@code meta}. The default leaves the live meta as it is.
+   */
+  default boolean replaceIfIdle(
+      String playerId,
+      GameSnapshot snapshot,
+      ObjectNode meta,
+      ToLongFunction<OptionalLong> persist) {
+    return replaceIfIdle(playerId, snapshot, persist);
+  }
 }

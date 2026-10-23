@@ -3,21 +3,22 @@
   <section
     class="campaign-banner"
     [class.victory]="gameWon()"
-    [class.defeat]="gameLost()"
+    [class.defeat]="gameLost() || gameLeft()"
   >
     @if (gameWon()) {
     <h2>Summit Conquered</h2>
     <p>
       Your party has clawed its way to the summit and cast down the tower's
       final guardian. Its hold over the village is broken — and Ignelia is free.
-      Prestige to raise a new tower and climb again.
     </p>
+    } @else if (gameLeft()) {
+    <h2>Exodus</h2>
+    <p>The village leaves in the night. The tower keeps whoever stayed.</p>
     } @else {
     <h2>Defeat</h2>
     <p>
       No soldiers remain, the last villager is gone, and there is nothing left
-      to raise another party. The tower has swallowed everyone. Prestige to
-      begin anew.
+      to raise another party. The tower has swallowed everyone.
     </p>
     }
   </section>
@@ -95,7 +96,6 @@
   >
     Send Reinforcement Wave
   </button>
-  <button (click)="this.prestige()">Prestige</button>
 
   @if (gameState().expeditionActive) {
   <section class="run-hud">

@@ -190,4 +190,68 @@ public sealed interface Command {
       return "SEND_REINFORCEMENTS";
     }
   }
+
+  /**
+   * Lead the village away from the tower: the Campaign ends with its Toll. Refused while an
+   * Expedition is out or Held, and while the Toll forecast is under the minimum.
+   */
+  record Exodus() implements Command {
+    @Override
+    public String kind() {
+      return "EXODUS";
+    }
+  }
+
+  /** Buy an Inheritance of the Roll with Legacy, at Succession. The id is caller-supplied. */
+  record RollBuy(String inheritanceId) implements Command {
+    @Override
+    public String kind() {
+      return "ROLL_BUY";
+    }
+
+    @Override
+    public String toString() {
+      return "RollBuy[inheritanceId=<"
+          + (inheritanceId == null ? "null" : inheritanceId.length())
+          + ">]";
+    }
+  }
+
+  /**
+   * Give an Inheritance back for what was paid for it, at Succession. The id is caller-supplied.
+   */
+  record RollRefund(String inheritanceId) implements Command {
+    @Override
+    public String kind() {
+      return "ROLL_REFUND";
+    }
+
+    @Override
+    public String toString() {
+      return "RollRefund[inheritanceId=<"
+          + (inheritanceId == null ? "null" : inheritanceId.length())
+          + ">]";
+    }
+  }
+
+  /** Make one of the Succession's choices for the next Generation. The id is caller-supplied. */
+  record Choose(String choiceId) implements Command {
+    @Override
+    public String kind() {
+      return "CHOOSE";
+    }
+
+    @Override
+    public String toString() {
+      return "Choose[choiceId=<" + (choiceId == null ? "null" : choiceId.length()) + ">]";
+    }
+  }
+
+  /** Begin the next Generation from a Campaign that has ended. A no-op once it has begun. */
+  record BeginGeneration() implements Command {
+    @Override
+    public String kind() {
+      return "BEGIN_GENERATION";
+    }
+  }
 }

@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 import io.github.diogohmcruz.towerdungeon.domain.models.snapshot.GameSnapshot;
 import io.github.diogohmcruz.towerdungeon.domain.services.GameService;
 import lombok.RequiredArgsConstructor;
+import tools.jackson.databind.node.ObjectNode;
 
 /** {@link LiveCampaigns} over the {@link GameService}'s player slots. */
 @Component
@@ -25,5 +26,14 @@ public class GameServiceLiveCampaigns implements LiveCampaigns {
   public boolean replaceIfIdle(
       String playerId, GameSnapshot snapshot, ToLongFunction<OptionalLong> persist) {
     return gameService.replaceIfIdle(playerId, snapshot, persist);
+  }
+
+  @Override
+  public boolean replaceIfIdle(
+      String playerId,
+      GameSnapshot snapshot,
+      ObjectNode meta,
+      ToLongFunction<OptionalLong> persist) {
+    return gameService.replaceIfIdle(playerId, snapshot, meta, persist);
   }
 }

@@ -41,6 +41,7 @@ public class FileCampaignStore implements CampaignStore, AutoCloseable {
   private static final Pattern PLAYER_ID = Pattern.compile("[0-9a-f]{32}");
   private static final Pattern PRE_MIGRATION = Pattern.compile("pre-migration-v([0-9]{1,9})\\.tdc");
   private static final String HEAD_FILE = "campaign.tdc";
+  static final String ENDED_LAST = "ended-last.tdc";
 
   private final Path playersDir;
   private final Runnable beforeCommit;
@@ -118,6 +119,25 @@ public class FileCampaignStore implements CampaignStore, AutoCloseable {
               return Mono.<Void>fromCallable(
                   () -> {
                     savePreMigrationBlocking(playerId, schema, gameVersion, bytes);
+                    return null;
+                  });
+            })
+        .subscribeOn(writer);
+  }
+
+  @Override
+  public Mono<Void> saveEnded(String playerId, int schema, String gameVersion, byte[] payload) {
+    return Mono.defer(
+            () -> {
+              requireValidId(playerId);
+              if (gameVersion == null
+                  || !CampaignFile.GAME_VERSION.matcher(gameVersion).matches()) {
+                throw new IllegalArgumentException("Invalid game version: " + gameVersion);
+              }
+              byte[] bytes = payload.clone();
+              return Mono.<Void>fromCallable(
+                  () -> {
+                    saveEndedBlocking(playerId, schema, gameVersion, bytes);
                     return null;
                   });
             })
@@ -203,6 +223,26 @@ public class FileCampaignStore implements CampaignStore, AutoCloseable {
       try {
         writeDurably(temp, CampaignFile.encode(schema, 0, Instant.now(), gameVersion, payload));
         Files.move(temp, target, StandardCopyOption.ATOMIC_MOVE);
+      } finally {
+        Files.deleteIfExists(temp);
+      }
+      syncDirectory(dir);
+    }
+  }
+
+  private void saveEndedBlocking(String playerId, int schema, String gameVersion, byte[] payload)
+      throws IOException {
+    Path dir = playerDir(playerId);
+    synchronized (lockFor(playerId)) {
+      Files.createDirectories(dir);
+      Path temp = Files.createTempFile(dir, "ended-", ".tmp");
+      try {
+        writeDurably(temp, CampaignFile.encode(schema, 0, Instant.now(), gameVersion, payload));
+        Files.move(
+            temp,
+            dir.resolve(ENDED_LAST),
+            StandardCopyOption.ATOMIC_MOVE,
+            StandardCopyOption.REPLACE_EXISTING);
       } finally {
         Files.deleteIfExists(temp);
       }

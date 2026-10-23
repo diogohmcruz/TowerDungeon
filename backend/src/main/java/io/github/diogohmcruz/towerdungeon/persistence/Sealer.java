@@ -76,6 +76,11 @@ public final class Sealer {
     return new Sealer(DEV_KEY);
   }
 
+  /** A Sealer under the fixed development key: for tests and local runs, never a deployment. */
+  public static Sealer development() {
+    return new Sealer(DEV_KEY);
+  }
+
   public String seal(byte[] plaintext) {
     try {
       byte[] iv = new byte[IV_BYTES];

@@ -43,7 +43,11 @@ public record CommandResult(
     PURCHASE_REFUSED,
     PARTY_HELD,
     NOT_HELD,
-    INVALID_ARGUMENT
+    INVALID_ARGUMENT,
+    NOT_ENDED,
+    TOLL_TOO_LOW,
+    NOT_AVAILABLE,
+    WRITE_FAILED
   }
 
   public CommandResult {
