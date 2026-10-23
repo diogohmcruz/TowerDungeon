@@ -112,7 +112,8 @@ class FieldAccountingTest {
           Map.entry("maxSanity", "UnitSnapshot.maxSanity"),
           Map.entry("phobias", "UnitSnapshot.phobias"),
           Map.entry("fearFloor", "UnitSnapshot.fearFloor"),
-          Map.entry("gear", "UnitSnapshot.gear"));
+          Map.entry("gear", "UnitSnapshot.gear"),
+          Map.entry("affinity", "UnitSnapshot.affinity"));
 
   private static final Map<String, String> UNIT_TRANSIENT =
       Map.of(

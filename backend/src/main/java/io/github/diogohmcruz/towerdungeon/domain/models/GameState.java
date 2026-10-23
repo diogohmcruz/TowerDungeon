@@ -344,7 +344,20 @@ public class GameState {
     surplus.merge(tier, 1, Integer::sum);
   }
 
+  /** The Relics the counted surplus will bank at extraction: each item by its tier. */
+  private double surplusRelics() {
+    var relics = config.getItems().getSurplusRelics();
+    return surplus.entrySet().stream()
+        .mapToDouble(entry -> (double) entry.getValue() * relics.of(entry.getKey()))
+        .sum();
+  }
+
+  /** Banks the carried loot, and every surplus item as Relics by tier. */
   public void bankLoot() {
+    var surplusRelics = surplusRelics();
+    if (surplusRelics > 0) {
+      resources.merge(ResourceType.RELICS, surplusRelics, Double::sum);
+    }
     this.surplus = new EnumMap<>(ItemTier.class);
     carriedLoot.forEach((type, amount) -> resources.merge(type, amount, Double::sum));
     this.carriedLoot = ResourceType.emptyWallet();
@@ -717,6 +730,7 @@ public class GameState {
     unit.setSanityRules(config.getSanity());
     unit.setItemEffects(config.getItems().getEffects());
     unit.rollPhobias(random);
+    unit.rollAffinity(random, config.getItems().getAffinity().getChance());
     if (unit.isCaster()) {
       unit.chargeToFull(config.getMagic().getMaxMana());
     }
@@ -894,7 +908,8 @@ public class GameState {
             runEnemiesDefeated,
             carriedCredits,
             carriedLoot.getOrDefault(ResourceType.MATERIALS, 0d),
-            carriedLoot.getOrDefault(ResourceType.RELICS, 0d),
+            carriedLoot.getOrDefault(ResourceType.RELICS, 0d)
+                + (RunSummary.WIPED.equals(outcome) ? 0d : surplusRelics()),
             runUnitsLost,
             survivors);
   }
@@ -1231,7 +1246,8 @@ public class GameState {
                         .map(phobia -> new PhobiaSnapshot(phobia.getFeared(), phobia.isKnown()))
                         .toList(),
                     unit.getFearFloor(),
-                    Map.copyOf(unit.getGear().getSlots())))
+                    Map.copyOf(unit.getGear().getSlots()),
+                    unit.getAffinity()))
         .toList();
   }
 
@@ -1272,6 +1288,7 @@ public class GameState {
               u.currentMana(),
               partsFrom(u.parts()),
               u.gear(),
+              u.affinity(),
               config.getBody().getWeights());
       var maxSanity = u.maxSanity() == null ? config.getSanity().getMax() : u.maxSanity();
       unit.setItemEffects(config.getItems().getEffects());

@@ -67,13 +67,13 @@ Source tags used below: **[Manga]** means the fact is in `docs/research`, with t
 - **Recovery is serial.** `RoundRobinFoodDistributionStrategy` heals one wounded Reserve per tick, at up to 5 hp per tick and 1 Food per hp. Recovery therefore costs at most 5 Food/tick in total and never runs in parallel. Unit max health is 10 to 50 (Draco-Metamorph 100), so no Unit carries a 100 hp wound except the Draco-Metamorph.
 - **Starvation fires on a tick when Pantry + Fields output - Upkeep comes to zero or less.** That check runs before Recovery. When it fires, one Villager and one random Reserve Unit die that tick. An empty Pantry is not Starvation by itself. Recovery spends after the check, so Recovery can empty the Pantry but cannot cause Starvation. If Fields output covers Upkeep, an empty Pantry only stops Recovery and Supplies. Let d = max(0, Upkeep - Fields output). Starvation begins on the first tick when the Pantry is at most d. Every "Pantry holds" figure below is derived from this.
 - Credits start at 10. The n-th Villager costs n Credits, so the 21st costs 21. Food sells for 1 Credit each, Materials for 2 and Relics for 25. Selling the 10 Food/tick harvest would give 10 Credits/tick, so a Villager pays for itself in about 2n ticks. The Villager pool is cheap to grow, and Credits are the only limit on it.
-- **Loot scales with the Floor number.** Clearing Floor f gives 2f Credits, 5f Materials and 3 Supplies (flat), plus f/10 Relics from Floor 10. Guardians pay 3x. Worked example: an Expedition that clears Floor 10 banks about 375 Materials, 150 Credits and 3 Relics. Clearing Floor 16 banks about 11 Relics. Selling Materials (2 each) is the main Credit source, and it dwarfs the direct 2 Credits per Floor.
+- **Loot scales with the Floor number.** Clearing Floor f gives 2f Credits, 5f Materials and 3 Supplies (flat), and no Relics: Relics come only from surplus items, banked at Extraction (1 per Leftover, 3 per Talisman). Guardians pay 3x. Worked example: an Expedition that clears Floor 10 banks about 375 Materials and 150 Credits, plus one Relic for each surplus Leftover its Party carried out. Selling Materials (2 each) is the main Credit source, and it dwarfs the direct 2 Credits per Floor.
 - **Garrison size scales with the Floor number.** The budget is 3 + 0.8f + 0.04f^2 (+/-25%), x1.5 on Surge Floors (every 5th Floor). Every 10th Floor holds a Guardian instead. Floor 7 is about 10.6, Floor 9 about 13.4, Floor 12 about 18.4, and Floor 5 (a Surge Floor) about 12. Each Easing step removes 15% per Guardian slain above (`ease-budget-per-boss`). A Dead Soldier weighs 1.0 in that budget (`EnemyStats`: 15 hp, 5 damage, weight 1.0).
 - Loot reaches the Vault only on Extraction (or Summit Conquered). A Wipe loses it.
 - Upgrades:
   - Five Unlock Upgrades cost 40, 85 and 110 Materials, then 3 and 8 Relics.
   - Two Repeatable Upgrades: Supply Lines (+25 Carrying Capacity, 30 Materials x1.6/level) and Sharpened Arms (+10% damage, 35 x1.7/level).
-  - **Materials are abundant.** A Floor-6 Expedition (105 Materials) buys the Tank, and the two Repeatable Upgrades already give exponential sinks plus a sell valve. The dead-currency risk is **Relics**. Only 11 Relics of one-time sinks exist and one Floor-16 Expedition covers them, so afterwards Relics are only worth their 25 Credits sale price.
+  - **Materials are abundant.** A Floor-6 Expedition (105 Materials) buys the Tank, and the two Repeatable Upgrades already give exponential sinks plus a sell valve. The dead-currency risk is **Relics**. Only 11 Relics of one-time sinks exist and the surplus of a few Expeditions covers them, so afterwards Relics are only worth their 25 Credits sale price.
 - Carrying Capacity is 100 base, +60 per Porter, +25 per Supply Lines level and +25 from the Relic Lore Milestone.
 - Milestones are free, one-time and driven only by Highest Floor or Expedition count.
 - Shortcuts exist at Floors 3, 5, 10 and 15.
@@ -119,7 +119,7 @@ Guardrails:
 | Food (existing) | Tillers (default Trade) | Upkeep, Recovery, Supplies, sold (1 Credit each) | Pantry; the opportunity cost of every Trade |
 | Credits (existing) | Floors, selling | Villagers, Recruiting Units | R14 cuts Villager price via Survivors from the Floor above |
 | Materials (existing) | Loot, **Breakers** (new, via the Quarry Heap) | Unlock and Repeatable Upgrades, Posts, buildings, Panacea; Burial in C (D2) | Already abundant; Posts, buildings and Panacea are the new sinks |
-| Relics (existing) | Loot (Floor 10+) today; planned: surplus items a unit finds that are no better than what it carries, turned into Relics at Extraction (the Unit depth milestone) | Necromancer, Draco-Metamorph, Relic-cost buildings (not yet specified); Writs in C (D7) | Never produced by the Village (R10 dropped). Needs the new sinks, since the existing ones total 11 |
+| Relics (existing) | Surplus items a unit finds that are no better than what it carries, turned into Relics at Extraction (1 per Leftover, 3 per Talisman); floors pay none | Necromancer, Draco-Metamorph, Relic-cost buildings (not yet specified); Writs in C (D7) | Never produced by the Village (R10 dropped). Needs the new sinks, since the existing ones total 11 |
 | **Knowledge** (new, Stockroom) | Scribes (Scribe's Study) | Tomes (Village Repeatable Upgrades) | Capped by Stockroom capacity (60 + 4 per Highest Floor) |
 | **Quarry Heap** (new, a buffer) | Breakers | Carried to the Vault by the Party that came home, up to 5 Materials per Floor cleared in that Expedition | Keeps Village Materials tied to Expeditions. A Wipe leaves it at the Quarry |
 | **Salt** (new, Stockroom) | Salters; rare Loot on Chymus Insect Floors | Salting, Salt Pack, sold (2 Credits); Satchel and Pyre in C (D4, D2) | Only the Salt Pack rides in Carrying Capacity; links to Supplies drain |
@@ -303,7 +303,7 @@ Scores are fun / fit / feasibility, then the average (all averages re-checked). 
 | III | Fortified | Highest Floor 10, 1,000 Materials banked, 6 Expeditions | Spore Cellar | "Village Tier III, Fortified. The cellar below the Base is opened." |
 | IV | Entrenched | Highest Floor 25 and 60 Relics banked | Relic-cost buildings (B, not yet specified, see Main risk); the Stair (C) | "Village Tier IV, Entrenched. The Alliance trusts you with the old stairs." |
 
-  - Why these thresholds: lower values (250 Materials, 10 Relics) are crossed by a single high Expedition (Floor 10 banks about 375 Materials; Floor 25 banks about 34 Relics), so they would gate nothing beyond Highest Floor.
+  - Why these thresholds: lower values (250 Materials, 10 Relics) are crossed by a single high Expedition (Floor 10 banks about 375 Materials, and the Relic count follows the surplus items a Party carries out), so they would gate nothing beyond Highest Floor.
   - Village Tier is also shown as lamps along the main bridge, one more lit per level, and by the Highest Floor carved on the reference pillar (section 8.4).
 - **Main risk:**
   - Each Village Tier level must unlock real content, not just display bars. **Village Tier IV opens "Relic-cost buildings" that no idea in this document defines.** Until one is specified, Relics have no new sink in B (see open questions).
@@ -470,7 +470,7 @@ These ideas were drafted in the dread pass. The two rejected ideas are listed la
   - [Manga, official vol 6 and 7 blurbs] The excavators, the Parliament guards and Funapa undergo big changes, and Funapa follows Yuva with the Excavation Alliance and the Parliament guards (research sections 2 and 6). [Manga, review, section 11, single reviewer] The rings moved the Excavation Alliance to necromancer subjugation.
   - [Invented] The Writ, the Sentry Line, Sentries, the 2n and n prices and every number. The Parliament holding the fort at the Base is a design framing of the faction facts. Sentries, not "Wardens", avoids a clash with the Sporewardens and with R17's Watchers.
 - **Pitch:** When Highest Floor first reaches 10n, the Parliament posts Writ n: "Furnish 2n Sentries, or n Relics." The Sentry Line is a fourth Trade, drawn from the same Villager pool as Fields, Quarry and Study. Sentries produce nothing, perform Rites at no Materials cost, and each holds 2 bodies off the Pall. Paying in Relics is a one-time cost. Paying in Villagers is a standing one. An honoured Writ n puts the Parliament's Guards on the Stair up to Floor 10n, which waives the Toll there. An unpaid Writ has no punishment beyond the benefit it would have given. The Ledger writes the cost down and nothing else is said.
-- **Numbers:** Writ n is posted at Highest Floor 10n. The Relic path costs 1, 2, 3 Relics for Writs 1 to 3, and 15 Relics cumulatively through Writ 5 (Floor 50), which closes the existing 11-Relic sink gap, and 55 Relics in all through Writ 10 (n(n+1)/2). A Floor-10 Expedition banks 3 Relics (1 x the Guardian x3), and Floor 25 about 34. Muster path: Writ 5 holds 10 Sentries, 5 Food/tick forgone. That is only safe once the pool is large (about 40 Villagers or more). Sentries give Rites at 1 body per 4 ticks each, and hold 2 bodies of Pall each. Replacing 10 Sentries at around 40 Villagers costs about 455 Credits (the 41st to 50th Villagers), so the real cost is Food.
+- **Numbers:** Writ n is posted at Highest Floor 10n. The Relic path costs 1, 2, 3 Relics for Writs 1 to 3, and 15 Relics cumulatively through Writ 5 (Floor 50), which closes the existing 11-Relic sink gap, and 55 Relics in all through Writ 10 (n(n+1)/2). Relics come only from the surplus items a Party carries out, so the Relic path is paid from what the Parties find. Muster path: Writ 5 holds 10 Sentries, 5 Food/tick forgone. That is only safe once the pool is large (about 40 Villagers or more). Sentries give Rites at 1 body per 4 ticks each, and hold 2 bodies of Pall each. Replacing 10 Sentries at around 40 Villagers costs about 455 Credits (the 41st to 50th Villagers), so the real cost is Food.
 - **Counterplay:** pay in Relics when Relics are plentiful. Muster when the pool is large and Food income is comfortable. Skip the Writ and accept the Toll. Take in Villagers again with Credits.
 - **Death-spiral guard:** no punishment for refusing. The Line cannot be mandated below the Tiller minimum of 5, Sentries can be reassigned (with Settling), and Emergency Tilling applies to them. Writs only appear at Highest Floor 10 or higher, where the pool has grown.
 - **Main risk:** Toll Floors begin at 25. Writs 1 and 2 cover Floors below the first Toll Floor, so the Relic path buys nothing for them. Start the series at Writ 3, or give each Writ a second benefit, before building.
@@ -563,7 +563,7 @@ These ideas were drafted in the dread pass. The two rejected ideas are listed la
 | Trade assignment can starve the Village (Tiller minimum of 5 protects nothing at 4 Reserves) | Preview the margin on every move, warn when Fields no longer cover Upkeep, and let Emergency Tilling pull hands back at Pantry below 20 with d > 0. Nothing blocks. |
 | Starvation trivialised by Trade order, or by cheap Villagers | Keep random Villager selection weighted by headcount. Name and count every loss. Emergency Tilling has hysteresis (below 20 Food to 60), a Ledger line and the Settling cooldown. Re-measure the price curve and steepen it first. |
 | Villager pool is cheap (n Credits, no Upkeep), so Trade opportunity cost is weak | Posts, the Tiller minimum and the Stockroom caps do the limiting. Re-measure the price curve after R01. |
-| Dead currencies | Relics (11 Relics of sinks, covered by one Floor-16 Expedition): R16 Repairs, Relic-cost Tomes, Writs (D7), and the Village Tier IV buildings once specified. Trust: Ring capped at 5 levels, 264 Trust in total with a base of 20, plus a second effect. Knowledge: two Tomes from step 2, a tower-facing Tome later. Salt: dump-valve sale at 2. |
+| Dead currencies | Relics (11 Relics of sinks, covered by the surplus of a few Expeditions): R16 Repairs, Relic-cost Tomes, Writs (D7), and the Village Tier IV buildings once specified. Trust: Ring capped at 5 levels, 264 Trust in total with a base of 20, plus a second effect. Knowledge: two Tomes from step 2, a tower-facing Tome later. Salt: dump-valve sale at 2. |
 | Overlap: Recharge (R09, R20, R24, D5, D2) | R09 owns Recharge tuning. R20 touches Wave speed only. R24 is rejected. D5 and the Pall only delay Recharge. |
 | Overlap: Spores (R07, R08, R14, D5) | R07 owns Spores. R08 is dropped. R14 may barter only Salt, Materials or Food for them, and only once the Cellar is open. D5 consumes Spore Doses. |
 | Overlap: Salt (R05, R06, R14, D2, D4) | R05 owns Salt. R06 preservation is optional. R14 uses Salt only as barter input. D2's Pyre and D4's Satchel are extra claims on the same Stockroom stock. |
@@ -730,7 +730,7 @@ Tooltip: Spending does not lower the Tally. Only Extraction counts Loot.
 On reaching:  Village Tier II, Sheltered. The Parliament lets the Salt Pans be worked.
 ```
 
-Extraction Ledger (Floors 1 to 6 give 42 Credits and 105 Materials, no Relics before Floor 10):
+Extraction Ledger (Floors 1 to 6 give 42 Credits and 105 Materials, and Relics only from surplus items):
 
 ```
 EXTRACTION
@@ -799,7 +799,7 @@ Buys Thought-Binding Ring levels (10, x1.5, max 5). A Wipe earns none.
 
 Floor 4. Dov, Archer, lost. Attrition.
 Floor 9. Supplies empty. Starvation.
-Floor 10. Guardian slain. Easing below. 3 Relics carried.
+Floor 10. Guardian slain. Easing below.
 Reinforcement Wave merged on Floor 6. 2 Units. 40 Supplies.
 Floor 50. Chymus Insect. It goes for the Salt-bearer.
 ```

@@ -125,7 +125,6 @@ public class GameProperties {
     private double creditPerFloor = 2.0;
     private double materialsPerFloor = 5.0;
     private double suppliesPerFloor = 3.0;
-    private int relicDepthThreshold = 10;
     private double bossRewardMultiplier = 3.0;
     private double materialsSellPrice = 2.0;
     private double relicsSellPrice = 25.0;
@@ -419,6 +418,20 @@ public class GameProperties {
     private final SurplusRelics surplusRelics = new SurplusRelics();
     private final Effects effects = new Effects();
     private final Artifacts artifacts = new Artifacts();
+    private final Affinity affinity = new Affinity();
+
+    /** The leaning a unit may have towards one item category. */
+    @Data
+    public static class Affinity {
+      /** Chance a fresh recruit has an affinity at all. */
+      private double chance = 0.5;
+
+      /** What the rating of items in the affinity category is multiplied by, for that unit. */
+      private double ratingMultiplier = 1.25;
+
+      /** What the unit's find chance is multiplied by for items in the affinity category. */
+      private double findMultiplier = 1.5;
+    }
 
     /** Most items a floor keeps for the party to find again; the lowest rating vanish first. */
     private int floorGearCap = 12;
@@ -449,14 +462,16 @@ public class GameProperties {
     /** What a surplus item of a tier is worth when it is turned into Relics. */
     @Data
     public static class SurplusRelics {
+      private int leftover = 1;
       private int talisman = 3;
 
-      /**
-       * Relics for a surplus item of {@code tier}; a Leftover pays none here, an Artifact is never
-       * surplus.
-       */
+      /** Relics for a surplus item of {@code tier}; an Artifact is never surplus. */
       public int of(ItemTier tier) {
-        return tier == ItemTier.TALISMAN ? talisman : 0;
+        return switch (tier) {
+          case LEFTOVER -> leftover;
+          case TALISMAN -> talisman;
+          case ARTIFACT -> 0;
+        };
       }
     }
 

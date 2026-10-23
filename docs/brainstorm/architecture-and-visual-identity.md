@@ -256,7 +256,7 @@ The seed, `towerSecret`, Generation and any imposed Mutations stay on the backen
 | Traverse | Seconds of approach before combat; Attrition and drain only | at most 3 s |
 | Wet | The Salt Pack's bonus is void | flag |
 
-**Excluded: a Loot lever.** No Architecture multiplies Loot: that would shift the loot formulas that [P&P §3.4] fits its Toll par values to (Floor f pays 5f Materials, 2f Credits, f/10 Relics from Floor 10) and would add a second Materials source beside Package B's Quarry. Reopen it only with a rule that Loot multipliers average 1.0 over every Reach.
+**Excluded: a Loot lever.** No Architecture multiplies Loot: that would shift the loot formulas that [P&P §3.4] fits its Toll par values to (Floor f pays 5f Materials and 2f Credits; Relics come only from surplus items) and would add a second Materials source beside Package B's Quarry. Reopen it only with a rule that Loot multipliers average 1.0 over every Reach.
 
 **Fairness contract.** Architecture is never random; only the existing plus-or-minus 25% variance remains. The type shows the moment a Floor is discovered and stays on the Tower ladder. Floors above the Highest Floor show only a dithered silhouette (the unknown is which of the 12, never how bad it can be). The Expedition Summary gains a ribbon of the Floors traversed, with a tick where a Unit fell. The first Chymus Insect the player meets is the **Floor 40 Guardian** (Floor Difficulty 4 puts a Chymus Insect at index 4 [Code]); Garrisons only add Chymus Insects from Floor 45 (Difficulty 5). The Floor 40 Gate is dry (no Wet rule), and Waterway and Well Floors from 45 up carry the Wet flag and void the Salt Pack.
 

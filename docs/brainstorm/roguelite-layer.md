@@ -129,7 +129,7 @@ The Toll's par values are fitted to today's loot formulas (P&P 3.4), and E0 will
 | Supplies drain | 1.5 per Unit per second. Read in two places: `updateInvasion` and `advanceReinforcements` | [Code] |
 | Starvation | 5 hp per second per Unit once Supplies are empty. It is applied in the same tick the drain empties them | `starvation-damage`, [Code] |
 | Supplies at set-out | 100 base + 60 per Porter + 25 per Supply Lines level + 25 Relic Lore, limited by what the Pantry holds | [Code] |
-| Loot per cleared Floor f | 2f Credits, 5f Materials, +3 Supplies; f/10 Relics from Floor 10; all x3 on a Guardian Floor | `reward.*` |
+| Loot per cleared Floor f | 2f Credits, 5f Materials, +3 Supplies, no Relics (they come from surplus items); all x3 on a Guardian Floor | `reward.*` |
 | Guardian Floor / Surge Floor | every 10 Floors (and the Summit) / every 5 Floors, x1.5; Floors 10, 20... are Guardian Floors, so Surge Floors in practice are 5, 15, 25...95 | `boss.interval`, `surge-interval` |
 | Garrison budget | 3 + 0.8f + 0.04f^2, +/-25%. Floor 9 about 13.4; Floor 25 is 48 x 1.5 = 72 | `enemies.*` |
 | Guardian health | base x (3.0 + 0.05 x Floor): Floor 10 52.5, Floor 20 160, Floor 40 500, Floor 50 1,650 | P&P 3.11 |
@@ -195,7 +195,7 @@ Honest value of a Unit: a Warrior costs 3 Credits, and a Floor-10 Expedition ban
 
 **Gambles print their worst case and never their odds.** "The owner may stand." A Price is never hidden; only a first-contact outcome may be.
 
-**Neutrality.** Two tests (G7). Reach 1's Loot is 975 Credits (750 for Materials, 150 Credits, 75 for 3 Relics), so the Loot ceiling is about 29. Reach 2's is 2,828 (Floors 11 to 20: 975 Materials, 390 Credits, 19.5 Relics). Finds pay mainly in goods the Toll does not count (Supplies, later Salt and Spores). The Toll's square roots halve any drift: +3% on a counter is +1.5% of its Marks.
+**Neutrality.** Two tests (G7). Reach 1's Loot is 900 Credits (750 for Materials, 150 Credits), so the Loot ceiling is about 27. Reach 2's is 2,340 (Floors 11 to 20: 975 Materials, 390 Credits). Finds pay mainly in goods the Toll does not count (Supplies, later Salt and Spores). The Toll's square roots halve any drift: +3% on a counter is +1.5% of its Marks.
 
 **Launch Kinds (4).** The Fallen's Baggage, The Missing Baggage, Deserters on the Stair, The Barred Room. Second wave: The Crossing, The Sleeper, The Gaze (needs Architecture and E0), Dorias (needs the Ring), The Standing Figure (needs a glossary ruling, see Case 11).
 

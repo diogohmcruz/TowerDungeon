@@ -576,11 +576,6 @@ public class GameService {
     gameState.gatherLoot(
         ResourceType.MATERIALS, clearedFloor * reward.getMaterialsPerFloor() * rewardMultiplier);
     gameState.gatherSupplies(reward.getSuppliesPerFloor() * rewardMultiplier);
-    if (clearedFloor >= reward.getRelicDepthThreshold()) {
-      gameState.gatherLoot(
-          ResourceType.RELICS,
-          (clearedFloor / (double) reward.getRelicDepthThreshold()) * rewardMultiplier);
-    }
   }
 
   private void applyStarvation(GameState gameState) {

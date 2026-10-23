@@ -15,6 +15,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
 import io.github.diogohmcruz.towerdungeon.domain.items.EquipResult;
 import io.github.diogohmcruz.towerdungeon.domain.items.Item;
+import io.github.diogohmcruz.towerdungeon.domain.items.ItemCategory;
 import io.github.diogohmcruz.towerdungeon.domain.items.ItemEffect;
 import io.github.diogohmcruz.towerdungeon.domain.items.ItemRating;
 import io.github.diogohmcruz.towerdungeon.domain.items.ItemStat;
@@ -48,6 +49,9 @@ public class Unit extends BaseUnit implements Aimable {
    * (default 1.0). Used for scripted units such as the Founders.
    */
   private boolean fixedStrengths = false;
+
+  /** The item category this unit has a knack for; rolled at recruit, {@code null} for none. */
+  private ItemCategory affinity;
 
   /** Health below this counts as zero, absorbing floating-point drift from proportional hits. */
   static final double EPSILON = 1e-9;
@@ -116,7 +120,12 @@ public class Unit extends BaseUnit implements Aimable {
    * fitting.
    */
   public EquipResult equip(Item item, ItemRating rating) {
-    return gear.equip(item, rating, this::isUsable);
+    return gear.equip(item, rating.forAffinity(affinity), this::isUsable);
+  }
+
+  /** How this unit rates an item: its affinity category scores higher. */
+  public double ratingOf(Item item, ItemRating rating) {
+    return rating.forAffinity(affinity).of(item);
   }
 
   private boolean isUsable(Slot slot) {
@@ -172,6 +181,7 @@ public class Unit extends BaseUnit implements Aimable {
       double currentMana,
       List<Part> savedParts,
       Map<Slot, Item> savedGear,
+      ItemCategory affinity,
       GameProperties.Body.Weights bodyWeights) {
     var unit = new Unit(stats, id, name);
     unit.healthFactor = healthFactor;
@@ -183,6 +193,7 @@ public class Unit extends BaseUnit implements Aimable {
     unit.parts.clear();
     unit.parts.addAll(savedParts);
     unit.gear.restore(savedGear);
+    unit.affinity = affinity;
     return unit;
   }
 
@@ -507,6 +518,22 @@ public class Unit extends BaseUnit implements Aimable {
     var pool = new ArrayList<>(List.of(EnemyStats.values()));
     for (var i = 0; i < count && !pool.isEmpty(); i++) {
       addPhobia(pool.remove(random.nextInt(pool.size())));
+    }
+  }
+
+  /**
+   * Draws this unit's affinity from {@code random}: whether it has one (by {@code chance}) and, if
+   * so, which of the item categories, uniformly. Units with {@link #fixedStrengths} have none and
+   * draw nothing.
+   */
+  public void rollAffinity(RandomGenerator random, double chance) {
+    affinity = null;
+    if (fixedStrengths) {
+      return;
+    }
+    if (random.nextDouble() < chance) {
+      var categories = ItemCategory.values();
+      affinity = categories[random.nextInt(categories.length)];
     }
   }
 

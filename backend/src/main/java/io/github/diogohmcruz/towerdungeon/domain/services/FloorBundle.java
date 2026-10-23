@@ -27,6 +27,7 @@ import io.github.diogohmcruz.towerdungeon.domain.models.Unit;
 public class FloorBundle {
   private final RandomGenerator random;
   private final GameProperties.Items.Bundle config;
+  private final GameProperties.Items.Affinity affinity;
   private final LeftoverGenerator generator;
   private final ItemRating rating;
   private final TalismanGenerator talismans;
@@ -53,8 +54,10 @@ public class FloorBundle {
     this.artifacts = artifacts;
     this.random = random;
     this.config = properties.getItems().getBundle();
+    this.affinity = properties.getItems().getAffinity();
     this.generator = generator;
-    this.rating = new ItemRating(properties.getItems().getWeights());
+    this.rating =
+        new ItemRating(properties.getItems().getWeights(), affinity.getRatingMultiplier());
   }
 
   /**
@@ -82,9 +85,20 @@ public class FloorBundle {
                 .toList());
     Collections.shuffle(finders, random);
     for (var finder : finders) {
-      var found = random.nextDouble() < config.getFindChance() * findMultiplier(finder);
-      if (found && !pool.isEmpty()) {
+      var roll = random.nextDouble();
+      if (pool.isEmpty()) {
+        continue;
+      }
+      if (roll < config.getFindChance()) {
         give(gameState, finder, pool.remove(random.nextInt(pool.size())));
+      } else if (roll < config.getFindChance() * affinity.getFindMultiplier()) {
+        // Only the unit's affinity makes this find possible, so it can only be of that category.
+        var liked = pool.stream().filter(item -> item.category() == finder.getAffinity()).toList();
+        if (!liked.isEmpty()) {
+          var item = liked.get(random.nextInt(liked.size()));
+          pool.remove(item);
+          give(gameState, finder, item);
+        }
       }
     }
 
@@ -103,10 +117,5 @@ public class FloorBundle {
       gameState.addSurplus(result.surplus().tier());
     }
     finder.changeSanity(config.getSanityGain());
-  }
-
-  /** Multiplies a unit's find chance; 1.0 until affinities exist. */
-  double findMultiplier(Unit unit) {
-    return 1.0;
   }
 }

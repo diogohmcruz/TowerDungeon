@@ -215,4 +215,63 @@ class FloorBundleTest {
 
     assertThat(unit.getSanity()).isCloseTo(before + 10, within(1e-9));
   }
+
+  private static Item boots(String id) {
+    return new Item(
+        id, id, ItemTier.LEFTOVER, ItemCategory.BOOTS, Map.of(ItemStat.EVASION, 1.0), null);
+  }
+
+  /** Finds per clear of a one-member party whose pool is one weapon, at the given affinity. */
+  private double findRate(ItemCategory affinity, Item waiting, int clears, long seed) {
+    var bundle = bundle(new SplittableRandom(seed));
+    var found = 0;
+    for (var i = 0; i < clears; i++) {
+      var state = partyOf(1, waiting);
+      members(state).getFirst().setAffinity(affinity);
+      bundle.resolve(state, 3, true);
+      found += worn(members(state).getFirst());
+    }
+    return found / (double) clears;
+  }
+
+  @Test
+  void anAffinityRaisesTheFindChanceForThatCategoryByHalf() {
+    var rate = findRate(ItemCategory.WEAPON, weapon("w", 1.0), 20_000, 21);
+
+    assertThat(rate).isCloseTo(0.15 * 1.5, within(0.015));
+  }
+
+  @Test
+  void anAffinityDoesNotChangeTheFindChanceForOtherCategories() {
+    var rate = findRate(ItemCategory.HELM, weapon("w", 1.0), 20_000, 22);
+
+    assertThat(rate).isCloseTo(0.15, within(0.015));
+  }
+
+  @Test
+  void aFindOnlyTheBoostMadePossibleTakesAnItemOfTheAffinityCategory() {
+    config.getItems().getBundle().setFindChance(0.4);
+    config.getItems().getAffinity().setFindMultiplier(2.5);
+    var bundle = bundle(new SplittableRandom(23));
+    var weapons = 0;
+    var bootsFound = 0;
+    var clears = 10_000;
+    for (var i = 0; i < clears; i++) {
+      var state = partyOf(1, weapon("w", 1.0), boots("b"));
+      var unit = members(state).getFirst();
+      unit.setAffinity(ItemCategory.WEAPON);
+      bundle.resolve(state, 3, true);
+      for (var item : unit.dropAll()) {
+        if (item.category() == ItemCategory.WEAPON) {
+          weapons++;
+        } else {
+          bootsFound++;
+        }
+      }
+    }
+
+    // Rolls under 0.4 pick either item; the 0.6 the boost adds all go to the weapon.
+    assertThat(weapons / (double) clears).isCloseTo(0.2 + 0.6, within(0.02));
+    assertThat(bootsFound / (double) clears).isCloseTo(0.2, within(0.02));
+  }
 }

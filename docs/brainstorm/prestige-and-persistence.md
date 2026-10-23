@@ -6,7 +6,7 @@ Source tags: **[Manga §n]** is a fact in `docs/research/tower-dungeon-since-vol
 
 Code facts were re-verified against the source in the critic pass (`GameWebSocketHandler`, `WebSocketConfig`, `GameService`, `GameState`, `Village`, `Tower`, `TowerFloor`, `Enemy`, `Reinforcement`, `EnemyStats`, `UnitStats`, `ShortcutType`, `MilestoneType`, `GameProperties`, `application.yml`, `pom.xml`, the Angular socket service and `game-component`). Confirmed: `GameOutcome` is `PLAYING | VICTORY | DEFEAT`; the frontend already sends a `PRESTIGE` action (`game-component.html:83`, `game-component.ts:109`, `game-action.enum.ts:11`); the backend has no `PRESTIGE` case and its `GameAction` enum lacks the value; `GameState.prestigePoints` is an unused `Integer` that the template still prints (`game-component.html:171`).
 
-Every difficulty, pacing and point number below is a starting knob. No telemetry exists and `backend/src/test` does not exist. The model figures come from the loot formulas (Floor f pays 5f Materials, 2f Credits, f/10 Relics from Floor 10, all x3 on Guardian Floors), not from play. Section 3.11 shows that the upper half of the Tower (Floors 70 to 100) is not beatable on the current enemy and Supplies numbers, so the Highest Floor targets in 3.10 are targets for a scaling pass that does not exist yet.
+Every difficulty, pacing and point number below is a starting knob. No telemetry exists and `backend/src/test` does not exist. The model figures come from the loot formulas (Floor f pays 5f Materials and 2f Credits, all x3 on Guardian Floors; Relics come only from surplus items), not from play. Section 3.11 shows that the upper half of the Tower (Floors 70 to 100) is not beatable on the current enemy and Supplies numbers, so the Highest Floor targets in 3.10 are targets for a scaling pass that does not exist yet.
 
 ---
 
@@ -306,11 +306,11 @@ Residue_next = T mod 9                        // the remainder is never lost
 | Relics banked | 4 | 320 |
 | Expeditions completed | 3 | 17 |
 
-The Ascent weight is 0.4 per Floor (39.6 at most) and Guardians 1.5 each (15 at most). **The par values are fitted to a modelled first Campaign and must be refitted after the first real playtest.** They are internally consistent with the real loot: 17 Expeditions banking 17,000 Materials, 6,800 Credits and 320 Relics is about 1,000 Materials, 400 Credits and 19 Relics each, which is what clearing roughly Floors 1 to 20 (or 15 to 30) pays (Floors 1 to 20 is 1,350 Materials, 420 Credits and 22.5 Relics by the loot formulas).
+The Ascent weight is 0.4 per Floor (39.6 at most) and Guardians 1.5 each (15 at most). **The par values are fitted to a modelled first Campaign and must be refitted after the first real playtest.** The Materials and Credits pars are consistent with the real loot: 17 Expeditions banking 17,000 Materials and 6,800 Credits is about 1,000 Materials and 400 Credits each, which is what clearing roughly Floors 1 to 20 (or 15 to 30) pays (Floors 1 to 20 is 1,350 Materials and 420 Credits by the loot formulas). The Relic par of 320 has no such check: Relics come only from surplus items, so it must be refitted once real surplus rates are known.
 
 Sanity checks:
 
-- **One Floor 1 to 10 Expedition** banks 375 Materials, 150 Credits and 3 Relics, for 0.89 + 0.45 + 0.39 + 0.73 (the Expedition) + 4.0 (Floors) + 1.5 (Guardian) = **about 8 Marks**. With the first Guardians that is roughly one point.
+- **One Floor 1 to 10 Expedition** banks 375 Materials and 150 Credits (Relics depend on the surplus items carried out, none counted here), for 0.89 + 0.45 + 0.73 (the Expedition) + 4.0 (Floors) + 1.5 (Guardian) = **about 7.6 Marks**. With the first Guardians that is roughly one point.
 - **Idle does not pay.** 20 Villagers at 0.5 Food/tick is 10 Food/tick. 90 minutes is 54,000 Food, worth `3*sqrt(0.9) = 2.85` Marks, under a third of a point. An 8-hour abandoned tab is 288,000 Food, worth 6.6 Marks, under one point.
 - **Doubling a source gives 1.41x its Marks.** Ascent (Floors plus Guardians) is the one near-linear source, so the player must climb.
 - **Early Prestige is not strictly best.** Legacy per **model** hour is flat inside Generation 1 (about 6.2/h at Floor 20, 5.8 to 6.0/h at Floor 35) and rises in later Generations through New Ground and Mutation multipliers. The pacing table in 3.10 uses **planned** hours (model hours times 1.25), which is why it shows 4.7 for the same Campaign.

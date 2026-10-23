@@ -33,7 +33,6 @@ game:
     credit-per-floor: 2.0
     materials-per-floor: 5.0
     supplies-per-floor: 3.0
-    relic-depth-threshold: 10
     boss-reward-multiplier: 3.0
     materials-sell-price: 2.0
     relics-sell-price: 25.0
@@ -98,6 +97,10 @@ game:
       leftover-chance: 0.20
       find-chance: 0.15
       sanity-gain: 10.0
+    affinity:
+      chance: 0.5
+      rating-multiplier: 1.25
+      find-multiplier: 1.5
     weights:
       power: 1.0
       armour: 0.8
@@ -121,6 +124,7 @@ game:
       leftover: 0.9
       talisman: 0.1
     surplus-relics:
+      leftover: 1
       talisman: 3
     effects:
       steadfast-max-sanity: 10.0

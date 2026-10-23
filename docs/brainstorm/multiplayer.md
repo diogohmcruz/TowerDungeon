@@ -299,7 +299,7 @@ After Stage 5 plays, the campaign-long **Lineage Race** (shared seed and sealed 
 | Garrison scale k | 0.85 (A), 0.8 (C), 0.75 (architecture), 0.6 (B, Guardian). | 0.8 for the Garrison and 0.75 for the Guardian, with the Guardian striking once per Party. Run the simulator before trusting either. |
 | Externality shape | One squared form (A). | **Two shapes.** A fixed Garrison costs the stayers (n/m)^2 (more enemies per Unit and a longer fight). A Guardian that strikes once per Party present costs them n/m (the same strike rate per Unit, a longer fight). The Share uses the shape of the fight (4.4). |
 | Loot split | Instanced per Party x L(n) (A, C), a sublinear pot (architecture). | Instanced x L(n), scaled by the Effort ramp. Each Party paid for Units and Supplies it risked. The pot is a decision (section 11.4). |
-| Relics in the Share | Exempt (A), included (C). | Included at the same rate. Relics are where the value is on the high Floors. A decision. |
+| Relics in the Share | Exempt (A), included (C). | Included at the same rate. Relics reach the Vault only as surplus items at Extraction, so none are in hand on the stair; the row matters only if a Relic source in hand is added. A decision. |
 | Who may collect a Share | Anyone present (C). | Only Parties with `f >= 0.5`, and only if they stand to the kill (3.5 rule 7). A silent tank would otherwise collect a bounty from every leaver. |
 | Contact-lost hold | 6 ticks (C), 20 to 30 s (research, A), 20 s (architecture). | **10 ticks after contact is declared lost.** An Archer has 10 hp and a full Supplies load lasts about 12 ticks, so 20 to 30 s is a Wipe sentence. 6 ticks is harsh on a wifi blip. Contact is declared lost by a server heartbeat (7.4). |
 | Door | Per Party (A), only if all hold it (architecture). | **Per Party.** The "all must hold" rule makes one player a hostage-taker. |
@@ -386,7 +386,7 @@ Now Extract is no longer dominant: Stay is the best reply to Stay (7,474 > 7,065
 - **Recipient cap:** a Party cannot receive more than 50% of its own Loot in hand. Nothing is a gift: it is the only cross-Party transfer and is bounded by what the leaver earned.
 - **Follow window:** if every remaining Party also calls within 3 ticks of the first call, all Shares are refunded. A Company that turns back together pays nothing. That is cooperation. A call that is later cancelled voids the window.
 - It is a transfer (or, when forfeited, a loss to the Tower), never minted, and it never touches the Vault, so the Vault boundary stays clean.
-- Because it shrinks with H, leaving late in a fight that is being won is cheap, and leaving early in a fight that is going badly is expensive. Example, a Garrison Floor: a leaver at Floor 29, H = 0.6, n = 2 to 1 owes 0.18 of 2,475 Materials, 990 Credits and 45 Relics, about 1,272 Credits at sell price. The same leaver at the Floor 30 Guardian owes 0.12: about 848.
+- Because it shrinks with H, leaving late in a fight that is being won is cheap, and leaving early in a fight that is going badly is expensive. Example, a Garrison Floor: a leaver at Floor 29, H = 0.6, n = 2 to 1 owes 0.18 of 2,475 Materials and 990 Credits, about 1,069 Credits at sell price. The same leaver at the Floor 30 Guardian owes 0.12: about 713.
 
 **What a Share does to the break-even.** With the break-even formula of 4.2, a leaving cost between 18% and 20% of A holds the break-even between about 0.45 and 0.60 at any height of the Tower, against 0.88 at Floor 40 without one. That keeps the dilemma alive across the whole Tower, if the Share is that large. At the Guardian shape and H = 0.6 it is 12%.
 
@@ -491,7 +491,7 @@ Add after simulation shows they are needed (all cuttable):
 Three Parties stand at the Floor 30 Threshold. The Chimera is scaled 315 x (1 + 0.75 x 2) = 788 hp.
 1. Ticks 0 to 4: dormant. All three Stand. Attrition costs 4 hp per Unit.
 2. Tick 8 (Brace done): the Guardian is at H = 0.70. Hypatia's Party is Pressed (4 of 12 Units dead).
-3. Tick 9: Zeno's Party calls. n = 3, m = 2, Guardian shape: `lambda = 0.4 x (1 - 1/1.5) x 0.70 = 0.093`. At completion H may be lower, since Zeno fights through the channel, and the Share is read then. At H = 0.70, Zeno owes about 660 Credits at sell price (231 Materials, 92 Credits, 4 Relics) and half its leftover Supplies. Hypatia is Pressed, so the stair holds, up to 3 extra ticks.
+3. Tick 9: Zeno's Party calls. n = 3, m = 2, Guardian shape: `lambda = 0.4 x (1 - 1/1.5) x 0.70 = 0.093`. At completion H may be lower, since Zeno fights through the channel, and the Share is read then. At H = 0.70, Zeno owes about 554 Credits at sell price (231 Materials, 92 Credits) and half its leftover Supplies. Hypatia is Pressed, so the stair holds, up to 3 extra ticks.
 4. Tick 13: Hypatia's Party is lost (a Wipe) while the stair is held. Its Loot in hand is lost, and the Pressed hold ends. Zeno's channel completes at once. The Share goes to Crates's Party alone, subject to the 50% cap. Zeno's stair is shut. Crates's Party is the only Party left and may call at no Share.
 5. Crates stays, clears, and is paid 1,305 x L(1) = 1,305 (n is the Parties present at the kill) plus the Share plus Easing.
 
@@ -553,9 +553,9 @@ A Company is not ordered by Effort at the Dragon's death, nor by Floors Stood an
 
 | Item | Rule |
 |---|---|
-| Floor Loot | Unchanged formulas: 5f Materials, 2f Credits, f/10 Relics from Floor 10, +3 Supplies, all x3 on a Guardian Floor. Paid to each Party present, once per Floor (a per-Floor `settledFor` set), scaled by the Effort fraction `f`. In `updateInvasion` Loot is paid in the tick after the last kill (the "garrison is empty" branch), so "present" is read at the kill (3.5 rule 4). |
+| Floor Loot | Unchanged formulas: 5f Materials, 2f Credits, +3 Supplies, no Relics, all x3 on a Guardian Floor. Paid to each Party present, once per Floor (a per-Floor `settledFor` set), scaled by the Effort fraction `f`. In `updateInvasion` Loot is paid in the tick after the last kill (the "garrison is empty" branch), so "present" is read at the kill (3.5 rule 4). |
 | Sharing multiplier | `L(n) = 1 - 0.05(n-1)` in a Stand or Company, n being the Parties present at the kill. `loot-yield` is the single valve: if telemetry shows co-op Parties extract more or bank more per Floor than solo, lower it (try 0.9) before touching `g`. |
-| Relics | Instanced like the rest. A relic pot (`n x (f/10 x 3)`, half equal and half by Effort) is an alternative that rewards hitting harder without making the economy zero-sum. Cut from v1 for simplicity. |
+| Relics | Not paid by Floors: they come from surplus items at Extraction, so there is no relic pot to share. |
 | Supplies | Per Party. 1.5 per Unit per tick against the Party's own Carrying Capacity. Starvation per Party. Floor Supplies (+3) not scaled. |
 | Mana, Heal | Mana is personal and never shared. Heal targets the whole Company by default. |
 | Reinforcement Waves | Per Party. A Wave carries its own Supplies, climbs from the Base and Merges only into its own Party. In a Company they draw only on the stock committed at Departure. REINFORCE sends through an **outbox**: the Campaign debits Units and Food, records the Wave, and posts it. At settlement the Campaign returns any Wave the result does not mention. In a Stand a Wave in transit travels with the Stand record (7.1). |
@@ -767,11 +767,11 @@ No delta compression in v1. Frames are full, idempotent snapshots tagged `tick`.
 | Moment | Copy |
 |---|---|
 | Call confirmation (Garrison Floor) | "Calling the stair takes three seconds. The Party stays in the fight until it is through. The Garrison is at 62 percent. One Party remains. Leaving now adds four times the pressure to the one that stays." For a Guardian the last sentence reads "twice". |
-| Cost line | "You will owe the Rearguard: 195 Materials, 78 Credits, 3.1 Relics and 30 Supplies." |
-| Keep line | "You keep: 855 Materials, 342 Credits, 13.4 Relics." |
+| Cost line | "You will owe the Rearguard: 195 Materials, 78 Credits and 30 Supplies." |
+| Keep line | "You keep: 855 Materials and 342 Credits." |
 | Buttons | "Call the stair" and "Stay" |
 | To the others on a call | "Zeno's Party has called the stair. It is through in three seconds. The Guardian is not." |
-| Completed | "The stair is shut behind Zeno's Party. It left the Rearguard 231 Materials, 92 Credits, 4 Relics and 25 Supplies." |
+| Completed | "The stair is shut behind Zeno's Party. It left the Rearguard 231 Materials, 92 Credits and 25 Supplies." |
 | Follow window | "Zeno's Party has called the stair. If the rest of you call within three seconds, no one is left behind and no one owes." |
 | Share forfeited | "Crates's Party called the stair with what Zeno left it. It stays on the Floor." |
 | Threshold | "The Floor is quiet. It is waiting for the whole Company. Stand, or take the stair. Every answer is shown together." |
@@ -781,13 +781,13 @@ No delta compression in v1. Frames are full, idempotent snapshots tagged `tick`.
 | Contact lost | "Contact is lost with Crates's Party. It holds for ten seconds, then calls the stair on its own." |
 | A Wipe in the Company | "Hypatia's Party is gone. Its names stay on Floor 30." |
 | Door, no key | "The door does not open for you. The others go on." |
-| Ledger, the leaver (Garrison Floor) | "Called the stair on Floor 19 with the Garrison at 62 percent. Owed to those who stayed: 195 Materials, 78 Credits, 3.1 Relics, 30 Supplies. Banked: 855 Materials, 342 Credits, 13.4 Relics." |
-| Ledger, a stayer | "Received from Zeno: 231 Materials, 92 Credits, 4 Relics, 25 Supplies." |
+| Ledger, the leaver (Garrison Floor) | "Called the stair on Floor 19 with the Garrison at 62 percent. Owed to those who stayed: 195 Materials, 78 Credits, 30 Supplies. Banked: 855 Materials, 342 Credits." |
+| Ledger, a stayer | "Received from Zeno: 231 Materials, 92 Credits, 25 Supplies." |
 | Ledger (Company) | "Company of three, to Floor 31. Crates stood to the end. Zeno called the stair on Floor 30. Hypatia fell on 30." |
 | Race record | "Race of 2026-10-24. Floor 20. 3rd of 17. 41:08. 112 fallen." |
 | Gathering stair record | "Stair record: stood 7, called 2, contact lost 1." |
 
-(The Floor 19 lines were checked: 195 + 855 = 1,050 Materials, 78 + 342 = 420 Credits and 3.1 + 13.4 = 16.5 Relics are the Loot of Floors 1 to 19, and 195/1,050 = 0.186 is the Garrison Share at H = 0.62.)
+(The Floor 19 lines were checked: 195 + 855 = 1,050 Materials and 78 + 342 = 420 Credits are the Loot of Floors 1 to 19, and 195/1,050 = 0.186 is the Garrison Share at H = 0.62.)
 
 Race Ledger lines are in 3.2. The four tugs idea (Hold, Press, Falling back, Wounded) is subsumed by the eight fixed emotes.
 

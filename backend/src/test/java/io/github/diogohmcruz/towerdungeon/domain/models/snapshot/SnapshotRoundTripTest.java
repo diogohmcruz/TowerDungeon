@@ -11,6 +11,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
+import io.github.diogohmcruz.towerdungeon.domain.items.ItemCategory;
 import io.github.diogohmcruz.towerdungeon.domain.items.ItemRating;
 import io.github.diogohmcruz.towerdungeon.domain.items.ItemTier;
 import io.github.diogohmcruz.towerdungeon.domain.items.LeftoverGenerator;
@@ -251,6 +252,21 @@ class SnapshotRoundTripTest {
     assertThat(after.getHealthFactor()).isEqualTo(before.getHealthFactor());
     assertThat(after.getDamageFactor()).isEqualTo(before.getDamageFactor());
     assertThat(after.getMaxHealth()).isEqualTo(before.getMaxHealth());
+  }
+
+  @Test
+  void anAffinitySurvivesARoundTripAndNoAffinityStaysNone() throws Exception {
+    var original = midCampaign();
+    var archer = original.getUnits().get(UnitStats.ARCHER).getFirst();
+    var mage = original.getUnits().get(UnitStats.MAGE).getFirst();
+    archer.setAffinity(ItemCategory.BOOTS);
+    mage.setAffinity(null);
+
+    var restored = viaJson(original);
+
+    assertThat(restored.getUnits().get(UnitStats.ARCHER).getFirst().getAffinity())
+        .isEqualTo(ItemCategory.BOOTS);
+    assertThat(restored.getUnits().get(UnitStats.MAGE).getFirst().getAffinity()).isNull();
   }
 
   @Test

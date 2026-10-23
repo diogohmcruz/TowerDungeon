@@ -376,7 +376,7 @@ The common loot dropped on every cleared floor, used to pay for most upgrades or
 _Avoid_: Resources, scrap, ore
 
 **Relics**:
-The rare loot found only on high floors, used to pay for the most powerful unlock upgrades or sold for credits. Planned: relics come from surplus items, those a unit finds that are no better than what it already carries, counted during the expedition and turned into relics when extraction banks them. A wipe loses them. An artifact is a different thing and is never a relic.
+The rare loot that comes only from surplus items, those a unit finds that are no better than what it already carries, used to pay for the most powerful unlock upgrades or sold for credits. Surplus items are counted during the expedition and turned into relics when extraction banks them (a leftover is one relic, a talisman three); a wipe loses them, and no floor pays relics directly. An artifact is a different thing and is never surplus, so never a relic.
 _Avoid_: Treasure
 
 **Loot**:

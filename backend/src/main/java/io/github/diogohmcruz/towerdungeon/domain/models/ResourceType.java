@@ -5,8 +5,8 @@ import java.util.Map;
 
 /**
  * Resources gathered from the tower during a run. {@link #MATERIALS} drop on every floor and fund
- * units/gear; {@link #RELICS} are rare, only drop on deeper floors, and fund major/permanent
- * upgrades.
+ * units/gear; {@link #RELICS} are rare, come only from surplus items banked at extraction, and fund
+ * major/permanent upgrades.
  */
 public enum ResourceType {
   MATERIALS,
