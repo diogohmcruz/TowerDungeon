@@ -657,13 +657,14 @@ public class Unit extends BaseUnit implements Aimable {
   }
 
   /**
-   * Seam for low sanity dulling aim: percentage points added to {@link #getAccuracy()} (zero for
-   * now, so sanity does not touch accuracy yet). Item sanity gains (#48) and the loss from maiming
-   * (#45) arrive through {@link #changeSanity(double)}.
+   * Low sanity dulling aim: percentage points added to {@link #getAccuracy()}, zero at full sanity
+   * and falling linearly to minus the configured penalty at zero sanity.
    */
   @JsonIgnore
   public double getSanityAccuracyModifier() {
-    return 0.0;
+    var max = getMaxSanity();
+    var missing = max > 0 ? 1 - getSanity() / max : 1.0;
+    return -sanityRules.getAccuracyPenalty() * missing;
   }
 
   /** The attack scaled by this unit's weakness to the attack type; negative means it heals. */
@@ -680,19 +681,22 @@ public class Unit extends BaseUnit implements Aimable {
 
   /**
    * How well this unit lands hits on the parts it aims at, in percentage points off the miss
-   * chance. Items and sanity add to this later by overriding or wrapping it.
+   * chance: its base, the sanity modifier, the worn items' Accuracy and the Keen Talismans.
    */
   @JsonIgnore
   public double getAccuracy() {
     return stats.baseAccuracy()
         + getSanityAccuracyModifier()
+        + gear.total(ItemStat.ACCURACY)
         + worn(ItemEffect.KEEN) * itemEffects.getKeenAccuracy();
   }
 
   /** How well this unit avoids hits, in percentage points on the attacker's miss chance. */
   @JsonIgnore
   public double getEvasion() {
-    return stats.baseEvasion() + worn(ItemEffect.WARY) * itemEffects.getWaryEvasion();
+    return stats.baseEvasion()
+        + gear.total(ItemStat.EVASION)
+        + worn(ItemEffect.WARY) * itemEffects.getWaryEvasion();
   }
 
   /** Whether the part with this kind is still attached. */

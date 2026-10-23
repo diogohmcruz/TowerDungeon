@@ -91,6 +91,7 @@ game:
     phobia-count-chances: [0.40, 0.40, 0.20]
     severity-at-full-sanity: 0.25
     phobia-effect: 0.5
+    accuracy-penalty: 20.0
   items:
     floor-gear-cap: 12
     bundle:

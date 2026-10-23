@@ -406,6 +406,9 @@ public class GameProperties {
 
     /** Share of damage a phobia moves at severity 1: dealt x(1 - this), taken x(1 + this). */
     private double phobiaEffect = 0.5;
+
+    /** Accuracy points lost at zero sanity; the loss falls linearly to nothing at full sanity. */
+    private double accuracyPenalty = 20.0;
   }
 
   /** Gear: how items are rated against each other and how Leftovers are generated. */
