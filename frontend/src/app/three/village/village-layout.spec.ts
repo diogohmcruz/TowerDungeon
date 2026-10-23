@@ -17,6 +17,8 @@ import {
   MAX_VILLAGE_HEIGHT,
   MAX_VILLAGE_SHARE,
   MAX_VILLAGER_FIGURES,
+  QUARTER_LOOK,
+  seaUnrest,
   SHORE_X0,
   SHORTCUT_MARK_ID,
   shortcutMarkHeight,
@@ -592,6 +594,81 @@ describe('village layout', () => {
 
       expect(v.length).toBeLessThanOrEqual(512);
       expect(new Set(ids(v)).size).toBe(v.length);
+    });
+  });
+  describe('Quarter', () => {
+    const QUARTERS = ['SPRING', 'SUMMER', 'AUTUMN', 'WINTER'] as const;
+    const withQ = (q: (typeof QUARTERS)[number] | null, over: Partial<VillageInput> = {}) =>
+      buildVillage({ ...BUSY, quarter: q, ...over });
+    const find = (v: Volume[], id: string) => v.find((x) => x.id === id)!;
+    const marks = (v: Volume[]) => v.filter((x) => x.id.startsWith('season-'));
+
+    it('draws the plain Village with no Quarter (a Trial has no Year)', () => {
+      expect(marks(withQ(null))).toEqual([]);
+      expect(buildVillage(BUSY)).toEqual(withQ(null));
+    });
+
+    it('changes the ground tone, the rows and the marks for each Quarter', () => {
+      const grounds = QUARTERS.map((q) => find(withQ(q), 'ground').tone);
+      expect(new Set(grounds).size).toBe(4);
+      const rows = QUARTERS.map((q) => find(withQ(q), 'furrow-0-0').tone);
+      expect(rows[0]).toBeGreaterThan(rows[2]);
+      expect(rows[2]).toBeGreaterThan(rows[3]);
+      for (const q of QUARTERS) {
+        expect(marks(withQ(q)).length).toBeGreaterThan(0);
+      }
+      expect(marks(withQ('WINTER')).some((m) => m.id.startsWith('season-snow'))).toBe(true);
+      expect(marks(withQ('AUTUMN')).some((m) => m.id.startsWith('season-stubble'))).toBe(true);
+    });
+
+    it('uses only tones the ramp can draw, no new colour', () => {
+      for (const q of QUARTERS) {
+        for (const v of withQ(q)) {
+          expect(v.tone).toBeGreaterThanOrEqual(0);
+          expect(v.tone).toBeLessThanOrEqual(1);
+        }
+        expect(QUARTER_LOOK[q].ground).toBeLessThan(0.5);
+      }
+    });
+
+    it('leaves the Tower exactly as it is in every Quarter', () => {
+      const tower = (v: Volume[]) => v.filter((x) => x.group === 'tower');
+      for (const q of QUARTERS) {
+        expect(tower(withQ(q))).toEqual(tower(withQ(null)));
+      }
+    });
+
+    it('keeps the Village within its width and height and the capacity', () => {
+      for (const q of QUARTERS) {
+        const v = withQ(q, { port: 'BUILT', boatDocked: true });
+        const b = villageBounds(v);
+        expect(b.maxX - b.minX).toBeLessThanOrEqual(FRAME_WIDTH * MAX_VILLAGE_SHARE);
+        expect(b.maxY).toBeLessThanOrEqual(MAX_VILLAGE_HEIGHT);
+        expect(v.length).toBeLessThanOrEqual(512);
+        expect(new Set(v.map((x) => x.id)).size).toBe(v.length);
+      }
+    });
+
+    it('does not depend on the tick or the flicker (nothing animates for the Quarter)', () => {
+      for (const q of QUARTERS) {
+        const still = marks(withQ(q, { still: true, tick: 0 }));
+        const moving = marks(withQ(q, { still: false, tick: 37, flicker: 5 }));
+        expect(moving).toEqual(still);
+      }
+    });
+
+    it('tints the sea with the danger at sea once the Port is there', () => {
+      const sea = (risk: number | null) =>
+        buildVillage({ ...BUSY, port: 'FOOTING', seaRisk: risk }).filter((x) =>
+          x.id.startsWith('sea-'),
+        );
+      expect(seaUnrest(0.01)).toBe(0);
+      expect(seaUnrest(0.2)).toBe(1);
+      expect(seaUnrest(null)).toBe(0);
+      expect(sea(0.2)).not.toEqual(sea(0.01));
+      expect(sea(null)).toEqual(sea(0.01));
+      expect(find(sea(0.2), 'sea-body').tone).toBeLessThan(find(sea(0.01), 'sea-body').tone);
+      expect(find(sea(0.2), 'sea-band-1').tone).toBeGreaterThan(find(sea(0.01), 'sea-band-1').tone);
     });
   });
 });

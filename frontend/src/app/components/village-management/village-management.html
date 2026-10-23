@@ -1,6 +1,12 @@
 <section class="village-panel">
   <header class="village-header">
     <h3>Stock</h3>
+    @if (yearLine(); as line) {
+      <span class="year-line" data-testid="year-line">{{ line }}</span>
+    }
+    @if (seaLine(); as sea) {
+      <span class="year-line" data-testid="sea-line">{{ sea }}</span>
+    }
   </header>
 
   <div class="stat-grid">

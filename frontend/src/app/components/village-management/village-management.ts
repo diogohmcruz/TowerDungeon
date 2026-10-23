@@ -13,7 +13,15 @@ import { GameStateService } from '../../services/game-state.service';
 import { GameAction } from '../../interfaces/game-action.enum';
 import { GameWebSocketService } from '../../services/game-web-socket.service';
 import { DecimalPipe } from '@angular/common';
+import { Quarter } from '../../interfaces/game-state';
 import { TomeId, TradeId, TradePreview } from '../../interfaces/village';
+
+const QUARTER_NAME: Record<Quarter, string> = {
+  SPRING: 'Spring',
+  SUMMER: 'Summer',
+  AUTUMN: 'Autumn',
+  WINTER: 'Winter',
+};
 
 @Component({
   selector: 'app-village-management',
@@ -83,6 +91,23 @@ export class VillageManagement {
   }
 
   readonly gameState = this.gameStateService.state;
+  /** The Year and its Quarter in words (the picture never carries them alone); empty in a Trial. */
+  readonly yearLine = computed(() => {
+    const s = this.gameState();
+    if (!s.quarter || s.year == null) {
+      return '';
+    }
+    const next = s.nextQuarter ? `, ${QUARTER_NAME[s.nextQuarter]} follows` : '';
+    return `Year ${s.year}, ${QUARTER_NAME[s.quarter]}${next}`;
+  });
+  /** The danger at sea in words, once the Port has a footing. */
+  readonly seaLine = computed(() => {
+    const s = this.gameState();
+    if (s.seaRisk == null || !s.port || s.port.state === 'HIDDEN') {
+      return '';
+    }
+    return `Danger at sea ${Math.round(s.seaRisk * 100)}%`;
+  });
   readonly food = computed(() => this.gameState().village.food);
   readonly villagersCount = computed(
     () => this.gameState().village.villagersCount,

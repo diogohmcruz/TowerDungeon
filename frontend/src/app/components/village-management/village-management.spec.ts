@@ -250,6 +250,33 @@ describe('VillageManagement', () => {
     },
   ];
 
+  it('states the Year and its Quarter in words, and the sea once the Port exists', () => {
+    load({ year: 3, quarter: 'AUTUMN', nextQuarter: 'WINTER', seaRisk: 0.2 });
+    expect(text()).toContain('Year 3, Autumn, Winter follows');
+    expect(text()).not.toContain('Danger at sea');
+
+    load({
+      year: 3,
+      quarter: 'WINTER',
+      nextQuarter: 'SPRING',
+      seaRisk: 0.2,
+      port: {
+        state: 'FOOTING',
+        footingExpeditions: 12,
+        expeditionsCompleted: 12,
+        materialsCost: 1,
+        creditsCost: 1,
+      },
+    });
+    expect(text()).toContain('Danger at sea 20%');
+    expect(text()).not.toMatch(/Season|Prestige/);
+  });
+
+  it('shows no Year in a Trial', () => {
+    load({ year: null, quarter: null, nextQuarter: null, seaRisk: null });
+    expect(text()).not.toMatch(/Year \d/);
+  });
+
   it('lists the Tomes, and states why a gated level cannot be bought', () => {
     load({ tomeViews });
 

@@ -160,6 +160,8 @@ export class VillageScene {
       highlightedShortcut: this.highlightedShortcut(),
       port: s.port?.state ?? 'HIDDEN',
       boatDocked: s.boatDocked ?? false,
+      quarter: s.quarter ?? null,
+      seaRisk: s.seaRisk ?? null,
       tick,
       flicker: (tick * STEP_MS) / 1000,
       still: this.still,

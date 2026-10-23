@@ -6,6 +6,7 @@
  * camera. The Tower stands behind the Village and rises into the dither.
  */
 import type { PortState } from '../../interfaces/game-state';
+import type { Quarter } from '../../interfaces/game-state';
 import type { TradeId } from '../../interfaces/village';
 import { outlineVolumes } from './village-subjects';
 
@@ -106,6 +107,13 @@ export interface VillageInput {
    * backend sends no such field until #83; `GameState.boatDocked` is the input.
    */
   boatDocked: boolean;
+  /**
+   * The Quarter the ground and the rows are drawn for; null or absent in a Trial
+   * (no Year), which draws the plain Village. The Tower never follows it.
+   */
+  quarter?: Quarter | null;
+  /** The danger at sea, 0..1, which sets the sea's tone; null or absent draws it at rest. */
+  seaRisk?: number | null;
   /** Seconds-ish counter: villagers step once per tick. */
   tick: number;
   /** Lamp flicker phase in seconds; 0 freezes the lamps. */
@@ -322,7 +330,8 @@ function stair(out: Volume[], tier: number, flicker: number): void {
   }
 }
 
-function fields(out: Volume[]): void {
+function fields(out: Volume[], quarter: Quarter | null): void {
+  const rows = quarter ? QUARTER_LOOK[quarter].rows : 0.95;
   const x = mid(ANNEX_X.fields);
   // Three stepped terraces in edge lines and furrow hatch, no building.
   for (let t = 0; t < 3; t++) {
@@ -331,7 +340,7 @@ function fields(out: Volume[]): void {
     box(out, `field-${t}`, 'village', x, 0, z, w, 0.08 + t * 0.1, 0.28, VILLAGE_TONE.footing);
     const top = 0.08 + t * 0.1;
     for (let f = 0; f < 3; f++) {
-      box(out, `furrow-${t}-${f}`, 'village', x, top, z - 0.09 + f * 0.09, w - 0.1, 0.012, 0.02, 0.95);
+      box(out, `furrow-${t}-${f}`, 'village', x, top, z - 0.09 + f * 0.09, w - 0.1, 0.012, 0.02, rows);
     }
   }
 }
@@ -597,14 +606,17 @@ const SEA_BANDS: ReadonlyArray<readonly [number, number, number, number]> = [
  * rectangle, a short pier and a strip of sea. Built: the full pier, and the Boat's
  * dark hull once it is docked. Everything sits at x >= 3.3 (the outer 20%).
  */
-function port(out: Volume[], state: PortState, boatDocked: boolean): void {
+function port(out: Volume[], state: PortState, boatDocked: boolean, seaRisk: number | null | undefined): void {
   if (state === 'HIDDEN') return;
   const w = SHORE_X1 - SHORE_X0 - 0.1;
   const sx = SHORE_X0 + 0.05;
   // The sea: a dark body and bands, only in the outer right-hand 20%.
-  box(out, 'sea-body', 'port', sx + w / 2, -0.3, 1.2, w, 0.4, 2.0, VILLAGE_TONE.ground);
+  // The danger at sea sets its tone: a calm sea is dark and quiet, a dangerous one
+  // is darker still with bolder bands (the number is also in words in the UI).
+  const unrest = seaUnrest(seaRisk);
+  box(out, 'sea-body', 'port', sx + w / 2, -0.3, 1.2, w, 0.4, 2.0, VILLAGE_TONE.ground - 0.1 * unrest);
   SEA_BANDS.forEach(([bottom, a, b, tone], i) => {
-    box(out, `sea-band-${i}`, 'port', sx + ((a + b) / 2) * w, bottom, 2.205, (b - a) * w, 0.035, 0.01, tone);
+    box(out, `sea-band-${i}`, 'port', sx + ((a + b) / 2) * w, bottom, 2.205, (b - a) * w, 0.035, 0.01, Math.min(1, tone + 0.3 * unrest));
   });
   // The footing is a hairline rectangle on the ground, as the Pans' is.
   const fx0 = PIER_X0;
@@ -633,8 +645,79 @@ function port(out: Volume[], state: PortState, boatDocked: boolean): void {
   box(out, 'port-boat-mast', 'port', hx - 0.1, 0.22, 1.5, 0.03, 0.8, 0.03, VILLAGE_TONE.dark);
 }
 
-function ground(out: Volume[]): void {
-  box(out, 'ground', 'village', 0, -0.2, 1, FRAME_WIDTH * 2, 0.2, 5, VILLAGE_TONE.ground);
+function ground(out: Volume[], quarter: Quarter | null): void {
+  const tone = quarter ? QUARTER_LOOK[quarter].ground : VILLAGE_TONE.ground;
+  box(out, 'ground', 'village', 0, -0.2, 1, FRAME_WIDTH * 2, 0.2, 5, tone);
+}
+
+/**
+ * What each Quarter does to the picture, all through the ink ramp (tone and
+ * dither only, no new colour). `ground` is the ground's ink density, `rows` the
+ * furrows': Spring's are full ("green"), Summer's dry, Autumn's gold-grey, Winter's bare.
+ */
+export const QUARTER_LOOK: Record<Quarter, { ground: number; rows: number }> = {
+  SPRING: { ground: 0.26, rows: 0.98 },
+  SUMMER: { ground: 0.4, rows: 0.78 },
+  AUTUMN: { ground: 0.32, rows: 0.58 },
+  WINTER: { ground: 0.36, rows: 0.34 },
+};
+
+/** The sea's rest tone against the danger at sea (1% to 20%, see R32). */
+const SEA_RISK_LOW = 0.01;
+const SEA_RISK_HIGH = 0.2;
+
+/** 0 at the calmest sea, 1 at the most dangerous; a missing risk reads as calm. */
+export function seaUnrest(risk: number | null | undefined): number {
+  if (risk == null || !Number.isFinite(risk)) return 0;
+  return Math.min(1, Math.max(0, (risk - SEA_RISK_LOW) / (SEA_RISK_HIGH - SEA_RISK_LOW)));
+}
+
+/**
+ * Ground marks of the Quarter: thaw pools in Spring, long light and dry cracks
+ * in Summer, stubble in Autumn, snow in Winter. All low, flat and inside the
+ * Village's width; none of them is a thing the player can point at.
+ */
+function quarterMarks(out: Volume[], quarter: Quarter | null): void {
+  if (!quarter) return;
+  const id = (n: string) => `season-${n}`;
+  switch (quarter) {
+    case 'SPRING':
+      // Thaw: dark wet strips lying on the ground.
+      for (let i = 0; i < 5; i++) {
+        box(out, id(`thaw-${i}`), 'village', -2.6 + i * 1.3, 0, 2.5 - (i % 2) * 0.25, 0.5 - (i % 3) * 0.08, 0.012, 0.1, VILLAGE_TONE.dark);
+      }
+      break;
+    case 'SUMMER':
+      // Long light: pale low bars lying along the ground, and dry cracks between.
+      for (let i = 0; i < 3; i++) {
+        box(out, id(`light-${i}`), 'village', -0.4 + i * 0.3, 0, 2.55 + i * 0.2, 4.4 - i * 0.9, 0.012, 0.03, 0.6);
+      }
+      for (let i = 0; i < 4; i++) {
+        box(out, id(`crack-${i}`), 'village', -2.4 + i * 1.6, 0, 2.45, 0.25, 0.012, 0.02, VILLAGE_TONE.dark);
+      }
+      break;
+    case 'AUTUMN':
+      // Stubble: short stalks standing in the cut rows of the Fields.
+      for (let t = 0; t < 3; t++) {
+        const top = 0.08 + t * 0.1;
+        const z = 1.2 - t * 0.3;
+        for (let k = 0; k < 6; k++) {
+          box(out, id(`stubble-${t}-${k}`), 'village', mid(ANNEX_X.fields) - 0.45 + k * 0.18, top, z - 0.14 + (k % 3) * 0.14, 0.012, 0.05, 0.012, 0.7);
+        }
+      }
+      break;
+    case 'WINTER':
+      // Snow: pale flat marks on the ground and caps on the Fort's merlons and the silo.
+      for (let i = 0; i < 6; i++) {
+        box(out, id(`snow-${i}`), 'village', -2.8 + i * 1.1, 0, 2.3 + (i % 2) * 0.3, 0.45 + (i % 3) * 0.1, 0.012, 0.14, VILLAGE_TONE.salt);
+      }
+      for (let i = 0; i < 4; i++) {
+        const mx = ANNEX_X.fort[0] + 0.27 + (i * (span(ANNEX_X.fort) - 0.54)) / 3;
+        box(out, id(`cap-${i}`), 'village', mx, 0.99, 0.35, 0.18, 0.02, 0.14, VILLAGE_TONE.salt);
+      }
+      box(out, id('cap-silo'), 'village', mid(ANNEX_X.silo), 1.7, SILO_Z, span(ANNEX_X.silo), 0.02, 0.3, VILLAGE_TONE.salt);
+      break;
+  }
 }
 
 /** Reserves standing in ranks in the Fort's yard. */
@@ -703,17 +786,19 @@ function carried(out: Volume[], trade: TradeId, id: string, x: number, z: number
 /** The whole Village Elevation for one state, as boxes. */
 export function buildVillage(input: VillageInput): Volume[] {
   const out: Volume[] = [];
-  ground(out);
+  const quarter = input.quarter ?? null;
+  ground(out, quarter);
+  quarterMarks(out, quarter);
   tower(out);
   fort(out);
   silo(out, input.food);
   stair(out, input.villageTierLevel, input.still ? 0 : input.flicker);
-  fields(out);
+  fields(out, quarter);
   quarry(out, input.quarryHeap, input.quarryHeapCap);
   study(out, input.hands.SCRIBE, input.posts.SCRIBE);
   vault(out, input.materials, input.relics);
   pans(out, input.saltPansOpen, input.salt);
-  port(out, input.port ?? 'HIDDEN', input.boatDocked ?? false);
+  port(out, input.port ?? 'HIDDEN', input.boatDocked ?? false, input.seaRisk);
   shortcutMarks(out, input.shortcuts, input.highlightedShortcut);
   growth(out, input.upgrades ?? {});
   reserves(out, input.reserves);

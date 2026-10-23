@@ -15,6 +15,13 @@ function portParam(): VillageInput['port'] {
   return v === 'footing' ? 'FOOTING' : v === 'built' ? 'BUILT' : 'HIDDEN';
 }
 
+function quarterParam(): VillageInput['quarter'] {
+  const v = new URLSearchParams(location.search).get('quarter')?.toUpperCase();
+  return v === 'SPRING' || v === 'SUMMER' || v === 'AUTUMN' || v === 'WINTER'
+    ? v
+    : null;
+}
+
 @Component({
   selector: 'app-village-fixture',
   imports: [VillageScene],
@@ -61,6 +68,9 @@ export class VillageFixturePage {
         ],
         // `?port=footing` or `?port=built`, with `&boat=1` for a docked Boat.
         port: portParam(),
+        // `?quarter=winter` (spring, summer, autumn, winter) and `&risk=0.2` for the sea.
+        quarter: quarterParam(),
+        seaRisk: Number(new URLSearchParams(location.search).get('risk') ?? 0.01),
         boatDocked: new URLSearchParams(location.search).has('boat'),
         still: false,
       };

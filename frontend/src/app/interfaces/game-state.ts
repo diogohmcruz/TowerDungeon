@@ -54,6 +54,9 @@ export interface ShortcutOffer {
   unlocked: boolean;
 }
 
+/** One of the four Quarters of a Year; the Year is not in a Trial. */
+export type Quarter = 'SPRING' | 'SUMMER' | 'AUTUMN' | 'WINTER';
+
 /** Where the Port stands: out of sight, a footing to build on, or finished. */
 export type PortState = 'HIDDEN' | 'FOOTING' | 'BUILT';
 
@@ -212,6 +215,18 @@ export interface GameState {
   tally: Tally;
   villageTierLevel: number;
   villageTierName: string;
+  /** The Year the Campaign is in, from 1; null in a Trial, absent from older frames. */
+  year?: number | null;
+  /** Connected lifecycle ticks gone in the Year; null in a Trial. */
+  yearTick?: number | null;
+  /** The Quarter now; null in a Trial. */
+  quarter?: Quarter | null;
+  /** The Quarter that follows; null in a Trial. */
+  nextQuarter?: Quarter | null;
+  /** The danger at sea now, 0..1; null in a Trial. */
+  seaRisk?: number | null;
+  /** The danger at sea on the first tick of the next Quarter; null in a Trial. */
+  nextSeaRisk?: number | null;
   /** The Port; absent from older frames, which means hidden. */
   port?: PortView;
   /**
