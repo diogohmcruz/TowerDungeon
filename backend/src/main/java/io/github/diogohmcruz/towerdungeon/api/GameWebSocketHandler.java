@@ -267,6 +267,7 @@ public class GameWebSocketHandler implements WebSocketHandler {
         yield new Command.SendReinforcements(reinforce.units());
       }
       case EXODUS -> new Command.Exodus();
+      case MUSTER_ROLL -> new Command.MusterRoll();
       case BEGIN_GENERATION -> new Command.BeginGeneration();
       case ROLL_BUY -> {
         var buy = payload(message, new TypeReference<GameActionDTO<SuccessionActionDTO>>() {});

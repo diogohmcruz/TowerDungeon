@@ -32,6 +32,7 @@ class FieldAccountingTest {
           Map.entry("gameOutcome", "CampaignSnapshot.outcome"),
           Map.entry("phase", "CampaignSnapshot.phase"),
           Map.entry("pending", "CampaignSnapshot.pending"),
+          Map.entry("choices", "CampaignSnapshot.choices"),
           Map.entry("village", "CampaignSnapshot.villageFood"),
           Map.entry("resources", "CampaignSnapshot.vault"),
           Map.entry("carriedLoot", "ExpeditionSnapshot.carriedLoot"),
@@ -66,6 +67,7 @@ class FieldAccountingTest {
 
   private static final Map<String, String> GAME_STATE_TRANSIENT =
       Map.of(
+          "rollDamageBonus", "derived from the Roll in the player\'s meta, re-applied on restore",
           "maxSupplies", "derived: carrying capacity is recomputed from upgrades and the party",
           "unlockedUnits", "derived: the starting types plus upgrade and milestone unlocks",
           "recoverySpend", "recomputed by the next lifecycle tick",

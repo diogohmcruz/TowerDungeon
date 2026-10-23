@@ -68,6 +68,15 @@ public class GameState {
   /** The Succession report computed when the Campaign ended; null while it is active. */
   private SuccessionReport pending;
 
+  /**
+   * The Succession's answers for the next Generation, by question ({@code DOWRY}, {@code HEIR}) to
+   * choice id. Filled while the Campaign is in {@code OFFER}; empty while it is played.
+   */
+  private Map<String, String> choices = new java.util.LinkedHashMap<>();
+
+  /** What the Roll adds to the Party's damage multiplier; set from the Roll, never saved. */
+  @JsonIgnore private double rollDamageBonus = 0;
+
   private Village village;
   private Map<ResourceType, Double> resources = ResourceType.emptyWallet();
   private Map<ResourceType, Double> carriedLoot = ResourceType.emptyWallet();
@@ -1347,6 +1356,47 @@ public class GameState {
     return unit;
   }
 
+  /**
+   * Raises a Unit of {@code type} at the village: the Heir, one more than the four Founders. Its
+   * health total is rolled as any recruit's, then multiplied before it is divided across its Body
+   * Parts.
+   */
+  public Unit addHeir(UnitStats type, double healthMultiplier) {
+    var unit = new Unit(type, "Heir", this.random.cosmetic());
+    unit.rollStrengths(random.combat(), config.getRecruit().getStrengthSpread());
+    unit.setHealthFactor(unit.getHealthFactor() * healthMultiplier);
+    unit.setSanityRules(config.getSanity());
+    unit.setItemEffects(config.getItems().getEffects());
+    if (unit.isCaster()) {
+      unit.chargeToFull(config.getMagic().getMaxMana());
+    }
+    addUnits(type, List.of(unit));
+    return unit;
+  }
+
+  /** Adds to the Vault outright, as a gift and not as loot: it feeds no counter of the Toll. */
+  public void grant(ResourceType type, double amount) {
+    resources.merge(type, Math.max(0d, amount), Double::sum);
+  }
+
+  /** Raises the Village Tier to at least {@code level}; never lowers it. */
+  public void raiseVillageTierTo(int level) {
+    var tier = VillageTier.ofLevel(level);
+    if (tier.getLevel() > villageTier.getLevel()) {
+      villageTier = tier;
+    }
+  }
+
+  /** Records one answer of the Succession, replacing the last answer to the same question. */
+  public void choose(String group, String choiceId) {
+    choices.put(group, choiceId);
+  }
+
+  /** Forgets the answer to a question of the Succession. */
+  public void unchoose(String group) {
+    choices.remove(group);
+  }
+
   public void addCredit(Double amount) {
     credit += amount;
   }
@@ -1405,7 +1455,7 @@ public class GameState {
             * UpgradeType.SHARPENED_ARMS.getDamageBonusPerLevel();
     var milestoneBonus =
         achievedMilestones.stream().mapToDouble(MilestoneType::getDamageBonus).sum();
-    return 1.0 + upgradeBonus + milestoneBonus;
+    return 1.0 + upgradeBonus + milestoneBonus + rollDamageBonus;
   }
 
   private boolean canAfford(Map<ResourceType, Double> cost) {
@@ -1922,7 +1972,8 @@ public class GameState {
             villageTier.getLevel(),
             List.copyOf(wallOfNames),
             phase,
-            pending);
+            pending,
+            Map.copyOf(choices));
     return new GameSnapshot(
         campaign,
         expeditionActive ? expeditionSnapshot() : null,
@@ -2107,6 +2158,7 @@ public class GameState {
     state.wallOfNames = new ArrayList<>(c.wallOfNames());
     state.phase = c.phase();
     state.pending = c.pending();
+    state.choices = new java.util.LinkedHashMap<>(c.choices());
     state.village.restore(c.villageFood(), c.villagers());
     var t = c.trades();
     if (t != null) {

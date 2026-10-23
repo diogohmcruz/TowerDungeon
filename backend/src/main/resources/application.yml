@@ -245,6 +245,34 @@ game:
     defeat-start: {villagers-lost: 5, writ-credits: 100.0}
     chronicle-names: 5
     chronicle-limit: 50
+    roll:
+      # Legacy already spent in the Courses below that opens Courses I to IV.
+      gates: [0, 5, 12, 21]
+      costs:
+        SEED_GRAIN: 1
+        MUSTER_ROLL: 1
+        HARDY_STOCK: 2
+        WHETSTONE_HABIT: 2
+        THE_DOWRY: 3
+        HEAVIER_PACKS: 3
+        VILLAGE_CHARTER: 3
+        THE_HEIR: 3
+        BLOOD_OF_THE_DOOR: 6
+        NARROW_STAIR: 5
+        OVERREACH: 4
+        QUARTERMASTERS_TALLY: 3
+        HARD_WON_HABITS: 8
+        THE_OPEN_BREACH: 6
+        READER_OF_OMENS: 4
+        OFFERING_STONE: 5
+        SECOND_PACT: 5
+      seed-grain: {food: 150.0, credits: 20.0}
+      hardy-stock: {villagers: 25}
+      whetstone-habit: {damage-bonus: 0.05}
+      dowry: {credits: 80.0, materials: 40.0, relics: 3.0}
+      heavier-packs: {capacity: 25.0}
+      village-charter: {tier: 2}
+      heir: {health-multiplier: 1.5}
     counters:
       food-grown: {marks: 3.0, par: 60000.0}
       materials-banked: {marks: 6.0, par: 17000.0}

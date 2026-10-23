@@ -170,6 +170,7 @@ class SnapshotRoundTripTest {
                 0,
                 null,
                 null,
+                null,
                 null),
             null);
 
@@ -264,7 +265,8 @@ class SnapshotRoundTripTest {
                 snapshot.campaign().villageTier(),
                 snapshot.campaign().wallOfNames(),
                 snapshot.campaign().phase(),
-                snapshot.campaign().pending()),
+                snapshot.campaign().pending(),
+                snapshot.campaign().choices()),
             null);
 
     var restored = GameState.restore(stripped, config, new RandomSource(5), plan);

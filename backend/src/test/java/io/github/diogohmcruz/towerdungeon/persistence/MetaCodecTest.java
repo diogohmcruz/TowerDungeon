@@ -10,6 +10,7 @@ import io.github.diogohmcruz.towerdungeon.domain.models.GameOutcome;
 import io.github.diogohmcruz.towerdungeon.domain.prestige.ChronicleEntry;
 import io.github.diogohmcruz.towerdungeon.domain.prestige.FallenName;
 import io.github.diogohmcruz.towerdungeon.domain.prestige.PlayerMeta;
+import io.github.diogohmcruz.towerdungeon.domain.prestige.RollEntry;
 import tools.jackson.databind.json.JsonMapper;
 
 class MetaCodecTest {
@@ -78,5 +79,35 @@ class MetaCodecTest {
 
     assertThat(meta.legacy()).isEqualTo(5);
     assertThat(meta.hasSecret()).isFalse();
+  }
+
+  @Test
+  void theRollRoundTripsWithWhatWasPaidForEachInheritance() {
+    var meta =
+        new PlayerMeta(
+            2,
+            4,
+            List.of(new RollEntry("SEED_GRAIN", 1), new RollEntry("HARDY_STOCK", 2)),
+            0,
+            null,
+            List.of(),
+            "00112233445566778899aabbccddeeff");
+
+    var read = codec.fromNode(codec.toNode(meta));
+
+    assertThat(read).isEqualTo(meta);
+    assertThat(read.spent()).isEqualTo(3);
+  }
+
+  @Test
+  void aFileFromBeforeTheRollHadEntriesStillReadsWithItsLedger() {
+    var node = codec.toNode(PlayerMeta.first("00112233445566778899aabbccddeeff"));
+    node.put("legacy", 6);
+    node.putArray("roll");
+
+    var read = codec.fromNode(node);
+
+    assertThat(read.legacy()).isEqualTo(6);
+    assertThat(read.roll()).isEmpty();
   }
 }

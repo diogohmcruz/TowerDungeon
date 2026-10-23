@@ -8,6 +8,7 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import io.github.diogohmcruz.towerdungeon.api.dtos.GameFrame.SessionMeta;
+import io.github.diogohmcruz.towerdungeon.domain.commands.Command;
 import io.github.diogohmcruz.towerdungeon.domain.commands.Notice;
 import io.github.diogohmcruz.towerdungeon.domain.models.GameState;
 import io.github.diogohmcruz.towerdungeon.domain.models.RunSummary;
@@ -15,6 +16,7 @@ import io.github.diogohmcruz.towerdungeon.domain.models.architecture.Architectur
 import io.github.diogohmcruz.towerdungeon.domain.observation.EventLog;
 import io.github.diogohmcruz.towerdungeon.domain.observation.ExpeditionSummaries;
 import io.github.diogohmcruz.towerdungeon.domain.prestige.PlayerMeta;
+import io.github.diogohmcruz.towerdungeon.domain.prestige.SuccessionView;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 
@@ -51,6 +53,10 @@ final class PlayerSlot {
   private volatile Instant savedAt;
   private volatile int schema;
   private volatile boolean held;
+
+  /** The last Party and Loadout that set out this Generation; only Muster Roll reads it. */
+  private Command.StartExpedition lastMuster;
+
   private Connection connection;
   private long detachedAtNanos;
 
@@ -208,6 +214,24 @@ final class PlayerSlot {
   void begun(GameState next) {
     this.lastSeenSummary = next.getLastRunSummary();
     this.state = next;
+    this.lastMuster = null;
+  }
+
+  /** The last Party and Loadout that set out this Generation, for Muster Roll; null before one. */
+  Command.StartExpedition lastMuster() {
+    return lastMuster;
+  }
+
+  /** Remembers a Party and Loadout that set out. The Unit counts are copied. */
+  void lastMuster(Command.StartExpedition command) {
+    this.lastMuster =
+        new Command.StartExpedition(
+            command.units() == null ? Map.of() : new java.util.HashMap<>(command.units()),
+            command.startFloor(),
+            command.salt(),
+            command.saltPack(),
+            command.saltBearer(),
+            command.panacea());
   }
 
   long stateSeq() {
@@ -258,11 +282,16 @@ final class PlayerSlot {
    * Party is Held right now.
    */
   SessionMeta takeMeta(boolean held) {
+    return takeMeta(held, null);
+  }
+
+  /** As {@link #takeMeta(boolean)}, with the Succession's view while the Campaign is in OFFER. */
+  SessionMeta takeMeta(boolean held, SuccessionView succession) {
     var pending = new ArrayList<Notice>();
     for (Notice n; (n = notices.poll()) != null; ) {
       pending.add(n);
     }
-    return new SessionMeta(resumed, savedAt, schema, List.copyOf(pending), held);
+    return new SessionMeta(resumed, savedAt, schema, List.copyOf(pending), held, succession);
   }
 
   /** Attaches a connection, newest wins: the previous one is told it was replaced. */

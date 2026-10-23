@@ -497,22 +497,16 @@ class CampaignEndTransactionTest {
     assertThat(state().getCredit()).isEqualTo(config.getStart().getCredit());
   }
 
-  // ---- the Roll is not open yet
+  // ---- the Roll opens only in the Succession
 
   @Test
-  void theRollAndTheChoicesAreRefusedUntilTheyExist() {
-    assertThat(service.execute(PLAYER, new Command.RollBuy("x")).reason())
+  void theRollAndTheChoicesAreSealedWhileTheCampaignIsPlayed() {
+    assertThat(service.execute(PLAYER, new Command.RollBuy("SEED_GRAIN")).reason())
         .isEqualTo(Reason.NOT_ENDED);
-
-    worthLeaving();
-    service.execute(PLAYER, new Command.Exodus());
-
-    assertThat(service.execute(PLAYER, new Command.RollBuy("x")).reason())
-        .isEqualTo(Reason.NOT_AVAILABLE);
-    assertThat(service.execute(PLAYER, new Command.RollRefund("x")).reason())
-        .isEqualTo(Reason.NOT_AVAILABLE);
-    assertThat(service.execute(PLAYER, new Command.Choose("x")).reason())
-        .isEqualTo(Reason.NOT_AVAILABLE);
+    assertThat(service.execute(PLAYER, new Command.RollRefund("SEED_GRAIN")).reason())
+        .isEqualTo(Reason.NOT_ENDED);
+    assertThat(service.execute(PLAYER, new Command.Choose("DOWRY_CREDITS")).reason())
+        .isEqualTo(Reason.NOT_ENDED);
   }
 
   // ---- the seed

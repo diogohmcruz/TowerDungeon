@@ -31,6 +31,8 @@ import io.github.diogohmcruz.towerdungeon.domain.prestige.SuccessionReport;
  * @param phase {@code ACTIVE} while the Campaign is played, {@code OFFER} once it has ended; absent
  *     in older saves, which read as active
  * @param pending the Succession report computed when the Campaign ended; null while it is active
+ * @param choices the Succession's answers for the next Generation, by question; absent in older
+ *     saves
  */
 public record CampaignSnapshot(
     double credit,
@@ -53,13 +55,15 @@ public record CampaignSnapshot(
     int villageTier,
     List<Fallen> wallOfNames,
     CampaignPhase phase,
-    SuccessionReport pending) {
+    SuccessionReport pending,
+    Map<String, String> choices) {
 
   /** A save from before Artifacts has none taken, and before the Wall of Names no names on it. */
   public CampaignSnapshot {
     artifactsTaken = artifactsTaken == null ? List.of() : artifactsTaken;
     wallOfNames = wallOfNames == null ? List.of() : wallOfNames;
     phase = phase == null ? CampaignPhase.ACTIVE : phase;
+    choices = choices == null ? Map.of() : choices;
   }
 
   /** The same record with the reserves cleared, for comparing everything but who is in them. */
@@ -85,6 +89,7 @@ public record CampaignSnapshot(
         villageTier,
         wallOfNames,
         phase,
-        pending);
+        pending,
+        choices);
   }
 }

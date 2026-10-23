@@ -16,8 +16,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
  *
  * @param generation the Generation being played, or just ended and awaiting the next; 1 at first
  * @param legacy Legacy earned and not yet spent (the Roll spends it)
- * @param roll the Inheritances bought, by id (the Roll arrives with its own issue; empty until
- *     then)
+ * @param roll the Inheritances bought, each with the Legacy paid for it
  * @param residue Toll Marks carried into the next Toll
  * @param lifetime the Lifetime Ledger
  * @param chronicle every ended Campaign, oldest first, capped
@@ -28,14 +27,11 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 public record PlayerMeta(
     int generation,
     int legacy,
-    List<String> roll,
+    List<RollEntry> roll,
     double residue,
     LifetimeLedger lifetime,
     List<ChronicleEntry> chronicle,
     String towerSecret) {
-
-  /** The Roll id of the Inheritance that opens the Door at the Floor beneath the Summit. */
-  public static final String BLOOD_OF_THE_DOOR = "BLOOD_OF_THE_DOOR";
 
   public PlayerMeta {
     generation = Math.max(1, generation);
@@ -88,7 +84,24 @@ public record PlayerMeta(
    */
   @JsonIgnore
   public boolean opensTheDoor() {
-    return roll.contains(BLOOD_OF_THE_DOOR);
+    return holds(InheritanceType.BLOOD_OF_THE_DOOR);
+  }
+
+  /** Legacy spent on the Roll: what was paid for what is held. */
+  @JsonIgnore
+  public int spent() {
+    return roll.stream().mapToInt(RollEntry::paid).sum();
+  }
+
+  /** Whether the Roll holds the Inheritance. */
+  public boolean holds(InheritanceType type) {
+    return roll.stream().anyMatch(entry -> entry.id().equals(type.name()));
+  }
+
+  /** The same meta with a new Roll and the Legacy that is left after it. */
+  public PlayerMeta withRoll(List<RollEntry> newRoll, int newLegacy) {
+    return new PlayerMeta(
+        generation, newLegacy, newRoll, residue, lifetime, chronicle, towerSecret);
   }
 
   /** Whether the meta has a Tower secret yet. */

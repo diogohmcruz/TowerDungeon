@@ -16,6 +16,7 @@ import io.github.diogohmcruz.towerdungeon.domain.models.Aim;
 import io.github.diogohmcruz.towerdungeon.domain.models.BodyPart;
 import io.github.diogohmcruz.towerdungeon.domain.models.EnemyStats;
 import io.github.diogohmcruz.towerdungeon.domain.models.UnitStats;
+import io.github.diogohmcruz.towerdungeon.domain.prestige.InheritanceType;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -1064,6 +1065,112 @@ public class GameProperties {
     public static class DefeatStart {
       private int villagersLost = 5;
       private double writCredits = 100.0;
+    }
+
+    /** The Roll: what each Inheritance costs and what it does. */
+    private final Roll roll = new Roll();
+
+    /**
+     * The Roll's numbers. Costs are Legacy; a Course opens when the Legacy already spent in the
+     * Courses below reaches its gate. The effects apply when the Generation begins.
+     */
+    @Data
+    public static class Roll {
+      /** Legacy that must already be spent in lower Courses, for Courses I to IV. */
+      private List<Integer> gates = new ArrayList<>(List.of(0, 5, 12, 21));
+
+      /** Legacy each Inheritance costs; the full design totals 64. */
+      private Map<InheritanceType, Integer> costs = defaultCosts();
+
+      private final SeedGrain seedGrain = new SeedGrain();
+      private final HardyStock hardyStock = new HardyStock();
+      private final WhetstoneHabit whetstoneHabit = new WhetstoneHabit();
+      private final Dowry dowry = new Dowry();
+      private final HeavierPacks heavierPacks = new HeavierPacks();
+      private final VillageCharter villageCharter = new VillageCharter();
+      private final Heir heir = new Heir();
+
+      private static Map<InheritanceType, Integer> defaultCosts() {
+        var costs = new EnumMap<InheritanceType, Integer>(InheritanceType.class);
+        costs.put(InheritanceType.SEED_GRAIN, 1);
+        costs.put(InheritanceType.MUSTER_ROLL, 1);
+        costs.put(InheritanceType.HARDY_STOCK, 2);
+        costs.put(InheritanceType.WHETSTONE_HABIT, 2);
+        costs.put(InheritanceType.THE_DOWRY, 3);
+        costs.put(InheritanceType.HEAVIER_PACKS, 3);
+        costs.put(InheritanceType.VILLAGE_CHARTER, 3);
+        costs.put(InheritanceType.THE_HEIR, 3);
+        costs.put(InheritanceType.BLOOD_OF_THE_DOOR, 6);
+        costs.put(InheritanceType.NARROW_STAIR, 5);
+        costs.put(InheritanceType.OVERREACH, 4);
+        costs.put(InheritanceType.QUARTERMASTERS_TALLY, 3);
+        costs.put(InheritanceType.HARD_WON_HABITS, 8);
+        costs.put(InheritanceType.THE_OPEN_BREACH, 6);
+        costs.put(InheritanceType.READER_OF_OMENS, 4);
+        costs.put(InheritanceType.OFFERING_STONE, 5);
+        costs.put(InheritanceType.SECOND_PACT, 5);
+        return costs;
+      }
+
+      /** What the Inheritance costs; an id with no price is never for sale. */
+      public int costOf(InheritanceType type) {
+        return costs.getOrDefault(type, Integer.MAX_VALUE);
+      }
+
+      /**
+       * Legacy that must already be spent in lower Courses before {@code course} (1 to 4) opens.
+       */
+      public int gateOf(int course) {
+        if (course < 1 || course > gates.size()) {
+          return Integer.MAX_VALUE;
+        }
+        return gates.get(course - 1);
+      }
+    }
+
+    /** Seed Grain: the Pantry and the purse a Generation starts with, at least these. */
+    @Data
+    public static class SeedGrain {
+      private double food = 150.0;
+      private double credits = 20.0;
+    }
+
+    /** Hardy Stock: the Villagers a Generation starts with, at least this many. */
+    @Data
+    public static class HardyStock {
+      private int villagers = 25;
+    }
+
+    /** Whetstone Habit: added to the Party's damage multiplier (0.05 is +5%). */
+    @Data
+    public static class WhetstoneHabit {
+      private double damageBonus = 0.05;
+    }
+
+    /** The Dowry: what each choice pays at the start of a Generation. */
+    @Data
+    public static class Dowry {
+      private double credits = 80.0;
+      private double materials = 40.0;
+      private double relics = 3.0;
+    }
+
+    /** Heavier Packs: added to the base Carrying Capacity. */
+    @Data
+    public static class HeavierPacks {
+      private double capacity = 25.0;
+    }
+
+    /** Village Charter: the Village Tier (1 to 4) a Generation starts at, at least this. */
+    @Data
+    public static class VillageCharter {
+      private int tier = 2;
+    }
+
+    /** The Heir: the extra Unit's total health, as a multiple of its rolled health. */
+    @Data
+    public static class Heir {
+      private double healthMultiplier = 1.5;
     }
 
     private final Counters counters = new Counters();

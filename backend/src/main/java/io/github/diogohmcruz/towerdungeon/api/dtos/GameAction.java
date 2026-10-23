@@ -22,5 +22,6 @@ public enum GameAction {
   ROLL_BUY,
   ROLL_REFUND,
   CHOOSE,
-  BEGIN_GENERATION
+  BEGIN_GENERATION,
+  MUSTER_ROLL
 }

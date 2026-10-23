@@ -39,11 +39,11 @@ The currency a campaign leaves behind when it ends, spent on the roll. Planned.
 _Avoid_: Prestige points, soul, essence
 
 **Roll**:
-The permanent, finite set of inheritances that legacy buys, kept across generations. Planned.
+The permanent, finite set of inheritances that legacy buys, kept across generations. Inheritances sit in four courses; a course opens when enough legacy is already spent in the courses below it. The roll may be changed freely while the succession is open (a refund returns exactly what was paid) and is sealed when the next generation begins. Courses I and II are built; the rest are listed and cannot be bought yet.
 _Avoid_: Skill tree, blessings, perk tree
 
 **Inheritance**:
-A single permanent benefit on the roll. Planned.
+A single permanent benefit on the roll, with a stable id. Muster Roll (resend the last party and loadout with one command) and The Heir (one extra unit beside the four founders, with more health) are two of them.
 _Avoid_: Blessing, perk, talent
 
 **Succession**:

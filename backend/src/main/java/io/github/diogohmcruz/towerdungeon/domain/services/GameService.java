@@ -43,8 +43,15 @@ import io.github.diogohmcruz.towerdungeon.domain.observation.AimTally;
 import io.github.diogohmcruz.towerdungeon.domain.observation.EventLog;
 import io.github.diogohmcruz.towerdungeon.domain.observation.StateProjection;
 import io.github.diogohmcruz.towerdungeon.domain.prestige.FallenName;
+import io.github.diogohmcruz.towerdungeon.domain.prestige.InheritanceType;
 import io.github.diogohmcruz.towerdungeon.domain.prestige.PlayerMeta;
+import io.github.diogohmcruz.towerdungeon.domain.prestige.RollEffects;
+import io.github.diogohmcruz.towerdungeon.domain.prestige.RollEntry;
+import io.github.diogohmcruz.towerdungeon.domain.prestige.RollRefusal;
+import io.github.diogohmcruz.towerdungeon.domain.prestige.RollRules;
+import io.github.diogohmcruz.towerdungeon.domain.prestige.SuccessionChoice;
 import io.github.diogohmcruz.towerdungeon.domain.prestige.SuccessionReport;
+import io.github.diogohmcruz.towerdungeon.domain.prestige.SuccessionView;
 import io.github.diogohmcruz.towerdungeon.domain.prestige.Toll;
 import io.github.diogohmcruz.towerdungeon.domain.prestige.TollCalculator;
 import io.github.diogohmcruz.towerdungeon.domain.prestige.TollContext;
@@ -163,13 +170,22 @@ public class GameService {
    * Defeat starts Hollow.
    */
   GameState newCampaign(PlayerMeta meta, boolean hollow) {
+    return newCampaign(meta, hollow, Map.of());
+  }
+
+  /**
+   * As {@link #newCampaign(PlayerMeta, boolean)}, under the Roll the meta holds: its Inheritances
+   * shape the Campaign's copy of the config and are given to it once built, by the Succession's
+   * {@code choices}.
+   */
+  GameState newCampaign(PlayerMeta meta, boolean hollow, Map<String, String> choices) {
+    var campaignConfig = config.copy().withTowerMemory(meta.generation());
+    var effects = RollEffects.of(meta.roll(), campaignConfig);
+    effects.shape(campaignConfig);
     var campaign =
-        newCampaign(
-            config.copy().withTowerMemory(meta.generation()),
-            new RandomSource(meta.seed()),
-            meta.generation(),
-            hollow);
+        newCampaign(campaignConfig, new RandomSource(meta.seed()), meta.generation(), hollow);
     campaign.setDoorOpen(meta.opensTheDoor());
+    effects.start(campaign, choices);
     return campaign;
   }
 
@@ -584,13 +600,13 @@ public class GameService {
     } else {
       var meta = metaOf(result.payload());
       adopt(slot, meta);
+      var campaignConfig = config.copy().withTowerMemory(meta.generation());
+      var effects = RollEffects.of(meta.roll(), campaignConfig);
+      effects.shape(campaignConfig);
       state =
-          GameState.restore(
-              snapshot,
-              config.copy().withTowerMemory(meta.generation()),
-              new RandomSource(meta.seed()),
-              slot.plan());
+          GameState.restore(snapshot, campaignConfig, new RandomSource(meta.seed()), slot.plan());
       state.setDoorOpen(meta.opensTheDoor());
+      effects.carry(state);
     }
     if (!result.quarantined().isEmpty()) {
       slot.addNotice(
@@ -697,7 +713,9 @@ public class GameService {
                 objectMapper.writeValueAsString(
                     new GameFrame(
                         state,
-                        slot.takeMeta(slot.isHeld() && state.isExpeditionActive()),
+                        slot.takeMeta(
+                            slot.isHeld() && state.isExpeditionActive(),
+                            SuccessionView.of(slot.meta(), state)),
                         tollForecast(slot, state))));
   }
 
@@ -802,11 +820,10 @@ public class GameService {
           Command.BuyPosts _,
           Command.SendReinforcements _,
           Command.Exodus _,
-          Command.RollBuy _,
-          Command.RollRefund _,
-          Command.Choose _,
+          Command.MusterRoll _,
           Command.BeginGeneration _ ->
           false;
+      case Command.RollBuy _, Command.RollRefund _, Command.Choose _ -> true;
     };
   }
 
@@ -850,8 +867,10 @@ public class GameService {
                 sendReinforcements(slot, gameState, playerId, wave);
             case Command.Exodus _ -> exodus(slot, gameState, playerId);
             case Command.BeginGeneration _ -> beginGeneration(slot, gameState, playerId);
-            case Command.RollBuy _, Command.RollRefund _, Command.Choose _ ->
-                rollNotOpen(gameState);
+            case Command.RollBuy buy -> rollBuy(slot, gameState, buy.inheritanceId());
+            case Command.RollRefund refund -> rollRefund(slot, gameState, refund.inheritanceId());
+            case Command.Choose choose -> choose(slot, gameState, choose.choiceId());
+            case Command.MusterRoll _ -> musterRoll(slot, gameState, playerId);
           };
     } catch (InvalidInvasion err) {
       log.warn("Rejected invasion from player {}: {}", playerId, err.getMessage());
@@ -1129,6 +1148,7 @@ public class GameService {
     if (requestedFloor > 0) {
       gameState.recordFloorReached(requestedFloor);
     }
+    slot.lastMuster(command);
     slot.emit(
         "EXPEDITION_STARTED",
         Map.of("startFloor", requestedFloor, "party", gameState.getTowerPartySize()));
@@ -1270,11 +1290,98 @@ public class GameService {
     };
   }
 
-  /** The Roll, and the choices for the next Generation, come with their own change. */
-  private static CommandResult rollNotOpen(GameState gameState) {
-    return gameState.getPhase() == CampaignPhase.OFFER
-        ? CommandResult.rejected(Reason.NOT_AVAILABLE, "The Roll has nothing to offer yet.")
-        : CommandResult.rejected(Reason.NOT_ENDED, "The Campaign has not ended.");
+  /** The Roll opens only while the Campaign waits in OFFER; at any other time it is sealed. */
+  private static CommandResult rollSealed() {
+    return CommandResult.rejected(Reason.NOT_ENDED, "The Campaign has not ended.");
+  }
+
+  private CommandResult rollBuy(PlayerSlot slot, GameState gameState, String id) {
+    if (gameState.getPhase() != CampaignPhase.OFFER) {
+      return rollSealed();
+    }
+    var type = InheritanceType.find(id);
+    if (type.isEmpty()) {
+      return CommandResult.rejected(Reason.UNKNOWN_ID, "There is no such Inheritance.");
+    }
+    var roll = gameState.getConfig().getPrestige().getRoll();
+    var meta = slot.meta();
+    var refusal = RollRules.whyNotBuy(meta, type.get(), roll);
+    if (refusal != null) {
+      return switch (refusal) {
+        case UNAVAILABLE ->
+            CommandResult.rejected(Reason.NOT_AVAILABLE, "That Inheritance cannot be had yet.");
+        case COURSE_CLOSED ->
+            CommandResult.rejected(
+                Reason.COURSE_LOCKED, "That Course is closed: spend more Legacy below it first.");
+        case INSUFFICIENT_LEGACY ->
+            CommandResult.rejected(Reason.INSUFFICIENT_LEGACY, "There is not enough Legacy.");
+        default -> CommandResult.rejected(Reason.PURCHASE_REFUSED, "The Roll already holds it.");
+      };
+    }
+    slot.meta(RollRules.buy(meta, type.get(), roll));
+    slot.emit(
+        "ROLL_BOUGHT", Map.of("inheritance", type.get().name(), "paid", roll.costOf(type.get())));
+    return CommandResult.applied("The Inheritance is yours.");
+  }
+
+  private CommandResult rollRefund(PlayerSlot slot, GameState gameState, String id) {
+    if (gameState.getPhase() != CampaignPhase.OFFER) {
+      return rollSealed();
+    }
+    var roll = gameState.getConfig().getPrestige().getRoll();
+    var meta = slot.meta();
+    var refusal = RollRules.whyNotRefund(meta, id, roll);
+    if (refusal != null) {
+      return CommandResult.rejected(
+          Reason.PURCHASE_REFUSED,
+          refusal == RollRefusal.HELD_UP
+              ? "Other Inheritances stand on it: give those back first."
+              : "The Roll does not hold it.");
+    }
+    var paid = meta.spent();
+    slot.meta(RollRules.refund(meta, id));
+    paid -= slot.meta().spent();
+    // An answer that needed the Inheritance goes with it.
+    for (var group : SuccessionChoice.Group.values()) {
+      if (group.requires().name().equals(id)) {
+        gameState.unchoose(group.name());
+      }
+    }
+    slot.emit("ROLL_REFUNDED", Map.of("inheritance", id, "paid", paid));
+    return CommandResult.applied("The Legacy is returned.");
+  }
+
+  private CommandResult choose(PlayerSlot slot, GameState gameState, String id) {
+    if (gameState.getPhase() != CampaignPhase.OFFER) {
+      return rollSealed();
+    }
+    var choice = SuccessionChoice.find(id);
+    if (choice.isEmpty()) {
+      return CommandResult.rejected(Reason.UNKNOWN_ID, "There is no such choice.");
+    }
+    var group = choice.get().group();
+    var effects = RollEffects.of(slot.meta().roll(), gameState.getConfig());
+    if (!effects.holds(group.requires())) {
+      return CommandResult.rejected(Reason.NOT_AVAILABLE, "The Roll holds nothing to choose.");
+    }
+    gameState.choose(group.name(), choice.get().name());
+    return CommandResult.applied("Chosen.");
+  }
+
+  /** Muster Roll: the last Party and Loadout, sent again. */
+  private CommandResult musterRoll(PlayerSlot slot, GameState gameState, String playerId) {
+    // A Trial has no meta, and so no Roll.
+    var held = slot.meta() == null ? List.<RollEntry>of() : slot.meta().roll();
+    var effects = RollEffects.of(held, gameState.getConfig());
+    if (!effects.holds(InheritanceType.MUSTER_ROLL)) {
+      return CommandResult.rejected(Reason.NOT_UNLOCKED, "The Roll holds no Muster Roll.");
+    }
+    var last = slot.lastMuster();
+    if (last == null) {
+      return CommandResult.rejected(
+          Reason.NOT_AVAILABLE, "No Party has set out yet this Generation.");
+    }
+    return startExpedition(slot, gameState, playerId, last);
   }
 
   /** The Toll the Campaign would pay if it ended now, with the Tally it was read from. */
@@ -1447,7 +1554,11 @@ public class GameService {
     }
     var pending = gameState.getPending();
     var meta = slot.meta().nextGeneration();
-    var fresh = newCampaign(meta, pending != null && pending.outcome() == GameOutcome.DEFEAT);
+    var fresh =
+        newCampaign(
+            meta,
+            pending != null && pending.outcome() == GameOutcome.DEFEAT,
+            gameState.getChoices());
     try {
       if (!slot.isManual()) {
         saves.writeAwaited(slot, fresh.toSnapshot(), meta, false);

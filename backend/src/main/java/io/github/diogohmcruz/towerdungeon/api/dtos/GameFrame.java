@@ -7,6 +7,7 @@ import com.fasterxml.jackson.annotation.JsonUnwrapped;
 
 import io.github.diogohmcruz.towerdungeon.domain.commands.Notice;
 import io.github.diogohmcruz.towerdungeon.domain.models.GameState;
+import io.github.diogohmcruz.towerdungeon.domain.prestige.SuccessionView;
 import io.github.diogohmcruz.towerdungeon.domain.prestige.TollForecast;
 
 /**
@@ -23,7 +24,14 @@ public record GameFrame(
    * @param schema the schema of the loaded record (the current one for a fresh Campaign)
    * @param notices things the player should be told, delivered once
    * @param held whether a Held Party is waiting for the player to resume
+   * @param succession the Roll, the Legacy to spend and the choices open, while the Campaign waits
+   *     in OFFER; null while it is played
    */
   public record SessionMeta(
-      boolean resumed, Instant savedAt, int schema, List<Notice> notices, boolean held) {}
+      boolean resumed,
+      Instant savedAt,
+      int schema,
+      List<Notice> notices,
+      boolean held,
+      SuccessionView succession) {}
 }

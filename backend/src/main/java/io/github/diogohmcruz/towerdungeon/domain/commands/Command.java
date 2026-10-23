@@ -202,6 +202,17 @@ public sealed interface Command {
     }
   }
 
+  /**
+   * Muster Roll: send the last Party and Loadout out again with one command. Needs the Inheritance
+   * in the Roll and a Party that has set out this Generation; Extraction stays manual.
+   */
+  record MusterRoll() implements Command {
+    @Override
+    public String kind() {
+      return "MUSTER_ROLL";
+    }
+  }
+
   /** Buy an Inheritance of the Roll with Legacy, at Succession. The id is caller-supplied. */
   record RollBuy(String inheritanceId) implements Command {
     @Override

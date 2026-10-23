@@ -43,4 +43,20 @@ class GamePropertiesBindingTest {
 
     assertThat(config.getEnemies().getWeights()).isSameAs(config.getBody().getWeights());
   }
+
+  @Test
+  void theShippedRollMatchesTheDefaults() throws IOException {
+    var shipped = bound().getPrestige().getRoll();
+    var defaults = new GameProperties().getPrestige().getRoll();
+
+    assertThat(shipped.getGates()).isEqualTo(defaults.getGates()).containsExactly(0, 5, 12, 21);
+    assertThat(shipped.getCosts()).isEqualTo(defaults.getCosts()).hasSize(17);
+    assertThat(shipped.getSeedGrain()).isEqualTo(defaults.getSeedGrain());
+    assertThat(shipped.getHardyStock()).isEqualTo(defaults.getHardyStock());
+    assertThat(shipped.getWhetstoneHabit()).isEqualTo(defaults.getWhetstoneHabit());
+    assertThat(shipped.getDowry()).isEqualTo(defaults.getDowry());
+    assertThat(shipped.getHeavierPacks()).isEqualTo(defaults.getHeavierPacks());
+    assertThat(shipped.getVillageCharter()).isEqualTo(defaults.getVillageCharter());
+    assertThat(shipped.getHeir()).isEqualTo(defaults.getHeir());
+  }
 }

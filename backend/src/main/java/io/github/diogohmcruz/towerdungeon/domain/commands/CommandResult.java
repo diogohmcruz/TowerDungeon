@@ -47,6 +47,8 @@ public record CommandResult(
     NOT_ENDED,
     TOLL_TOO_LOW,
     NOT_AVAILABLE,
+    INSUFFICIENT_LEGACY,
+    COURSE_LOCKED,
     WRITE_FAILED,
     TRIAL_CLOSED
   }

@@ -18,6 +18,8 @@ import io.github.diogohmcruz.towerdungeon.domain.models.UnitStats;
 import io.github.diogohmcruz.towerdungeon.domain.models.milestone.MilestoneType;
 import io.github.diogohmcruz.towerdungeon.domain.models.shortcut.ShortcutType;
 import io.github.diogohmcruz.towerdungeon.domain.models.upgrade.UpgradeType;
+import io.github.diogohmcruz.towerdungeon.domain.prestige.InheritanceType;
+import io.github.diogohmcruz.towerdungeon.domain.prestige.SuccessionChoice;
 
 /**
  * The enums whose constant names are written into Campaign files, so renaming or removing one
@@ -37,7 +39,9 @@ public final class PersistedIds {
           UpgradeType.class,
           MilestoneType.class,
           ShortcutType.class,
-          GameOutcome.class);
+          GameOutcome.class,
+          InheritanceType.class,
+          SuccessionChoice.class);
 
   private PersistedIds() {}
 
