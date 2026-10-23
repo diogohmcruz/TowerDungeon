@@ -704,10 +704,12 @@ public class GameService {
   /** Runs a mutation and tells the coordinator what it changed. Call under the state's lock. */
   private void applyAndRecord(PlayerSlot slot, GameState gameState, Consumer<GameState> action) {
     var before = AutosaveCoordinator.Marks.of(gameState);
+    var out = gameState.isExpeditionActive();
     try {
       action.accept(gameState);
     } finally {
-      if (!gameState.isExpeditionActive()) {
+      if (out && !gameState.isExpeditionActive()) {
+        // The Expedition ended in this step: nothing is left to hold.
         slot.resume();
       }
       saves.recorded(slot, before, AutosaveCoordinator.Marks.of(gameState));
@@ -762,9 +764,7 @@ public class GameService {
                 objectMapper.writeValueAsString(
                     new GameFrame(
                         state,
-                        slot.takeMeta(
-                            slot.isHeld() && state.isExpeditionActive(),
-                            SuccessionView.of(slot.meta(), state)),
+                        slot.takeMeta(slot.isHeld(), SuccessionView.of(slot.meta(), state)),
                         tollForecast(slot, state),
                         raceRecords(slot),
                         pillarMarks(slot, state))));
@@ -842,11 +842,7 @@ public class GameService {
   public <T> Optional<T> view(String playerId, View<T> read) {
     return observe(
         playerId,
-        (slot, state) ->
-            read.read(
-                state,
-                new Meta(
-                    slot.stateSeq(), slot.isHeld() && state.isExpeditionActive(), slot.clock())));
+        (slot, state) -> read.read(state, new Meta(slot.stateSeq(), slot.isHeld(), slot.clock())));
   }
 
   private <T> Optional<T> observe(String playerId, BiFunction<PlayerSlot, GameState, T> read) {
@@ -882,6 +878,7 @@ public class GameService {
       case Command.StartExpedition _,
           Command.Extract _,
           Command.Resume _,
+          Command.Hold _,
           Command.BuyTome _,
           Command.BuyRing _,
           Command.BuyPosts _,
@@ -930,7 +927,7 @@ public class GameService {
             case Command.SellSalt _ -> sellSalt(slot, gameState, playerId);
             case Command.BuyUpgrade upgrade -> buyUpgrade(slot, gameState, playerId, upgrade);
             case Command.StartExpedition start -> startExpedition(slot, gameState, playerId, start);
-            case Command.Extract _ -> extract(gameState, playerId);
+            case Command.Extract _ -> extract(slot, gameState, playerId);
             case Command.AssignTrade trade -> assignTrade(slot, gameState, playerId, trade);
             case Command.BuyTome tome -> buyTome(slot, gameState, playerId, tome);
             case Command.BuyRing _ -> buyRing(slot, gameState, playerId);
@@ -938,6 +935,7 @@ public class GameService {
             case Command.ReattachPart reattach -> reattachPart(slot, gameState, playerId, reattach);
             case Command.BuyPosts posts -> buyPosts(slot, gameState, playerId, posts);
             case Command.BuildPort _ -> buildPort(slot, gameState, playerId);
+            case Command.Hold _ -> hold(slot, playerId);
             case Command.Resume _ -> resume(slot, playerId);
             case Command.SendReinforcements wave ->
                 sendReinforcements(slot, gameState, playerId, wave);
@@ -1303,12 +1301,13 @@ public class GameService {
     return CommandResult.applied("The expedition set out.");
   }
 
-  private CommandResult extract(GameState gameState, String playerId) {
+  private CommandResult extract(PlayerSlot slot, GameState gameState, String playerId) {
     if (!gameState.isExpeditionActive()) {
       log.warn("Player[{}] tried to extract with no active run.", playerId);
       return CommandResult.rejected(Reason.NO_EXPEDITION, "No expedition is out.");
     }
     extractParty(gameState);
+    slot.resume();
     log.info(
         "Player[{}] extracted. Leftover food returned to village, loot banked, party returned"
             + " home to recover on the village's food.",
@@ -1329,10 +1328,21 @@ public class GameService {
     logToll(gameState, RunSummary.EXTRACTED);
   }
 
+  /** Holds the Party and the Village clock; holding what is already held changes nothing. */
+  private CommandResult hold(PlayerSlot slot, String playerId) {
+    if (slot.isHeld()) {
+      return CommandResult.applied("Already held.");
+    }
+    slot.hold();
+    log.info("Player[{}] held the clock.", playerId);
+    slot.emit("CLOCK_HELD", Map.of());
+    return CommandResult.applied("Time stands still.");
+  }
+
   /** Lets a Held Party march on: the clock starts again from exactly where it stopped. */
   private CommandResult resume(PlayerSlot slot, String playerId) {
     if (!slot.isHeld()) {
-      return CommandResult.rejected(Reason.NOT_HELD, "No Party is held.");
+      return CommandResult.applied("Nothing is held.");
     }
     slot.resume();
     log.info("Player[{}] resumed the Held Party.", playerId);
@@ -1808,7 +1818,7 @@ public class GameService {
           Reason.EXPEDITION_ACTIVE, "Extract first: Exodus cannot leave a Party on the Tower.");
     }
     if (slot.isHeld()) {
-      return CommandResult.rejected(Reason.PARTY_HELD, "A Party is Held on the Tower.");
+      return CommandResult.rejected(Reason.PARTY_HELD, "The clock is held. Resume first.");
     }
     var minimum = gameState.getConfig().getPrestige().getMinPointsToExodus();
     if (forecast(slot, gameState).toll().legacy() < minimum) {

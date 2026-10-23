@@ -271,6 +271,7 @@ public class GameWebSocketHandler implements WebSocketHandler {
             Boolean.TRUE.equals(invade.overreach()));
       }
       case EXTRACT -> new Command.Extract();
+      case HOLD -> new Command.Hold();
       case RESUME -> new Command.Resume();
       case BUY_TOME -> {
         var tome = payload(message, new TypeReference<GameActionDTO<BuyTomeActionDTO>>() {});

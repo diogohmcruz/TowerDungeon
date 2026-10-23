@@ -16,6 +16,8 @@ import org.junit.jupiter.api.io.TempDir;
 
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
 import io.github.diogohmcruz.towerdungeon.domain.commands.Command;
+import io.github.diogohmcruz.towerdungeon.domain.commands.CommandResult.Outcome;
+import io.github.diogohmcruz.towerdungeon.domain.commands.CommandResult.Reason;
 import io.github.diogohmcruz.towerdungeon.domain.models.ResourceType;
 import io.github.diogohmcruz.towerdungeon.domain.models.UnitStats;
 import io.github.diogohmcruz.towerdungeon.domain.models.architecture.ArchitecturePlan;
@@ -147,6 +149,65 @@ class HeldPartyTest {
     service.execute(PLAYER, new Command.Resume());
     service.execute(PLAYER, new Command.SendReinforcements(Map.of()));
     assertThat(state.getReinforcements()).isNotEmpty();
+  }
+
+  @Test
+  void holdStopsTheVillageClockWithNoExpeditionAndResumeRestartsIt() {
+    service.attach(PLAYER, "ws-1").block();
+    var state = service.playerState(PLAYER);
+
+    assertThat(service.execute(PLAYER, new Command.Hold()).outcome()).isEqualTo(Outcome.APPLIED);
+    var before = state.toSnapshot();
+    service.gameLoop();
+    service.invasionTimer();
+
+    assertThat(state.toSnapshot()).isEqualTo(before);
+    assertThat(state.getYearTick()).isEqualTo(before.campaign().yearTick());
+    assertThat(frame()).contains("\"held\":true");
+
+    service.execute(PLAYER, new Command.Resume());
+    service.gameLoop();
+
+    assertThat(state.toSnapshot()).isNotEqualTo(before);
+    assertThat(frame()).contains("\"held\":false");
+  }
+
+  @Test
+  void holdAndResumeAreIdempotent() {
+    service.attach(PLAYER, "ws-1").block();
+
+    assertThat(service.execute(PLAYER, new Command.Resume()).outcome()).isEqualTo(Outcome.APPLIED);
+    service.execute(PLAYER, new Command.Hold());
+    assertThat(service.execute(PLAYER, new Command.Hold()).outcome()).isEqualTo(Outcome.APPLIED);
+    assertThat(frame()).contains("\"held\":true");
+    service.execute(PLAYER, new Command.Resume());
+    assertThat(service.execute(PLAYER, new Command.Resume()).outcome()).isEqualTo(Outcome.APPLIED);
+    assertThat(frame()).contains("\"held\":false");
+  }
+
+  @Test
+  void aDeliberateHoldStopsAConnectedExpeditionAndRefusesReinforcements() {
+    service.attach(PLAYER, "ws-1").block();
+    service.execute(PLAYER, new Command.StartExpedition(Map.of(), 0));
+    var state = service.playerState(PLAYER);
+
+    service.execute(PLAYER, new Command.Hold());
+    var before = state.toSnapshot();
+    service.gameLoop();
+    service.invasionTimer();
+
+    assertThat(state.toSnapshot()).isEqualTo(before);
+    assertThat(service.execute(PLAYER, new Command.SendReinforcements(Map.of())).reason())
+        .isEqualTo(Reason.PARTY_HELD);
+    assertThat(service.execute(PLAYER, new Command.SellFood()).reason())
+        .isNotEqualTo(Reason.PARTY_HELD);
+
+    service.execute(PLAYER, new Command.Extract());
+    assertThat(state.isExpeditionActive()).isFalse();
+    service.execute(PLAYER, new Command.Hold());
+    service.execute(PLAYER, new Command.Resume());
+    service.gameLoop();
+    assertThat(state.toSnapshot()).isNotEqualTo(before);
   }
 
   @Test

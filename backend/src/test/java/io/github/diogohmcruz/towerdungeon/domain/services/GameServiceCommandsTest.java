@@ -439,11 +439,10 @@ class GameServiceCommandsTest {
   }
 
   @Test
-  void resumingWhenNoPartyIsHeldIsRejected() {
+  void resumingWhenNothingIsHeldChangesNothing() {
     var result = service.execute(PLAYER, new Command.Resume());
 
-    assertThat(result.outcome()).isEqualTo(Outcome.REJECTED);
-    assertThat(result.reason()).isEqualTo(Reason.NOT_HELD);
+    assertThat(result.outcome()).isEqualTo(Outcome.APPLIED);
   }
 
   // ---- the state sequence and the event log

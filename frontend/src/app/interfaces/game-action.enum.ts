@@ -7,6 +7,7 @@ export enum GameAction {
   SELL_SALT = 'SELL_SALT',
   INVADE = 'INVADE',
   EXTRACT = 'EXTRACT',
+  HOLD = 'HOLD',
   RESUME = 'RESUME',
   REINFORCE = 'REINFORCE',
   UPGRADE = 'UPGRADE',

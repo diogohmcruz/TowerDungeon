@@ -248,6 +248,17 @@ public sealed interface Command {
     }
   }
 
+  /**
+   * Stop the Party and the Village clock where they stand, as a lost connection does. Repeating it
+   * changes nothing. With no Expedition out it still stops the Village clock.
+   */
+  record Hold() implements Command {
+    @Override
+    public String kind() {
+      return "HOLD";
+    }
+  }
+
   /** Let a Held Party march on. */
   record Resume() implements Command {
     @Override

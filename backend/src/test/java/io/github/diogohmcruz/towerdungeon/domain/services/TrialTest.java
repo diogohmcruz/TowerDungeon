@@ -252,6 +252,23 @@ class TrialTest {
   }
 
   @Test
+  void aDeliberateHoldCostsNoRaceTime() {
+    var id = enter(ALICE);
+    var state = service.playerState(id);
+    service.gameLoop();
+    assertThat(state.getTrial().getTicksSinceStart()).isEqualTo(1);
+
+    service.execute(id, new Command.Hold());
+    service.gameLoop();
+    service.gameLoop();
+    assertThat(state.getTrial().getTicksSinceStart()).isEqualTo(1);
+
+    service.execute(id, new Command.Resume());
+    service.gameLoop();
+    assertThat(state.getTrial().getTicksSinceStart()).isEqualTo(2);
+  }
+
+  @Test
   void whenTheClockRunsOutTheTrialEndsAndTheResultFreezes() {
     build(terms(10, Duration.ofSeconds(3), 3, 20));
     var id = enter(ALICE);

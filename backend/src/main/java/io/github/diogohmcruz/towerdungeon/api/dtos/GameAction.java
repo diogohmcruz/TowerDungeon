@@ -9,6 +9,7 @@ public enum GameAction {
   SELL_SALT,
   INVADE,
   EXTRACT,
+  HOLD,
   RESUME,
   REINFORCE,
   UPGRADE,
