@@ -112,6 +112,19 @@ public class GameProperties {
     /** Reduction to a floor's max enemy tier for each cleared guardian above it. */
     private int easeDifficultyPerBoss = 1;
 
+    /**
+     * Floors over which the first-reach discount fades; Floor 1 + this is the first full budget.
+     */
+    private int gentleFloors = 9;
+
+    /**
+     * Budget multiplier on Floor 1, rising linearly to 1.0 once {@code gentleFloors} have passed.
+     */
+    private double gentleStartMultiplier = 0.5;
+
+    /** Budget added per slain guardian standing below a floor (the mirror of the ease value). */
+    private double stepBudgetPerBoss = 0.15;
+
     /** Floor is never emptier than this (keeps at least a token defender). */
     private double minBudget = 1.0;
   }

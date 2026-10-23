@@ -54,6 +54,9 @@ game:
     surge-multiplier: 1.5
     ease-budget-per-boss: 0.15
     ease-difficulty-per-boss: 1
+    gentle-floors: 9
+    gentle-start-multiplier: 0.5
+    step-budget-per-boss: 0.15
     min-budget: 1.0
   supply:
     base-max: 100.0

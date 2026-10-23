@@ -17,7 +17,10 @@ class TowerTest {
   private static final int FLOORS = 30;
 
   private static Tower tower(RandomGenerator random) {
-    var config = new GameProperties();
+    return tower(random, new GameProperties());
+  }
+
+  private static Tower tower(RandomGenerator random, GameProperties config) {
     var plan =
         ArchitecturePlan.generate(
             config.getArchitecture().getSeed(),
@@ -116,5 +119,71 @@ class TowerTest {
     tower.startNewRunAt(15);
 
     assertThat(tower.getFloors().get(15).getArchitecture()).isEqualTo(Architecture.WATERWAY);
+  }
+
+  private static GameProperties noVariance() {
+    var config = new GameProperties();
+    config.getEnemies().setVariance(0);
+    return config;
+  }
+
+  /** Slimes weigh 1, so on a slime-only floor the headcount is the budget rounded up. */
+  private static int slimesOnFloor(Tower tower, int floor) {
+    return tower.getFloors().get(floor).getEnemies().size();
+  }
+
+  private static void climbTo(Tower tower, int floor) {
+    while (tower.getCurrentFloor() < floor) {
+      tower.moveToNextFloor();
+    }
+  }
+
+  private static double undiscountedBudget(int floor) {
+    return 3.0 + 0.8 * floor + 0.04 * floor * floor;
+  }
+
+  @Test
+  void firstReachFloorsAreDiscountedAndFloorTenOnwardIsNot() {
+    var tower = tower(new SplittableRandom(1), noVariance());
+    climbTo(tower, 9);
+    tower.moveToNextFloor();
+    tower.moveToNextFloor();
+
+    var floorOne = (int) Math.ceil(undiscountedBudget(1) * 0.5);
+    var floorNine = (int) Math.ceil(undiscountedBudget(9) * (0.5 + 0.5 * 8 / 9) * 1.0);
+    assertThat(slimesOnFloor(tower, 1)).isEqualTo(floorOne);
+    assertThat(floorOne).isLessThan((int) Math.ceil(undiscountedBudget(1)));
+    // Floor 5 is a surge floor: the discount applies before the surge multiplier.
+    assertThat(slimesOnFloor(tower, 5))
+        .isEqualTo((int) Math.ceil(undiscountedBudget(5) * (0.5 + 0.5 * 4 / 9) * 1.5));
+    assertThat(slimesOnFloor(tower, 9)).isEqualTo(floorNine);
+    assertThat(slimesOnFloor(tower, 11)).isEqualTo((int) Math.ceil(undiscountedBudget(11)));
+  }
+
+  @Test
+  void aSlainGuardianBelowAFloorRaisesItsBudgetOneStepEach() {
+    var plain = tower(new SplittableRandom(1), noVariance());
+    plain.startNewRunAt(11);
+    var oneStep = tower(new SplittableRandom(1), noVariance());
+    oneStep.markBossCleared(10);
+    oneStep.startNewRunAt(11);
+    var twoSteps = tower(new SplittableRandom(1), noVariance());
+    twoSteps.markBossCleared(5);
+    twoSteps.markBossCleared(10);
+    twoSteps.startNewRunAt(11);
+
+    var base = undiscountedBudget(11);
+    assertThat(slimesOnFloor(plain, 11)).isEqualTo((int) Math.ceil(base));
+    assertThat(slimesOnFloor(oneStep, 11)).isEqualTo((int) Math.ceil(base * 1.15));
+    assertThat(slimesOnFloor(twoSteps, 11)).isEqualTo((int) Math.ceil(base * 1.15 * 1.15));
+  }
+
+  @Test
+  void aSlainGuardianAboveAFloorEasesItInsteadOfSteppingItUp() {
+    var tower = tower(new SplittableRandom(1), noVariance());
+    tower.markBossCleared(20);
+    tower.startNewRunAt(11);
+
+    assertThat(slimesOnFloor(tower, 11)).isEqualTo((int) Math.ceil(undiscountedBudget(11) * 0.85));
   }
 }

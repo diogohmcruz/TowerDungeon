@@ -69,6 +69,24 @@ public class Tower {
     return (int) clearedBosses.stream().filter(bossFloor -> bossFloor > floor).count();
   }
 
+  /** Number of cleared guardians standing below {@code floor} — the floor's "step-up" pressure. */
+  private int stepUpsFor(int floor) {
+    return (int) clearedBosses.stream().filter(bossFloor -> bossFloor < floor).count();
+  }
+
+  /**
+   * First-reach discount: x{@code gentleStartMultiplier} on Floor 1, rising linearly to x1.0 once
+   * {@code gentleFloors} floors have passed.
+   */
+  private double gentleMultiplier(int floor) {
+    var e = enemiesConfig;
+    if (e.getGentleFloors() <= 0 || floor > e.getGentleFloors()) {
+      return 1.0;
+    }
+    var progress = (double) (floor - 1) / e.getGentleFloors();
+    return e.getGentleStartMultiplier() + (1 - e.getGentleStartMultiplier()) * progress;
+  }
+
   /** Builds a fully populated floor (enemies or boss) for the given depth. */
   private TowerFloor buildFloor(int floor) {
     var percentageOfTowerComplete = (double) floor / maxFloor;
@@ -94,22 +112,23 @@ public class Tower {
     if (isBossFloor) {
       towerFloor.populateBoss(bossConfig);
     } else {
-      towerFloor.populateEnemies(enemyBudget(floor, easingSteps), random);
+      towerFloor.populateEnemies(enemyBudget(floor, easingSteps, stepUpsFor(floor)), random);
     }
     return towerFloor;
   }
 
   /**
    * Weighted garrison budget for a regular floor: a base plus linear and quadratic growth with
-   * depth, boosted on periodic "surge" floors, swung randomly, then thinned once for every cleared
-   * guardian above it.
+   * depth, discounted on the first floors, boosted on periodic "surge" floors, swung randomly, then
+   * thinned once for every cleared guardian above it and raised once for every one below it.
    */
-  private double enemyBudget(int floor, int easingSteps) {
+  private double enemyBudget(int floor, int easingSteps, int stepUps) {
     var e = enemiesConfig;
     var budget =
         e.getBaseBudget()
             + floor * e.getBudgetPerFloor()
             + (double) floor * floor * e.getQuadraticPerFloor();
+    budget *= gentleMultiplier(floor);
     if (e.getSurgeInterval() > 0 && floor % e.getSurgeInterval() == 0) {
       budget *= e.getSurgeMultiplier();
     }
@@ -117,6 +136,7 @@ public class Tower {
       budget *= 1 + random.nextDouble(-e.getVariance(), e.getVariance());
     }
     budget *= Math.pow(1 - e.getEaseBudgetPerBoss(), easingSteps);
+    budget *= Math.pow(1 + e.getStepBudgetPerBoss(), stepUps);
     return Math.max(e.getMinBudget(), budget);
   }
 

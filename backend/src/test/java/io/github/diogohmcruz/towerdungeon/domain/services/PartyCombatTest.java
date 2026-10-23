@@ -55,18 +55,43 @@ class PartyCombatTest {
     combat.unitsAttack(party, floor.getEnemies(), floor, state);
   }
 
+  /**
+   * A Slime that melee cannot hurt, so tests can tell a Healer's strike from a Warrior's. The real
+   * Slime is only resistant (0.5), so it is not a damage sink for these tests.
+   */
+  private static class MeleeImmuneSlime extends Enemy {
+    MeleeImmuneSlime() {
+      super(EnemyStats.SLIME);
+    }
+
+    @Override
+    public void receiveAttack(Double attack, AttackType attackType) {
+      if (attackType != AttackType.MELEE) {
+        super.receiveAttack(attack, attackType);
+      }
+    }
+  }
+
   @Test
-  void theSlimeIsImmuneToMelee() {
-    // Several tests rely on this: Warriors and Porters cannot hurt a Slime, so any damage to it
-    // in those tests came from a Healer's strike.
-    assertThat(EnemyStats.SLIME.getWeaknesses().get(AttackType.MELEE)).isZero();
+  void theSlimeResistsMeleeWithoutBeingImmune() {
+    assertThat(EnemyStats.SLIME.getWeaknesses().get(AttackType.MELEE)).isEqualTo(0.5);
+  }
+
+  @Test
+  void aWarriorHurtsARealSlime() {
+    var warrior = recruited(UnitStats.WARRIOR);
+    var slime = new Enemy(EnemyStats.SLIME);
+
+    tick(party(warrior), floorOf(slime));
+
+    assertThat(slime.getCurrentHealth()).isEqualTo(8.0 - 0.5);
   }
 
   @Test
   void aHealerWithAWoundedAllyHealsAndDoesNotStrikeInTheSameTick() {
     var healer = recruited(UnitStats.HEALER);
     var warrior = wounded(recruited(UnitStats.WARRIOR), 10);
-    var enemy = new Enemy(EnemyStats.SLIME);
+    var enemy = new MeleeImmuneSlime();
     var enemyHealth = enemy.getCurrentHealth();
     var manaBefore = healer.getCurrentMana();
 
@@ -82,7 +107,7 @@ class PartyCombatTest {
     var healer = recruited(UnitStats.HEALER);
     healer.spendMana(healer.getCurrentMana());
     var warrior = wounded(recruited(UnitStats.WARRIOR), 10);
-    var enemy = new Enemy(EnemyStats.SLIME);
+    var enemy = new MeleeImmuneSlime();
     var enemyHealth = enemy.getCurrentHealth();
 
     tick(party(healer, warrior), floorOf(enemy));
@@ -96,7 +121,7 @@ class PartyCombatTest {
   void withNobodyWoundedAHealerStrikesAndLeavesItsAlliesAlone() {
     var healer = recruited(UnitStats.HEALER);
     var warrior = recruited(UnitStats.WARRIOR);
-    var enemy = new Enemy(EnemyStats.SLIME);
+    var enemy = new MeleeImmuneSlime();
     var healthBefore = enemy.getCurrentHealth();
 
     tick(party(healer, warrior), floorOf(enemy));
@@ -122,7 +147,7 @@ class PartyCombatTest {
     var warrior = recruited(UnitStats.WARRIOR);
     var chymus = new Enemy(EnemyStats.CHYMUS_INSECT);
     var golem = new Enemy(EnemyStats.STONE_GOLEM);
-    var slime = new Enemy(EnemyStats.SLIME);
+    var slime = new MeleeImmuneSlime();
     var slimeHealth = slime.getCurrentHealth();
 
     tick(party(healer, warrior), floorOf(chymus, golem, slime));

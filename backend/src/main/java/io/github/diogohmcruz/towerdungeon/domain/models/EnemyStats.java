@@ -19,7 +19,7 @@ public enum EnemyStats {
       2.0,
       AttackType.MELEE,
       Map.of(
-          AttackType.MELEE, 0.0,
+          AttackType.MELEE, 0.5,
           AttackType.MAGIC, 1.5,
           AttackType.RANGED, 0.5,
           AttackType.HEAL, 1.0),
