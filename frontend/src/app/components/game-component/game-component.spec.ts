@@ -97,4 +97,27 @@ describe('GameComponent', () => {
     );
     expect(component.saltToUse()).toBe(0);
   });
+
+  it('sends the Salt Pack with its bearer, from the Salt the Supplies left', () => {
+    stateService.update({
+      loadout: {
+        ...stateService.state().loadout,
+        saltHeld: 5,
+        saltUseful: 10,
+        saltPansOpen: true,
+        bearerTypes: ['TANK'],
+      },
+    });
+    component.saltToUse.set(2);
+    component.packSalt.set(9);
+    component.packBearer.set('TANK');
+
+    component.sendInvadeAction();
+
+    expect(sendAction).toHaveBeenCalledWith(
+      GameAction.INVADE,
+      jasmine.objectContaining({ salt: 2, saltPack: 3, saltBearer: 'TANK' }),
+    );
+    expect(component.packSalt()).toBe(0);
+  });
 });

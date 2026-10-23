@@ -19,6 +19,10 @@ export class Loadout {
   readonly disabled = input(false);
   /** Salt chosen to salt the Supplies with. */
   readonly salt = model(0);
+  /** Salt chosen for the Salt Pack against Chymus Insects. */
+  readonly pack = model(0);
+  /** The Unit type that carries the Pack: the Salt-bearer. */
+  readonly bearer = model('');
 
   readonly open = signal(false);
 
@@ -29,6 +33,22 @@ export class Loadout {
   readonly saltChosen = computed(() =>
     Math.min(Math.max(0, this.salt()), this.saltMax()),
   );
+
+  /** Salt left for the Pack once the Supplies have theirs. */
+  readonly packMax = computed(() =>
+    Math.max(0, this.preview().saltHeld - this.saltChosen()),
+  );
+  readonly packChosen = computed(() =>
+    this.bearerChosen() === ''
+      ? 0
+      : Math.min(Math.max(0, this.pack()), this.packMax()),
+  );
+
+  /** The Salt-bearer: the one chosen if still in the Reserves, otherwise the first type there. */
+  readonly bearerChosen = computed(() => {
+    const types = this.preview().bearerTypes;
+    return types.includes(this.bearer()) ? this.bearer() : (types[0] ?? '');
+  });
 
   /** Share of the Supplies taken that the chosen Salt salts. */
   private readonly saltedShare = computed(() => {
@@ -66,5 +86,17 @@ export class Loadout {
 
   fewer() {
     this.salt.set(Math.max(0, this.saltChosen() - 1));
+  }
+
+  morePack() {
+    this.pack.set(Math.min(this.packMax(), this.packChosen() + 1));
+  }
+
+  fewerPack() {
+    this.pack.set(Math.max(0, this.packChosen() - 1));
+  }
+
+  chooseBearer(type: string) {
+    this.bearer.set(type);
   }
 }

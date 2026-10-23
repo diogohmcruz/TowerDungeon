@@ -129,6 +129,10 @@ export class VillageManagement {
     this.ws.sendAction(GameAction.SELL_MATERIALS);
   }
 
+  onClickSellSalt() {
+    this.ws.sendAction(GameAction.SELL_SALT);
+  }
+
   onClickSellRelics() {
     this.ws.sendAction(GameAction.SELL_RELICS);
   }

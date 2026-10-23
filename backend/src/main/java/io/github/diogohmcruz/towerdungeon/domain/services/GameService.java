@@ -380,6 +380,7 @@ public class GameService {
           Command.SellFood _,
           Command.SellMaterials _,
           Command.SellRelics _,
+          Command.SellSalt _,
           Command.AssignTrade _,
           Command.BuyUpgrade _ ->
           true;
@@ -406,6 +407,7 @@ public class GameService {
             case Command.SellMaterials _ ->
                 sellStock(slot, gameState, playerId, ResourceType.MATERIALS);
             case Command.SellRelics _ -> sellStock(slot, gameState, playerId, ResourceType.RELICS);
+            case Command.SellSalt _ -> sellSalt(slot, gameState, playerId);
             case Command.BuyUpgrade upgrade -> buyUpgrade(slot, gameState, playerId, upgrade);
             case Command.StartExpedition start -> startExpedition(slot, gameState, playerId, start);
             case Command.Extract _ -> extract(gameState, playerId);
@@ -499,6 +501,16 @@ public class GameService {
       return CommandResult.rejected(Reason.NOTHING_TO_SELL, "There is nothing to sell.");
     }
     slot.emit("SOLD", Map.of("what", type.name()));
+    return CommandResult.applied("Sold.");
+  }
+
+  private CommandResult sellSalt(PlayerSlot slot, GameState gameState, String playerId) {
+    var profit = gameState.sellAllSalt();
+    log.info("Player[{}] sold the Salt for {} credits", playerId, profit);
+    if (profit <= 0) {
+      return CommandResult.rejected(Reason.NOTHING_TO_SELL, "There is no Salt to sell.");
+    }
+    slot.emit("SOLD", Map.of("what", "SALT"));
     return CommandResult.applied("Sold.");
   }
 
@@ -611,6 +623,11 @@ public class GameService {
     var units = gameState.getUnits();
     final var unitsOnTower = gameState.getUnitsOnTower();
     var invadeUnits = command.units();
+    var saltPack = command.saltPack() == null ? 0 : command.saltPack();
+    if (saltPack > 0 && !bearerGoes(gameState, invadeUnits, command.saltBearer())) {
+      return CommandResult.rejected(
+          Reason.INVALID_ARGUMENT, "The Salt-bearer must be a Unit type that sets out.");
+    }
     if (invadeUnits.isEmpty()) {
       sendAllToTower(units, unitsOnTower);
     } else {
@@ -633,7 +650,7 @@ public class GameService {
     }
     gameState.getTower().startNewRunAt(requestedFloor);
     gameState.setRunStartFloor(requestedFloor > 0 ? requestedFloor : 0);
-    gameState.startRun(command.salt() == null ? 0 : command.salt());
+    gameState.startRun(command.salt() == null ? 0 : command.salt(), saltPack, command.saltBearer());
     if (requestedFloor > 0) {
       gameState.recordFloorReached(requestedFloor);
     }
@@ -701,6 +718,17 @@ public class GameService {
     return gameState.getReinforcements().size() > wavesBefore
         ? CommandResult.applied("A wave set out.")
         : CommandResult.rejected(Reason.NO_UNITS, "There are no units at home to send.");
+  }
+
+  /** Whether a Unit of the bearer's type is among those about to set out. */
+  private static boolean bearerGoes(
+      GameState gameState, Map<UnitStats, Integer> invadeUnits, UnitStats bearer) {
+    if (bearer == null) {
+      return false;
+    }
+    return invadeUnits.isEmpty()
+        ? !gameState.getUnits().getOrDefault(bearer, List.of()).isEmpty()
+        : invadeUnits.getOrDefault(bearer, 0) > 0;
   }
 
   private static void sendAllToTower(
@@ -865,6 +893,7 @@ public class GameService {
     gameState.setExpeditionActive(false);
     gameState.setSupplies(0d);
     gameState.setSaltedSupplies(0d);
+    gameState.loseSaltPack();
     gameState.getUnitsOnTower().clear();
     gameState.completeExpedition();
     logToll(gameState, RunSummary.WIPED);

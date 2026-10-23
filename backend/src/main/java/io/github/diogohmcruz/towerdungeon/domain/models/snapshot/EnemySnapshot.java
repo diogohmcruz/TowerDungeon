@@ -9,6 +9,8 @@ import io.github.diogohmcruz.towerdungeon.domain.models.EnemyStats;
 /**
  * One garrison enemy's facts. Health lives in the body parts (the totals are their sums), so the
  * layout the enemy was born with is kept and never re-rolled.
+ *
+ * @param salted whether the Party's Salt Pack has salted it
  */
 public record EnemySnapshot(
     int id,
@@ -17,4 +19,5 @@ public record EnemySnapshot(
     double healthMultiplier,
     double damageMultiplier,
     boolean boss,
-    List<PartSnapshot> parts) {}
+    List<PartSnapshot> parts,
+    boolean salted) {}

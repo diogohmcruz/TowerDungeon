@@ -51,6 +51,7 @@ public class PartyCombat {
     var aimedStrike = new AimedStrike(random, aiming);
 
     meetFearedEnemies(party, currentEnemies, currentTowerFloor);
+    gameState.saltGarrison(currentEnemies);
 
     party.stream()
         .filter(PartyCombat::isHealer)
@@ -97,7 +98,8 @@ public class PartyCombat {
                   targetEnemy,
                   currentUnit.getDamage()
                       * damageMultiplier
-                      * currentUnit.damageFactorAgainst(targetEnemy.getStats()),
+                      * currentUnit.damageFactorAgainst(targetEnemy.getStats())
+                      * gameState.packDamageFactorAgainst(targetEnemy),
                   unitType.getAttackType(),
                   aiming.profileOf(unitType),
                   currentUnit.getAccuracy(),
@@ -129,16 +131,19 @@ public class PartyCombat {
               if (currentEnemy.isDead()) {
                 return;
               }
-              var unitStatsKeys = new ArrayList<>(unitsOnTower.keySet());
-              Collections.shuffle(unitStatsKeys, random);
-              var targetUnit = unitsOnTower.get(unitStatsKeys.getFirst());
-              if (targetUnit.isEmpty()) {
-                log.info(
-                    "No units available for enemy {} to attack. Skipping attack.", currentEnemy);
-                return;
+              var targetUnitElement = carrierTarget(gameState, currentEnemy);
+              if (targetUnitElement == null) {
+                var unitStatsKeys = new ArrayList<>(unitsOnTower.keySet());
+                Collections.shuffle(unitStatsKeys, random);
+                var targetUnit = unitsOnTower.get(unitStatsKeys.getFirst());
+                if (targetUnit.isEmpty()) {
+                  log.info(
+                      "No units available for enemy {} to attack. Skipping attack.", currentEnemy);
+                  return;
+                }
+                var randomUnitOnTowerIndex = random.nextInt(targetUnit.size());
+                targetUnitElement = targetUnit.get(randomUnitOnTowerIndex);
               }
-              var randomUnitOnTowerIndex = random.nextInt(targetUnit.size());
-              var targetUnitElement = targetUnit.get(randomUnitOnTowerIndex);
               var healthBefore = targetUnitElement.getCurrentHealth();
               drops.addAll(
                   new AimedStrike(random, gameState.getConfig().getAiming())
@@ -161,6 +166,18 @@ public class PartyCombat {
               }
             });
     return drops;
+  }
+
+  /**
+   * The target bias: an enemy the Salt Pack works on aims at the Salt-bearer, with the configured
+   * chance. Null leaves the choice to the usual draw. Nothing is drawn unless the bias applies.
+   */
+  private Unit carrierTarget(GameState gameState, Enemy enemy) {
+    if (!gameState.aimsAtSaltBearer(enemy)
+        || random.nextDouble() >= gameState.getConfig().getSalt().getBearerTargetBias()) {
+      return null;
+    }
+    return gameState.saltBearer().orElse(null);
   }
 
   /**

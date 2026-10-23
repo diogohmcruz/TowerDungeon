@@ -37,6 +37,8 @@ class FieldAccountingTest {
           Map.entry("surplus", "ExpeditionSnapshot.surplus"),
           Map.entry("supplies", "ExpeditionSnapshot.supplies"),
           Map.entry("saltedSupplies", "ExpeditionSnapshot.saltedSupplies"),
+          Map.entry("saltPack", "ExpeditionSnapshot.saltPack"),
+          Map.entry("saltBearerId", "ExpeditionSnapshot.saltBearerId"),
           Map.entry("lastFoodReturned", "ExpeditionSnapshot.lastFoodReturned"),
           Map.entry("reinforcements", "ExpeditionSnapshot.waves"),
           Map.entry("purchasedUpgrades", "CampaignSnapshot.upgrades"),

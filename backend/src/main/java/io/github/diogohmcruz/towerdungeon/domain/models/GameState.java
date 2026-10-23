@@ -74,6 +74,12 @@ public class GameState {
   /** How much of {@code supplies} is salted: it drains slower, and comes home unsalted. */
   private double saltedSupplies = 0d;
 
+  /** Salt the Salt Pack still carries; the rest was spent on Chymus Insects as they were met. */
+  private int saltPack = 0;
+
+  /** The Unit carrying the Salt Pack, who Chymus Insects aim at; null when there is no Pack. */
+  private Integer saltBearerId;
+
   private Double maxSupplies;
   private Double lastFoodReturned = 0d;
   private List<Reinforcement> reinforcements = new ArrayList<>();
@@ -168,7 +174,26 @@ public class GameState {
    * spent.
    */
   public void startRun(int saltToUse) {
+    startRun(saltToUse, 0, null);
+  }
+
+  /**
+   * As {@link #startRun(int)}, also loading a Salt Pack of up to {@code packSalt} Salt on the first
+   * Unit of {@code bearerType} in the Party. The Pack is taken first and costs Carrying Capacity; a
+   * Party without such a Unit, or a Stockroom without Salt, takes no Pack.
+   */
+  public void startRun(int saltToUse, int packSalt, UnitStats bearerType) {
     this.expeditionActive = true;
+    this.saltPack = 0;
+    this.saltBearerId = null;
+    var bearer =
+        bearerType == null
+            ? Optional.<Unit>empty()
+            : unitsOnTower.getOrDefault(bearerType, List.of()).stream().findFirst();
+    if (bearer.isPresent() && packSalt > 0) {
+      this.saltPack = village.takeSalt(packSalt);
+      this.saltBearerId = saltPack > 0 ? bearer.get().getId() : null;
+    }
     this.maxSupplies = computeSupplyCapacity();
     this.supplies = village.takeFood(this.maxSupplies);
     var perSalt = config.getSalt().getSuppliesPerSalt();
@@ -201,7 +226,53 @@ public class GameState {
         unitsOnTower.entrySet().stream()
             .mapToDouble(entry -> entry.getKey().getSupplyBonus() * entry.getValue().size())
             .sum();
-    return config.getSupply().getBaseMax() + getSupplyCapacityBonus() + supplyBonus;
+    var pack = saltBearerId == null ? 0d : config.getSalt().getPackCapacity();
+    return config.getSupply().getBaseMax() + getSupplyCapacityBonus() + supplyBonus - pack;
+  }
+
+  /** The Unit carrying the Salt Pack, if it still stands. */
+  public Optional<Unit> saltBearer() {
+    return saltBearerId == null
+        ? Optional.empty()
+        : partyMembers().stream().filter(unit -> saltBearerId.equals(unit.getId())).findFirst();
+  }
+
+  /**
+   * Spends one Salt of the Pack on each unsalted enemy it works on (Chymus Insects, not Slimes) as
+   * the Party meets them, for as long as the Pack and its bearer last.
+   */
+  public void saltGarrison(List<Enemy> garrison) {
+    var target = config.getSalt().getPackEnemy();
+    for (var enemy : garrison) {
+      if (saltPack <= 0 || saltBearer().isEmpty()) {
+        return;
+      }
+      if (enemy.getStats() == target && !enemy.isSalted() && !enemy.isDead()) {
+        enemy.setSalted(true);
+        saltPack--;
+      }
+    }
+  }
+
+  /** The factor on a hit against this enemy from the Pack: more than one only if it is salted. */
+  public double packDamageFactorAgainst(Enemy enemy) {
+    return enemy.isSalted() ? 1 + config.getSalt().getPackDamageBonus() : 1d;
+  }
+
+  /**
+   * Whether this enemy should aim at the Salt-bearer: it is one the Pack works on, and either
+   * already salted or the Pack still has Salt for it.
+   */
+  public boolean aimsAtSaltBearer(Enemy enemy) {
+    return enemy.getStats() == config.getSalt().getPackEnemy()
+        && (enemy.isSalted() || saltPack > 0)
+        && saltBearer().isPresent();
+  }
+
+  /** The Pack's Salt is lost with a Party that does not come home, or with its bearer. */
+  public void loseSaltPack() {
+    this.saltPack = 0;
+    this.saltBearerId = null;
   }
 
   /**
@@ -227,6 +298,8 @@ public class GameState {
   /** Pours any food the party still carries back into the village pantry after a successful run. */
   public void returnLeftoverSuppliesToVillage() {
     this.lastFoodReturned = this.supplies;
+    village.returnSalt(saltPack);
+    loseSaltPack();
     village.addFood(this.supplies);
     this.supplies = 0d;
     this.saltedSupplies = 0d;
@@ -439,6 +512,14 @@ public class GameState {
 
   public double sellAllMaterials() {
     return sellAll(ResourceType.MATERIALS, config.getReward().getMaterialsSellPrice());
+  }
+
+  /** Sells every whole Salt in the Stockroom; returns the Credits made. */
+  public double sellAllSalt() {
+    var sold = village.takeSalt(Integer.MAX_VALUE);
+    var profit = sold * config.getSalt().getSellPrice();
+    this.credit += profit;
+    return profit;
   }
 
   public double sellAllRelics() {
@@ -877,6 +958,12 @@ public class GameState {
         (int) Math.ceil(taken / perSalt),
         (int) Math.floor(village.getSalt()),
         isSaltPansOpen(),
+        config.getSalt().getPackCapacity(),
+        units.entrySet().stream()
+            .filter(entry -> !entry.getValue().isEmpty())
+            .map(entry -> entry.getKey().name())
+            .sorted()
+            .toList(),
         getTrustHeld());
   }
 
@@ -894,6 +981,8 @@ public class GameState {
       int saltUseful,
       int saltHeld,
       boolean saltPansOpen,
+      double packCapacity,
+      List<String> bearerTypes,
       int trustHeld) {}
 
   /** The Count: what the Campaign has lost to Starvation. */
@@ -1405,6 +1494,9 @@ public class GameState {
         unitsOnTower.remove(targetUnit.getStats());
       }
       runUnitsLost++;
+      if (targetUnit.getId().equals(saltBearerId)) {
+        loseSaltPack();
+      }
       var floor = tower == null ? 0 : tower.getCurrentFloor();
       runFallen.add(fallenAt(targetUnit, floor));
       wallOfNames.add(fallenAt(targetUnit, floor));
@@ -1577,7 +1669,8 @@ public class GameState {
                             enemy.healthMultiplier(),
                             enemy.damageMultiplier(),
                             enemy.isBoss(),
-                            partSnapshots(enemy.getParts())))
+                            partSnapshots(enemy.getParts()),
+                            enemy.isSalted()))
                 .toList();
     var waves =
         reinforcements.stream()
@@ -1602,7 +1695,9 @@ public class GameState {
         List.copyOf(runFallen),
         garrison,
         waves,
-        saltedSupplies);
+        saltedSupplies,
+        saltPack,
+        saltBearerId);
   }
 
   /** Units in a stable order: by type, then in list order. */
@@ -1756,6 +1851,8 @@ public class GameState {
       state.unitsOnTower = unitsFrom(e.party(), config);
       state.supplies = e.supplies();
       state.saltedSupplies = Math.min(e.saltedSupplies(), e.supplies());
+      state.saltPack = Math.max(0, e.saltPack());
+      state.saltBearerId = state.saltPack > 0 ? e.saltBearerId() : null;
       state.carriedLoot.putAll(e.carriedLoot());
       state.carriedCredits = e.carriedCredits();
       state.surplus.putAll(e.surplus());
@@ -1788,7 +1885,8 @@ public class GameState {
                               en.healthMultiplier(),
                               en.damageMultiplier(),
                               en.boss(),
-                              partsFrom(en.parts())))
+                              partsFrom(en.parts()),
+                              en.salted()))
                   .toList();
       state.tower =
           Tower.restore(

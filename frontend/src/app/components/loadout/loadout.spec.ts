@@ -20,6 +20,8 @@ describe('Loadout', () => {
     saltHeld: 4,
     saltPansOpen: true,
     trustHeld: 12,
+    packCapacity: 10,
+    bearerTypes: ['TANK', 'WARRIOR'],
     ...over,
   });
 
@@ -121,5 +123,47 @@ describe('Loadout', () => {
 
     expect(text()).toContain('the Salt Pans are not open yet');
     expect(stepper('Use one more Salt')).toBeNull();
+  });
+
+  it('offers a Salt Pack that takes 10 Carrying Capacity and marks the Salt-bearer', () => {
+    load({ saltHeld: 3 });
+    open();
+
+    expect(text()).toContain('Salt Pack');
+    expect(text()).toContain('one per Chymus Insect: +50% damage');
+    expect(text()).toContain('Takes 10 Carrying Capacity');
+    expect(text()).toContain('Marked: TANK');
+  });
+
+  it('chooses Pack Salt one at a time from what the Supplies left, and the bearer', () => {
+    load({ saltHeld: 3 });
+    open();
+    stepper('Use one more Salt').click();
+    fixture.detectChanges();
+
+    stepper('Pack one more Salt').click();
+    stepper('Pack one more Salt').click();
+    stepper('Pack one more Salt').click();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.pack()).toBe(2);
+    expect(stepper('Pack one more Salt').disabled).toBeTrue();
+
+    const select = root().querySelector('select') as HTMLSelectElement;
+    select.value = 'WARRIOR';
+    select.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    expect(fixture.componentInstance.bearer()).toBe('WARRIOR');
+    expect(text()).toContain('Marked: WARRIOR');
+  });
+
+  it('has no Pack to take with no Unit to carry it', () => {
+    load({ saltHeld: 3, bearerTypes: [] });
+    open();
+    stepper('Pack one more Salt').click();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.packChosen()).toBe(0);
+    expect(text()).toContain('No Unit to carry it');
   });
 });

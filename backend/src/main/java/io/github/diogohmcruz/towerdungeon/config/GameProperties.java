@@ -764,6 +764,21 @@ public class GameProperties {
      * Drain per Unit per tick of fully salted Supplies, against {@code loop.supplyDrainPerUnit}.
      */
     private double saltedDrainPerUnit = 1.25;
+
+    /** Credits one Salt sells for; a dump valve for a full Stockroom, not a source of Credits. */
+    private double sellPrice = 2.0;
+
+    /** Carrying Capacity the Salt Pack takes while the Party carries it. */
+    private double packCapacity = 10.0;
+
+    /** The one enemy type the Salt Pack works on; Slimes are not it. */
+    private EnemyStats packEnemy = EnemyStats.CHYMUS_INSECT;
+
+    /** Share added to the damage a salted enemy takes: 0.5 is +50%. */
+    private double packDamageBonus = 0.5;
+
+    /** Chance that a Chymus Insect aims at the Salt-bearer instead of choosing at random. */
+    private double bearerTargetBias = 0.75;
   }
 
   /**

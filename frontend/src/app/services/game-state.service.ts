@@ -88,6 +88,8 @@ export class GameStateService {
       saltHeld: 0,
       saltPansOpen: false,
       trustHeld: 0,
+      packCapacity: 10,
+      bearerTypes: [],
     },
     studyRate: 0,
     yieldBonus: 0,

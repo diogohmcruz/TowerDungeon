@@ -437,6 +437,11 @@ public class Village {
   }
 
   /** Takes up to {@code amount} whole Salt from the Stockroom; returns what was taken. */
+  /** Puts Salt the Party did not use back in the Stockroom. */
+  public void returnSalt(int amount) {
+    salt += Math.max(0, amount);
+  }
+
   public int takeSalt(int amount) {
     var taken = (int) Math.min(Math.floor(salt), Math.max(0, amount));
     salt -= taken;

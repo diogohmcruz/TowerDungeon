@@ -48,6 +48,14 @@ public sealed interface Command {
     }
   }
 
+  /** Sell the Salt in the Stockroom. */
+  record SellSalt() implements Command {
+    @Override
+    public String kind() {
+      return "SELL_SALT";
+    }
+  }
+
   /** Sell every banked Relic. */
   record SellRelics() implements Command {
     @Override
@@ -75,12 +83,22 @@ public sealed interface Command {
   /**
    * Send reserves up the tower. An empty selection sends everyone; a null one is not supported
    * (today it fails with a {@link NullPointerException}). {@code salt} is the Salt to salt Supplies
-   * with; null is none.
+   * with; null is none. {@code saltPack} is the Salt of a Salt Pack against Chymus Insects, carried
+   * by the first Unit of type {@code saltBearer} in the Party; null or 0 is no Pack.
    */
-  record StartExpedition(Map<UnitStats, Integer> units, Integer startFloor, Integer salt)
+  record StartExpedition(
+      Map<UnitStats, Integer> units,
+      Integer startFloor,
+      Integer salt,
+      Integer saltPack,
+      UnitStats saltBearer)
       implements Command {
+    public StartExpedition(Map<UnitStats, Integer> units, Integer startFloor, Integer salt) {
+      this(units, startFloor, salt, null, null);
+    }
+
     public StartExpedition(Map<UnitStats, Integer> units, Integer startFloor) {
-      this(units, startFloor, null);
+      this(units, startFloor, null, null, null);
     }
 
     @Override

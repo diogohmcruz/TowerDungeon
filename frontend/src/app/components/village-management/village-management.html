@@ -268,5 +268,13 @@
     >
       Sell Relics
     </button>
+    <button
+      class="btn btn-ghost"
+      [disabled]="this.gameState().village.salt < 1"
+      title="Surplus Salt sells for 2 Credits each: a loss against Farming, a way to empty a full Stockroom."
+      (click)="this.onClickSellSalt()"
+    >
+      Sell Salt
+    </button>
   </div>
 </section>

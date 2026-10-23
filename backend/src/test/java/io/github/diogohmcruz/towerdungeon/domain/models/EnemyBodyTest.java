@@ -239,7 +239,8 @@ class EnemyBodyTest {
                       copy.setLost(p.isLost());
                       return copy;
                     })
-                .toList());
+                .toList(),
+            soldiers.isSalted());
 
     assertThat(restored).isEqualTo(soldiers);
     assertThat(restored.getCurrentHealth()).isEqualTo(soldiers.getCurrentHealth());

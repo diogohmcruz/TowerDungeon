@@ -21,8 +21,7 @@
     </p>
     }
   </section>
-  }
-  @if (gameState().session?.held) {
+  } @if (gameState().session?.held) {
   <section class="held-party">
     <p>The Party has not moved.</p>
     <button class="btn" (click)="resume()">Resume</button>
@@ -75,6 +74,8 @@
     [preview]="gameState().loadout"
     [disabled]="gameState().expeditionActive || gameOver()"
     [(salt)]="saltToUse"
+    [(pack)]="packSalt"
+    [(bearer)]="packBearer"
   />
 
   <button

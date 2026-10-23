@@ -46,6 +46,52 @@
       preview().saltedDrainPerUnit | number: '1.0-2' }} per Unit per second
       instead of {{ preview().drainPerUnit | number: '1.0-2' }}.
     </p>
+    } @if (preview().saltPansOpen) {
+    <p class="loadout-line pack">
+      <span class="line-name">Salt Pack</span>
+      <span class="stepper">
+        <button
+          class="btn btn-ghost step"
+          type="button"
+          aria-label="Pack one less Salt"
+          [disabled]="disabled() || packChosen() <= 0"
+          (click)="fewerPack()"
+        >
+          -
+        </button>
+        <button
+          class="btn btn-ghost step"
+          type="button"
+          aria-label="Pack one more Salt"
+          [disabled]="disabled() || packChosen() >= packMax()"
+          (click)="morePack()"
+        >
+          +
+        </button>
+      </span>
+      {{ packChosen() }} Salt, one per Chymus Insect: +50% damage on each.
+      Slimes are not affected. Takes {{ preview().packCapacity | number: '1.0-0'
+      }} Carrying Capacity. @if (preview().bearerTypes.length === 0) { No Unit
+      to carry it. } @else {
+      <label class="bearer">
+        Salt-bearer
+        <select
+          [disabled]="disabled()"
+          [value]="bearerChosen()"
+          (change)="chooseBearer($any($event.target).value)"
+        >
+          @for (type of preview().bearerTypes; track type) {
+          <option [value]="type" [selected]="type === bearerChosen()">
+            {{ type }}
+          </option>
+          }
+        </select>
+        <span class="bearer-mark"
+          >Marked: {{ bearerChosen() }}. Chymus Insects aim at it.</span
+        >
+      </label>
+      }
+    </p>
     }
 
     <p class="loadout-line lasts">

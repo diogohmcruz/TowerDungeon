@@ -52,6 +52,10 @@ export class GameComponent {
   /** Salt the Loadout has chosen; 0 unless the player opened it and chose some. */
   readonly saltToUse = signal(0);
 
+  /** Salt the Loadout has chosen for the Salt Pack, and the Unit type that carries it. */
+  readonly packSalt = signal(0);
+  readonly packBearer = signal('');
+
   readonly openShortcuts = computed(() =>
     (this.gameState().shortcuts ?? []).filter((s) => s.unlocked),
   );
@@ -85,9 +89,22 @@ export class GameComponent {
       loadout?.saltHeld ?? 0,
       loadout?.saltUseful ?? 0,
     );
-    const payload = { units, startFloor: this.selectedStartFloor(), salt };
+    const bearers = loadout?.bearerTypes ?? [];
+    const bearer = bearers.includes(this.packBearer())
+      ? this.packBearer()
+      : (bearers[0] ?? '');
+    const pack = bearer
+      ? Math.min(this.packSalt(), Math.max(0, (loadout?.saltHeld ?? 0) - salt))
+      : 0;
+    const payload = {
+      units,
+      startFloor: this.selectedStartFloor(),
+      salt,
+      ...(pack > 0 ? { saltPack: pack, saltBearer: bearer } : {}),
+    };
     this.ws.sendAction(GameAction.INVADE, payload);
     this.saltToUse.set(0);
+    this.packSalt.set(0);
   }
 
   selectStartFloor(floor: number) {

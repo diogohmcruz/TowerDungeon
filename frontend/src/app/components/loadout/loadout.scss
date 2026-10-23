@@ -44,6 +44,25 @@
     }
   }
 
+  .bearer {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 6px;
+    color: var(--bone);
+
+    select {
+      background: var(--panel);
+      color: var(--text);
+      border: 1px solid var(--rule);
+      padding: 2px 6px;
+    }
+
+    .bearer-mark {
+      color: var(--ember-text);
+    }
+  }
+
   &.hold {
     color: var(--bone);
 

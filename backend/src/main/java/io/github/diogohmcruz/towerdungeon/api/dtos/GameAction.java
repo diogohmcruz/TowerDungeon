@@ -6,6 +6,7 @@ public enum GameAction {
   SELL_FOOD,
   SELL_MATERIALS,
   SELL_RELICS,
+  SELL_SALT,
   INVADE,
   EXTRACT,
   RESUME,

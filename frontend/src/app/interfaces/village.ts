@@ -127,4 +127,8 @@ export interface LoadoutPreview {
   saltPansOpen: boolean;
   /** Trust held, whole. */
   trustHeld: number;
+  /** Carrying Capacity a Salt Pack takes. */
+  packCapacity: number;
+  /** Unit types in the Reserves, any of which can be the Salt-bearer. */
+  bearerTypes: string[];
 }

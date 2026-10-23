@@ -169,9 +169,15 @@ public class GameWebSocketHandler implements WebSocketHandler {
       case SELL_FOOD -> new Command.SellFood();
       case SELL_MATERIALS -> new Command.SellMaterials();
       case SELL_RELICS -> new Command.SellRelics();
+      case SELL_SALT -> new Command.SellSalt();
       case INVADE -> {
         var invade = payload(message, new TypeReference<GameActionDTO<InvadeActionDTO>>() {});
-        yield new Command.StartExpedition(invade.units(), invade.startFloor(), invade.salt());
+        yield new Command.StartExpedition(
+            invade.units(),
+            invade.startFloor(),
+            invade.salt(),
+            invade.saltPack(),
+            invade.saltBearer());
       }
       case EXTRACT -> new Command.Extract();
       case RESUME -> new Command.Resume();

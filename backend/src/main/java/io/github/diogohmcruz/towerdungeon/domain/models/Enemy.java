@@ -37,6 +37,9 @@ public class Enemy extends BaseUnit implements Aimable {
 
   private final boolean boss;
 
+  /** Salted by the Party's Salt Pack: it takes the Pack's extra damage. */
+  private boolean salted;
+
   /**
    * The enemy's body. A creature with a single part holds just the torso; any other has all six
    * slots, those it was born without flagged lost with no health.
@@ -112,9 +115,11 @@ public class Enemy extends BaseUnit implements Aimable {
       double healthMultiplier,
       double damageMultiplier,
       boolean boss,
-      List<Part> savedParts) {
+      List<Part> savedParts,
+      boolean salted) {
     var enemy = new Enemy(id, name, stats, healthMultiplier, damageMultiplier, boss);
     enemy.parts.addAll(savedParts);
+    enemy.salted = salted;
     return enemy;
   }
 

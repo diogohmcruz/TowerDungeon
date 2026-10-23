@@ -75,4 +75,69 @@ class SettingOutWithSaltTest {
 
     assertThat(state.getVillage().getSalt()).isEqualTo(6.0);
   }
+
+  @Test
+  void aSaltPackSetsOutOnTheBearerTypeAndTakesItsSaltAndCapacity() {
+    var service = service();
+    var state = service.playerState("session");
+    state.getVillage().restoreSalt(0, 6);
+    state.addUnits(
+        io.github.diogohmcruz.towerdungeon.domain.models.UnitStats.TANK,
+        java.util.List.of(
+            new io.github.diogohmcruz.towerdungeon.domain.models.Unit(
+                io.github.diogohmcruz.towerdungeon.domain.models.UnitStats.TANK, "Brann")));
+
+    var result =
+        service.execute(
+            "session",
+            new Command.StartExpedition(
+                new HashMap<>(),
+                null,
+                null,
+                4,
+                io.github.diogohmcruz.towerdungeon.domain.models.UnitStats.TANK));
+
+    assertThat(result.outcome())
+        .isEqualTo(
+            io.github.diogohmcruz.towerdungeon.domain.commands.CommandResult.Outcome.APPLIED);
+    assertThat(state.getSaltPack()).isEqualTo(4);
+    assertThat(state.saltBearer()).isPresent();
+    assertThat(state.getVillage().getSalt()).isEqualTo(2.0);
+  }
+
+  @Test
+  void aSaltPackWithoutABearerInThePartyIsRefusedAndSpendsNothing() {
+    var service = service();
+    var state = service.playerState("session");
+    state.getVillage().restoreSalt(0, 6);
+
+    var result =
+        service.execute(
+            "session",
+            new Command.StartExpedition(
+                new HashMap<>(),
+                null,
+                null,
+                4,
+                io.github.diogohmcruz.towerdungeon.domain.models.UnitStats.TANK));
+
+    assertThat(result.outcome())
+        .isEqualTo(
+            io.github.diogohmcruz.towerdungeon.domain.commands.CommandResult.Outcome.REJECTED);
+    assertThat(state.isExpeditionActive()).isFalse();
+    assertThat(state.getVillage().getSalt()).isEqualTo(6.0);
+  }
+
+  @Test
+  void surplusSaltSellsThroughTheSellSaltCommand() {
+    var service = service();
+    var state = service.playerState("session");
+    state.getVillage().restoreSalt(0, 3);
+    var before = state.getCredit();
+
+    service.execute("session", new Command.SellSalt());
+
+    assertThat(state.getCredit()).isEqualTo(before + 6.0);
+    assertThat(state.getVillage().getSalt()).isZero();
+  }
 }

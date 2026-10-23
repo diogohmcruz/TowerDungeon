@@ -191,6 +191,11 @@ game:
     per-salter-per-tick: 0.15
     supplies-per-salt: 10.0
     salted-drain-per-unit: 1.25
+    sell-price: 2.0
+    pack-capacity: 10.0
+    pack-enemy: CHYMUS_INSECT
+    pack-damage-bonus: 0.5
+    bearer-target-bias: 0.75
   trust:
     ring-max-level: 5
     ring-base-cost: 10.0
