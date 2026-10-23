@@ -3,6 +3,7 @@ import { GameStateService } from './game-state.service';
 import { CampaignKeyService } from './campaign-key.service';
 import { GameAction } from '../interfaces/game-action.enum';
 import { GameFrame } from '../interfaces/game-frame';
+import { refusalText } from '../interfaces/race-copy';
 
 export const SUBPROTOCOL = 'td.v1';
 
@@ -11,6 +12,8 @@ export const CLOSE_REPLACED = 4001;
 export const CLOSE_BAD_KEY = 4400;
 export const CLOSE_SCHEMA_NEWER = 4426;
 export const CLOSE_STORE_FAILURE = 4500;
+/** A Trial was refused at the door; the close reason is the TrialDesk refusal name. */
+export const CLOSE_TRIAL_REFUSED = 4403;
 
 export const BACKOFF_BASE_MS = 500;
 export const BACKOFF_MAX_MS = 15000;
@@ -26,6 +29,35 @@ export function socketUrl(loc: Pick<Location, 'protocol' | 'host'> = location): 
   return `${scheme}://${loc.host}/api/ws`;
 }
 
+/** Which Trial a connection asks for; none means the real Campaign. */
+export interface TrialSlot {
+  raceId: string;
+  /** Start the next attempt rather than return to the current one. */
+  next: boolean;
+  alias?: string;
+}
+
+/** The alias as base64url of its UTF-8 bytes, which is how the handshake carries it. */
+export function encodeAlias(alias: string): string {
+  const bytes = new TextEncoder().encode(alias);
+  let binary = '';
+  bytes.forEach((b) => (binary += String.fromCharCode(b)));
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+/** The subprotocol offer: `td.v1, <key>[, trial.<raceId>[.new][, as.<alias>]]`. */
+export function handshakeProtocols(key: string, slot: TrialSlot | null): string[] {
+  const protocols = [SUBPROTOCOL, key];
+  if (slot) {
+    protocols.push(`trial.${slot.raceId}${slot.next ? '.new' : ''}`);
+    const alias = slot.alias?.trim();
+    if (alias) {
+      protocols.push(`as.${encodeAlias(alias)}`);
+    }
+  }
+  return protocols;
+}
+
 export type SocketFactory = (url: string, protocols: string[]) => WebSocket;
 
 export const SOCKET_FACTORY = new InjectionToken<SocketFactory>('SOCKET_FACTORY', {
@@ -38,12 +70,16 @@ export type ConnectionStatus = 'idle' | 'connecting' | 'open' | 'reconnecting' |
 export interface StopReason {
   code: number;
   message: string;
+  /** The Trial refusal name when a Trial was refused at the door. */
+  refusal?: string;
   /** True when trying again can help (another tab took over, or the store failed). */
   retryable: boolean;
 }
 
-export function stopReasonFor(code: number): StopReason | null {
+export function stopReasonFor(code: number, reason = ''): StopReason | null {
   switch (code) {
+    case CLOSE_TRIAL_REFUSED:
+      return { code, message: refusalText(reason), refusal: reason, retryable: false };
     case CLOSE_REPLACED:
       return {
         code,
@@ -83,10 +119,15 @@ export class GameWebSocketService {
 
   private socket: WebSocket | null = null;
   private attempt = 0;
+  private slot: TrialSlot | null = null;
   private timer: ReturnType<typeof setTimeout> | null = null;
 
   private readonly _status = signal<ConnectionStatus>('idle');
   readonly status = this._status.asReadonly();
+
+  private readonly _trialRaceId = signal<string | null>(null);
+  /** The race this connection asked to enter, or null when it is on the real Campaign. */
+  readonly trialRaceId = this._trialRaceId.asReadonly();
 
   private readonly _stopReason = signal<StopReason | null>(null);
   readonly stopReason = this._stopReason.asReadonly();
@@ -98,12 +139,19 @@ export class GameWebSocketService {
     this._stopReason.set(null);
     this._status.set(this.attempt === 0 ? 'connecting' : 'reconnecting');
 
-    const socket = this.factory(socketUrl(), [SUBPROTOCOL, this.campaignKey.key()]);
+    const socket = this.factory(
+      socketUrl(),
+      handshakeProtocols(this.campaignKey.key(), this.slot),
+    );
     this.socket = socket;
 
     socket.onopen = () => {
       this.attempt = 0;
       this._status.set('open');
+      // A reconnect returns to the attempt just started, never to a further one.
+      if (this.slot?.next) {
+        this.slot = { ...this.slot, next: false };
+      }
     };
 
     socket.onmessage = (event) => this.handleFrame(event.data);
@@ -115,8 +163,24 @@ export class GameWebSocketService {
         return;
       }
       this.socket = null;
-      this.handleClose(event.code);
+      this.handleClose(event.code, event.reason);
     };
+  }
+
+  /** Enters a Trial: the real Campaign is set aside, frozen, until the Trial is left. */
+  connectTrial(slot: TrialSlot): void {
+    this.attempt = 0;
+    this.slot = slot;
+    this._trialRaceId.set(slot.raceId);
+    this.connect();
+  }
+
+  /** Leaves a Trial, or a refused entry, and returns to the real Campaign. */
+  leaveTrial(): void {
+    this.attempt = 0;
+    this.slot = null;
+    this._trialRaceId.set(null);
+    this.connect();
   }
 
   /** Closes the connection on purpose and does not reconnect. */
@@ -145,8 +209,8 @@ export class GameWebSocketService {
     }
   }
 
-  private handleClose(code: number): void {
-    const reason = stopReasonFor(code);
+  private handleClose(code: number, closeReason?: string): void {
+    const reason = stopReasonFor(code, closeReason);
     if (reason) {
       this.attempt = 0;
       this._stopReason.set(reason);

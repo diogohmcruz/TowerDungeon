@@ -1,0 +1,79 @@
+<section class="race-table" aria-label="The finished table">
+  <header class="table-head">
+    <h2>The table of {{ raceId() }}</h2>
+    <button type="button" class="btn table-close" (click)="closed.emit()">Close</button>
+  </header>
+
+  @if (loading()) {
+  <p class="table-read">Reading the table.</p>
+  } @else if (notYet()) {
+  <p class="table-read">The table is shown once an attempt is over.</p>
+  <button type="button" class="btn table-retry" (click)="load()">Try again</button>
+  } @else if (failed()) {
+  <p class="table-refusal" role="alert">The table could not be read.</p>
+  <button type="button" class="btn table-retry" (click)="load()">Try again</button>
+  } @else { @if (sections().length === 0) {
+  <p class="table-read">No attempt has been closed.</p>
+  } @for (section of sections(); track section.title) {
+  <h3>{{ section.title }}</h3>
+  <table class="arrival">
+    <thead>
+      <tr>
+        <th scope="colgroup" colspan="3" class="group">Order of Arrival</th>
+        <th scope="colgroup" colspan="4" class="group group-cost">Cost</th>
+      </tr>
+      <tr>
+        <th scope="col">Place</th>
+        <th scope="col">Contender</th>
+        <th scope="col">Result</th>
+        <th scope="col" class="num">Expeditions</th>
+        <th scope="col" class="num">Wipes</th>
+        <th scope="col" class="num">Units lost</th>
+        <th scope="col" class="num">Loot banked</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (row of section.rows; track $index) {
+      <tr [class.you]="row.you">
+        <td class="place">{{ place(row) }}</td>
+        <th scope="row" class="alias">
+          {{ row.alias }}@if (row.you) { (you) }
+        </th>
+        <td>{{ result(row) }}</td>
+        <td class="num cost-start">{{ row.cost.expeditions }}</td>
+        <td class="num">{{ row.cost.wipes }}</td>
+        <td class="num">{{ row.cost.unitsLost }}</td>
+        <td class="num">{{ row.cost.lootBanked | number: '1.0-1' }}</td>
+      </tr>
+      }
+    </tbody>
+  </table>
+  <p class="table-note">
+    The Cost is set beside the Order of Arrival. It does not change it, and it
+    does not break a tie.
+  </p>
+
+  @if (section.floors.length > 0) {
+  <div class="timeline">
+    <label [attr.for]="'floor-' + section.title">Arrival at Floor</label>
+    <select
+      [id]="'floor-' + section.title"
+      class="floor-select"
+      (change)="chooseFloor(section, $event)"
+    >
+      @for (floor of section.floors; track floor) {
+      <option [value]="floor" [selected]="floor === floorOf(section)">
+        {{ floor }}
+      </option>
+      }
+    </select>
+    <ul class="timeline-lines">
+      @for (line of lines(section); track $index) {
+      <li>{{ line }}</li>
+      }
+    </ul>
+  </div>
+  } } }
+
+  <p class="table-end">The Tower keeps count.</p>
+</section>

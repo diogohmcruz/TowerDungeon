@@ -3,6 +3,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { App } from './app';
 import { GameWebSocketService, SOCKET_FACTORY } from './services/game-web-socket.service';
+import { GameStateService } from './services/game-state.service';
 
 describe('App', () => {
   const sockets: any[] = [];
@@ -77,5 +78,65 @@ describe('App', () => {
       (fixture.nativeElement as HTMLElement).querySelector('.connection-notice')?.textContent,
     ).toContain('Another tab');
     expect(TestBed.inject(GameWebSocketService).status()).toBe('stopped');
+  });
+
+  /** A whole frame: the initial state with some fields replaced, as the server sends it. */
+  const frame = (over: object = {}) => ({ ...TestBed.inject(GameStateService).state(), ...over });
+
+  function begin() {
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+    (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>('button.begin')!.click();
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  it('shows no Race HUD outside a Trial', () => {
+    const fixture = begin();
+    sockets[0].onmessage?.({ data: JSON.stringify(frame()) });
+    fixture.detectChanges();
+    expect((fixture.nativeElement as HTMLElement).querySelector('app-race-hud')).toBeNull();
+  });
+
+  it('shows the HUD in a Trial and the finished table once it is over', () => {
+    const fixture = begin();
+    TestBed.inject(GameWebSocketService).connectTrial({ raceId: 'season-1', next: false });
+    const trial = {
+      raceId: 'season-1',
+      attempt: 1,
+      finishFloor: 10,
+      limitTicks: 5400,
+      ticksSinceStart: 60,
+      status: 'RACING',
+      expeditions: 0,
+      wipes: 0,
+      arrivals: {},
+    };
+    sockets[1].onmessage?.({ data: JSON.stringify(frame({ trial })) });
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('app-race-hud')).toBeTruthy();
+    expect(el.querySelector('app-race-table')).toBeNull();
+    sockets[1].onmessage?.({
+      data: JSON.stringify(frame({ trial: { ...trial, status: 'FINISHED' } })),
+    });
+    fixture.detectChanges();
+    expect(el.querySelector('app-race-table')).toBeTruthy();
+  });
+
+  it('states why a Trial was refused and offers the way back to the Campaign', () => {
+    const fixture = begin();
+    const ws = TestBed.inject(GameWebSocketService);
+    ws.connectTrial({ raceId: 'season-1', next: true });
+    sockets[1].onclose({ code: 4403, reason: 'NO_ATTEMPTS' });
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.connection-notice')?.textContent).toContain(
+      'Every attempt has been used.',
+    );
+    [...el.querySelectorAll<HTMLButtonElement>('.connection-notice button')]
+      .find((b) => b.textContent!.includes('Return to the Campaign'))!
+      .click();
+    expect(sockets[2].protocols.length).toBe(2);
   });
 });

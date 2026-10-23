@@ -22,3 +22,21 @@
     margin-left: 10px;
   }
 }
+
+.races-toggle {
+  position: fixed;
+  top: 12px;
+  right: 126px;
+  z-index: 1000;
+  padding: 4px 10px;
+  font-family: var(--font-pixel);
+  font-size: 12px;
+  color: var(--bone);
+  background: var(--panel);
+  border: 1px solid var(--muted);
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--bone);
+  }
+}

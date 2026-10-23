@@ -1,0 +1,132 @@
+:host {
+  position: fixed;
+  top: 48px;
+  right: 14px;
+  z-index: 1001;
+}
+
+.race-table {
+  width: min(640px, calc(100vw - 28px));
+  max-height: calc(100vh - 70px);
+  overflow: auto;
+  padding: 12px 14px 14px;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--rule);
+
+  h2,
+  h3 {
+    margin: 0;
+    font-family: var(--font-pixel);
+    font-weight: 400;
+    color: var(--bone);
+  }
+
+  h2 {
+    font-size: 16px;
+  }
+
+  h3 {
+    font-size: 13px;
+    margin: 12px 0 6px;
+  }
+}
+
+.table-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.table-read,
+.table-note,
+.table-refusal {
+  margin: 6px 0;
+  font-size: 12px;
+}
+
+.table-refusal {
+  color: var(--ember-text);
+}
+
+.table-note {
+  color: var(--muted);
+}
+
+.arrival {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+
+  th,
+  td {
+    padding: 3px 6px;
+    text-align: left;
+    font-weight: 400;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  thead th {
+    color: var(--muted);
+  }
+
+  .group {
+    color: var(--bone);
+    font-family: var(--font-pixel);
+    text-transform: uppercase;
+  }
+
+  .group-cost,
+  .cost-start {
+    border-left: 1px solid var(--muted);
+  }
+
+  .num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .place,
+  .alias {
+    color: var(--bone);
+  }
+
+  /* The viewer's row is marked in words ("(you)") and by weight, never by colour alone. */
+  .you .alias,
+  .you .place {
+    font-weight: 700;
+  }
+}
+
+.timeline {
+  margin-top: 10px;
+  font-size: 12px;
+
+  label {
+    margin-right: 6px;
+    color: var(--muted);
+  }
+}
+
+.floor-select {
+  padding: 2px 6px;
+  color: var(--bone);
+  background: var(--void);
+  border: 1px solid var(--muted);
+}
+
+.timeline-lines {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+
+  li {
+    margin: 2px 0;
+  }
+}
+
+.table-end {
+  margin: 12px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}

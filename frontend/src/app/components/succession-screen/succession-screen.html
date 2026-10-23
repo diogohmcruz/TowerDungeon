@@ -144,6 +144,17 @@
     }
   </section>
 
+  @if (raceRecords().length > 0) {
+  <section class="s-block" aria-label="Race record">
+    <h3>Race record</h3>
+    <ul class="race-record">
+      @for (record of raceRecords(); track record.raceId + record.attempt) {
+      <li>{{ record.line }}</li>
+      }
+    </ul>
+  </section>
+  }
+
   @if (confirming()) {
   <div class="begin-confirm" role="alertdialog" aria-label="Confirm Generation">
     <p>

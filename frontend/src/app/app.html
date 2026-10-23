@@ -10,13 +10,43 @@
   </button>
   @if (showGate()) {
   <app-gate />
-  } @else { @if (notice(); as message) {
+  } @else {
+  <button
+    type="button"
+    class="races-toggle"
+    (click)="panel.set(panel() ? null : { kind: 'join' })"
+    [attr.aria-expanded]="panel() !== null"
+  >
+    Races
+  </button>
+  @if (panel(); as open) { @if (open.kind === 'join') {
+  <app-race-join
+    (closed)="panel.set(null)"
+    (showTable)="panel.set({ kind: 'table', raceId: $event })"
+  />
+  } @else {
+  <app-race-table [raceId]="open.raceId ?? ''" (closed)="panel.set(null)" />
+  } } @if (!panel() && autoTable(); as closed) {
+  <app-race-table [raceId]="closed.raceId" (closed)="dismissTable()" />
+  }
+  @if (notice(); as message) {
   <p class="connection-notice" role="alert">
     {{ message }}
     @if (canRetry()) {
     <button type="button" class="btn" (click)="retry()">Take it back</button>
+    } @if (refused()) {
+    <button type="button" class="btn" (click)="leaveTrial()">
+      Return to the Campaign
+    </button>
     }
   </p>
+  } @if (trial(); as t) {
+  <app-race-hud
+    [trial]="t"
+    [cost]="gameState().trialCost"
+    [highestFloor]="gameState().highestFloor"
+    (leave)="leaveTrial()"
+  />
   }
   <div class="content">
     <app-game-component></app-game-component>

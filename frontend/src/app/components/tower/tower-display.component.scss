@@ -116,3 +116,22 @@
     }
   }
 }
+
+.pillar-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 6px;
+  font-family: var(--font-pixel);
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* A small stone pillar, drawn in tokens; the words beside it carry the meaning. */
+.pillar-glyph {
+  display: inline-block;
+  width: 4px;
+  height: 12px;
+  background: var(--muted);
+  border-top: 2px solid var(--bone);
+}

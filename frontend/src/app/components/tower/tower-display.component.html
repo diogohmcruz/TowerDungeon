@@ -2,6 +2,12 @@
   <div class="depth-header">
     <div class="depth-title">
       <span class="depth-current">Floor {{ currentFloor() }}</span>
+      @if (currentFloorMarked()) {
+        <span class="pillar-mark" title="The Finish Floor of a Race you have run">
+          <span class="pillar-glyph" aria-hidden="true"></span>
+          Finish Floor
+        </span>
+      }
       @if (currentFloorIsBoss()) {
         <span class="boss-flag">GUARDIAN</span>
       }

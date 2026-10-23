@@ -1,0 +1,48 @@
+:host {
+  display: block;
+}
+
+.race-hud {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 22px;
+  padding: 8px 14px;
+  font-size: 12px;
+  color: var(--text);
+  background: var(--panel);
+  border-bottom: 1px solid var(--rule);
+
+  b {
+    color: var(--bone);
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.hud-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.hud-label {
+  font-family: var(--font-pixel);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.hud-clock,
+.hud-finish {
+  font-family: var(--font-pixel);
+  font-size: 16px;
+}
+
+.hud-of {
+  color: var(--muted);
+}
+
+.hud-leave {
+  margin-left: auto;
+  padding: 3px 10px;
+}

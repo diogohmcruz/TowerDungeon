@@ -110,6 +110,41 @@ public class TrialDesk {
     }
   }
 
+  /**
+   * What a Key may read of a race: its Terms without the seed and how it stands, with the reason
+   * entry would be refused now. Admits nothing and starts nothing.
+   */
+  public TermsView view(Terms terms, String playerId, Instant now) {
+    var standing = ledger.standing(terms.raceId(), playerId);
+    var open = standing.started() > 0 && !standing.currentClosed();
+    var left = Math.max(0, terms.maxAttempts() - standing.started());
+    String refusal = null;
+    if (terms.kind() != TermsKind.SEASON) {
+      refusal = Refusal.SPRINT_NOT_OPEN.name();
+    } else if (!terms.isOpenAt(now)) {
+      refusal = Refusal.NOT_OPEN.name();
+    } else if (terms.planVersion() != ArchitecturePlan.VERSION) {
+      refusal = Refusal.PLAN_MISMATCH.name();
+    } else if (!terms.configHash().equals(ConfigHash.of(config))) {
+      refusal = Refusal.CONFIG_MISMATCH.name();
+    } else if (!open && left == 0) {
+      refusal = Refusal.NO_ATTEMPTS.name();
+    }
+    return new TermsView(
+        terms.raceId(),
+        terms.kind(),
+        terms.finishFloor(),
+        terms.opensAt(),
+        terms.closesAt(),
+        terms.limit().toSeconds(),
+        terms.maxAttempts(),
+        terms.maxConcurrent(),
+        standing.started(),
+        left,
+        open,
+        refusal);
+  }
+
   /** The id of one attempt's Trial: no other id in the store can be mistaken for a player's. */
   public static String trialIdOf(String playerId, String raceId, int attempt) {
     try {

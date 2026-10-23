@@ -328,4 +328,29 @@ describe('SuccessionScreen', () => {
 
     expect(root().querySelectorAll('.fallen').length).toBe(5);
   });
+
+  it('shows the Race record lines in their own section, and none when there are none', () => {
+    fixture.componentRef.setInput('view', view());
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[aria-label="Race record"]')).toBeNull();
+    fixture.componentRef.setInput('raceRecords', [
+      {
+        raceId: 'season-1',
+        attempt: 1,
+        finishFloor: 10,
+        floor: 10,
+        place: 3,
+        tied: false,
+        of: 17,
+        seconds: 2468,
+        fallen: 112,
+        at: '2026-10-24T10:00:00Z',
+        line: 'Race of 2026-10-24. Floor 10. 3rd of 17. 41:08. 112 fallen.',
+      },
+    ]);
+    fixture.detectChanges();
+    const section = fixture.nativeElement.querySelector('[aria-label="Race record"]');
+    expect(section.textContent).toContain('Race record');
+    expect(section.textContent).toContain('Race of 2026-10-24. Floor 10. 3rd of 17. 41:08. 112 fallen.');
+  });
 });

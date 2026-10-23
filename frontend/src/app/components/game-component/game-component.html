@@ -36,6 +36,7 @@
   <app-succession-screen
     [view]="view"
     [report]="gameState().pending ?? null"
+    [raceRecords]="gameState().raceRecords ?? []"
     (buy)="rollBuy($event)"
     (refund)="rollRefund($event)"
     (choose)="choose($event)"
@@ -221,4 +222,5 @@
   [carriedLoot]="gameState().carriedLoot"
   [carriedCredits]="gameState().carriedCredits"
   [reinforcements]="gameState().reinforcements"
+  [pillarMarks]="gameState().pillarMarks ?? []"
 ></app-tower>

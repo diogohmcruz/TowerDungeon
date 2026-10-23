@@ -1,0 +1,34 @@
+@if (trial(); as t) {
+<section class="race-hud" aria-label="Race">
+  <div class="hud-item">
+    <span class="hud-label">Clock</span>
+    <b class="hud-clock">{{ elapsed() }}</b>
+    <span class="hud-of">of {{ limit() }}</span>
+  </div>
+  <div class="hud-item">
+    <span class="hud-label">Finish Floor</span>
+    <b class="hud-finish">{{ t.finishFloor }}</b>
+    <span class="hud-of">Highest Floor {{ highestFloor() }}</span>
+  </div>
+  @if (cost(); as c) {
+  <div class="hud-item hud-cost" aria-label="Cost so far">
+    <span class="hud-label">Cost so far</span>
+    <span class="hud-cost-line"
+      >Expeditions <b>{{ c.expeditions }}</b>. Wipes <b>{{ c.wipes }}</b
+      >. Units lost <b>{{ c.unitsLost }}</b
+      >. Loot banked <b>{{ c.lootBanked | number: '1.0-1' }}</b
+      >.</span
+    >
+  </div>
+  }
+  <div class="hud-item hud-state">
+    <span class="hud-status">{{ status() }}.</span>
+    @if (racing()) {
+    <span class="hud-of">Only the hours spent here are counted.</span>
+    }
+  </div>
+  <button type="button" class="btn hud-leave" (click)="leave.emit()">
+    Leave the Trial
+  </button>
+</section>
+}

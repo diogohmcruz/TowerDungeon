@@ -26,6 +26,8 @@ export class TowerDisplay {
   carriedCredits = input<number>(0);
   active = input<boolean>(false);
   reinforcements = input<Reinforcement[]>([]);
+  /** Finish Floors of Races the player has run and discovered; only those wear the mark. */
+  pillarMarks = input<number[]>([]);
 
   /** Dev only: `?inkFixture=<floors>` shows the Tower scene without an Expedition (capture tooling). */
   private readonly fixtureOn =
@@ -47,5 +49,7 @@ export class TowerDisplay {
     return Object.entries(groups);
   });
   currentFloorIsBoss = computed(() => this.currentTowerFloor()?.boss === true);
+  /** The Floor shown wears the mark of a Race's Finish Floor, but only when listed by the server. */
+  currentFloorMarked = computed(() => this.pillarMarks().includes(this.currentFloor()));
   enemyCount = computed(() => this.currentTowerFloorEnemies()?.length ?? 0);
 }

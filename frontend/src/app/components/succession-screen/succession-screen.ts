@@ -1,6 +1,7 @@
 import { Component, computed, input, output, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { SuccessionReport } from '../../interfaces/game-state';
+import { RaceRecord } from '../../interfaces/race';
 import {
   ChronicleEntry,
   SuccessionCourse,
@@ -64,6 +65,8 @@ const BEGIN_HOLD_MS = 3000;
 export class SuccessionScreen {
   view = input.required<SuccessionView>();
   report = input<SuccessionReport | null>(null);
+  /** The player's Race records, newest first as sent; a plain line each, no effect on play. */
+  raceRecords = input<RaceRecord[]>([]);
 
   buy = output<string>();
   refund = output<string>();

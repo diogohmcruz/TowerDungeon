@@ -1,5 +1,8 @@
 package io.github.diogohmcruz.towerdungeon.api;
 
+import java.time.Instant;
+import java.util.List;
+
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -12,6 +15,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 import io.github.diogohmcruz.towerdungeon.domain.trial.AttemptLedger;
 import io.github.diogohmcruz.towerdungeon.domain.trial.RaceTable;
+import io.github.diogohmcruz.towerdungeon.domain.trial.TermsView;
+import io.github.diogohmcruz.towerdungeon.domain.trial.TrialDesk;
 import io.github.diogohmcruz.towerdungeon.persistence.PlayerIdResolver;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -33,6 +38,23 @@ public class RaceController {
 
   private final AttemptLedger ledger;
   private final PlayerIdResolver playerIds;
+  private final TrialDesk desk;
+
+  @Operation(
+      summary = "The races on offer",
+      description =
+          "Each race's Terms without the seed, with the caller's attempts and the reason entry"
+              + " would be refused now, if any. The Campaign Key is the bearer.")
+  @GetMapping
+  public Mono<List<TermsView>> races(
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization) {
+    return playerId(authorization)
+        .map(
+            id -> {
+              var now = Instant.now();
+              return desk.terms().all().stream().map(terms -> desk.view(terms, id, now)).toList();
+            });
+  }
 
   @Operation(
       summary = "The finished table of a race",

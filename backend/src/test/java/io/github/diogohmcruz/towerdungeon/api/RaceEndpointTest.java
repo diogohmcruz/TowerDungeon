@@ -65,6 +65,51 @@ class RaceEndpointTest {
     return HttpClient.newHttpClient().send(request.GET().build(), BodyHandlers.ofString());
   }
 
+  private HttpResponse<String> getRaces(String authorization) throws Exception {
+    var request = HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/races"));
+    if (authorization != null) {
+      request.header("Authorization", authorization);
+    }
+    return HttpClient.newHttpClient().send(request.GET().build(), BodyHandlers.ofString());
+  }
+
+  @Test
+  void theRacesOnOfferShowTheTermsAndTheKeysAttemptsAndNoSeed() throws Exception {
+    assertThat(getRaces(null).statusCode()).isEqualTo(401);
+
+    var fresh = getRaces("Bearer " + keyNamed("newcomer"));
+    assertThat(fresh.statusCode()).isEqualTo(200);
+    var race = JsonMapper.builder().build().readTree(fresh.body()).get(0);
+    assertThat(race.path("raceId").asString()).isEqualTo("season-1");
+    assertThat(race.path("finishFloor").asInt()).isEqualTo(10);
+    assertThat(race.path("attemptsLeft").asInt()).isEqualTo(race.path("maxAttempts").asInt());
+    assertThat(race.path("refusal").isNull()).isTrue();
+    assertThat(fresh.body()).doesNotContain("seed").doesNotContain("configHash");
+
+    var spent = CampaignKey.playerId(keyNamed("spender")).orElseThrow();
+    for (var attempt = 1; attempt <= 3; attempt++) {
+      ledger.start("season-1", spent);
+      ledger.close(
+          new TrialResult(
+              "season-1",
+              spent,
+              attempt,
+              "Ada",
+              ContenderLabel.HUMAN,
+              ContenderStatus.TIMED_OUT,
+              10,
+              10,
+              10,
+              2,
+              new TrialResult.Cost(1, 0, 0, 0),
+              Map.of(),
+              Instant.parse("2026-10-24T10:00:00Z")));
+    }
+    var used = JsonMapper.builder().build().readTree(getRaces("Bearer " + keyNamed("spender")).body()).get(0);
+    assertThat(used.path("attemptsLeft").asInt()).isZero();
+    assertThat(used.path("refusal").asString()).isEqualTo("NO_ATTEMPTS");
+  }
+
   @Test
   void theTableIsShownOnlyToAContenderWhoseAttemptIsOver() throws Exception {
     var finisher = CampaignKey.playerId(keyNamed("finisher")).orElseThrow();

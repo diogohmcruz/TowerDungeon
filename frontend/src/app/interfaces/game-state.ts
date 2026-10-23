@@ -1,6 +1,7 @@
 import { Unit } from './unit.enum';
 import { SuccessionView } from './succession';
 import { Tower } from './tower';
+import { RaceRecord, TrialCost, TrialRun } from './race';
 import { Member } from './member';
 import {
   LedgerLine,
@@ -207,4 +208,12 @@ export interface GameState {
   postUpgrades: PostUpgradeView[];
   ledger: LedgerLine[];
   session?: SessionMeta;
+  /** The Trial this Campaign is; absent for a real Campaign. */
+  trial?: TrialRun | null;
+  /** What the Trial has cost so far; absent outside a Trial. */
+  trialCost?: TrialCost | null;
+  /** The player's Race records, for the Chronicle screen; empty in a Trial. */
+  raceRecords?: RaceRecord[];
+  /** Finish Floors to mark on a pillar: only Floors the player has discovered. */
+  pillarMarks?: number[];
 }

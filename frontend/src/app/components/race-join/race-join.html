@@ -1,0 +1,73 @@
+<section class="race-join" aria-label="Races">
+  <header class="join-head">
+    <h2>Races</h2>
+    <button type="button" class="btn join-close" (click)="closed.emit()">Close</button>
+  </header>
+
+  <p class="join-lede">
+    A Trial is a Campaign of its own on the same start for everyone. Only the
+    hours spent here are counted. Entering sets your Campaign aside, unchanged,
+    until you leave.
+  </p>
+
+  <div class="join-alias">
+    <label for="race-alias">Name shown in the table</label>
+    <input
+      id="race-alias"
+      class="alias-input"
+      type="text"
+      autocomplete="off"
+      spellcheck="false"
+      maxlength="24"
+      placeholder="Anonymous"
+      [value]="alias()"
+      (input)="onAlias($event)"
+    />
+  </div>
+
+  @if (loading()) {
+  <p class="join-read">Reading the Terms.</p>
+  } @else if (failed()) {
+  <p class="join-refusal" role="alert">The Terms could not be read.</p>
+  <button type="button" class="btn join-retry" (click)="load()">Try again</button>
+  } @else if (empty()) {
+  <p class="join-read">No Race is held.</p>
+  } @else { @for (card of cards(); track card.terms.raceId) {
+  <article class="terms" [attr.aria-label]="'Terms of ' + card.terms.raceId">
+    <h3>{{ card.terms.raceId }}</h3>
+    <dl class="terms-list">
+      <dt>Finish Floor</dt>
+      <dd>{{ card.terms.finishFloor }}</dd>
+      <dt>Clock</dt>
+      <dd>{{ card.limit }}</dd>
+      <dt>Closes</dt>
+      <dd>{{ card.closes }}</dd>
+      <dt>Attempts</dt>
+      <dd>{{ card.attempts }}</dd>
+      <dt>At once</dt>
+      <dd>{{ card.terms.maxConcurrent }} Contenders</dd>
+    </dl>
+    @if (card.refusal; as reason) {
+    <p class="join-refusal" role="alert">{{ reason }}</p>
+    }
+    <div class="terms-actions">
+      @if (card.action; as action) {
+      <button type="button" class="btn btn-primary enter" (click)="enter(card)">
+        {{ action.label }}
+      </button>
+      }
+      @if (card.terms.attemptsUsed > 0) {
+      <button
+        type="button"
+        class="btn show-table"
+        (click)="showTable.emit(card.terms.raceId)"
+      >
+        Read the table
+      </button>
+      }
+    </div>
+  </article>
+  } }
+
+  <p class="join-end">The Tower keeps count.</p>
+</section>
