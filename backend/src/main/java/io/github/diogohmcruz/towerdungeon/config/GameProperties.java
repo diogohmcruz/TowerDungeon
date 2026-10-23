@@ -1,5 +1,6 @@
 package io.github.diogohmcruz.towerdungeon.config;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
@@ -44,6 +45,7 @@ public class GameProperties {
   private final Architecture architecture = new Architecture();
   private final Prestige prestige = new Prestige();
   private final Persistence persistence = new Persistence();
+  private final Security security = new Security();
 
   /** Where Campaigns are kept. */
   @Data
@@ -52,6 +54,22 @@ public class GameProperties {
      * Root of the Campaign files; must be a mounted volume wherever the filesystem is ephemeral.
      */
     private String dataDir = "./data";
+
+    /** How long a slot with no connection stays in memory, frozen, before it is evicted. */
+    private Duration linger = Duration.ofSeconds(30);
+  }
+
+  /** Who may open the game socket. */
+  @Data
+  public static class Security {
+    /**
+     * Allowed handshake {@code Origin} values (for example {@code https://play.example.com}). Empty
+     * allows any origin. A handshake with no Origin header (not a browser) is allowed.
+     */
+    private List<String> allowedOrigins = new ArrayList<>();
+
+    /** Refuse a plain {@code ws} handshake; on in production, off in development. */
+    private boolean requireWss = false;
   }
 
   /** Values a freshly created player starts the game with. */

@@ -134,3 +134,9 @@ game:
   persistence:
     # Must be a mounted volume: on an ephemeral filesystem every deploy deletes every Campaign.
     data-dir: ./data
+    linger: 30s
+  security:
+    # Empty allows any Origin. In production list the site, e.g. https://play.example.com
+    allowed-origins: []
+    # Production behind TLS should set this to true.
+    require-wss: false

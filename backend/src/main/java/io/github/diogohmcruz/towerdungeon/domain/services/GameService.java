@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.random.RandomGenerator;
@@ -13,6 +14,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import io.github.diogohmcruz.towerdungeon.api.dtos.BuyActionDTO;
+import io.github.diogohmcruz.towerdungeon.api.dtos.GameFrame;
+import io.github.diogohmcruz.towerdungeon.api.dtos.GameFrame.Notice;
 import io.github.diogohmcruz.towerdungeon.api.dtos.InvadeActionDTO;
 import io.github.diogohmcruz.towerdungeon.api.dtos.ReinforceActionDTO;
 import io.github.diogohmcruz.towerdungeon.api.dtos.UpgradeActionDTO;
@@ -27,9 +30,15 @@ import io.github.diogohmcruz.towerdungeon.domain.models.Tower;
 import io.github.diogohmcruz.towerdungeon.domain.models.Unit;
 import io.github.diogohmcruz.towerdungeon.domain.models.UnitStats;
 import io.github.diogohmcruz.towerdungeon.domain.models.architecture.ArchitecturePlan;
+import io.github.diogohmcruz.towerdungeon.domain.models.snapshot.GameSnapshot;
 import io.github.diogohmcruz.towerdungeon.domain.models.upgrade.UpgradeType;
+import io.github.diogohmcruz.towerdungeon.persistence.CampaignSchema;
+import io.github.diogohmcruz.towerdungeon.persistence.CampaignSchema.SchemaNewerException;
+import io.github.diogohmcruz.towerdungeon.persistence.CampaignStore;
+import io.github.diogohmcruz.towerdungeon.persistence.CampaignStore.LoadResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import reactor.core.publisher.Mono;
 import tools.jackson.databind.ObjectMapper;
 
 @Slf4j
@@ -41,7 +50,11 @@ public class GameService {
   private final RandomGenerator random;
   private final ArchitecturePlan architecturePlan;
   private final PartyCombat partyCombat;
-  private final Map<String, GameState> players = new ConcurrentHashMap<>();
+  private final CampaignStore store;
+  private final Map<String, PlayerSlot> players = new ConcurrentHashMap<>();
+
+  /** What a connection gets back from {@link #attach}: a signal for when it has been replaced. */
+  public record Attachment(Mono<Void> replaced) {}
 
   /**
    * Starts a brand-new campaign: an empty {@link GameState} with the configured Founders recruited
@@ -55,55 +68,201 @@ public class GameService {
     return gameState;
   }
 
-  /** The live state of a session, if it has one. Test hook. */
-  GameState playerState(String sessionId) {
-    return players.get(sessionId);
+  /** The live state of a player, if it has a loaded slot. Test hook. */
+  public GameState playerState(String playerId) {
+    var slot = players.get(playerId);
+    return slot == null ? null : slot.state();
   }
 
-  private <T> T access(String sessionId, StateFn<T> body) {
-    var gameState = players.computeIfAbsent(sessionId, _ -> newCampaign());
-    try {
-      return gameState.callLocked(() -> body.apply(gameState));
-    } catch (RuntimeException e) {
-      throw e;
-    } catch (Exception e) {
-      throw new IllegalStateException("Failed to access game state for session " + sessionId, e);
-    }
+  /** Whether a slot (attached or lingering) exists for the player. Test hook. */
+  public boolean hasSlot(String playerId) {
+    return players.containsKey(playerId);
   }
 
-  /** Mutates one player's state under its lock. Delegates to the {@link #access} gateway. */
-  private void withPlayer(String sessionId, Consumer<GameState> action) {
-    access(
-        sessionId,
-        gameState -> {
-          action.accept(gameState);
-          return null;
-        });
-  }
-
-  /** Mutates every player's state, each under its own lock via the {@link #access} gateway. */
-  private void forEachPlayer(java.util.function.Consumer<GameState> action) {
-    players.keySet().forEach(sessionId -> withPlayer(sessionId, action));
+  /** Whether a connection is attached to the player's slot. Test hook. */
+  public boolean isConnected(String playerId) {
+    var slot = players.get(playerId);
+    return slot != null && slot.isAttached();
   }
 
   /**
-   * Serializes a consistent snapshot of a player's state to JSON under its lock, so the reactive
-   * send thread never observes a half-mutated graph (which previously surfaced as {@code
-   * IndexOutOfBounds} / {@code ConcurrentModificationException} during serialization). The live
-   * {@link GameState} is never handed to the transport layer — only its rendered JSON.
+   * Attaches a connection to the player's slot, loading the Campaign through the store when the
+   * slot does not exist yet (a new key starts a fresh Campaign). The newest connection wins: the
+   * previous one's {@link Attachment#replaced()} fires. Loads are single-flight per player. Fails
+   * with {@link SchemaNewerException} when the saved record is newer than this build.
    */
-  public String renderState(String sessionId) {
-    return access(sessionId, objectMapper::writeValueAsString);
+  public Mono<Attachment> attach(String playerId, String wsId) {
+    return Mono.defer(
+        () -> {
+          var connection = new PlayerSlot.Connection(wsId);
+          var slot =
+              players.compute(
+                  playerId,
+                  (id, existing) -> {
+                    var current = existing != null ? existing : newSlot(id);
+                    current.attach(connection);
+                    return current;
+                  });
+          return slot.loading().thenReturn(new Attachment(connection.replaced().asMono()));
+        });
   }
 
-  public void handleMessage(String sessionId, BuyActionDTO buyActionDTO) {
+  /** Detaches the connection if it is still the attached one; the slot lingers before eviction. */
+  public void detach(String playerId, String wsId) {
+    var slot = players.get(playerId);
+    if (slot != null) {
+      slot.detach(wsId, System.nanoTime());
+    }
+  }
+
+  /** Removes the slots that have been detached for longer than the configured linger. */
+  @Scheduled(fixedRate = 1000)
+  public void evictLingering() {
+    evictLingering(System.nanoTime());
+  }
+
+  void evictLingering(long nowNanos) {
+    var linger = config.getPersistence().getLinger().toNanos();
+    players
+        .keySet()
+        .forEach(
+            id ->
+                players.computeIfPresent(
+                    id, (_, slot) -> slot.hasLingeredFor(linger, nowNanos) ? null : slot));
+  }
+
+  /** Queues a notice for the player's next frame. Does nothing when the player has no slot. */
+  public void notifyPlayer(String playerId, Notice notice) {
+    var slot = players.get(playerId);
+    if (slot != null) {
+      slot.addNotice(notice);
+    }
+  }
+
+  private PlayerSlot newSlot(String playerId) {
+    var slot = new PlayerSlot(playerId);
+    slot.loading(
+        loadCampaign(slot)
+            .doOnError(
+                e -> {
+                  log.error("Failed to load the Campaign of player {}", playerId, e);
+                  players.remove(playerId, slot);
+                })
+            .cache());
+    return slot;
+  }
+
+  private Mono<GameState> loadCampaign(PlayerSlot slot) {
+    return store
+        .load(slot.playerId())
+        .map(result -> restoreCampaign(slot, result))
+        .switchIfEmpty(
+            Mono.fromSupplier(
+                () -> {
+                  var fresh = newCampaign();
+                  slot.loaded(fresh, false, null, CampaignSchema.CURRENT);
+                  return fresh;
+                }));
+  }
+
+  private GameState restoreCampaign(PlayerSlot slot, LoadResult result) {
+    if (result.schema() > CampaignSchema.CURRENT) {
+      throw new SchemaNewerException(result.schema());
+    }
+    var snapshot = objectMapper.readValue(result.payload(), GameSnapshot.class);
+    var state = GameState.restore(snapshot, config, random, architecturePlan);
+    if (!result.quarantined().isEmpty()) {
+      slot.addNotice(
+          new Notice("SAVE_DAMAGED", "A damaged save was set aside and an older one was loaded."));
+    } else if (!result.source().isHead()) {
+      slot.addNotice(new Notice("SAVE_FROM_BACKUP", "Your latest save was unreadable."));
+    }
+    slot.loaded(state, true, result.savedAt(), result.schema());
+    return state;
+  }
+
+  /** Runs a body under the state's lock; empty when the slot has no loaded Campaign. */
+  private <T> Optional<T> access(String playerId, StateFn<T> body) {
+    var slot = players.get(playerId);
+    return slot == null ? Optional.empty() : access(slot, body);
+  }
+
+  private <T> Optional<T> access(PlayerSlot slot, StateFn<T> body) {
+    var gameState = slot.state();
+    if (gameState == null) {
+      return Optional.empty();
+    }
+    try {
+      return Optional.ofNullable(gameState.callLocked(() -> body.apply(gameState)));
+    } catch (RuntimeException e) {
+      throw e;
+    } catch (Exception e) {
+      throw new IllegalStateException(
+          "Failed to access game state for player " + slot.playerId(), e);
+    }
+  }
+
+  /**
+   * Mutates one player's state under its lock. Find-only: a player without a slot is ignored, so a
+   * late message can never resurrect a closed Campaign.
+   */
+  private void withPlayer(String playerId, Consumer<GameState> action) {
+    var applied =
+        access(
+            playerId,
+            gameState -> {
+              action.accept(gameState);
+              return Boolean.TRUE;
+            });
+    if (applied.isEmpty()) {
+      log.debug("Ignoring an action for player {} with no live Campaign", playerId);
+    }
+  }
+
+  /**
+   * Mutates every connected player's state, each under its own lock. Detached slots do not tick.
+   */
+  private void forEachPlayer(Consumer<GameState> action) {
+    for (var slot : players.values()) {
+      if (!slot.isAttached()) {
+        continue;
+      }
+      try {
+        access(
+            slot,
+            gameState -> {
+              action.accept(gameState);
+              return Boolean.TRUE;
+            });
+      } catch (RuntimeException e) {
+        log.error("Tick failed for player {}", slot.playerId(), e);
+      }
+    }
+  }
+
+  /**
+   * Serializes a consistent {@link GameFrame} of a player's state to JSON under its lock, so the
+   * reactive send thread never observes a half-mutated graph (which previously surfaced as {@code
+   * IndexOutOfBounds} / {@code ConcurrentModificationException} during serialization). The live
+   * {@link GameState} is never handed to the transport layer, only its rendered JSON. Empty when
+   * the player has no live Campaign.
+   */
+  public Optional<String> renderState(String playerId) {
+    var slot = players.get(playerId);
+    return slot == null
+        ? Optional.empty()
+        : access(
+            slot, state -> objectMapper.writeValueAsString(new GameFrame(state, slot.takeMeta())));
+  }
+
+  public void handleMessage(String playerId, BuyActionDTO buyActionDTO) {
     withPlayer(
-        sessionId,
+        playerId,
         gameState -> {
           if (!gameState.isUnitUnlocked(buyActionDTO.unitStats())) {
             log.warn(
                 "Player[{}] tried to recruit locked unit {}. Ignoring.",
-                sessionId,
+                playerId,
                 buyActionDTO.unitStats());
             return;
           }
@@ -117,80 +276,78 @@ public class GameService {
             quantity--;
           }
           gameState.addUnits(buyActionDTO.unitStats(), newUnits);
-          log.info("Received buy action from session [{}]. New units: {}", sessionId, newUnits);
+          log.info("Received buy action from session [{}]. New units: {}", playerId, newUnits);
         });
   }
 
-  public void handleBuyVillagersAction(String sessionId) {
+  public void handleBuyVillagersAction(String playerId) {
     withPlayer(
-        sessionId,
+        playerId,
         gameState -> {
           var villagersCount = gameState.buyVillager();
-          log.info("Player[{}] total villagers: {}", sessionId, villagersCount);
+          log.info("Player[{}] total villagers: {}", playerId, villagersCount);
         });
   }
 
-  public void handleSellFoodAction(String sessionId) {
+  public void handleSellFoodAction(String playerId) {
     withPlayer(
-        sessionId,
+        playerId,
         gameState -> {
           var credits = gameState.sellFood();
-          log.info("Player[{}] sold food for credits: {}", sessionId, credits);
+          log.info("Player[{}] sold food for credits: {}", playerId, credits);
         });
   }
 
-  public void handleSellMaterialsAction(String sessionId) {
+  public void handleSellMaterialsAction(String playerId) {
     withPlayer(
-        sessionId,
+        playerId,
         gameState -> {
           var profit = gameState.sellAllMaterials();
-          log.info("Player[{}] sold all materials for {} credits", sessionId, profit);
+          log.info("Player[{}] sold all materials for {} credits", playerId, profit);
         });
   }
 
-  public void handleSellRelicsAction(String sessionId) {
+  public void handleSellRelicsAction(String playerId) {
     withPlayer(
-        sessionId,
+        playerId,
         gameState -> {
           var profit = gameState.sellAllRelics();
-          log.info("Player[{}] sold all relics for {} credits", sessionId, profit);
+          log.info("Player[{}] sold all relics for {} credits", playerId, profit);
         });
   }
 
-  public void handleUpgradeAction(String sessionId, UpgradeActionDTO upgradeActionDTO) {
+  public void handleUpgradeAction(String playerId, UpgradeActionDTO upgradeActionDTO) {
     withPlayer(
-        sessionId,
+        playerId,
         gameState -> {
           UpgradeType type;
           try {
             type = UpgradeType.valueOf(upgradeActionDTO.upgradeId());
           } catch (IllegalArgumentException | NullPointerException e) {
             log.warn(
-                "Player[{}] requested unknown upgrade {}.",
-                sessionId,
-                upgradeActionDTO.upgradeId());
+                "Player[{}] requested unknown upgrade {}.", playerId, upgradeActionDTO.upgradeId());
             return;
           }
           var applied = gameState.applyUpgrade(type);
           log.info(
-              "Player[{}] upgrade {} -> {}", sessionId, type, applied ? "purchased" : "rejected");
+              "Player[{}] upgrade {} -> {}", playerId, type, applied ? "purchased" : "rejected");
         });
   }
 
-  public void handleMessage(String sessionId, InvadeActionDTO invadeActionDTO) {
-    log.info("Received invade action from session [{}] {}", sessionId, invadeActionDTO);
+  public void handleMessage(String playerId, InvadeActionDTO invadeActionDTO) {
+    log.info("Received invade action from session [{}] {}", playerId, invadeActionDTO);
     withPlayer(
-        sessionId,
+        playerId,
         gameState -> {
           if (gameState.isExpeditionActive()) {
             log.warn(
-                "Player[{}] tried to invade while a run is already active. Ignoring.", sessionId);
+                "Player[{}] tried to invade while a run is already active. Ignoring.", playerId);
             return;
           }
           if (gameState.getGameOutcome() != GameOutcome.PLAYING) {
             log.warn(
                 "Player[{}] tried to invade after the campaign ended ({}). Ignoring.",
-                sessionId,
+                playerId,
                 gameState.getGameOutcome());
             return;
           }
@@ -199,7 +356,7 @@ public class GameService {
           if (!gameState.isStartFloorUnlocked(requestedFloor)) {
             log.warn(
                 "Player[{}] tried to start on floor {} without an open shortcut. Ignoring.",
-                sessionId,
+                playerId,
                 requestedFloor);
             return;
           }
@@ -214,7 +371,7 @@ public class GameService {
           gameState.setUnits(units);
           gameState.setUnitsOnTower(unitsOnTower);
           if (!gameState.hasUnitsOnTower()) {
-            log.warn("Player[{}] tried to invade with no available units. Ignoring.", sessionId);
+            log.warn("Player[{}] tried to invade with no available units. Ignoring.", playerId);
             return;
           }
           if (gameState.getTower() == null) {
@@ -235,12 +392,12 @@ public class GameService {
         });
   }
 
-  public void handleExtractAction(String sessionId) {
+  public void handleExtractAction(String playerId) {
     withPlayer(
-        sessionId,
+        playerId,
         gameState -> {
           if (!gameState.isExpeditionActive()) {
-            log.warn("Player[{}] tried to extract with no active run.", sessionId);
+            log.warn("Player[{}] tried to extract with no active run.", playerId);
             return;
           }
           gameState.buildRunSummary(RunSummary.EXTRACTED);
@@ -253,24 +410,24 @@ public class GameService {
           log.info(
               "Player[{}] extracted. Leftover food returned to village, loot banked, party returned"
                   + " home to recover on the village's food.",
-              sessionId);
+              playerId);
         });
   }
 
-  public void handleMessage(String sessionId, ReinforceActionDTO reinforceActionDTO) {
-    log.info("Received reinforce action from session [{}] {}", sessionId, reinforceActionDTO);
+  public void handleMessage(String playerId, ReinforceActionDTO reinforceActionDTO) {
+    log.info("Received reinforce action from session [{}] {}", playerId, reinforceActionDTO);
     withPlayer(
-        sessionId,
+        playerId,
         gameState -> {
           if (!gameState.isExpeditionActive()) {
             log.warn(
-                "Player[{}] tried to send reinforcements with no active run. Ignoring.", sessionId);
+                "Player[{}] tried to send reinforcements with no active run. Ignoring.", playerId);
             return;
           }
           if (gameState.getGameOutcome() != GameOutcome.PLAYING) {
             log.warn(
                 "Player[{}] tried to reinforce after the campaign ended ({}). Ignoring.",
-                sessionId,
+                playerId,
                 gameState.getGameOutcome());
             return;
           }
@@ -286,19 +443,20 @@ public class GameService {
     unitsOnTower.putAll(unitsTemp);
   }
 
+  /** Moves the requested counts to the tower. Every count is checked before any unit moves. */
   private static void sendToTower(
       Map<UnitStats, List<Unit>> units, Map<UnitStats, Integer> invadeUnits, GameState gameState) {
     invadeUnits.forEach(
         (unit, quantity) -> {
-          List<Unit> currentUnits = units.getOrDefault(unit, new ArrayList<>());
-          var currentUnitsCount = currentUnits.size();
-          var quantityOnBase = currentUnitsCount - quantity;
-          if (quantityOnBase < 0) {
-            throw new InvalidInvasion(unit, quantity, currentUnitsCount);
+          var inReserves = units.getOrDefault(unit, List.of()).size();
+          if (inReserves < quantity) {
+            throw new InvalidInvasion(unit, quantity, inReserves);
           }
-          while (quantity > 0) {
+        });
+    invadeUnits.forEach(
+        (unit, quantity) -> {
+          for (var left = quantity; left > 0; left--) {
             gameState.enlistRandom(unit);
-            quantity--;
           }
         });
   }
@@ -432,10 +590,6 @@ public class GameService {
     gameState.setExpeditionActive(false);
     gameState.completeExpedition();
     gameState.winCampaign();
-  }
-
-  public void closeSession(String id) {
-    players.remove(id);
   }
 
   /** A body that reads or mutates a locked {@link GameState} and produces a result; may throw. */

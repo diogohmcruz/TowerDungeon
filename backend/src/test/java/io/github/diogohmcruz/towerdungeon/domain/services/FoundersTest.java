@@ -1,7 +1,9 @@
 package io.github.diogohmcruz.towerdungeon.domain.services;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.util.HashMap;
 import java.util.List;
@@ -15,18 +17,23 @@ import io.github.diogohmcruz.towerdungeon.domain.models.GameState;
 import io.github.diogohmcruz.towerdungeon.domain.models.Unit;
 import io.github.diogohmcruz.towerdungeon.domain.models.UnitStats;
 import io.github.diogohmcruz.towerdungeon.domain.models.architecture.ArchitecturePlan;
+import io.github.diogohmcruz.towerdungeon.persistence.CampaignStore;
+import reactor.core.publisher.Mono;
 import tools.jackson.databind.ObjectMapper;
 
 class FoundersTest {
   private final GameProperties config = new GameProperties();
 
   private GameService service() {
+    var store = mock(CampaignStore.class);
+    when(store.load(any())).thenReturn(Mono.empty());
     return new GameService(
         config,
         new ObjectMapper(),
         new SplittableRandom(7),
         mock(ArchitecturePlan.class),
-        new PartyCombat(new SplittableRandom(7)));
+        new PartyCombat(new SplittableRandom(7)),
+        store);
   }
 
   private static List<Unit> reserves(GameState state) {
@@ -90,7 +97,7 @@ class FoundersTest {
   @Test
   void anEmptyInvadeSendsAllFourFoundersToTheTower() {
     var service = service();
-    service.renderState("session");
+    service.attach("session", "ws").block();
 
     service.handleMessage("session", new InvadeActionDTO(new HashMap<>(), null));
 
