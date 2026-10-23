@@ -68,6 +68,9 @@ class SnapshotRoundTripTest {
     for (var i = 0; i < 12; i++) {
       state.recordEnemyKill();
     }
+    state.getTally().addFoodGrown(1234.5);
+    state.getTally().addRelicsBanked(7);
+    state.getTally().addCreditsBanked(55);
     state.recordFloorReached(12);
     state.buildRunSummary(RunSummary.EXTRACTED);
     state.getVillage().restore(37.5, 6);
@@ -118,6 +121,59 @@ class SnapshotRoundTripTest {
   }
 
   @Test
+  void theTallyAndTheVillageTierSurviveASave() throws Exception {
+    var original = midCampaign();
+    original.getTally().addMaterialsBanked(1000);
+    original.getTally().addFoodGrown(1000);
+    original.recordFloorReached(25);
+    original.getTally().addRelicsBanked(60);
+    original.completeExpedition();
+    original.completeExpedition();
+
+    var restored = viaJson(original);
+
+    assertThat(restored.getTally().toSnapshot()).isEqualTo(original.getTally().toSnapshot());
+    assertThat(restored.getTally().getFoodGrown()).isEqualTo(2234.5);
+    assertThat(restored.getTally().getPeakVillagers()).isEqualTo(20);
+    assertThat(restored.getVillageTier()).isEqualTo(original.getVillageTier());
+    assertThat(restored.getVillageTierLevel()).isEqualTo(4);
+  }
+
+  @Test
+  void anOlderSaveWithoutATallyLoadsWithEmptyCountersAtTierOne() throws Exception {
+    var snapshot = midCampaign().toSnapshot();
+    var c = snapshot.campaign();
+    var older =
+        new GameSnapshot(
+            new CampaignSnapshot(
+                c.credit(),
+                c.reserves(),
+                c.vault(),
+                c.upgrades(),
+                c.milestones(),
+                c.shortcutsOpened(),
+                c.tower(),
+                c.highestFloor(),
+                c.expeditionsCompleted(),
+                c.enemiesDefeated(),
+                c.outcome(),
+                c.lastExpeditionSummary(),
+                c.villageFood(),
+                c.villagers(),
+                c.trades(),
+                c.artifactsTaken(),
+                null,
+                0),
+            null);
+
+    var restored = GameState.restore(older, config, random, plan);
+
+    assertThat(restored.getTally().getFoodGrown()).isZero();
+    assertThat(restored.getTally().getPeakVillagers()).isEqualTo(6);
+    assertThat(restored.getVillageTierLevel()).isEqualTo(1);
+  }
+
+  @Test
   void midCampaignRoundTripsToAnEqualState() throws Exception {
     var original = midCampaign();
 
@@ -137,6 +193,7 @@ class SnapshotRoundTripTest {
             "config",
             "foodDistributionStrategy",
             "maxSupplies",
+            "ledger",
             "runEnemiesDefeated")
         .isEqualTo(original);
     assertThat(restored.getVillage().getFood()).isEqualTo(37.5);
@@ -195,7 +252,9 @@ class SnapshotRoundTripTest {
                 snapshot.campaign().villageFood(),
                 snapshot.campaign().villagers(),
                 snapshot.campaign().trades(),
-                snapshot.campaign().artifactsTaken()),
+                snapshot.campaign().artifactsTaken(),
+                snapshot.campaign().tally(),
+                snapshot.campaign().villageTier()),
             null);
 
     var restored = GameState.restore(stripped, config, random, plan);

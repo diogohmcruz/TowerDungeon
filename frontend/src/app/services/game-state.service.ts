@@ -76,6 +76,17 @@ export class GameStateService {
     quarryHeapCap: 0,
     heapDeliveryPerFloor: 5,
     theCount: { villagers: 0, reserves: 0 },
+    tally: {
+      foodGrown: 0,
+      creditsBanked: 0,
+      materialsBanked: 0,
+      relicsBanked: 0,
+      floorsCleared: 0,
+      peakVillagers: 0,
+    },
+    villageTierLevel: 1,
+    villageTierName: 'Huddled',
+    villageTierOpens: "Fields, Quarry, Scribe's Study",
     ledger: [],
   });
   readonly state: Signal<GameState> = this._state.asReadonly();

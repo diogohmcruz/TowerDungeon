@@ -85,6 +85,12 @@ public class GameState {
   private int expeditionsCompleted = 0;
   private int enemiesDefeated = 0;
 
+  /** The Tally: totals that spending never reduces. */
+  private CampaignTally tally;
+
+  /** The Village Tier reached; a ratchet, so a rebalance of the gates never takes one away. */
+  private VillageTier villageTier = VillageTier.HUDDLED;
+
   /** Food Recovery spent on the home party during the last lifecycle tick. */
   private double recoverySpend = 0d;
 
@@ -131,6 +137,7 @@ public class GameState {
     this.credit = config.getStart().getCredit();
     this.maxSupplies = config.getSupply().getBaseMax();
     this.village = new Village(config.getVillage(), config.getTrades());
+    this.tally = new CampaignTally(village.getVillagersCount());
   }
 
   /**
@@ -360,9 +367,13 @@ public class GameState {
     }
     this.surplus = new EnumMap<>(ItemTier.class);
     carriedLoot.forEach((type, amount) -> resources.merge(type, amount, Double::sum));
+    tally.addMaterialsBanked(carriedLoot.getOrDefault(ResourceType.MATERIALS, 0d));
+    tally.addRelicsBanked(carriedLoot.getOrDefault(ResourceType.RELICS, 0d));
+    tally.addCreditsBanked(carriedCredits);
     this.carriedLoot = ResourceType.emptyWallet();
     this.credit += this.carriedCredits;
     this.carriedCredits = 0d;
+    refreshVillageTier();
   }
 
   public void forfeitLoot() {
@@ -538,6 +549,8 @@ public class GameState {
                   : tilling.moved().plural() + " moved to the Fields."),
           false);
     }
+    tally.notePeakVillagers(village.getVillagersCount());
+    tally.addFoodGrown(village.getProductionRate());
     var isStarving = village.triggerLifecycle(allUnits.size(), highestFloor);
     if (isStarving) {
       var lostTrade = village.starve(random);
@@ -553,6 +566,7 @@ public class GameState {
     healHomePartyWithFood();
     recoverHomeSanity();
     rechargeHomeCasters();
+    refreshVillageTier();
   }
 
   private void writeStarvation(Optional<Trade> lostTrade, Unit lostReserve) {
@@ -603,6 +617,8 @@ public class GameState {
     var delivered = village.deliverHeap(cleared);
     if (delivered > 0) {
       resources.merge(ResourceType.MATERIALS, delivered, Double::sum);
+      tally.addMaterialsBanked(delivered);
+      refreshVillageTier();
     }
   }
 
@@ -880,12 +896,14 @@ public class GameState {
     if (floor > highestFloor) {
       highestFloor = floor;
     }
+    refreshVillageTier();
     checkMilestones();
   }
 
   /** Marks an expedition as finished (extract or wipe) and grants any newly earned milestones. */
   public void completeExpedition() {
     expeditionsCompleted++;
+    refreshVillageTier();
     refreshShortcuts();
     checkMilestones();
   }
@@ -912,6 +930,52 @@ public class GameState {
                 + (RunSummary.WIPED.equals(outcome) ? 0d : surplusRelics()),
             runUnitsLost,
             survivors);
+    if (!RunSummary.WIPED.equals(outcome)) {
+      tally.addFloorsCleared(floorsCleared);
+    }
+  }
+
+  /**
+   * Raises the Village Tier to the highest whose gate the Village now meets, writing one Ledger
+   * line for each Tier that opens. Never lowers it.
+   */
+  private void refreshVillageTier() {
+    var reached = VillageTier.reached(config.getTiers(), tally, highestFloor, expeditionsCompleted);
+    for (var tier : VillageTier.values()) {
+      if (tier.getLevel() > villageTier.getLevel() && tier.getLevel() <= reached.getLevel()) {
+        villageTier = tier;
+        writeLedger(tier.getLedgerLine(), false);
+      }
+    }
+  }
+
+  public int getVillageTierLevel() {
+    return villageTier.getLevel();
+  }
+
+  public String getVillageTierName() {
+    return villageTier.getDisplayName();
+  }
+
+  /** What the Village Tier has opened so far: the Trades and buildings, comma-separated. */
+  public String getVillageTierOpens() {
+    return java.util.Arrays.stream(VillageTier.values())
+        .filter(tier -> tier.getLevel() <= villageTier.getLevel())
+        .map(VillageTier::getOpens)
+        .filter(opens -> !opens.isEmpty())
+        .collect(java.util.stream.Collectors.joining(", "));
+  }
+
+  /** The Tally as the Prestige Toll reads it; the caller supplies the Guardians slain. */
+  public io.github.diogohmcruz.towerdungeon.domain.prestige.Tally tollTally(int guardiansSlain) {
+    return new io.github.diogohmcruz.towerdungeon.domain.prestige.Tally(
+        tally.getFoodGrown(),
+        tally.getMaterialsBanked(),
+        tally.getCreditsBanked(),
+        tally.getRelicsBanked(),
+        expeditionsCompleted,
+        highestFloor,
+        guardiansSlain);
   }
 
   /**
@@ -1007,6 +1071,7 @@ public class GameState {
     while (village.getVillagersCount() < credit) {
       credit = village.buyVillager(credit);
     }
+    tally.notePeakVillagers(village.getVillagersCount());
     return villagersCount;
   }
 
@@ -1179,7 +1244,9 @@ public class GameState {
                 village.isEmergencyTilling(),
                 village.getVillagersLost(),
                 village.getReservesLost()),
-            List.copyOf(artifactsTaken));
+            List.copyOf(artifactsTaken),
+            tally.toSnapshot(),
+            villageTier.getLevel());
     return new GameSnapshot(campaign, expeditionActive ? expeditionSnapshot() : null);
   }
 
@@ -1356,6 +1423,11 @@ public class GameState {
           t.villagersLost(),
           t.reservesLost());
     }
+    state.tally = new CampaignTally(c.villagers());
+    if (c.tally() != null) {
+      state.tally.restore(c.tally());
+    }
+    state.villageTier = VillageTier.ofLevel(c.villageTier());
     state.recomputeUnlockedUnits();
 
     state.artifactsTaken.addAll(c.artifactsTaken());

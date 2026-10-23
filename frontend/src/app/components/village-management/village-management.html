@@ -142,6 +142,19 @@
       Lost to Starvation: {{ this.theCount().villagers }} Villagers, {{
       this.theCount().reserves }} Reserves (this Campaign)
     </p>
+    <p class="tier">
+      Village Tier {{ this.gameState().villageTierLevel }}, {{
+      this.gameState().villageTierName }}. Open: {{
+      this.gameState().villageTierOpens }}.
+    </p>
+    <p class="count">
+      Tally (this Campaign): Food grown {{ this.tally().foodGrown | number:
+      '1.0-0' }}, Credits banked {{ this.tally().creditsBanked | number: '1.0-0'
+      }}, Materials banked {{ this.tally().materialsBanked | number: '1.0-0' }},
+      Relics banked {{ this.tally().relicsBanked | number: '1.0-0' }}, Floors
+      cleared {{ this.tally().floorsCleared | number: '1.0-0' }}, peak Villagers
+      {{ this.tally().peakVillagers | number: '1.0-0' }}
+    </p>
   </div>
 
   @if (this.ledger().length > 0) {

@@ -22,6 +22,8 @@ import io.github.diogohmcruz.towerdungeon.domain.models.upgrade.UpgradeType;
  * @param tower null until the first Departure
  * @param trades the Villager pool's assignments, stores and The Count; null in older saves
  * @param artifactsTaken ids of the Artifacts taken this generation; absent in older saves
+ * @param tally the never-spent counters; null in older saves
+ * @param villageTier the Village Tier level reached, 1 to 4 (0 in older saves reads as Tier I)
  */
 public record CampaignSnapshot(
     double credit,
@@ -39,7 +41,9 @@ public record CampaignSnapshot(
     double villageFood,
     int villagers,
     TradesSnapshot trades,
-    List<String> artifactsTaken) {
+    List<String> artifactsTaken,
+    TallySnapshot tally,
+    int villageTier) {
 
   /** A save from before Artifacts has none taken. */
   public CampaignSnapshot {
@@ -64,6 +68,8 @@ public record CampaignSnapshot(
         villageFood,
         villagers,
         trades,
-        artifactsTaken);
+        artifactsTaken,
+        tally,
+        villageTier);
   }
 }

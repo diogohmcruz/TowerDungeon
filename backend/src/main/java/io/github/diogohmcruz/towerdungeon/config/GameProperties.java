@@ -45,6 +45,7 @@ public class GameProperties {
   private final Healing healing = new Healing();
   private final Village village = new Village();
   private final Trades trades = new Trades();
+  private final Tiers tiers = new Tiers();
   private final Architecture architecture = new Architecture();
   private final Prestige prestige = new Prestige();
   private final Persistence persistence = new Persistence();
@@ -621,6 +622,29 @@ public class GameProperties {
     private int startingVillagers = 20;
     private double villagerFoodProduction = 0.5;
     private double unitFoodConsumption = 1.0;
+  }
+
+  /**
+   * What each Village Tier asks of the Tally, the Highest Floor and the Expeditions. Tier I is the
+   * start and asks nothing. A Tier is reached when every condition of its row holds.
+   */
+  @Data
+  public static class Tiers {
+    private final Gate sheltered = new Gate(1000, 0, 0, 5, 0);
+    private final Gate fortified = new Gate(0, 1000, 0, 10, 6);
+    private final Gate entrenched = new Gate(0, 0, 60, 25, 0);
+
+    /** One Tier's conditions; zero means the Tier does not ask for it. */
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class Gate {
+      private double foodGrown;
+      private double materialsBanked;
+      private double relicsBanked;
+      private int highestFloor;
+      private int expeditions;
+    }
   }
 
   /** The Villager pool's Trades, their yields, Posts, guards and the Stockroom and Quarry Heap. */

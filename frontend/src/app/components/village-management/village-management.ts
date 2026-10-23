@@ -51,6 +51,7 @@ export class VillageManagement {
     Math.round(this.gameState().yieldBonus * 100),
   );
   readonly theCount = computed(() => this.gameState().theCount);
+  readonly tally = computed(() => this.gameState().tally);
   readonly ledger = computed(() => this.gameState().ledger.slice(-5));
 
   /** The move the player is pointing at; its margin is stated under the rows. */

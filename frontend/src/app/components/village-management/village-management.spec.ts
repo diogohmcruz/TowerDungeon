@@ -63,6 +63,17 @@ describe('VillageManagement', () => {
         preview({ trade: 'SCRIBE', delta: -1 }),
       ],
       theCount: { villagers: 3, reserves: 2 },
+      tally: {
+        foodGrown: 1234,
+        creditsBanked: 80,
+        materialsBanked: 410,
+        relicsBanked: 6,
+        floorsCleared: 19,
+        peakVillagers: 24,
+      },
+      villageTierLevel: 2,
+      villageTierName: 'Sheltered',
+      villageTierOpens: "Fields, Quarry, Scribe's Study, Salt Pans",
       highestFloor: 12,
       yieldBonus: 0.24,
       ...over,
@@ -163,6 +174,17 @@ describe('VillageManagement', () => {
     expect(text()).toContain('of 108');
     expect(text()).toContain('of 120');
     expect(text()).toContain('5 per Floor cleared');
+  });
+
+  it('shows the Village Tier and the Tally', () => {
+    load();
+
+    expect(text()).toContain('Village Tier 2, Sheltered.');
+    expect(text()).toContain('Salt Pans');
+    expect(text()).toContain('Tally (this Campaign)');
+    expect(text()).toContain('Food grown 1,234');
+    expect(text()).toContain('Floors cleared 19');
+    expect(text()).toContain('peak Villagers 24');
   });
 
   it('prints the last Ledger lines with a marker for losses', () => {

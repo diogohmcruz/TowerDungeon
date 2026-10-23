@@ -39,6 +39,16 @@ export interface LedgerLine {
   loss: boolean;
 }
 
+/** The never-spent counters of the Campaign. */
+export interface Tally {
+  foodGrown: number;
+  creditsBanked: number;
+  materialsBanked: number;
+  relicsBanked: number;
+  floorsCleared: number;
+  peakVillagers: number;
+}
+
 export interface TheCount {
   villagers: number;
   reserves: number;

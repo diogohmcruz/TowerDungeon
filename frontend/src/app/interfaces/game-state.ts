@@ -3,6 +3,7 @@ import { Tower } from './tower';
 import { Member } from './member';
 import {
   LedgerLine,
+  Tally,
   TheCount,
   TradePreview,
   TradeView,
@@ -111,5 +112,10 @@ export interface GameState {
   quarryHeapCap: number;
   heapDeliveryPerFloor: number;
   theCount: TheCount;
+  tally: Tally;
+  villageTierLevel: number;
+  villageTierName: string;
+  /** What the Village Tier has opened so far, comma-separated. */
+  villageTierOpens: string;
   ledger: LedgerLine[];
 }
