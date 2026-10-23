@@ -638,15 +638,30 @@ public class GameState {
    * Sells every banked unit of {@code type} at {@code unitPrice} credits each. Returns the take.
    */
   private double sellAll(ResourceType type, double unitPrice) {
+    return sell(type, unitPrice, Double.POSITIVE_INFINITY);
+  }
+
+  private double sell(ResourceType type, double unitPrice, double most) {
     var stock = resources.getOrDefault(type, 0d);
-    var profit = stock * unitPrice;
-    resources.put(type, 0d);
+    var sold = Math.max(0d, Math.min(stock, most));
+    var profit = sold * unitPrice;
+    resources.put(type, stock - sold);
     this.credit += profit;
     return profit;
   }
 
   public double sellAllMaterials() {
     return sellAll(ResourceType.MATERIALS, config.getReward().getMaterialsSellPrice());
+  }
+
+  /** Sells up to {@code most} banked Materials; returns the Credits made. */
+  public double sellMaterials(double most) {
+    return sell(ResourceType.MATERIALS, config.getReward().getMaterialsSellPrice(), most);
+  }
+
+  /** Sells up to {@code most} banked Relics; returns the Credits made. */
+  public double sellRelics(double most) {
+    return sell(ResourceType.RELICS, config.getReward().getRelicsSellPrice(), most);
   }
 
   /** Sells every whole Salt in the Stockroom; returns the Credits made. */
@@ -1839,8 +1854,13 @@ public class GameState {
   }
 
   public Integer buyVillager() {
+    return buyVillagers(Integer.MAX_VALUE);
+  }
+
+  /** Hires villagers while the Vault can pay for another, up to {@code most}. */
+  public Integer buyVillagers(int most) {
     var villagersCount = village.getVillagersCount();
-    while (village.getVillagersCount() < credit) {
+    for (var left = most; left > 0 && village.getVillagersCount() < credit; left--) {
       credit = village.buyVillager(credit);
     }
     tally.notePeakVillagers(village.getVillagersCount());
@@ -1848,8 +1868,13 @@ public class GameState {
   }
 
   public Double sellFood() {
+    return sellFood(Integer.MAX_VALUE);
+  }
+
+  /** Sells whole Food above the keep-back, up to {@code most}; returns the Vault's Credits. */
+  public Double sellFood(int most) {
     var profit = 0d;
-    while (village.sellFood()) {
+    for (var left = most; left > 0 && village.sellFood(); left--) {
       profit += config.getReward().getFoodSellPrice();
     }
     this.credit += profit;

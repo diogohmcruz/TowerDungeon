@@ -33,8 +33,7 @@ public final class ActionViews {
     expedition(state, meta, actions);
     view.put("actions", actions);
     view.put(
-        "note",
-        "This lists what the game would accept now. Acting tools arrive with the act surface.");
+        "note", "This lists what the game would accept now. The td_ action tools carry it out.");
     return view;
   }
 

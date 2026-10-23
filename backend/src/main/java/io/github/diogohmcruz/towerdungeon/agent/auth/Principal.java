@@ -19,14 +19,14 @@ public record Principal(String grantId, Set<Scope> scopes) {
     scopes = Set.copyOf(scopes);
   }
 
-  /** The developer token: read everything and drive Sandboxes. */
+  /** The developer token: read everything, drive Sandboxes and act in them. */
   public static Principal dev() {
-    return new Principal("dev", EnumSet.of(Scope.OBSERVE, Scope.SANDBOX));
+    return new Principal("dev", EnumSet.allOf(Scope.class));
   }
 
   /** The caller on standard input: a local process the developer started themselves. */
   public static Principal stdio() {
-    return new Principal("stdio", EnumSet.of(Scope.OBSERVE, Scope.SANDBOX));
+    return new Principal("stdio", EnumSet.allOf(Scope.class));
   }
 
   public boolean has(Scope scope) {

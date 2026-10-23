@@ -174,7 +174,7 @@ public class Observations {
   }
 
   /** One Expedition Summary: the numbers, and the first few of the fallen by name. */
-  static Map<String, Object> summary(RunSummary s) {
+  public static Map<String, Object> summary(RunSummary s) {
     var out = new LinkedHashMap<String, Object>();
     out.put("outcome", s.outcome());
     out.put("start_floor", s.startFloor());

@@ -20,6 +20,23 @@ public final class Args {
     return values.get(name) != null;
   }
 
+  /** The value as sent, for the few tools whose argument is a map or one of two shapes. */
+  public Object raw(String name) {
+    return values.get(name);
+  }
+
+  /** A boolean, or {@code fallback} when absent; any other type is invalid. */
+  public boolean bool(String name, boolean fallback) {
+    var value = values.get(name);
+    if (value == null) {
+      return fallback;
+    }
+    if (!(value instanceof Boolean flag)) {
+      throw invalid(name);
+    }
+    return flag;
+  }
+
   /** The keys the caller sent. */
   public Set<String> names() {
     return values.keySet();
@@ -102,7 +119,8 @@ public final class Args {
     return out;
   }
 
-  private static ToolFailure invalid(String name) {
+  /** The refusal for an argument that is not valid. */
+  public static ToolFailure invalid(String name) {
     return new ToolFailure(
         "INVALID_ARGUMENT", "The argument '" + safeName(name) + "' is not valid.");
   }

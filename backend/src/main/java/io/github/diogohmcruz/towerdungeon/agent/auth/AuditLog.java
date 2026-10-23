@@ -28,7 +28,19 @@ public final class AuditLog {
       String status,
       String code,
       Long seq,
-      long latencyMs) {}
+      long latencyMs,
+      String requestId) {
+    public Entry(
+        String grantId,
+        String tool,
+        String scope,
+        String status,
+        String code,
+        Long seq,
+        long latencyMs) {
+      this(grantId, tool, scope, status, code, seq, latencyMs, null);
+    }
+  }
 
   private static final long DEFAULT_ROTATE_BYTES = 5L * 1024 * 1024;
   private static final JsonMapper MAPPER = JsonMapper.builder().build();
@@ -65,6 +77,9 @@ public final class AuditLog {
     line.put("code", entry.code());
     line.put("seq", entry.seq());
     line.put("latency_ms", entry.latencyMs());
+    if (entry.requestId() != null) {
+      line.put("request_id", entry.requestId());
+    }
     try {
       Files.createDirectories(file.toAbsolutePath().getParent());
       rotateIfLarge();

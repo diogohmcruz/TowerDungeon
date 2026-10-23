@@ -92,6 +92,10 @@ public class GameService {
   private final FloorBundle floorBundle;
   private final AutosaveCoordinator saves;
   private final MetaCodec metaCodec;
+
+  /** A Food sale with an amount keeps the Pantry feeding the Reserves this long, at the least. */
+  static final int SELL_FOOD_FLOOR_SECONDS = 60;
+
   private final Map<String, PlayerSlot> players = new ConcurrentHashMap<>();
   private final ManualTickDriver manualDriver = new ManualTickDriver(this, System::nanoTime);
   private volatile boolean running = true;
@@ -895,11 +899,13 @@ public class GameService {
       result =
           switch (command) {
             case Command.Recruit recruit -> recruit(slot, gameState, playerId, recruit);
-            case Command.BuyVillagers _ -> buyVillagers(slot, gameState, playerId);
-            case Command.SellFood _ -> sellFood(slot, gameState, playerId);
-            case Command.SellMaterials _ ->
-                sellStock(slot, gameState, playerId, ResourceType.MATERIALS);
-            case Command.SellRelics _ -> sellStock(slot, gameState, playerId, ResourceType.RELICS);
+            case Command.BuyVillagers villagers ->
+                buyVillagers(slot, gameState, playerId, villagers);
+            case Command.SellFood sale -> sellFood(slot, gameState, playerId, sale);
+            case Command.SellMaterials sale ->
+                sellStock(slot, gameState, playerId, ResourceType.MATERIALS, sale.amount());
+            case Command.SellRelics sale ->
+                sellStock(slot, gameState, playerId, ResourceType.RELICS, sale.amount());
             case Command.SellSalt _ -> sellSalt(slot, gameState, playerId);
             case Command.BuyUpgrade upgrade -> buyUpgrade(slot, gameState, playerId, upgrade);
             case Command.StartExpedition start -> startExpedition(slot, gameState, playerId, start);
@@ -941,6 +947,9 @@ public class GameService {
       log.warn("Player[{}] tried to recruit locked unit {}. Ignoring.", playerId, unitStats);
       return CommandResult.rejected(Reason.NOT_UNLOCKED, "That unit type is not unlocked.");
     }
+    if (command.quantity() == null || command.quantity() <= 0) {
+      return CommandResult.rejected(Reason.INVALID_ARGUMENT, "The quantity must be positive.");
+    }
     var newUnits = new ArrayList<Unit>();
     var quantity = command.quantity();
     var cost = unitStats.getCost();
@@ -953,9 +962,6 @@ public class GameService {
     gameState.addUnits(unitStats, newUnits);
     log.info("Received buy action from session [{}]. New units: {}", playerId, newUnits);
     var requested = command.quantity();
-    if (requested != null && requested <= 0) {
-      return CommandResult.rejected(Reason.INVALID_ARGUMENT, "The quantity must be positive.");
-    }
     var recruited = newUnits.size();
     if (recruited == 0) {
       return CommandResult.rejected(
@@ -968,9 +974,14 @@ public class GameService {
         : CommandResult.applied("Recruited.");
   }
 
-  private CommandResult buyVillagers(PlayerSlot slot, GameState gameState, String playerId) {
+  private CommandResult buyVillagers(
+      PlayerSlot slot, GameState gameState, String playerId, Command.BuyVillagers command) {
+    if (command.count() != null && command.count() <= 0) {
+      return CommandResult.rejected(Reason.INVALID_ARGUMENT, "The count must be positive.");
+    }
     var before = gameState.getVillage().getVillagersCount();
-    var villagersCount = gameState.buyVillager();
+    var villagersCount =
+        gameState.buyVillagers(command.count() == null ? Integer.MAX_VALUE : command.count());
     log.info("Player[{}] total villagers: {}", playerId, villagersCount);
     var bought = gameState.getVillage().getVillagersCount() - before;
     if (bought <= 0) {
@@ -978,31 +989,66 @@ public class GameService {
           Reason.INSUFFICIENT_CREDITS, "The Vault cannot pay for another villager.");
     }
     slot.emit("VILLAGERS_BOUGHT", Map.of("count", bought));
-    return CommandResult.applied("Villagers hired.");
+    return command.count() != null && bought < command.count()
+        ? CommandResult.partial(
+            Reason.INSUFFICIENT_CREDITS, "Hired fewer than asked: the Vault ran out.")
+        : CommandResult.applied("Villagers hired.");
   }
 
-  private CommandResult sellFood(PlayerSlot slot, GameState gameState, String playerId) {
-    var before = gameState.getCredit();
-    var credits = gameState.sellFood();
-    log.info("Player[{}] sold food for credits: {}", playerId, credits);
-    if (gameState.getCredit() <= before) {
+  /**
+   * Sells Food. With an amount the sale is checked first: it must not leave the Pantry under what
+   * the Reserves' Upkeep would eat in {@link #SELL_FOOD_FLOOR_SECONDS} seconds beyond what the
+   * Fields grow, unless forced. Nothing is sold when it is refused.
+   */
+  private CommandResult sellFood(
+      PlayerSlot slot, GameState gameState, String playerId, Command.SellFood command) {
+    if (command.amount() != null && command.amount() <= 0) {
+      return CommandResult.rejected(Reason.INVALID_ARGUMENT, "The amount must be positive.");
+    }
+    var most = command.amount() == null ? Integer.MAX_VALUE : command.amount();
+    var village = gameState.getVillage();
+    var pantry = village.getFood();
+    var sellable = 0;
+    while (sellable < most && pantry > 1) {
+      pantry -= 1;
+      sellable++;
+    }
+    if (sellable == 0) {
       return CommandResult.rejected(Reason.NOTHING_TO_SELL, "There is no food to sell.");
     }
+    if (command.amount() != null && !command.force()) {
+      var gap = village.upkeepFor(gameState.getHomeUnitCount()) - village.getProductionRate();
+      if (gap > 0 && pantry < gap * SELL_FOOD_FLOOR_SECONDS) {
+        return CommandResult.rejected(
+            Reason.WOULD_STARVE, "The Pantry would not feed the Reserves after that sale.");
+      }
+    }
+    var credits = gameState.sellFood(sellable);
+    log.info("Player[{}] sold food for credits: {}", playerId, credits);
     slot.emit("SOLD", Map.of("what", "FOOD"));
-    return CommandResult.applied("Food sold.");
+    return command.amount() != null && sellable < command.amount()
+        ? CommandResult.partial(
+            Reason.NOTHING_TO_SELL, "Sold fewer than asked: the Pantry ran down to its keep-back.")
+        : CommandResult.applied("Food sold.");
   }
 
   private CommandResult sellStock(
-      PlayerSlot slot, GameState gameState, String playerId, ResourceType type) {
+      PlayerSlot slot, GameState gameState, String playerId, ResourceType type, Double amount) {
+    if (amount != null && !(amount > 0)) {
+      return CommandResult.rejected(Reason.INVALID_ARGUMENT, "The amount must be positive.");
+    }
     var stock = gameState.getResources().getOrDefault(type, 0d);
-    var profit =
-        type == ResourceType.MATERIALS ? gameState.sellAllMaterials() : gameState.sellAllRelics();
-    log.info("Player[{}] sold all {} for {} credits", playerId, type, profit);
     if (stock <= 0) {
       return CommandResult.rejected(Reason.NOTHING_TO_SELL, "There is nothing to sell.");
     }
+    var most = amount == null ? Double.POSITIVE_INFINITY : amount;
+    var profit =
+        type == ResourceType.MATERIALS ? gameState.sellMaterials(most) : gameState.sellRelics(most);
+    log.info("Player[{}] sold {} for {} credits", playerId, type, profit);
     slot.emit("SOLD", Map.of("what", type.name()));
-    return CommandResult.applied("Sold.");
+    return amount != null && stock < amount
+        ? CommandResult.partial(Reason.NOTHING_TO_SELL, "Sold fewer than asked: the stock ran out.")
+        : CommandResult.applied("Sold.");
   }
 
   private CommandResult sellSalt(PlayerSlot slot, GameState gameState, String playerId) {
@@ -1130,6 +1176,10 @@ public class GameService {
   private CommandResult startExpedition(
       PlayerSlot slot, GameState gameState, String playerId, Command.StartExpedition command) {
     log.info("Received invade action from session [{}] {}", playerId, command);
+    if (command.units() == null) {
+      return CommandResult.rejected(
+          Reason.INVALID_ARGUMENT, "Say who goes: a count for each type, or an empty selection.");
+    }
     if (gameState.isExpeditionActive()) {
       log.warn("Player[{}] tried to invade while a run is already active. Ignoring.", playerId);
       return CommandResult.rejected(Reason.EXPEDITION_ACTIVE, "An expedition is already out.");
@@ -1262,10 +1312,21 @@ public class GameService {
       return CommandResult.rejected(Reason.CAMPAIGN_ENDED, "The Campaign has ended.");
     }
     var wavesBefore = gameState.getReinforcements().size();
+    var atHome = new EnumMap<UnitStats, Integer>(UnitStats.class);
+    gameState.getUnits().forEach((stats, list) -> atHome.put(stats, list.size()));
     gameState.sendReinforcement(command.units());
-    return gameState.getReinforcements().size() > wavesBefore
-        ? CommandResult.applied("A wave set out.")
-        : CommandResult.rejected(Reason.NO_UNITS, "There are no units at home to send.");
+    if (gameState.getReinforcements().size() <= wavesBefore) {
+      return CommandResult.rejected(Reason.NO_UNITS, "There are no units at home to send.");
+    }
+    var clamped =
+        command.units() != null
+            && command.units().entrySet().stream()
+                .anyMatch(
+                    e -> e.getValue() != null && e.getValue() > atHome.getOrDefault(e.getKey(), 0));
+    return clamped
+        ? CommandResult.partial(
+            Reason.INSUFFICIENT_UNITS, "A wave set out with fewer than asked: not enough at home.")
+        : CommandResult.applied("A wave set out.");
   }
 
   /** Whether a Unit of the bearer's type is among those about to set out. */

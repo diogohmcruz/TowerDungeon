@@ -4,6 +4,105 @@
       "destructiveHint" : false,
       "idempotentHint" : true,
       "openWorldHint" : false,
+      "readOnlyHint" : false
+    },
+    "description" : "Pay for the next step of an Upgrade with the Materials and Relics it costs. Ask td_get_actions for the Upgrades on offer. Refused with UPGRADE_MAXED when there is no step left and UPGRADE_UNAFFORDABLE when the Vault cannot pay.",
+    "inputSchema" : {
+      "additionalProperties" : false,
+      "properties" : {
+        "campaign" : {
+          "description" : "A Sandbox handle. Omit to use your only open Sandbox.",
+          "pattern" : "^[A-Za-z0-9_-]{1,64}$",
+          "type" : "string"
+        },
+        "expected_seq" : {
+          "description" : "Refuse with STALE_SEQ if the Campaign's state_seq is not this.",
+          "minimum" : 0,
+          "type" : "integer"
+        },
+        "request_id" : {
+          "description" : "Your own id for this call. Repeating it returns the first answer and acts once.",
+          "pattern" : "^[A-Za-z0-9_-]{8,64}$",
+          "type" : "string"
+        },
+        "upgrade_id" : {
+          "description" : "The id of an Upgrade, as td_get_actions lists it.",
+          "pattern" : "^[A-Z0-9_]{1,40}$",
+          "type" : "string"
+        }
+      },
+      "required" : [ "request_id", "upgrade_id" ],
+      "type" : "object"
+    },
+    "name" : "td_buy_upgrade"
+  }, {
+    "annotations" : {
+      "destructiveHint" : false,
+      "idempotentHint" : true,
+      "openWorldHint" : false,
+      "readOnlyHint" : false
+    },
+    "description" : "Pay for Villagers from the Vault's Credits, at a price that rises with the number the Village already has. Takes in up to count, and fewer when the Vault runs out; that is reported as partial.",
+    "inputSchema" : {
+      "additionalProperties" : false,
+      "properties" : {
+        "campaign" : {
+          "description" : "A Sandbox handle. Omit to use your only open Sandbox.",
+          "pattern" : "^[A-Za-z0-9_-]{1,64}$",
+          "type" : "string"
+        },
+        "count" : {
+          "description" : "How many to pay for. Default 1.",
+          "maximum" : 1000,
+          "minimum" : 1,
+          "type" : "integer"
+        },
+        "expected_seq" : {
+          "description" : "Refuse with STALE_SEQ if the Campaign's state_seq is not this.",
+          "minimum" : 0,
+          "type" : "integer"
+        },
+        "request_id" : {
+          "description" : "Your own id for this call. Repeating it returns the first answer and acts once.",
+          "pattern" : "^[A-Za-z0-9_-]{8,64}$",
+          "type" : "string"
+        }
+      },
+      "required" : [ "request_id" ],
+      "type" : "object"
+    },
+    "name" : "td_buy_villagers"
+  }, {
+    "annotations" : {
+      "destructiveHint" : true,
+      "idempotentHint" : true,
+      "openWorldHint" : false,
+      "readOnlyHint" : false
+    },
+    "description" : "End the Expedition now: the Party comes back to the Village with what it carries. Loot is banked, Supplies go back to the Pantry and the answer holds the Expedition Summary. It is never confirmed: it is the way out.",
+    "inputSchema" : {
+      "additionalProperties" : false,
+      "properties" : {
+        "campaign" : {
+          "description" : "A Sandbox handle. Omit to use your only open Sandbox.",
+          "pattern" : "^[A-Za-z0-9_-]{1,64}$",
+          "type" : "string"
+        },
+        "request_id" : {
+          "description" : "Your own id for this call. Repeating it returns the first answer and acts once.",
+          "pattern" : "^[A-Za-z0-9_-]{8,64}$",
+          "type" : "string"
+        }
+      },
+      "required" : [ "request_id" ],
+      "type" : "object"
+    },
+    "name" : "td_extract"
+  }, {
+    "annotations" : {
+      "destructiveHint" : false,
+      "idempotentHint" : true,
+      "openWorldHint" : false,
       "readOnlyHint" : true
     },
     "description" : "List what the Campaign would accept now: which Unit Types can be recruited and how many, Villager and sale options, affordable Upgrades, and whether an Expedition can set out, a Reinforcement Wave can follow or the Party can Extract. Each refusal carries a reason code. Reads only.",
@@ -160,6 +259,48 @@
     "name" : "td_get_tower"
   }, {
     "annotations" : {
+      "destructiveHint" : false,
+      "idempotentHint" : true,
+      "openWorldHint" : false,
+      "readOnlyHint" : false
+    },
+    "description" : "Recruit Units into the Reserves, paid from the Vault and from Loot the Party carries (carried Credits go first). The Credits must exceed the cost of each one, so fewer may be recruited than asked; that is reported as partial. The answer names each new Unit with its rolled health and damage factors and its knack.",
+    "inputSchema" : {
+      "additionalProperties" : false,
+      "properties" : {
+        "campaign" : {
+          "description" : "A Sandbox handle. Omit to use your only open Sandbox.",
+          "pattern" : "^[A-Za-z0-9_-]{1,64}$",
+          "type" : "string"
+        },
+        "expected_seq" : {
+          "description" : "Refuse with STALE_SEQ if the Campaign's state_seq is not this.",
+          "minimum" : 0,
+          "type" : "integer"
+        },
+        "quantity" : {
+          "description" : "How many to recruit.",
+          "maximum" : 100,
+          "minimum" : 1,
+          "type" : "integer"
+        },
+        "request_id" : {
+          "description" : "Your own id for this call. Repeating it returns the first answer and acts once.",
+          "pattern" : "^[A-Za-z0-9_-]{8,64}$",
+          "type" : "string"
+        },
+        "unit_type" : {
+          "description" : "The Unit Type to recruit; it must be unlocked.",
+          "enum" : [ "WARRIOR", "ARCHER", "MAGE", "HEALER", "CAPTAIN", "TANK", "ROGUE", "NECROMANCER", "DRACO_METAMORPH", "PORTER" ],
+          "type" : "string"
+        }
+      },
+      "required" : [ "request_id", "unit_type", "quantity" ],
+      "type" : "object"
+    },
+    "name" : "td_recruit"
+  }, {
+    "annotations" : {
       "destructiveHint" : true,
       "idempotentHint" : true,
       "openWorldHint" : false,
@@ -204,6 +345,152 @@
       "type" : "object"
     },
     "name" : "td_sandbox_new"
+  }, {
+    "annotations" : {
+      "destructiveHint" : true,
+      "idempotentHint" : true,
+      "openWorldHint" : false,
+      "readOnlyHint" : false
+    },
+    "description" : "Sell Food, Materials or Relics from the Village for Credits. Food is sold in whole units above the keep-back and is refused with WOULD_STARVE when the Pantry would no longer feed the Reserves, unless force is true. Materials and Relics take a number or 'all'. Selling cannot be undone.",
+    "inputSchema" : {
+      "additionalProperties" : false,
+      "properties" : {
+        "amount" : {
+          "description" : "How much to sell: a positive number, or 'all' for Materials and Relics only. Food takes a whole number.",
+          "oneOf" : [ {
+            "exclusiveMinimum" : 0,
+            "type" : "number"
+          }, {
+            "const" : "all"
+          } ]
+        },
+        "campaign" : {
+          "description" : "A Sandbox handle. Omit to use your only open Sandbox.",
+          "pattern" : "^[A-Za-z0-9_-]{1,64}$",
+          "type" : "string"
+        },
+        "expected_seq" : {
+          "description" : "Refuse with STALE_SEQ if the Campaign's state_seq is not this.",
+          "minimum" : 0,
+          "type" : "integer"
+        },
+        "force" : {
+          "description" : "Food only: sell even if the Pantry would fall short.",
+          "type" : "boolean"
+        },
+        "good" : {
+          "description" : "What to sell.",
+          "enum" : [ "FOOD", "MATERIALS", "RELICS" ],
+          "type" : "string"
+        },
+        "request_id" : {
+          "description" : "Your own id for this call. Repeating it returns the first answer and acts once.",
+          "pattern" : "^[A-Za-z0-9_-]{8,64}$",
+          "type" : "string"
+        }
+      },
+      "required" : [ "request_id", "good", "amount" ],
+      "type" : "object"
+    },
+    "name" : "td_sell"
+  }, {
+    "annotations" : {
+      "destructiveHint" : false,
+      "idempotentHint" : true,
+      "openWorldHint" : false,
+      "readOnlyHint" : false
+    },
+    "description" : "Send a Reinforcement Wave from the Reserves after the Party on the Tower. Name who goes: a count for each Unit Type, or 'all_reserves'. When fewer wait in the Reserves than asked, the Reinforcement Wave goes with those and the answer is partial. It climbs Floor by Floor and eats on the way.",
+    "inputSchema" : {
+      "additionalProperties" : false,
+      "properties" : {
+        "campaign" : {
+          "description" : "A Sandbox handle. Omit to use your only open Sandbox.",
+          "pattern" : "^[A-Za-z0-9_-]{1,64}$",
+          "type" : "string"
+        },
+        "party" : {
+          "description" : "Who goes in the Reinforcement Wave. A count for each Unit Type, or 'all_reserves'.",
+          "oneOf" : [ {
+            "const" : "all_reserves"
+          }, {
+            "additionalProperties" : {
+              "maximum" : 500,
+              "minimum" : 1,
+              "type" : "integer"
+            },
+            "minProperties" : 1,
+            "propertyNames" : {
+              "enum" : [ "WARRIOR", "ARCHER", "MAGE", "HEALER", "CAPTAIN", "TANK", "ROGUE", "NECROMANCER", "DRACO_METAMORPH", "PORTER" ]
+            },
+            "type" : "object"
+          } ]
+        },
+        "request_id" : {
+          "description" : "Your own id for this call. Repeating it returns the first answer and acts once.",
+          "pattern" : "^[A-Za-z0-9_-]{8,64}$",
+          "type" : "string"
+        }
+      },
+      "required" : [ "request_id", "party" ],
+      "type" : "object"
+    },
+    "name" : "td_send_reinforcement_wave"
+  }, {
+    "annotations" : {
+      "destructiveHint" : true,
+      "idempotentHint" : true,
+      "openWorldHint" : false,
+      "readOnlyHint" : false
+    },
+    "description" : "Send a Party up the Tower from the Reserves. Name who goes: a count for each Unit Type, or 'all_reserves'. A start_floor above 0 needs an open Shortcut. The Party draws Supplies from the Pantry. Refused when an Expedition is out or the Campaign has ended.",
+    "inputSchema" : {
+      "additionalProperties" : false,
+      "properties" : {
+        "campaign" : {
+          "description" : "A Sandbox handle. Omit to use your only open Sandbox.",
+          "pattern" : "^[A-Za-z0-9_-]{1,64}$",
+          "type" : "string"
+        },
+        "expected_seq" : {
+          "description" : "Refuse with STALE_SEQ if the Campaign's state_seq is not this.",
+          "minimum" : 0,
+          "type" : "integer"
+        },
+        "party" : {
+          "description" : "Who goes. A count for each Unit Type, or 'all_reserves'.",
+          "oneOf" : [ {
+            "const" : "all_reserves"
+          }, {
+            "additionalProperties" : {
+              "maximum" : 500,
+              "minimum" : 1,
+              "type" : "integer"
+            },
+            "minProperties" : 1,
+            "propertyNames" : {
+              "enum" : [ "WARRIOR", "ARCHER", "MAGE", "HEALER", "CAPTAIN", "TANK", "ROGUE", "NECROMANCER", "DRACO_METAMORPH", "PORTER" ]
+            },
+            "type" : "object"
+          } ]
+        },
+        "request_id" : {
+          "description" : "Your own id for this call. Repeating it returns the first answer and acts once.",
+          "pattern" : "^[A-Za-z0-9_-]{8,64}$",
+          "type" : "string"
+        },
+        "start_floor" : {
+          "description" : "0 starts at the foot of the Tower. Otherwise the Floor of an open Shortcut.",
+          "maximum" : 100,
+          "minimum" : 0,
+          "type" : "integer"
+        }
+      },
+      "required" : [ "request_id", "party" ],
+      "type" : "object"
+    },
+    "name" : "td_start_expedition"
   }, {
     "annotations" : {
       "destructiveHint" : false,

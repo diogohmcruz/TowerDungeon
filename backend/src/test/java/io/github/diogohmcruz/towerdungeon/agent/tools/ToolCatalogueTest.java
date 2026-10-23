@@ -18,6 +18,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import io.github.diogohmcruz.towerdungeon.agent.act.Actions;
 import io.github.diogohmcruz.towerdungeon.agent.auth.AuditLog;
 import io.github.diogohmcruz.towerdungeon.agent.auth.Principal;
 import io.github.diogohmcruz.towerdungeon.agent.auth.RateLimiter;
@@ -41,6 +42,7 @@ class ToolCatalogueTest {
   private static final JsonMapper MAPPER = JsonMapper.builder().build();
 
   private Observations observations;
+  private Actions actions;
   private AtomicLong nanos;
   private Path auditFile;
   private ToolCatalogue catalogue;
@@ -50,11 +52,13 @@ class ToolCatalogueTest {
   @BeforeEach
   void setUp() throws IOException {
     observations = mock(Observations.class);
+    actions = mock(Actions.class);
     nanos = new AtomicLong(1_000_000_000_000L);
     auditFile = Files.createTempDirectory("td-tools-test").resolve("audit.jsonl");
     catalogue =
         new ToolCatalogue(
             observations,
+            actions,
             mock(SandboxRegistry.class),
             new RateLimiter(nanos::get),
             new AuditLog(auditFile, Clock.systemUTC()));
@@ -79,14 +83,21 @@ class ToolCatalogueTest {
     assertThat(names).isSorted().doesNotHaveDuplicates();
     assertThat(names)
         .containsExactly(
+            "td_buy_upgrade",
+            "td_buy_villagers",
+            "td_extract",
             "td_get_actions",
             "td_get_events",
             "td_get_ledger",
             "td_get_rules",
             "td_get_state",
             "td_get_tower",
+            "td_recruit",
             "td_sandbox_close",
             "td_sandbox_new",
+            "td_sell",
+            "td_send_reinforcement_wave",
+            "td_start_expedition",
             "td_wait");
   }
 
@@ -105,12 +116,17 @@ class ToolCatalogueTest {
   void noNameDescriptionOrSchemaTextUsesATermTheGlossaryAvoids() {
     var glossary = Glossary.load();
     for (var tool : catalogue.tools()) {
+      // A name is the snake_case of its words, and "buy" is the verb the design gives two of them.
       var text =
-          tool.name()
+          tool.name().replace('_', ' ').replace(" buy ", " ")
               + " "
               + tool.description()
               + " "
               + MAPPER.writeValueAsString(tool.inputSchema());
+      // The Unit Type identifiers are the game's own names for them, Mage among them.
+      for (var type : io.github.diogohmcruz.towerdungeon.domain.models.UnitStats.values()) {
+        text = text.replace("\"" + type.name() + "\"", "\"UNIT_TYPE\"");
+      }
       assertThat(glossary.avoidedIn(text)).as(tool.name()).isEmpty();
     }
   }
@@ -295,7 +311,8 @@ class ToolCatalogueTest {
                 "This grant already holds 8 live Sandboxes.",
                 null));
     var local =
-        new ToolCatalogue(observations, sandboxes, new RateLimiter(nanos::get), AuditLog.none());
+        new ToolCatalogue(
+            observations, actions, sandboxes, new RateLimiter(nanos::get), AuditLog.none());
 
     var result = local.call(dev, "td_sandbox_new", Map.of()).block();
 
@@ -303,11 +320,112 @@ class ToolCatalogueTest {
     assertThat(data(result)).containsEntry("code", "GRANT_CAP");
   }
 
+  // ---------------------------------------------------------------- the action tools
+
+  private static final Map<String, Object> RECRUIT =
+      Map.of("request_id", "req-00000001", "unit_type", "WARRIOR", "quantity", 1);
+
+  @Test
+  void everyActionToolIsAWriteWithExplicitAnnotationsAndTheRightScope() {
+    var expected =
+        Map.of(
+            "td_recruit", false,
+            "td_buy_villagers", false,
+            "td_buy_upgrade", false,
+            "td_send_reinforcement_wave", false,
+            "td_sell", true,
+            "td_start_expedition", true,
+            "td_extract", true);
+    expected.forEach(
+        (name, destructive) -> {
+          var tool =
+              catalogue.tools().stream()
+                  .filter(t -> t.name().equals(name))
+                  .findFirst()
+                  .orElseThrow();
+          assertThat(tool.readOnly()).as(name).isFalse();
+          assertThat(tool.destructive()).as(name).isEqualTo(destructive);
+          assertThat(tool.idempotent()).as(name).isTrue();
+          assertThat(tool.write()).as(name).isTrue();
+          assertThat(tool.required()).as(name).contains("request_id");
+          assertThat(tool.scope()).as(name).isIn(Scope.ACT_VILLAGE, Scope.ACT_EXPEDITION);
+        });
+    assertThat(expected)
+        .hasSameSizeAs(
+            catalogue.tools().stream()
+                .filter(t -> t.write() && t.scope() != Scope.SANDBOX)
+                .toList());
+  }
+
+  @Test
+  void aGrantWithoutTheActScopeCannotActAndOneWithItCan() {
+    when(actions.recruit(any(), any())).thenReturn(Map.of("status", "applied", "code", "OK"));
+
+    var forbidden = call(reader, "td_recruit", RECRUIT);
+    var allowed = call(dev, "td_recruit", RECRUIT);
+
+    assertThat(data(forbidden)).containsEntry("code", "FORBIDDEN");
+    assertThat(allowed.isError()).isFalse();
+    var villageOnly = new Principal("village", EnumSet.of(Scope.ACT_VILLAGE));
+    assertThat(data(call(villageOnly, "td_extract", Map.of("request_id", "req-00000002"))))
+        .containsEntry("code", "FORBIDDEN");
+  }
+
+  @Test
+  void anActionWithoutARequestIdOrWithABadOneIsRefusedBeforeItRuns() {
+    assertThat(data(call(dev, "td_recruit", Map.of("unit_type", "WARRIOR", "quantity", 1))))
+        .containsEntry("code", "INVALID_ARGUMENT");
+    when(actions.recruit(any(), any())).thenThrow(Args.invalid("request_id"));
+
+    assertThat(data(call(dev, "td_recruit", RECRUIT))).containsEntry("code", "INVALID_ARGUMENT");
+  }
+
+  @Test
+  void aRefusedActionIsAnErrorResultAndAnAppliedOrPartialOneIsNot() {
+    when(actions.recruit(any(), any()))
+        .thenReturn(Map.of("status", "rejected", "code", "INSUFFICIENT_CREDITS", "state_seq", 4))
+        .thenReturn(Map.of("status", "partial", "code", "INSUFFICIENT_CREDITS", "state_seq", 5))
+        .thenReturn(Map.of("status", "applied", "code", "OK", "state_seq", 6));
+
+    assertThat(call(dev, "td_recruit", RECRUIT).isError()).isTrue();
+    assertThat(call(dev, "td_recruit", RECRUIT).isError()).isFalse();
+    assertThat(call(dev, "td_recruit", RECRUIT).isError()).isFalse();
+  }
+
+  @Test
+  void actionsAreWritesAndAreRateLimitedMoreTightlyThanReads() {
+    when(actions.recruit(any(), any())).thenReturn(Map.of("status", "applied", "code", "OK"));
+
+    for (var i = 0; i < 6; i++) {
+      assertThat(call(dev, "td_recruit", RECRUIT).isError()).as("call " + i).isFalse();
+    }
+    var limited = call(dev, "td_recruit", RECRUIT);
+
+    assertThat(limited.isError()).isTrue();
+    assertThat(data(limited)).containsEntry("code", "RATE_LIMITED");
+  }
+
+  @Test
+  void theAuditNamesTheRequestIdAndTheStateSeqOfAnAction() throws IOException {
+    when(actions.recruit(any(), any()))
+        .thenReturn(Map.of("status", "applied", "code", "OK", "state_seq", 41));
+
+    call(dev, "td_recruit", RECRUIT);
+    call(
+        dev,
+        "td_recruit",
+        Map.of("request_id", "bad id; drop", "unit_type", "WARRIOR", "quantity", 1));
+
+    var lines = Files.readAllLines(auditFile);
+    assertThat(lines.get(0)).contains("\"request_id\":\"req-00000001\"", "\"seq\":41");
+    assertThat(lines.get(1)).doesNotContain("drop");
+  }
+
   @Test
   void toolListsAreStableAcrossInstances() {
     var other =
         new ToolCatalogue(
-            observations, mock(SandboxRegistry.class), new RateLimiter(), AuditLog.none());
+            observations, actions, mock(SandboxRegistry.class), new RateLimiter(), AuditLog.none());
 
     assertThat(other.manifestJson()).isEqualTo(catalogue.manifestJson());
     assertThat(List.copyOf(other.tools())).hasSameSizeAs(catalogue.tools());

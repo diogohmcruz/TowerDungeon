@@ -1,7 +1,6 @@
 package io.github.diogohmcruz.towerdungeon.domain.services;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -129,20 +128,15 @@ class GameServiceCommandsTest {
   }
 
   @Test
-  void aNullQuantityFailsWithANullPointerWhenTheCreditsCoverOne() {
-    // Quirk, pinned: the quantity is an Integer and is unboxed in the loop condition.
-    assertThatThrownBy(() -> service.execute(PLAYER, new Command.Recruit(UnitStats.WARRIOR, null)))
-        .isInstanceOf(NullPointerException.class);
-  }
-
-  @Test
-  void aNullQuantityIsNeverReadWhenTheCreditsCannotCoverOne() {
-    // Quirk, pinned: the Credits test short-circuits before the quantity is unboxed.
+  void aNullQuantityIsRefusedWhateverTheCredits() {
+    // Was a NullPointerException when the Credits covered one; the agent tools needed it refused.
+    var covered = service.execute(PLAYER, new Command.Recruit(UnitStats.WARRIOR, null));
     state.setCredit(0.0);
+    var broke = service.execute(PLAYER, new Command.Recruit(UnitStats.WARRIOR, null));
 
-    var result = service.execute(PLAYER, new Command.Recruit(UnitStats.WARRIOR, null));
-
-    assertThat(result.reason()).isEqualTo(Reason.INSUFFICIENT_CREDITS);
+    assertThat(covered.reason()).isEqualTo(Reason.INVALID_ARGUMENT);
+    assertThat(broke.reason()).isEqualTo(Reason.INVALID_ARGUMENT);
+    assertThat(count(state.getUnits(), UnitStats.WARRIOR)).isEqualTo(3);
   }
 
   @Test
@@ -291,11 +285,13 @@ class GameServiceCommandsTest {
   }
 
   @Test
-  void aNullSelectionFailsWithANullPointer() {
-    // Quirk, pinned: a null map is not "everyone"; it is an unchecked NullPointerException.
-    assertThatThrownBy(() -> service.execute(PLAYER, new Command.StartExpedition(null, 0)))
-        .isInstanceOf(NullPointerException.class);
+  void aNullSelectionIsRefusedAndNobodyMoves() {
+    // A null map is not "everyone" (an empty one is); it used to be a NullPointerException.
+    var result = service.execute(PLAYER, new Command.StartExpedition(null, 0));
+
+    assertThat(result.reason()).isEqualTo(Reason.INVALID_ARGUMENT);
     assertThat(state.isExpeditionActive()).isFalse();
+    assertThat(count(state.getUnits(), UnitStats.WARRIOR)).isEqualTo(3);
   }
 
   @Test
@@ -421,13 +417,14 @@ class GameServiceCommandsTest {
   }
 
   @Test
-  void aReinforcementSelectionIsClampedToWhatIsAtHome() {
+  void aReinforcementSelectionIsClampedToWhatIsAtHomeAndSaidToBe() {
     service.execute(PLAYER, new Command.StartExpedition(selection(UnitStats.WARRIOR, 1), 0));
 
     var result =
         service.execute(PLAYER, new Command.SendReinforcements(selection(UnitStats.WARRIOR, 9)));
 
-    assertThat(result.outcome()).isEqualTo(Outcome.APPLIED);
+    assertThat(result.outcome()).isEqualTo(Outcome.PARTIAL);
+    assertThat(result.reason()).isEqualTo(Reason.INSUFFICIENT_UNITS);
     assertThat(state.getReinforcements().getFirst().size()).isEqualTo(2);
   }
 

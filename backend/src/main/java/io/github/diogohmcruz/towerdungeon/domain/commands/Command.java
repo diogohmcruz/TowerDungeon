@@ -25,24 +25,44 @@ public sealed interface Command {
     }
   }
 
-  /** Hire villagers until the Vault can no longer pay for another. */
-  record BuyVillagers() implements Command {
+  /**
+   * Hire villagers until the Vault can no longer pay for another, or {@code count} have been hired.
+   * A null count hires as many as the Vault can pay for (what the screen does).
+   */
+  record BuyVillagers(Integer count) implements Command {
+    public BuyVillagers() {
+      this(null);
+    }
+
     @Override
     public String kind() {
       return "BUY_VILLAGERS";
     }
   }
 
-  /** Sell the Pantry's food above the keep-back. */
-  record SellFood() implements Command {
+  /**
+   * Sell the Pantry's food above the keep-back. A null {@code amount} sells all of it (what the
+   * screen does). With an amount, up to that many whole Food are sold, and the sale is refused with
+   * {@code WOULD_STARVE} when it would leave the Pantry under a safe floor for the Reserves'
+   * Upkeep, unless {@code force} is set.
+   */
+  record SellFood(Integer amount, boolean force) implements Command {
+    public SellFood() {
+      this(null, false);
+    }
+
     @Override
     public String kind() {
       return "SELL_FOOD";
     }
   }
 
-  /** Sell every banked Material. */
-  record SellMaterials() implements Command {
+  /** Sell the banked Materials: all of them for a null {@code amount}, else up to that many. */
+  record SellMaterials(Double amount) implements Command {
+    public SellMaterials() {
+      this(null);
+    }
+
     @Override
     public String kind() {
       return "SELL_MATERIALS";
@@ -57,8 +77,12 @@ public sealed interface Command {
     }
   }
 
-  /** Sell every banked Relic. */
-  record SellRelics() implements Command {
+  /** Sell the banked Relics: all of them for a null {@code amount}, else up to that many. */
+  record SellRelics(Double amount) implements Command {
+    public SellRelics() {
+      this(null);
+    }
+
     @Override
     public String kind() {
       return "SELL_RELICS";

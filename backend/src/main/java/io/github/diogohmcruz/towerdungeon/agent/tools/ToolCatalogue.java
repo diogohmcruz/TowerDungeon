@@ -11,6 +11,7 @@ import java.util.regex.Pattern;
 import org.springframework.stereotype.Component;
 
 import io.github.diogohmcruz.towerdungeon.agent.AgentEnabled;
+import io.github.diogohmcruz.towerdungeon.agent.act.Actions;
 import io.github.diogohmcruz.towerdungeon.agent.auth.AuditLog;
 import io.github.diogohmcruz.towerdungeon.agent.auth.Principal;
 import io.github.diogohmcruz.towerdungeon.agent.auth.RateLimiter;
@@ -19,6 +20,7 @@ import io.github.diogohmcruz.towerdungeon.agent.auth.TokenHasher;
 import io.github.diogohmcruz.towerdungeon.agent.observe.Observations;
 import io.github.diogohmcruz.towerdungeon.agent.observe.RuleViews;
 import io.github.diogohmcruz.towerdungeon.agent.observe.WaitConditions;
+import io.github.diogohmcruz.towerdungeon.domain.models.UnitStats;
 import io.github.diogohmcruz.towerdungeon.domain.services.SandboxRegistry;
 import io.github.diogohmcruz.towerdungeon.domain.services.SandboxRegistry.Status;
 import io.modelcontextprotocol.spec.McpSchema;
@@ -56,6 +58,7 @@ public class ToolCatalogue {
           .build();
 
   private final Observations observations;
+  private final Actions actions;
   private final SandboxRegistry sandboxes;
   private final RateLimiter limiter;
   private final AuditLog audit;
@@ -63,8 +66,13 @@ public class ToolCatalogue {
   private final Map<String, ToolDef> byName = new LinkedHashMap<>();
 
   public ToolCatalogue(
-      Observations observations, SandboxRegistry sandboxes, RateLimiter limiter, AuditLog audit) {
+      Observations observations,
+      Actions actions,
+      SandboxRegistry sandboxes,
+      RateLimiter limiter,
+      AuditLog audit) {
     this.observations = observations;
+    this.actions = actions;
     this.sandboxes = sandboxes;
     this.limiter = limiter;
     this.audit = audit;
@@ -130,7 +138,8 @@ public class ToolCatalogue {
                         Boolean.TRUE.equals(result.isError()) ? "rejected" : "ok",
                         codeOf(result),
                         seqOf(result),
-                        (System.nanoTime() - started) / 1_000_000)));
+                        (System.nanoTime() - started) / 1_000_000,
+                        requestIdOf(arguments))));
   }
 
   private Mono<Map<String, Object>> run(
@@ -168,6 +177,10 @@ public class ToolCatalogue {
     return tool.handler().handle(new ToolDef.Call(principal, new Args(given)));
   }
 
+  /**
+   * A result. An action's answer that was refused ({@code status: rejected}) is flagged as an error
+   * so a client sees it as one; one that took effect in part is not, so the part is read.
+   */
   private McpSchema.CallToolResult ok(Map<String, Object> data) {
     var json = COMPACT.writeValueAsString(data);
     if (json.length() > MAX_RESULT_CHARS) {
@@ -178,7 +191,7 @@ public class ToolCatalogue {
     return McpSchema.CallToolResult.builder()
         .structuredContent(data)
         .addTextContent(json)
-        .isError(false)
+        .isError("rejected".equals(data.get("status")))
         .build();
   }
 
@@ -210,8 +223,19 @@ public class ToolCatalogue {
   }
 
   private static Long seqOf(McpSchema.CallToolResult result) {
-    return result.structuredContent() instanceof Map<?, ?> map && map.get("seq") instanceof Number n
-        ? n.longValue()
+    if (!(result.structuredContent() instanceof Map<?, ?> map)) {
+      return null;
+    }
+    var seq = map.get("seq") instanceof Number n ? n : map.get("state_seq");
+    return seq instanceof Number n ? n.longValue() : null;
+  }
+
+  /** The request id of an action, when it is well formed: only that shape is ever audited. */
+  private static String requestIdOf(Map<String, Object> arguments) {
+    return arguments != null
+            && arguments.get("request_id") instanceof String id
+            && Actions.REQUEST_ID.matcher(id).matches()
+        ? id
         : null;
   }
 
@@ -414,7 +438,130 @@ public class ToolCatalogue {
             true,
             Scope.SANDBOX,
             true,
-            call -> Mono.just(closeSandbox(call))));
+            call -> Mono.just(closeSandbox(call))),
+        act(
+            "td_recruit",
+            "Recruit Units into the Reserves, paid from the Vault and from Loot the Party carries"
+                + " (carried Credits go first). The Credits must exceed the cost of each one, so"
+                + " fewer may be recruited than asked; that is reported as partial. The answer"
+                + " names each new Unit with its rolled health and damage factors and its knack.",
+            Scope.ACT_VILLAGE,
+            false,
+            schema(
+                withCommon(
+                    true,
+                    Map.of(
+                        "unit_type",
+                        Map.of(
+                            "type", "string",
+                            "enum", unitNames(),
+                            "description", "The Unit Type to recruit; it must be unlocked."),
+                        "quantity",
+                        bounded("How many to recruit.", 1, 100))),
+                List.of("request_id", "unit_type", "quantity")),
+            call -> Mono.just(actions.recruit(call.principal(), call.args()))),
+        act(
+            "td_buy_villagers",
+            "Pay for Villagers from the Vault's Credits, at a price that rises with the number the"
+                + " Village already has. Takes in up to count, and fewer when the Vault runs out;"
+                + " that is reported as partial.",
+            Scope.ACT_VILLAGE,
+            false,
+            schema(
+                withCommon(
+                    true, Map.of("count", bounded("How many to pay for. Default 1.", 1, 1000))),
+                List.of("request_id")),
+            call -> Mono.just(actions.buyVillagers(call.principal(), call.args()))),
+        act(
+            "td_sell",
+            "Sell Food, Materials or Relics from the Village for Credits. Food is sold in whole"
+                + " units above the keep-back and is refused with WOULD_STARVE when the Pantry"
+                + " would no longer feed the Reserves, unless force is true. Materials and Relics"
+                + " take a number or 'all'. Selling cannot be undone.",
+            Scope.ACT_VILLAGE,
+            true,
+            schema(
+                withCommon(
+                    true,
+                    Map.of(
+                        "good", enumOf(List.of("FOOD", "MATERIALS", "RELICS"), "What to sell."),
+                        "amount",
+                            Map.of(
+                                "description",
+                                "How much to sell: a positive number, or 'all' for Materials and"
+                                    + " Relics only. Food takes a whole number.",
+                                "oneOf",
+                                List.of(
+                                    Map.of("type", "number", "exclusiveMinimum", 0),
+                                    Map.of("const", "all"))),
+                        "force",
+                            Map.of(
+                                "type", "boolean",
+                                "description",
+                                    "Food only: sell even if the Pantry would fall short."))),
+                List.of("request_id", "good", "amount")),
+            call -> Mono.just(actions.sell(call.principal(), call.args()))),
+        act(
+            "td_buy_upgrade",
+            "Pay for the next step of an Upgrade with the Materials and Relics it costs. Ask"
+                + " td_get_actions for the Upgrades on offer. Refused with UPGRADE_MAXED when"
+                + " there is no step left and UPGRADE_UNAFFORDABLE when the Vault cannot pay.",
+            Scope.ACT_VILLAGE,
+            false,
+            schema(
+                withCommon(
+                    true,
+                    Map.of(
+                        "upgrade_id",
+                        Map.of(
+                            "type", "string",
+                            "pattern", "^[A-Z0-9_]{1,40}$",
+                            "description", "The id of an Upgrade, as td_get_actions lists it."))),
+                List.of("request_id", "upgrade_id")),
+            call -> Mono.just(actions.buyUpgrade(call.principal(), call.args()))),
+        act(
+            "td_start_expedition",
+            "Send a Party up the Tower from the Reserves. Name who goes: a count for each Unit"
+                + " Type, or 'all_reserves'. A start_floor above 0 needs an open Shortcut. The"
+                + " Party draws Supplies from the Pantry. Refused when an Expedition is out or the"
+                + " Campaign has ended.",
+            Scope.ACT_EXPEDITION,
+            true,
+            schema(
+                withCommon(
+                    true,
+                    Map.of(
+                        "party", partySchema("Who goes."),
+                        "start_floor",
+                            bounded(
+                                "0 starts at the foot of the Tower. Otherwise the Floor of an open"
+                                    + " Shortcut.",
+                                0,
+                                100))),
+                List.of("request_id", "party")),
+            call -> Mono.just(actions.startExpedition(call.principal(), call.args()))),
+        act(
+            "td_send_reinforcement_wave",
+            "Send a Reinforcement Wave from the Reserves after the Party on the Tower. Name who"
+                + " goes: a count for each Unit Type, or 'all_reserves'. When fewer wait in the"
+                + " Reserves than asked, the Reinforcement Wave goes with those and the answer is"
+                + " partial. It climbs Floor by Floor and eats on the way.",
+            Scope.ACT_EXPEDITION,
+            false,
+            schema(
+                withCommon(
+                    false, Map.of("party", partySchema("Who goes in the Reinforcement Wave."))),
+                List.of("request_id", "party")),
+            call -> Mono.just(actions.sendReinforcementWave(call.principal(), call.args()))),
+        act(
+            "td_extract",
+            "End the Expedition now: the Party comes back to the Village with what it carries. Loot"
+                + " is banked, Supplies go back to the Pantry and the answer holds the Expedition"
+                + " Summary. It is never confirmed: it is the way out.",
+            Scope.ACT_EXPEDITION,
+            true,
+            schema(withCommon(false, Map.of()), List.of("request_id")),
+            call -> Mono.just(actions.extract(call.principal(), call.args()))));
   }
 
   private Map<String, Object> openSandbox(ToolDef.Call call) {
@@ -449,6 +596,61 @@ public class ToolCatalogue {
   }
 
   // ---------------------------------------------------------------- small builders
+
+  /** An action tool: it writes, so it counts against the write limit and is idempotent by id. */
+  private static ToolDef act(
+      String name,
+      String description,
+      Scope scope,
+      boolean destructive,
+      Map<String, Object> schema,
+      ToolDef.Handler handler) {
+    return new ToolDef(name, description, schema, false, destructive, true, scope, true, handler);
+  }
+
+  private static List<String> unitNames() {
+    return java.util.Arrays.stream(UnitStats.values()).map(Enum::name).toList();
+  }
+
+  /** The arguments every action takes, and the guard that village tools and setting out add. */
+  private static Map<String, Object> withCommon(boolean guarded, Map<String, Object> own) {
+    var all = new LinkedHashMap<String, Object>(own);
+    all.put(
+        "request_id",
+        Map.of(
+            "type", "string",
+            "pattern", Actions.REQUEST_ID.pattern(),
+            "description",
+                "Your own id for this call. Repeating it returns the first answer and acts once."));
+    all.put("campaign", campaign());
+    if (guarded) {
+      all.put(
+          "expected_seq",
+          Map.of(
+              "type", "integer",
+              "minimum", 0,
+              "description", "Refuse with STALE_SEQ if the Campaign's state_seq is not this."));
+    }
+    return all;
+  }
+
+  private static Map<String, Object> partySchema(String description) {
+    return Map.of(
+        "description",
+        description + " A count for each Unit Type, or 'all_reserves'.",
+        "oneOf",
+        List.of(
+            Map.of("const", "all_reserves"),
+            Map.of(
+                "type",
+                "object",
+                "minProperties",
+                1,
+                "propertyNames",
+                Map.of("enum", unitNames()),
+                "additionalProperties",
+                Map.of("type", "integer", "minimum", 1, "maximum", 500))));
+  }
 
   private static ToolDef read(
       String name, String description, Map<String, Object> schema, ToolDef.Handler handler) {
