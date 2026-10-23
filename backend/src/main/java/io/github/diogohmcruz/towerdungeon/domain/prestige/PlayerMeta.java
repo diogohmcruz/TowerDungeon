@@ -34,6 +34,9 @@ public record PlayerMeta(
     List<ChronicleEntry> chronicle,
     String towerSecret) {
 
+  /** The Roll id of the Inheritance that opens the Door at the Floor beneath the Summit. */
+  public static final String BLOOD_OF_THE_DOOR = "BLOOD_OF_THE_DOOR";
+
   public PlayerMeta {
     generation = Math.max(1, generation);
     roll = roll == null ? List.of() : List.copyOf(roll);
@@ -78,6 +81,14 @@ public record PlayerMeta(
         lifetime.plus(tally, unitsLost, report.outcome()),
         entries,
         towerSecret);
+  }
+
+  /**
+   * Whether Blood of the Door is on the Roll: the Door opens for this and every later Generation.
+   */
+  @JsonIgnore
+  public boolean opensTheDoor() {
+    return roll.contains(BLOOD_OF_THE_DOOR);
   }
 
   /** Whether the meta has a Tower secret yet. */

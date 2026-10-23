@@ -178,6 +178,7 @@ public class Tower {
     }
     budget *= Math.pow(1 - e.getEaseBudgetPerBoss(), easingStepsFor(floor));
     budget *= Math.pow(1 + e.getStepBudgetPerBoss(), stepUpsFor(floor));
+    budget *= e.getMemoryBudget();
     return budget;
   }
 

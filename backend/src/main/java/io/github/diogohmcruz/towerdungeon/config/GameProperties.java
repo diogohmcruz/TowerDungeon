@@ -65,6 +65,22 @@ public class GameProperties {
     return ConfigCopy.of(this);
   }
 
+  /**
+   * Hardens this Campaign's own Boss and Enemies tuning with Tower Memory for {@code generation}:
+   * {@code m = min(generation - 1, maxSteps)}. Call it on a copy; never on the shared config.
+   */
+  public GameProperties withTowerMemory(int generation) {
+    var memory = prestige.getMemory();
+    var m = Math.clamp(generation - 1L, 0, Math.max(0, memory.getMaxSteps()));
+    enemies.setMemoryBudget(1 + memory.getBudgetPerStep() * m);
+    boss.setMemoryHealth(1 + memory.getGuardianHealthPerStep() * m);
+    if (m > 0 && memory.getUpperGuardianFloor() > 0) {
+      boss.setMemoryUpperFloor(memory.getUpperGuardianFloor());
+      boss.setMemoryUpperHealthCap(1 + memory.getUpperGuardianBonusCap());
+    }
+    return this;
+  }
+
   /** Settings of the agent surface (the MCP server and its Sandbox Campaigns). */
   @Data
   public static class Agent {
@@ -249,6 +265,18 @@ public class GameProperties {
     private double healthMultiplierPerFloor = 0.05;
     private double damageMultiplier = 1.25;
 
+    /**
+     * Tower Memory: a Guardian's total health is multiplied by this last, before it is divided
+     * across its Body Parts. 1.0 in Generation 1; set on the Campaign's own copy.
+     */
+    private double memoryHealth = 1.0;
+
+    /** Guardians above this Floor take no more than {@link #memoryUpperHealthCap} from Memory. */
+    private int memoryUpperFloor = 0;
+
+    /** The most a Guardian above {@link #memoryUpperFloor} gains from Memory; 0 for no cap. */
+    private double memoryUpperHealthCap = 0.0;
+
     /** An independent copy, so one campaign's tower never shares tuning with another's. */
     public Boss copy() {
       var copy = new Boss();
@@ -266,6 +294,12 @@ public class GameProperties {
   public static class Enemies {
     /** Flat garrison budget every floor starts with. */
     private double baseBudget = 3.0;
+
+    /**
+     * Tower Memory: a garrison's budget is multiplied by this last, after Easing and step-ups. 1.0
+     * in Generation 1; set on the Campaign's own copy.
+     */
+    private double memoryBudget = 1.0;
 
     /** Additional budget per floor of depth (linear term). */
     private double budgetPerFloor = 0.8;
@@ -929,6 +963,9 @@ public class GameProperties {
     /** Highest Floor above this pays nothing more (Floor 100 is paid through its Guardian). */
     private int doorFloor = 99;
 
+    /** Tower Memory: how a Tower hardens each Generation. */
+    private final Memory memory = new Memory();
+
     /** Whether each ended Expedition writes its Toll to the log, for the balance refit. */
     private boolean logToll = true;
 
@@ -946,6 +983,22 @@ public class GameProperties {
 
     /** Most Campaigns the Chronicle keeps; the oldest drop off. */
     private int chronicleLimit = 50;
+
+    /** Tower Memory {@code m = min(Generation - 1, maxSteps)}, derived and never stored. */
+    @Data
+    public static class Memory {
+      private int maxSteps = 4;
+      private double budgetPerStep = 0.05;
+      private double guardianHealthPerStep = 0.08;
+
+      /**
+       * Guardians above this Floor gain at most {@link #upperGuardianBonusCap} of health from
+       * Memory, until the scaling pass for Floors 40 to 100 lands. 0 turns the cap off.
+       */
+      private int upperGuardianFloor = 50;
+
+      private double upperGuardianBonusCap = 0.16;
+    }
 
     /** The Legacy a Defeat pays at least, and the Expeditions it takes to earn it. */
     @Data

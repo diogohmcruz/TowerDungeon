@@ -146,7 +146,14 @@ public class GameService {
    * Defeat starts Hollow.
    */
   GameState newCampaign(PlayerMeta meta, boolean hollow) {
-    return newCampaign(config.copy(), new RandomSource(meta.seed()), meta.generation(), hollow);
+    var campaign =
+        newCampaign(
+            config.copy().withTowerMemory(meta.generation()),
+            new RandomSource(meta.seed()),
+            meta.generation(),
+            hollow);
+    campaign.setDoorOpen(meta.opensTheDoor());
+    return campaign;
   }
 
   /**
@@ -419,7 +426,12 @@ public class GameService {
     var meta = metaOf(result.payload());
     adopt(slot, meta);
     var state =
-        GameState.restore(snapshot, config.copy(), new RandomSource(meta.seed()), slot.plan());
+        GameState.restore(
+            snapshot,
+            config.copy().withTowerMemory(meta.generation()),
+            new RandomSource(meta.seed()),
+            slot.plan());
+    state.setDoorOpen(meta.opensTheDoor());
     if (!result.quarantined().isEmpty()) {
       slot.addNotice(
           new Notice("SAVE_DAMAGED", "A damaged save was set aside and an older one was loaded."));
@@ -1334,6 +1346,11 @@ public class GameService {
     var currentTowerFloor = tower.getCurrentTowerFloor();
     if (currentTowerFloor == null || currentTowerFloor.getEnemies().isEmpty()) {
       var clearedFloor = tower.getCurrentFloor();
+      var doorSealed = gameState.isDoorSealedAt(clearedFloor);
+      if (doorSealed && gameState.isDoorSeen()) {
+        // The Floor has paid. The Party stands under Attrition and Supplies drain until it leaves.
+        return;
+      }
       var bossCleared = currentTowerFloor != null && currentTowerFloor.isBoss();
       var reward = gameState.getConfig().getReward();
       var rewardMultiplier = bossCleared ? reward.getBossRewardMultiplier() : 1.0;
@@ -1351,6 +1368,11 @@ public class GameService {
       if (clearedFloor >= tower.getMaxFloor()) {
         log.info("VICTORY! Player conquered the summit of the tower on floor {}!", clearedFloor);
         endRunOnVictory(gameState);
+        return;
+      }
+      if (doorSealed) {
+        gameState.markDoorSeen();
+        log.info("Floor {} is cleared and the door does not open.", clearedFloor);
         return;
       }
       tower.moveToNextFloor();

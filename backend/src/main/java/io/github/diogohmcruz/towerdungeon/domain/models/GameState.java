@@ -117,6 +117,15 @@ public class GameState {
   private double recoverySpend = 0d;
 
   private int runStartFloor = 0;
+
+  /** Blood of the Door is owned: derived from the player's Roll, never saved with the Campaign. */
+  @JsonIgnore private boolean doorOpen = false;
+
+  /**
+   * The Party has stood at the sealed Door and been paid for that Floor; set once per Expedition.
+   */
+  @JsonIgnore private boolean doorSeen = false;
+
   private int runEnemiesDefeated = 0;
   private int runUnitsLost = 0;
   private RunSummary lastRunSummary;
@@ -231,6 +240,7 @@ public class GameState {
       this.panacea = new Panacea(config.getSpores().getPanaceaSaveShare());
     }
     this.carriedSpores = 0d;
+    this.doorSeen = false;
     this.expeditionActive = true;
     this.saltPack = 0;
     this.saltBearerId = null;
@@ -458,6 +468,22 @@ public class GameState {
     village.removeStartingVillagers(villagersLost);
     credit += writCredits;
     tally = new CampaignTally(village.getVillagersCount());
+  }
+
+  /**
+   * Whether the Floor the Party has just cleared is the one under a sealed Door: the Floor beneath
+   * the Summit, with no Blood of the Door.
+   */
+  public boolean isDoorSealedAt(int clearedFloor) {
+    return !doorOpen && clearedFloor == config.getTower().getMaxFloor() - 1;
+  }
+
+  /** The Door shuts the Party in: set once its Floor has paid, so it never pays twice. */
+  public void markDoorSeen() {
+    if (!doorSeen) {
+      doorSeen = true;
+      writeLedger("The door does not open.", true);
+    }
   }
 
   /** Records that the party conquered the tower's summit — the campaign is won. */
@@ -1914,7 +1940,8 @@ public class GameState {
         saltPack,
         saltBearerId,
         carriedSpores,
-        isPanaceaCarried());
+        isPanaceaCarried(),
+        doorSeen);
   }
 
   /** Units in a stable order: by type, then in list order. */
@@ -2089,6 +2116,7 @@ public class GameState {
       state.surplus.putAll(e.surplus());
       state.lastFoodReturned = e.lastFoodReturned();
       state.runStartFloor = e.runStartFloor();
+      state.doorSeen = e.doorSeen();
       state.runEnemiesDefeated = e.runEnemiesDefeated();
       state.runUnitsLost = e.runUnitsLost();
       state.runFallen = new ArrayList<>(e.runFallen());

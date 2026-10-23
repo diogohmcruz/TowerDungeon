@@ -52,7 +52,8 @@ public class TowerFloor {
     int archetypeIndex = Math.min(difficulty, values.length - 1);
     var bossStats = values[archetypeIndex];
     double healthMultiplier =
-        bossConfig.getHealthBaseMultiplier() + bossConfig.getHealthMultiplierPerFloor() * id;
+        (bossConfig.getHealthBaseMultiplier() + bossConfig.getHealthMultiplierPerFloor() * id)
+            * memoryHealth(bossConfig);
     enemies.add(
         new Enemy(
             bossStats,
@@ -61,6 +62,16 @@ public class TowerFloor {
             true,
             streams,
             enemiesConfig));
+  }
+
+  /** Tower Memory's share of a Guardian's health, applied last and capped on the upper Floors. */
+  private double memoryHealth(GameProperties.Boss bossConfig) {
+    var memory = bossConfig.getMemoryHealth();
+    var cap = bossConfig.getMemoryUpperHealthCap();
+    if (cap > 0 && bossConfig.getMemoryUpperFloor() > 0 && id > bossConfig.getMemoryUpperFloor()) {
+      return Math.min(memory, cap);
+    }
+    return memory;
   }
 
   public void removeEnemy(Enemy targetEnemy) {

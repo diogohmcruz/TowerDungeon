@@ -50,6 +50,7 @@ class FieldAccountingTest {
           Map.entry("expeditionsCompleted", "CampaignSnapshot.expeditionsCompleted"),
           Map.entry("enemiesDefeated", "CampaignSnapshot.enemiesDefeated"),
           Map.entry("runStartFloor", "ExpeditionSnapshot.runStartFloor"),
+          Map.entry("doorSeen", "ExpeditionSnapshot.doorSeen"),
           Map.entry("runEnemiesDefeated", "ExpeditionSnapshot.runEnemiesDefeated"),
           Map.entry("runUnitsLost", "ExpeditionSnapshot.runUnitsLost"),
           Map.entry("lastRunSummary", "CampaignSnapshot.lastExpeditionSummary"),
@@ -69,6 +70,7 @@ class FieldAccountingTest {
           "recoverySpend", "recomputed by the next lifecycle tick",
           "foodDistributionStrategy", "behaviour, not state; a default is installed on creation",
           "config", "game balance, supplied on restore",
+          "doorOpen", "derived: Blood of the Door is on the player's Roll, in the meta",
           "ledger",
               "a log of what just happened, not a fact of the Campaign; starts empty on load");
 
