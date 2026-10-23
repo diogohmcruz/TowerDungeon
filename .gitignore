@@ -4,3 +4,6 @@ backend/target
 
 frontend/node_modules
 frontend/.angular
+
+# Claude Code agent worktrees
+.claude/worktrees/
