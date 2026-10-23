@@ -8,9 +8,9 @@ import java.util.random.RandomGenerator;
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
 import io.github.diogohmcruz.towerdungeon.domain.items.Item;
 import io.github.diogohmcruz.towerdungeon.domain.models.Aim;
+import io.github.diogohmcruz.towerdungeon.domain.models.Aimable;
 import io.github.diogohmcruz.towerdungeon.domain.models.AttackType;
 import io.github.diogohmcruz.towerdungeon.domain.models.BodyPart;
-import io.github.diogohmcruz.towerdungeon.domain.models.Unit;
 
 /**
  * Resolves one hit on a unit's body: picks an aim from the attacker's profile, spreads the damage
@@ -49,7 +49,7 @@ public class AimedStrike {
    * @return the items the target lost with any part this hit took off
    */
   public List<Item> strike(
-      Unit target,
+      Aimable target,
       double damage,
       AttackType type,
       Map<Aim, Double> profile,
@@ -80,7 +80,7 @@ public class AimedStrike {
   }
 
   private void land(
-      Unit target, BodyPart part, double amount, double accuracy, List<Item> dropped) {
+      Aimable target, BodyPart part, double amount, double accuracy, List<Item> dropped) {
     var missChance = missChance(part, accuracy, target.getEvasion());
     if (random.nextDouble() * 100 < missChance) {
       return;

@@ -1115,10 +1115,10 @@ public class GameState {
                             enemy.getId(),
                             enemy.getName(),
                             enemy.getStats(),
-                            enemy.getCurrentHealth(),
                             enemy.healthMultiplier(),
                             enemy.damageMultiplier(),
-                            enemy.isBoss()))
+                            enemy.isBoss(),
+                            partSnapshots(enemy.getParts())))
                 .toList();
     var waves =
         reinforcements.stream()
@@ -1160,15 +1160,7 @@ public class GameState {
                     unit.isFixedStrengths(),
                     unit.getMaxMana(),
                     unit.getCurrentMana(),
-                    unit.getParts().stream()
-                        .map(
-                            part ->
-                                new PartSnapshot(
-                                    part.getKind(),
-                                    part.getMaxHealth(),
-                                    part.getCurrentHealth(),
-                                    part.isLost()))
-                        .toList(),
+                    partSnapshots(unit.getParts()),
                     unit.getSanity(),
                     unit.getMaxSanity(),
                     unit.getPhobias().stream()
@@ -1176,6 +1168,27 @@ public class GameState {
                         .toList(),
                     unit.getFearFloor(),
                     Map.copyOf(unit.getGear().getSlots())))
+        .toList();
+  }
+
+  private static List<PartSnapshot> partSnapshots(List<Part> parts) {
+    return parts.stream()
+        .map(
+            part ->
+                new PartSnapshot(
+                    part.getKind(), part.getMaxHealth(), part.getCurrentHealth(), part.isLost()))
+        .toList();
+  }
+
+  private static List<Part> partsFrom(List<PartSnapshot> snapshots) {
+    return snapshots.stream()
+        .map(
+            p -> {
+              var part = new Part(p.kind(), p.maxHealth());
+              part.setCurrentHealth(p.currentHealth());
+              part.setLost(p.lost());
+              return part;
+            })
         .toList();
   }
 
@@ -1193,15 +1206,7 @@ public class GameState {
               u.fixedStrengths(),
               u.maxMana(),
               u.currentMana(),
-              u.parts().stream()
-                  .map(
-                      p -> {
-                        var part = new Part(p.kind(), p.maxHealth());
-                        part.setCurrentHealth(p.currentHealth());
-                        part.setLost(p.lost());
-                        return part;
-                      })
-                  .toList(),
+              partsFrom(u.parts()),
               u.gear(),
               config.getBody().getWeights());
       var maxSanity = u.maxSanity() == null ? config.getSanity().getMax() : u.maxSanity();
@@ -1307,7 +1312,7 @@ public class GameState {
                               en.healthMultiplier(),
                               en.damageMultiplier(),
                               en.boss(),
-                              en.currentHealth()))
+                              partsFrom(en.parts())))
                   .toList();
       state.tower =
           Tower.restore(

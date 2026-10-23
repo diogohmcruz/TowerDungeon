@@ -31,9 +31,9 @@ public class GameProperties {
   private final Reward reward = new Reward();
   private final Tower tower = new Tower();
   private final Boss boss = new Boss();
-  private final Enemies enemies = new Enemies();
   private final Recruit recruit = new Recruit();
   private final Body body = new Body();
+  private final Enemies enemies = new Enemies(body.getWeights());
   private final Aiming aiming = new Aiming();
   private final Sanity sanity = new Sanity();
   private final Items items = new Items();
@@ -200,12 +200,58 @@ public class GameProperties {
     /** Floor is never emptier than this (keeps at least a token defender). */
     private double minBudget = 1.0;
 
+    /**
+     * How many body parts each enemy type is born with, inclusive. The torso is always one, the
+     * head is another whenever the count is 2 or more, and the rest are random limbs; a part an
+     * enemy does not have is born lost. A guardian ignores this and has all six. A type not listed
+     * has all six.
+     */
+    private Map<EnemyStats, PartRange> parts = new EnumMap<>(EnemyStats.class);
+
+    /** How an enemy's health is divided among its parts: the same weights as units use. */
+    private final Body.Weights weights;
+
+    public Enemies() {
+      this(new Body.Weights());
+    }
+
+    /** Shares {@code weights} with the unit body config, so retuning one retunes both. */
+    public Enemies(Body.Weights weights) {
+      this.weights = weights;
+      parts.put(EnemyStats.SLIME, new PartRange(1, 1));
+      parts.put(EnemyStats.CHYMUS_INSECT, new PartRange(1, 1));
+      parts.put(EnemyStats.DEAD_SOLDIERS, new PartRange(2, 6));
+      parts.put(EnemyStats.TOWER_BEAST, new PartRange(3, 6));
+      parts.put(EnemyStats.CHIMERA, new PartRange(4, 6));
+      parts.put(EnemyStats.NECROMANCER, new PartRange(6, 6));
+      parts.put(EnemyStats.STONE_GOLEM, new PartRange(6, 6));
+      parts.put(EnemyStats.DEAD_DRAGON, new PartRange(6, 6));
+      parts.put(EnemyStats.DRAGON, new PartRange(6, 6));
+    }
+
+    /** The part-count range of an enemy type. */
+    public PartRange partsOf(EnemyStats type) {
+      return parts.getOrDefault(
+          type, new PartRange(BodyPart.values().length, BodyPart.values().length));
+    }
+
     /** An independent copy, so one campaign's tower never shares tuning with another's. */
     public Enemies copy() {
-      var copy = new Enemies();
+      var copy = new Enemies(weights);
       BeanUtils.copyProperties(this, copy);
+      copy.parts = new EnumMap<>(EnemyStats.class);
+      parts.forEach((type, range) -> copy.parts.put(type, new PartRange(range.min, range.max)));
       return copy;
     }
+  }
+
+  /** An inclusive range of body parts. */
+  @Data
+  @NoArgsConstructor
+  @AllArgsConstructor
+  public static class PartRange {
+    private int min;
+    private int max;
   }
 
   /** How freshly recruited units differ from their type's baseline. */

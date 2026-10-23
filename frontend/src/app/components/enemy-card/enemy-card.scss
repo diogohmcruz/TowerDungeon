@@ -30,6 +30,30 @@ app-card.boss {
   }
 }
 
+.part-bars {
+  display: flex;
+  gap: 2px;
+  margin-top: 2px;
+
+  .part-bar {
+    flex: 1;
+    height: 3px;
+    background: var(--void);
+    border: 1px solid var(--rule);
+    overflow: hidden;
+
+    &.lost {
+      background: var(--ember-dim);
+      border-style: dashed;
+    }
+
+    .part-fill {
+      height: 100%;
+      background: var(--ember);
+    }
+  }
+}
+
 .enemy-meta {
   display: flex;
   flex-direction: row;

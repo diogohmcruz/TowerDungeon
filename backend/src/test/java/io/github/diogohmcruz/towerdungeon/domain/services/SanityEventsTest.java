@@ -32,10 +32,10 @@ class SanityEventsTest {
     return config;
   }
 
-  private static TowerFloor floorWith(int id, EnemyStats... types) {
+  private TowerFloor floorWith(int id, EnemyStats... types) {
     var floor = TowerFloor.builder().id(id).difficulty(1).build();
     for (var type : types) {
-      floor.getEnemies().add(new Enemy(type));
+      floor.getEnemies().add(new Enemy(type, new SplittableRandom(3), config.getEnemies()));
     }
     return floor;
   }
@@ -61,7 +61,7 @@ class SanityEventsTest {
   }
 
   private double damageTaken(Unit unit, EnemyStats attacker) {
-    var enemies = List.of(new Enemy(attacker));
+    var enemies = List.of(new Enemy(attacker, new SplittableRandom(3), config.getEnemies()));
     var party = partyOf(unit);
     state.setUnitsOnTower(party);
     unit.setHealthFactor(100); // tough enough that the hit is never cut short by death

@@ -27,23 +27,36 @@ public class TowerFloor {
    * more of the budget, so a floor's headcount depends on both its budget and which tiers can spawn
    * at its difficulty.
    */
-  public void populateEnemies(double budget, RandomGenerator random) {
+  public void populateEnemies(
+      double budget, RandomGenerator random, GameProperties.Enemies enemiesConfig) {
     double remaining = budget;
     while (remaining > 0) {
       var randomEnemyStatsIndex = Math.floor(random.nextDouble(difficulty));
-      Enemy enemy = new Enemy(EnemyStats.values()[(int) randomEnemyStatsIndex]);
+      Enemy enemy =
+          new Enemy(EnemyStats.values()[(int) randomEnemyStatsIndex], random, enemiesConfig);
       enemies.add(enemy);
       remaining -= enemy.getStats().getWeight();
     }
   }
 
-  public void populateBoss(GameProperties.Boss bossConfig) {
+  /** Puts the floor's guardian on it; a guardian always has all six body parts. */
+  public void populateBoss(
+      GameProperties.Boss bossConfig,
+      GameProperties.Enemies enemiesConfig,
+      RandomGenerator random) {
     var values = EnemyStats.values();
     int archetypeIndex = Math.min(difficulty, values.length - 1);
     var bossStats = values[archetypeIndex];
     double healthMultiplier =
         bossConfig.getHealthBaseMultiplier() + bossConfig.getHealthMultiplierPerFloor() * id;
-    enemies.add(new Enemy(bossStats, healthMultiplier, bossConfig.getDamageMultiplier(), true));
+    enemies.add(
+        new Enemy(
+            bossStats,
+            healthMultiplier,
+            bossConfig.getDamageMultiplier(),
+            true,
+            random,
+            enemiesConfig));
   }
 
   public void removeEnemy(Enemy targetEnemy) {

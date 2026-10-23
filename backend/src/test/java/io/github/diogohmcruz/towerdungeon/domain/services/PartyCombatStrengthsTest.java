@@ -18,11 +18,23 @@ import io.github.diogohmcruz.towerdungeon.domain.models.Unit;
 import io.github.diogohmcruz.towerdungeon.domain.models.UnitStats;
 
 class PartyCombatStrengthsTest {
-  private final GameState state = new GameState(new GameProperties());
+  private final GameProperties config = noMisses(new GameProperties());
+  private final GameState state = new GameState(config);
   private final PartyCombat combat = new PartyCombat(new SplittableRandom(7));
 
+  /** The scaling checks compare exact damage, so no strike may miss. */
+  private static GameProperties noMisses(GameProperties config) {
+    var aiming = config.getAiming();
+    aiming.setMinMiss(0);
+    aiming.setTorsoMiss(0);
+    aiming.setHeadMiss(0);
+    aiming.setArmMiss(0);
+    aiming.setLegMiss(0);
+    return config;
+  }
+
   private double damageDealtBy(Unit unit, EnemyStats enemyStats) {
-    var enemy = new Enemy(enemyStats);
+    var enemy = new Enemy(enemyStats, new SplittableRandom(3), config.getEnemies());
     var before = enemy.getCurrentHealth();
     var floor = TowerFloor.builder().id(1).difficulty(1).build();
     floor.getEnemies().add(enemy);
@@ -55,7 +67,9 @@ class PartyCombatStrengthsTest {
       var warrior = new Unit(UnitStats.WARRIOR);
       warrior.setCurrentHealth(warrior.getMaxHealth() - 30);
       var floor = TowerFloor.builder().id(1).difficulty(1).build();
-      floor.getEnemies().add(new Enemy(EnemyStats.SLIME));
+      floor
+          .getEnemies()
+          .add(new Enemy(EnemyStats.SLIME, new SplittableRandom(3), config.getEnemies()));
       var party = new LinkedHashMap<UnitStats, List<Unit>>();
       party.put(UnitStats.HEALER, List.of(healer));
       party.put(UnitStats.WARRIOR, List.of(warrior));

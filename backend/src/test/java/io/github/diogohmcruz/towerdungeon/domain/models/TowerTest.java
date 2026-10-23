@@ -67,6 +67,53 @@ class TowerTest {
   }
 
   @Test
+  void garrisonsFollowThePartRangesAndGuardiansAlwaysHaveSixParts() {
+    var config = new GameProperties();
+    var tower = tower(new SplittableRandom(11), config);
+    var seenGuardians = 0;
+
+    for (var i = 0; i < 100; i++) {
+      tower.moveToNextFloor();
+      for (var enemy : tower.getCurrentTowerFloor().getEnemies()) {
+        var present = enemy.getParts().stream().filter(part -> !part.isLost()).toList();
+        var range = config.getEnemies().partsOf(enemy.getStats());
+        if (enemy.isBoss()) {
+          seenGuardians++;
+          assertThat(present).hasSize(6);
+        } else {
+          assertThat(present.size()).isBetween(range.getMin(), range.getMax());
+        }
+        assertThat(enemy.getMaxHealth())
+            .isCloseTo(
+                enemy.getStats().getHealth() * enemy.healthMultiplier(),
+                org.assertj.core.api.Assertions.within(1e-6));
+      }
+    }
+
+    assertThat(seenGuardians).isEqualTo(10);
+  }
+
+  @Test
+  void theSameSeedBuildsTheSameBodies() {
+    List<Integer> first = bodyLayoutsOfAClimb(5);
+    assertThat(first).isEqualTo(bodyLayoutsOfAClimb(5));
+    assertThat(first).isNotEqualTo(bodyLayoutsOfAClimb(6));
+  }
+
+  private static List<Integer> bodyLayoutsOfAClimb(long seed) {
+    var tower = tower(new SplittableRandom(seed));
+    return IntStream.range(0, FLOORS)
+        .boxed()
+        .flatMap(
+            _ -> {
+              tower.moveToNextFloor();
+              return tower.getCurrentTowerFloor().getEnemies().stream()
+                  .map(enemy -> enemy.getParts().hashCode());
+            })
+        .toList();
+  }
+
+  @Test
   void undiscoveredFloorsAreNeverPartOfTheTower() {
     var tower = tower(new SplittableRandom(1));
 

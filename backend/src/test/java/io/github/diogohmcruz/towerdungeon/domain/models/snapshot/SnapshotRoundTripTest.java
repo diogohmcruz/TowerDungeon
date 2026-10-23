@@ -14,6 +14,7 @@ import io.github.diogohmcruz.towerdungeon.config.GameProperties;
 import io.github.diogohmcruz.towerdungeon.domain.items.ItemRating;
 import io.github.diogohmcruz.towerdungeon.domain.items.ItemTier;
 import io.github.diogohmcruz.towerdungeon.domain.items.LeftoverGenerator;
+import io.github.diogohmcruz.towerdungeon.domain.models.BodyPart;
 import io.github.diogohmcruz.towerdungeon.domain.models.EnemyStats;
 import io.github.diogohmcruz.towerdungeon.domain.models.GameState;
 import io.github.diogohmcruz.towerdungeon.domain.models.ResourceType;
@@ -94,6 +95,7 @@ class SnapshotRoundTripTest {
     }
     var garrison = tower.getCurrentTowerFloor().getEnemies();
     garrison.getFirst().receiveAttack(3d, null);
+    garrison.getFirst().damagePart(BodyPart.TORSO, 0.25);
     state.gatherLoot(ResourceType.MATERIALS, 12d);
     state.gatherCredits(33d);
     state.addSurplus(ItemTier.LEFTOVER);

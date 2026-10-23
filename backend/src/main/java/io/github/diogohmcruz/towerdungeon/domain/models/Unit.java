@@ -26,7 +26,7 @@ import lombok.Getter;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
-public class Unit extends BaseUnit {
+public class Unit extends BaseUnit implements Aimable {
   private final UnitStats stats;
 
   /** Personal mana reserve (only casters carry one; non-casters keep 0). */
@@ -47,13 +47,13 @@ public class Unit extends BaseUnit {
   private boolean fixedStrengths = false;
 
   /** Health below this counts as zero, absorbing floating-point drift from proportional hits. */
-  private static final double EPSILON = 1e-9;
+  static final double EPSILON = 1e-9;
 
   /** Damage multiplier for each arm lost (casters are unaffected). */
-  private static final double LOST_ARM_DAMAGE_FACTOR = 0.5;
+  static final double LOST_ARM_DAMAGE_FACTOR = 0.5;
 
   /** Damage-taken multiplier for each leg lost. */
-  private static final double LOST_LEG_DAMAGE_TAKEN_FACTOR = 1.25;
+  static final double LOST_LEG_DAMAGE_TAKEN_FACTOR = 1.25;
 
   /** Share of a hit that always lands on a part, however much armour it wears. */
   private static final double ARMOUR_MIN_HIT_SHARE = 0.2;

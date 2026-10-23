@@ -9,6 +9,15 @@
   <div class="hp-bar">
     <div class="hp-fill" [style.width.%]="healthPct()"></div>
   </div>
+  @if (partBars().length) {
+    <div class="part-bars">
+      @for (bar of partBars(); track bar.kind) {
+        <div class="part-bar" [class.lost]="bar.lost" [title]="bar.title">
+          <div class="part-fill" [style.width.%]="bar.pct"></div>
+        </div>
+      }
+    </div>
+  }
   <div class="enemy-meta">
     @if (isBoss()) { <span class="tag boss-tag">GUARDIAN</span> }
     <span class="tag">{{ enemy().stats.attackType }}</span>

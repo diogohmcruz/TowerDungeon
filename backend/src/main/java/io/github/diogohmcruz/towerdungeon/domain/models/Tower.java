@@ -145,9 +145,10 @@ public class Tower {
     var towerFloor = newFloor(floor);
     var easingSteps = easingStepsFor(floor);
     if (towerFloor.isBoss()) {
-      towerFloor.populateBoss(bossConfig);
+      towerFloor.populateBoss(bossConfig, enemiesConfig, random);
     } else {
-      towerFloor.populateEnemies(enemyBudget(floor, easingSteps, stepUpsFor(floor)), random);
+      towerFloor.populateEnemies(
+          enemyBudget(floor, easingSteps, stepUpsFor(floor)), random, enemiesConfig);
     }
     return towerFloor;
   }

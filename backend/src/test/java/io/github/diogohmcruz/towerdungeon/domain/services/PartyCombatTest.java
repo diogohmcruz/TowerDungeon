@@ -35,6 +35,20 @@ class PartyCombatTest {
 
   {
     config.getRecruit().setStrengthSpread(0);
+    // These tests pin exact numbers, so no aimed strike misses unless a test turns misses back on.
+    noMisses(config.getAiming());
+  }
+
+  private static void noMisses(GameProperties.Aiming aiming) {
+    aiming.setMinMiss(0);
+    aiming.setTorsoMiss(0);
+    aiming.setHeadMiss(0);
+    aiming.setArmMiss(0);
+    aiming.setLegMiss(0);
+  }
+
+  private Enemy enemy(EnemyStats stats) {
+    return new Enemy(stats, new SplittableRandom(3), config.getEnemies());
   }
 
   private final PartyCombat combat = new PartyCombat(new SplittableRandom(7));
@@ -72,16 +86,14 @@ class PartyCombatTest {
    * A Slime that melee cannot hurt, so tests can tell a Healer's strike from a Warrior's. The real
    * Slime is only resistant (0.5), so it is not a damage sink for these tests.
    */
-  private static class MeleeImmuneSlime extends Enemy {
+  private class MeleeImmuneSlime extends Enemy {
     MeleeImmuneSlime() {
-      super(EnemyStats.SLIME);
+      super(EnemyStats.SLIME, new SplittableRandom(3), config.getEnemies());
     }
 
     @Override
-    public void receiveAttack(Double attack, AttackType attackType) {
-      if (attackType != AttackType.MELEE) {
-        super.receiveAttack(attack, attackType);
-      }
+    public double scaledByWeakness(double attack, AttackType attackType) {
+      return attackType == AttackType.MELEE ? 0 : super.scaledByWeakness(attack, attackType);
     }
   }
 
@@ -93,7 +105,7 @@ class PartyCombatTest {
   @Test
   void aWarriorHurtsARealSlime() {
     var warrior = recruited(UnitStats.WARRIOR);
-    var slime = new Enemy(EnemyStats.SLIME);
+    var slime = enemy(EnemyStats.SLIME);
 
     tick(party(warrior), floorOf(slime));
 
@@ -147,7 +159,7 @@ class PartyCombatTest {
   @Test
   void aHealerAlonePartyIsNotInNeedOfItsOwnHealing() {
     var healer = wounded(recruited(UnitStats.HEALER), 10);
-    var enemy = new Enemy(EnemyStats.SLIME);
+    var enemy = enemy(EnemyStats.SLIME);
 
     tick(party(healer), floorOf(enemy));
 
@@ -158,8 +170,8 @@ class PartyCombatTest {
   void withNoWoundedAllyAHealerOnlyStrikesEnemiesAHealHitHarms() {
     var healer = recruited(UnitStats.HEALER);
     var warrior = recruited(UnitStats.WARRIOR);
-    var chymus = new Enemy(EnemyStats.CHYMUS_INSECT);
-    var golem = new Enemy(EnemyStats.STONE_GOLEM);
+    var chymus = enemy(EnemyStats.CHYMUS_INSECT);
+    var golem = enemy(EnemyStats.STONE_GOLEM);
     var slime = new MeleeImmuneSlime();
     var slimeHealth = slime.getCurrentHealth();
 
@@ -173,8 +185,8 @@ class PartyCombatTest {
   @Test
   void aFloorOfOnlyHealedOrImmuneEnemiesCostsTheHealerNoMana() {
     var healer = recruited(UnitStats.HEALER);
-    var chymus = new Enemy(EnemyStats.CHYMUS_INSECT);
-    var golem = new Enemy(EnemyStats.STONE_GOLEM);
+    var chymus = enemy(EnemyStats.CHYMUS_INSECT);
+    var golem = enemy(EnemyStats.STONE_GOLEM);
     var chymusHealth = chymus.getCurrentHealth();
     var golemHealth = golem.getCurrentHealth();
 
@@ -193,7 +205,7 @@ class PartyCombatTest {
     var healPerCast =
         first.getStats().getDamage() * -UnitStats.WARRIOR.getWeaknesses().get(AttackType.HEAL);
 
-    tick(party(first, second, warrior), floorOf(new Enemy(EnemyStats.SLIME)));
+    tick(party(first, second, warrior), floorOf(enemy(EnemyStats.SLIME)));
 
     assertThat(first.getCurrentMana()).isEqualTo(first.getMaxMana() - COST);
     assertThat(second.getCurrentMana()).isEqualTo(second.getMaxMana() - COST);
@@ -205,7 +217,7 @@ class PartyCombatTest {
   void aMageStillAttacksOnceAndOtherUnitsAreUnaffected() {
     var mage = recruited(UnitStats.MAGE);
     var warrior = recruited(UnitStats.WARRIOR);
-    var enemy = new Enemy(EnemyStats.SLIME);
+    var enemy = enemy(EnemyStats.SLIME);
     var healthBefore = enemy.getCurrentHealth();
 
     tick(party(mage, warrior), floorOf(enemy));
@@ -216,28 +228,28 @@ class PartyCombatTest {
 
   /**
    * With no Healers and no kills, the tick draws one random target per unit in party order, exactly
-   * as it did before Healers were limited to one cast; these values were captured from that draw
-   * order with seed 7 and guard against it shifting.
+   * as it did before Healers were limited to one cast, then aims each strike at a body part; these
+   * values were captured from that draw order with seed 7 and guard against it shifting.
    */
   @Test
   void aSeededTickForAPartyWithoutHealersIsPinned() {
     var warrior = recruited(UnitStats.WARRIOR);
     var archer = recruited(UnitStats.ARCHER);
     var mage = recruited(UnitStats.MAGE);
-    var beast = new Enemy(EnemyStats.TOWER_BEAST);
-    var soldiers = new Enemy(EnemyStats.DEAD_SOLDIERS);
+    var beast = enemy(EnemyStats.TOWER_BEAST);
+    var soldiers = enemy(EnemyStats.DEAD_SOLDIERS);
 
     tick(party(warrior, archer, mage), floorOf(beast, soldiers));
 
     assertThat(List.of(beast.getCurrentHealth(), soldiers.getCurrentHealth()))
-        .isEqualTo(List.of(36.75, 14.25));
+        .isEqualTo(List.of(37.34375, 13.125));
     assertThat(mage.getCurrentMana()).isEqualTo(mage.getMaxMana() - COST);
   }
 
   @Test
   void aSlainEnemyLeavesTheFloorAndCountsAsAKill() {
     var warrior = recruited(UnitStats.WARRIOR);
-    var enemy = new Enemy(EnemyStats.DEAD_SOLDIERS);
+    var enemy = enemy(EnemyStats.SLIME);
     enemy.setCurrentHealth(0.1);
     var floor = floorOf(enemy);
 
@@ -252,7 +264,7 @@ class PartyCombatTest {
     var warrior = recruited(UnitStats.WARRIOR);
     warrior.setCurrentHealth(0.1);
     state.getUnitsOnTower().put(UnitStats.WARRIOR, new ArrayList<>(List.of(warrior)));
-    var enemies = new ArrayList<>(List.of(new Enemy(EnemyStats.SLIME)));
+    var enemies = new ArrayList<>(List.of(enemy(EnemyStats.SLIME)));
 
     // Strikes are aimed and can miss or land on a limb, so it takes a few until a vital part falls.
     for (var strike = 0; strike < 500 && !warrior.isDead(); strike++) {
@@ -298,7 +310,7 @@ class PartyCombatTest {
     var warrior = recruited(UnitStats.WARRIOR);
     warrior.setCurrentHealth(0.1);
     state.getUnitsOnTower().put(UnitStats.WARRIOR, new ArrayList<>(List.of(warrior)));
-    var enemies = new ArrayList<>(List.of(new Enemy(EnemyStats.SLIME)));
+    var enemies = new ArrayList<>(List.of(enemy(EnemyStats.SLIME)));
 
     for (var strike = 0; strike < 500 && !warrior.isDead(); strike++) {
       combat.enemiesAttack(state, enemies, party(warrior));
@@ -322,9 +334,9 @@ class PartyCombatTest {
     var combat = new PartyCombat(alwaysFirst);
     var warrior = recruited(UnitStats.WARRIOR);
     var mage = recruited(UnitStats.MAGE);
-    var dying = new Enemy(EnemyStats.DEAD_SOLDIERS);
+    var dying = enemy(EnemyStats.DEAD_SOLDIERS);
     dying.setCurrentHealth(0.1);
-    var standing = new Enemy(EnemyStats.DEAD_SOLDIERS);
+    var standing = enemy(EnemyStats.DEAD_SOLDIERS);
     var standingHealth = standing.getCurrentHealth();
     var floor = floorOf(dying, standing);
 
@@ -340,7 +352,13 @@ class PartyCombatTest {
 
   @Test
   void aSlimeStrikesOnePartAtATimeAndSomeStrikesMiss() {
-    var enemies = new ArrayList<>(List.of(new Enemy(EnemyStats.SLIME)));
+    var defaults = new GameProperties.Aiming();
+    config.getAiming().setMinMiss(defaults.getMinMiss());
+    config.getAiming().setTorsoMiss(defaults.getTorsoMiss());
+    config.getAiming().setHeadMiss(defaults.getHeadMiss());
+    config.getAiming().setArmMiss(defaults.getArmMiss());
+    config.getAiming().setLegMiss(defaults.getLegMiss());
+    var enemies = new ArrayList<>(List.of(enemy(EnemyStats.SLIME)));
     var misses = 0;
     var landed = 0;
     for (var strike = 0; strike < 300; strike++) {
@@ -357,6 +375,35 @@ class PartyCombatTest {
 
     assertThat(misses).isPositive();
     assertThat(landed).isGreaterThan(misses);
+  }
+
+  @Test
+  void aUnitsStrikeLandsOnOnePartOfTheEnemyAtATime() {
+    var golem = enemy(EnemyStats.STONE_GOLEM);
+    var porter = recruited(UnitStats.PORTER);
+
+    tick(party(porter), floorOf(golem));
+
+    var hurt = golem.getParts().stream().filter(part -> part.missing() > 0).toList();
+    assertThat(hurt).hasSize(1);
+  }
+
+  @Test
+  void aStrikeThatEmptiesAVitalPartRemovesTheEnemyFromTheFloor() {
+    var golem = enemy(EnemyStats.STONE_GOLEM);
+    golem.damagePart(BodyPart.TORSO, golem.getParts().getFirst().getMaxHealth() - 0.01);
+    golem.damagePart(BodyPart.HEAD, golem.getParts().get(1).getMaxHealth() - 0.01);
+    var floor = floorOf(golem);
+    var mage = recruited(UnitStats.MAGE);
+
+    for (var round = 0; round < 50 && !floor.getEnemies().isEmpty(); round++) {
+      mage.chargeToFull(5);
+      tick(party(mage), floor);
+    }
+
+    assertThat(golem.isDead()).isTrue();
+    assertThat(floor.getEnemies()).isEmpty();
+    assertThat(state.getEnemiesDefeated()).isEqualTo(1);
   }
 
   @Test
@@ -384,7 +431,7 @@ class PartyCombatTest {
     // Every part at a sliver, so whatever the strike hits kills or maims.
     warrior.setCurrentHealth(0.001);
     state.getUnitsOnTower().put(UnitStats.WARRIOR, new ArrayList<>(List.of(warrior)));
-    var enemies = new ArrayList<>(List.of(new Enemy(EnemyStats.SLIME)));
+    var enemies = new ArrayList<>(List.of(enemy(EnemyStats.SLIME)));
 
     var drops = new ArrayList<Item>();
     for (var strike = 0; strike < 50 && !warrior.isDead(); strike++) {

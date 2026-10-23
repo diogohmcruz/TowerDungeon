@@ -46,6 +46,8 @@ public class PartyCombat {
     var woundedAtStart = party.stream().filter(Unit::isWounded).toList();
     var enemiesAtStart = List.copyOf(currentEnemies);
     var healersThatCast = new HashSet<Integer>();
+    var aiming = gameState.getConfig().getAiming();
+    var aimedStrike = new AimedStrike(random, aiming);
 
     meetFearedEnemies(party, currentEnemies, currentTowerFloor);
 
@@ -89,11 +91,16 @@ public class PartyCombat {
               }
               var targetEnemy = targets.get(random.nextInt(targets.size()));
               var wasAlive = !targetEnemy.isDead();
-              targetEnemy.receiveAttack(
+              var unitType = currentUnit.getStats();
+              aimedStrike.strike(
+                  targetEnemy,
                   currentUnit.getDamage()
                       * damageMultiplier
                       * currentUnit.damageFactorAgainst(targetEnemy.getStats()),
-                  currentUnit.getStats().getAttackType());
+                  unitType.getAttackType(),
+                  aiming.profileOf(unitType),
+                  currentUnit.getAccuracy(),
+                  aiming.headBiasOf(unitType));
               if (currentUnit.isCaster()) {
                 currentUnit.spendMana(manaCost);
               }
@@ -126,8 +133,6 @@ public class PartyCombat {
           }
           var randomUnitOnTowerIndex = random.nextInt(targetUnit.size());
           var targetUnitElement = targetUnit.get(randomUnitOnTowerIndex);
-          // The enemy's own strikes are aimed at the unit's body; units' strikes at enemies are
-          // not until enemies have body parts.
           drops.addAll(
               new AimedStrike(random, gameState.getConfig().getAiming())
                   .strike(

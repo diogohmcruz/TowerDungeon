@@ -58,6 +58,18 @@ game:
     gentle-start-multiplier: 0.45
     step-budget-per-boss: 0.15
     min-budget: 1.0
+    # Body parts each enemy type is born with (inclusive). Torso always, head from 2 parts up, the
+    # rest random limbs; a guardian always has all six. Health is divided by game.body.weights.
+    parts:
+      slime: {min: 1, max: 1}
+      chymus-insect: {min: 1, max: 1}
+      dead-soldiers: {min: 2, max: 6}
+      tower-beast: {min: 3, max: 6}
+      chimera: {min: 4, max: 6}
+      necromancer: {min: 6, max: 6}
+      stone-golem: {min: 6, max: 6}
+      dead-dragon: {min: 6, max: 6}
+      dragon: {min: 6, max: 6}
   supply:
     base-max: 100.0
   recruit:
