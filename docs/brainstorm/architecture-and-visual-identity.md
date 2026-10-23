@@ -301,7 +301,7 @@ Cut from the Tower Wizard feel: bounce, pulse, sparkle drift, coloured swarms, r
 
 ### 5.2 The Village screen
 
-**Composition.** The camera sits low and looks up about 15 degrees, so about 70% of the frame is the Tower going into dither and the Village is a thin strip at the bottom (it keeps [Package B §8.4]'s "at least 60% ink or fog"). A 0.35-unit black gap separates the ground from the underside of the Base slab, so it floats (inspiration [U: DT-arch S1]). The left and right 20% of the frame stay empty. The Village never spans more than 60% of the width, and its bounding box stays under about 2.0 units tall. Unit tests assert this from a pure `village-layout.ts`.
+**Composition.** The camera sits low and looks up about 15 degrees, so about 70% of the frame is the Tower going into dither and the Village is a thin strip at the bottom (it keeps [Package B §8.4]'s "at least 60% ink or fog"). A 0.35-unit black gap separates the ground from the underside of the Base slab, so it floats (inspiration [U: DT-arch S1]). The left and right 20% of the frame stay empty, except that the Port's sea may lie in the right-hand 20% once the Port has a footing. The Village never spans more than 60% of the width, and its bounding box stays under about 2.0 units tall. Unit tests assert this from a pure `village-layout.ts`.
 
 **Fort and stair.** The Fort is a timber-framed keep on a stone plinth with a stepped parapet, holding the Pantry silo and the Reserves yard (the glossary forbids calling it a base or camp). One steep flight (rise about 2.2, run about 2.6) is drawn as one extruded stepped profile with tread lines. Reserves stand in ranks (cap 30, wounded ones lean 12 degrees, from `currentHealth` and `maxHealth` on `Member`). The Party crosses the stair at Set out. **Village Tier** is shown as lamps along the stair-bridge, one more lit per level [Package B §8.4].
 
@@ -316,14 +316,21 @@ Cut from the Tower Wizard feel: bounce, pulse, sparkle drift, coloured swarms, r
 | Spore Cellar | Sunk below ground, a stair into a low flat-roofed clad box with a stepped (corbelled) ceiling, never a curved vault; one lichen-green slit | Slit lit if Spores are above 0 | Village Tier III (interim: Highest Floor 10) |
 | Pantry silo | Tall thin box, the Village's only vertical accent | Slit shows fill, `min(1, log10(1 + food) / 3)` | Always |
 | Vault Annex | Squat monolithic block corbelled off the Base, one door slab, no windows; crates on its roof | Roof stack `min(12, floor(log2(1 + materials + 5 * relics)))` | Always |
+| Port | A short pier of two piers and a deck at the right edge of the Base slab, with a strip of dithered sea beyond it in horizontal bands and no waves. Once the Boat has arrived, a dark hull silhouette docks at the pier | Pier length follows the build; the hull is present when the Boat is docked and absent while it is on a Voyage | Footing at 12 completed Expeditions; finished with Materials and Credits |
 
 **Rules.** Expose structure by default and clad only where function demands (Vault, Cellar, Study) [U: Nihei §3]. Materials are stone, brick and wood (a house rule). Locked Annexes appear as **footings**: a hairline rectangle on the ground with no label, progress and unknown at once. Before R01 and R02 exist, show no footings, so the scene never promises what the backend cannot do. A new Annex **draws itself** with `geometry.setDrawRange` (about 2.4 s, six segments per step at 6 Hz), and the fill appears only when the lines are complete.
+
+**Growth with Upgrades.** Each purchased Upgrade (and each level of a Repeatable one, up to a cap per Upgrade) adds one visible module from the same kit: roofs, fences, extra Field rows, a watchtower, a second silo, more crates. The picture is a pure function of the state, so it never shows what the player does not own. Village Tier still owns the lamps and the Annex footings, and the bounding rules above still hold, so growth makes the Village denser and never taller.
+
+**Shortcut marks.** An open Shortcut is a small lit mark on the Tower's flank behind the Base slab, at the height of its Floor, with no numeral. A locked Shortcut shows nothing, not even a hairline, so the Village never reveals how many exist. Hovering a mark highlights its Shortcut card.
+
+**The Year.** Each Quarter has its own ground: Spring thaw and green rows, Summer long light and dry ground, Autumn gold-grey rows and stubble, Winter snow marks and bare rows. The sea's tone follows the same wave as the sea risk. The Tower's drawing does not change with the Quarter.
 
 **Construction kit.** A pure `buildAnnex(id, tier, seed)` composes a small module kit (pier, beam, slab, block, stair, rail, corbel), merges it and returns `{ fill, edges, slits }`. It repeats one module with deliberate breaks. It mounts through `<ngt-primitive>` and rebuilds only the changed Annex.
 
 **Villagers [Package B §R26].** One grey ash silhouette for every Villager. The Trade is shown by what is carried (a basket, a stone, a scroll) and by the lane walked, never by hue. One `Points` or instanced sprite per two Villagers, capped at 40, moving one pixel every four frames in sparse single-file lanes, no bobbing. The count is a roll-call, not a growth display. Load colours follow section 2: bone for Salt, lichen for Spores, the dull Quarry brown for stone. `prefers-reduced-motion` freezes dots and snaps the camera.
 
-**Selection.** A `VillageSelectionService` holds `hovered` and `selected` as signals. DOM Trade rows and 3D Annexes read and write the same state, so hovering a row thickens its Annex and the reverse. No scale-up, glow or pulse. Only line weight changes.
+**Selection.** A `VillageSelectionService` holds `hovered` and `selected` as signals. DOM Trade and Upgrade rows and 3D Annexes, Villagers and Shortcut marks read and write the same state, so hovering a row thickens its Annex and the reverse. Hovering shows a short caption (its name, whether it works, what it makes); clicking focuses and scrolls to its row. Buying and every other action stay in the panel, never in the scene, and every hover and click has a keyboard and list equivalent. Hovering a locked footing (an Annex or the Port) states its real unlock condition in words; Shortcuts stay hidden until open. No scale-up, glow or pulse. Only line weight changes.
 
 **Events (aligned to [Package B §8.5]; no fanfare).** Sound is Package B's policy, not new: off for the first session, loss only, every sound has a Ledger line.
 
@@ -335,6 +342,8 @@ Cut from the Tower Wizard feel: bounce, pulse, sparkle drift, coloured swarms, r
 | Starvation | A starved sprite stops where it stands, stays still for about 10 ticks, then is removed with no effect; its Annex window goes dark; one line in the Ledger (optional low wooden knock, at most one per second) |
 | Guardian slain | The Easing sweep (4.5) and one Ledger line |
 | Village Tier up | A lamp lit on the bridge, a sealed Annex opens its window, one Ledger line |
+| Boat arrives | The hull silhouette appears at the pier once, the Arrivals step off one at a time, and each has a Ledger line naming them. Under `prefers-reduced-motion` the hull simply appears docked |
+| Voyage | The hull leaves when loaded and returns a Quarter later; a lost cargo is one plain Ledger line naming the Quarter, with no effect |
 | Defeat | The Stock panel in full crimson ("No Units. No Villagers. Nothing left to sell."); no extra animation |
 
 ### 5.3 UI as architecture

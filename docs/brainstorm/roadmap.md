@@ -111,3 +111,15 @@ The withdraw dilemma is worked out with a game-theory table: a Rearguard Share w
 **Decided:** the MCP server comes after persistence, starting with the Sandbox Campaign (the author agreed, 2026-10-10). **Decided:** multiplayer stops at Joint Guardians (Stage 4), for now. Stage 5 (a shared front on every Floor) is not built unless Stage 4 plays badly. The author's reasoning: only huge enemies (Guardians) should pull everyone into one fight; ordinary Garrisons stay hidden from the others and attack only the part of the Tower where a given player climbed.
 
 **Decisions only you can make** are listed at the end of each document (16 for MCP, 29 for multiplayer). The recommendations in each stand until you say otherwise. The two that change the shape of the work most: whether the MCP server is in scope now or after persistence, and whether multiplayer stops at Joint Guardians (Stage 4) or builds the shared front (Stage 5).
+
+## 6. Added later: version 3 (the shore and the year)
+
+A batch grouped in the "Version 3" milestone: the Tower panel is exactly full height and sticky; the Village grows with every purchased Upgrade; open Shortcuts show as marks on the Tower's flank; hover and click link the diorama to the panels; a Port, a Boat and a named group of Arrivals; the Year with four Quarters; and, last, Voyages. The designs are `village-resources.md` (R31 and R32) and `architecture-and-visual-identity.md` (section 5.2).
+
+| Decision | Ruling |
+|---|---|
+| The Port is bought with Materials and Credits, but also gated by 12 completed Expeditions | Both gates, so money cannot skip ahead |
+| Voyages are real time, so the game must say whether time passes while away | Only connected ticks count, with no offline catch-up. Trials have no Port, Boat or Year |
+| The Year's Quarters and the Food guard | No Quarter lowers Food or adds to Starvation. Winter raises Attrition only |
+| "Season" already means the long Trial race | The four parts of the Year are Quarters in the glossary and code. The player sees Spring, Summer, Autumn and Winter |
+| Voyage numbers (Port cost, Relic rates, risk scaling) depend on the measured economy | Voyages are blocked by the scaling pass (#8) |

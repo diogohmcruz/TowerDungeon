@@ -399,6 +399,30 @@ _Avoid_: Treasury, wallet, resources, bank, stockpile
 The work a villager does in the village: tilling the fields (which grows food), cutting stone in the quarry, or copying in the scribe's study; later salting and tending spores. Every villager works one trade. Planned.
 _Avoid_: Role, job, worker class
 
+**Port**:
+The village's landing on the shore. Its footing and a short pier appear once the campaign has completed 12 expeditions, and it is finished by spending Materials and Credits from the Vault. It is where the Boat docks. Planned.
+_Avoid_: Harbour, dock, quay
+
+**Boat**:
+The vessel that docks at the finished Port a fixed time after the Port is finished, bringing the Arrivals. Once docked it stays, and sails Voyages. Planned.
+_Avoid_: Ship, ferry, caravan
+
+**Arrivals**:
+The named group that steps off the Boat into the reserves: Iscale (a Draco Metamorph), his silent assistant (a Porter), the pyromancer (a Mage) and the battle maiden (a Tank). Like the Founders they are ordinary units under every rule, and the word marks where they came from. Any unit type they carry that was not yet recruitable becomes recruitable from then on. Planned.
+_Avoid_: Newcomers, recruits, reinforcements (reserved for reinforcement waves)
+
+**Voyage**:
+One round trip of the Boat, lasting one Quarter in real time. Relics loaded at departure come back as Salt or Spores at a fixed rate, unless the sea takes the cargo. The chance of loss is taken once, at departure, from the Year, so the player chooses when to sail. Planned.
+_Avoid_: Trade route, trip, run (reserved for an expedition)
+
+**Year**:
+The village's cycle of weather: four Quarters in a fixed length, counted only in connected lifecycle ticks, beginning in Spring at the start of each generation and saved with the campaign. Trials have none. Planned.
+_Avoid_: Calendar, cycle, day
+
+**Quarter**:
+One of the four equal parts of the Year: Spring, Summer, Autumn and Winter. Spring eases the drains on Sanity, Summer eases the drain on Supplies, Autumn raises what the Fields yield, and Winter raises Attrition. The danger at sea rises and falls across the Year as a wave, lowest in mid-Summer and highest in mid-Winter. No Quarter lowers Food or adds to Starvation. Planned.
+_Avoid_: Season (reserved for the long Trial race), month, weather
+
 **Stockroom**:
 The village's store of goods its own villagers make (salt, dragon spores, knowledge). Unlike the vault, trades fill it and extraction does not. Planned.
 _Avoid_: Storehouse, warehouse, inventory

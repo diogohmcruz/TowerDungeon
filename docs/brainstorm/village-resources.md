@@ -489,13 +489,38 @@ These ideas were drafted in the dread pass. The two rejected ideas are listed la
   4. **Eating the dead for Food.** [Invented], no source.
 - **Softer substitutes already in this set:** Grievous Wounds (a ceiling on Recovery), The Left Behind (visible loss) and the Toll (Credits and Materials, not Units). The brainstorm's ruling on R21 (Hungry Roster) and R25 (The Hearth) as pure squeezes stands.
 
+### Theme G: The shore and the year
+
+#### R31 Port, Boat, Arrivals and Voyages
+- **Pitch:**
+  - **The Port** has its footing and pier at 12 completed Expeditions and is finished by spending Materials and Credits (placeholders: 600 Materials, 300 Credits). The Expedition count is the visible gate and the money is the second gate, so spending cannot skip ahead.
+  - **The Boat** docks a fixed time after the Port is finished, in connected lifecycle ticks. The first docking brings the Arrivals, a named group of four (Iscale as a Draco Metamorph, his silent assistant as a Porter, the pyromancer as a Mage, the battle maiden as a Tank) into the Reserves as ordinary units. Any Unit Type they carry that was not yet recruitable opens from then on. The Ratwick princess and her knight are not written. The story inspiration is the group of newcomers described on the [Kodansha series page](https://kodansha.us/series/tower-dungeon/) and the [wiki](https://tower-dungeon.fandom.com/wiki/Tower_Dungeon_(manga)); the vessel itself is an inference, and the manga is inspiration, not canon.
+  - **Voyages** come after the docking, as a separate later step. A Voyage lasts one Quarter in real time, one at a time with a single Boat. The player loads Relics (the doc's dead currency) and it returns Salt or Spores at a fixed rate from config, for example 5 Relics for 10 Salt or 3 Spores. The chance that the sea takes the cargo is drawn once, at departure, from the Year's clock, and from the combat random stream, so the player decides when to sail and the UI shows the current risk and the next Quarter's. A lost Voyage costs only the cargo, never the Boat. The risk rises with the cargo's value, capped at 20%.
+- **Guards:** the Boat never touches Food or Credits income, so the Starvation guard and the Materials sell valve are unaffected. A Voyage in progress pauses when the player is disconnected and resumes where it stopped. Trials have no Port or Boat.
+- **Numbers to measure in the scaling pass (#8):** the Port's cost, the Relic-to-Salt and Relic-to-Spore rates, and the dock delay.
+
+#### R32 The Year and its Quarters
+- **Pitch:**
+  - The Year is a pure function of the Campaign's connected lifecycle ticks: 600 ticks (10 minutes) in four Quarters of 150, beginning in Spring at the start of each Generation. The year number and the tick within it are saved with the Campaign. It runs only while connected, runs through the Sandbox's manual tick, and does not exist in Trials.
+  - The danger at sea is `10.5% - 9.5% * sin(2π * (tick - 75) / 600)`, recomputed every 10 ticks, so it swings between 1% in mid-Summer and 20% in mid-Winter.
+  - Each Quarter has one effect, read tick by tick so Winter can catch a climb halfway:
+
+| Quarter | Effect |
+|---|---|
+| Spring | Sanity drains times 0.80 (gains and home recovery are unchanged) |
+| Summer | Supplies drain times 0.95 |
+| Autumn | Fields yield +20% Food |
+| Winter | Attrition times 1.10 (never Starvation damage) |
+
+- **Guards:** nothing lowers Food income or stacks on Starvation: Winter's Fields stay at the base rate. The Tower numbers are small because Floors 70 to 100 are already over-pressed. Summer's discount offsets Winter's cost over a year. All numbers are config for the scaling pass to retune. The glossary calls the four parts Quarters, because Season is already the long Trial race.
+
 ### Also considered (one line each)
 
 - **R03 Village Milestones (avg 3.0):** free, cumulative, one-time breadth bonuses on the Village side. If it is ever pulled in, gate it on endurance and not size. A peak headcount can be lowered by Starvation in the next minute. Use "Endured 10 Expeditions without a Wipe" or "No Villager lost to Starvation in 5 Expeditions", with a small +5% Food, shown as a Ledger entry ("The Village has held."). It is a quiet relief that a failure can cost later, as a streak does. The +5% Food is a Food rate change, so it waits for the measured Food margin. It widens the Milestone definition. Do not present Ruins-Dwellers as traders as manga fact, because that is a design suggestion.
 - **R11 Twelve Pillars (3.0): rejected.** The totems that compound in pairs are a [TW] import without fiction. The 12 pillars are a manga fact [wiki] and survive only as set dressing in the Village Elevation: the reference pillar carved with the Highest Floor, beside the Village Tier display. No compounding, no pairs, no pulses. Do not reintroduce it under another name.
 - **R15 Excavators' Lodge (3.0):** salvage crews on cleared Floors. Strong theme, but passive income may undercut Expeditions. It becomes cheap only as a Salvager Trade.
 - **R21 Hungry Roster (3.0):** per-Unit-Type Upkeep. A pure squeeze, and it makes the Tank and Draco-Metamorph feel like traps.
-- **R24 Day, Night and the Lean Season (3.0):** arbitrary friction. The Lean x0.6 setting guarantees Starvation, and it would stack with R06. Rejected with D9.
+- **R24 Day, Night and the Lean Season (3.0): rejected.** The Lean x0.6 setting guarantees Starvation, and it would stack with R06. Rejected with D9. The Year (R32) is the accepted form of the weather idea: no Quarter lowers Food or adds to Starvation.
 - **R27 Second sinks (3.0):** needed, but covered inside B by Tomes, Post upgrades and Relic-cost buildings (the last still unspecified). Consider a Field Hospital in C.
 - **R28 Victory Chronicle (3.0), Prestige scope open:** outside the Village brief. Whether Prestige is in scope is an open question. If it is, frame it as succession, not as a bar: the Village outlives the Campaign, and the next Party inherits only what the Chronicle records. The research supports both facts: royal blood opens some doors and breaks seals [wiki], and Gatekeepers can lock doors even against it [wiki, single source]. Label the Gatekeeper claim [wiki, low trust] rather than dropping it.
 - **R13 Envoys and Pacts (2.67), R23 Raiders and the Palisade (2.67, replaced by D6), R25 The Hearth (2.67):** the penalty and bonus-stacking families. R23 also misuses "raid", an avoided term for Expedition.

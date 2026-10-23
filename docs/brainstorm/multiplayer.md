@@ -709,7 +709,7 @@ No delta compression in v1. Frames are full, idempotent snapshots tagged `tick`.
 
 | Lever | Rule |
 |---|---|
-| Equal start | The Trial kit (3.1). No Roll, Epitaph or Tower Memory. |
+| Equal start | The Trial kit (3.1). No Roll, Epitaph or Tower Memory, and no Port, Boat or Year. |
 | Equal Tower | One seed. Architectures, pins, levers and Mutations are pure functions of the Terms. |
 | Equal Garrisons, unequal luck | Garrison seeded by `floorSeed(f, k)`. Combat dice unseeded. Equal before Easing and Risen. |
 | Equal counting | Shortcut and Milestone thresholds count only Expeditions of at least 3 Floors, so the first player to find instant Extraction does not win (constraint 12). |
