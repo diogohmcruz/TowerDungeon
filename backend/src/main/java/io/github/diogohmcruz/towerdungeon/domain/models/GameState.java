@@ -77,6 +77,13 @@ public class GameState {
   /** What the Roll adds to the Party's damage multiplier; set from the Roll, never saved. */
   @JsonIgnore private double rollDamageBonus = 0;
 
+  /**
+   * What an Epitaph (Names on the Wall) adds to every new Unit's health total before it is divided
+   * across its Body Parts (0.05 is +5%); set from the meta, never saved. A Unit's own health factor
+   * is saved with it, so the bonus is not applied twice on a reload.
+   */
+  @JsonIgnore private double healthBonus = 0;
+
   private Village village;
   private Map<ResourceType, Double> resources = ResourceType.emptyWallet();
   private Map<ResourceType, Double> carriedLoot = ResourceType.emptyWallet();
@@ -1320,6 +1327,7 @@ public class GameState {
     var unit = new Unit(unitStats, this.random.cosmetic());
     unit.setBodyWeights(config.getBody().getWeights());
     unit.rollStrengths(random, config.getRecruit().getStrengthSpread());
+    raiseHealth(unit);
     unit.setSanityRules(config.getSanity());
     unit.setItemEffects(config.getItems().getEffects());
     unit.rollPhobias(random);
@@ -1348,6 +1356,7 @@ public class GameState {
       unit.setDamageFactor(founder.getStatMultiplier());
     }
     unit.rollStrengths(random, config.getRecruit().getStrengthSpread());
+    raiseHealth(unit);
     unit.setSanityRules(config.getSanity());
     unit.setItemEffects(config.getItems().getEffects());
     if (unit.isCaster()) {
@@ -1365,6 +1374,7 @@ public class GameState {
     var unit = new Unit(type, "Heir", this.random.cosmetic());
     unit.rollStrengths(random.combat(), config.getRecruit().getStrengthSpread());
     unit.setHealthFactor(unit.getHealthFactor() * healthMultiplier);
+    raiseHealth(unit);
     unit.setSanityRules(config.getSanity());
     unit.setItemEffects(config.getItems().getEffects());
     if (unit.isCaster()) {
@@ -1372,6 +1382,38 @@ public class GameState {
     }
     addUnits(type, List.of(unit));
     return unit;
+  }
+
+  /**
+   * Raises a fresh Unit's health total by the Epitaph's bonus, before it is divided across its Body
+   * Parts. Meant for a Unit at full health; draws no randomness.
+   */
+  private void raiseHealth(Unit unit) {
+    if (healthBonus > 0) {
+      unit.setHealthFactor(unit.getHealthFactor() * (1 + healthBonus));
+    }
+  }
+
+  /** Raises every Unit now at the village by the Epitaph's bonus: the Founders of a new start. */
+  public void raiseAllHealth() {
+    units.values().stream().flatMap(List::stream).forEach(this::raiseHealth);
+  }
+
+  /** Grants every Milestone at once, as Hard-Won Habits does at the start of a Generation. */
+  public void grantAllMilestones() {
+    achievedMilestones.addAll(EnumSet.allOf(MilestoneType.class));
+    recomputeUnlockedUnits();
+    maxSupplies = computeSupplyCapacity();
+  }
+
+  /** Opens a Shortcut from the start, as an Epitaph does; like any, it stays open. */
+  public void openShortcut(ShortcutType shortcut) {
+    openedShortcuts.add(shortcut);
+  }
+
+  /** Relics in the Vault, which the Offering Stone offers at the end of a Campaign. */
+  public double vaultRelics() {
+    return resources.getOrDefault(ResourceType.RELICS, 0d);
   }
 
   /** Adds to the Vault outright, as a gift and not as loot: it feeds no counter of the Toll. */

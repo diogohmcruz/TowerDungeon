@@ -330,6 +330,12 @@ public class GameProperties {
     /** The most a Guardian above {@link #memoryUpperFloor} gains from Memory; 0 for no cap. */
     private double memoryUpperHealthCap = 0.0;
 
+    /**
+     * The Open Breach: the Guardian Floor that holds only its garrison this Generation; 0 for none.
+     * Set on the Campaign's own copy from the player's meta.
+     */
+    private int openBreach = 0;
+
     /** An independent copy, so one campaign's tower never shares tuning with another's. */
     public Boss copy() {
       var copy = new Boss();
@@ -374,6 +380,12 @@ public class GameProperties {
 
     /** Reduction to a floor's max enemy tier for each cleared guardian above it. */
     private int easeDifficultyPerBoss = 1;
+
+    /**
+     * Easing is multiplied by this (both the garrison thinning and the tier reduction). 1.0 unless
+     * an Epitaph (Ten Seals Broken) raises it on the Campaign's own copy.
+     */
+    private double easeMultiplier = 1.0;
 
     /**
      * Floors over which the first-reach discount fades; Floor 1 + this is the first full budget.
@@ -1089,6 +1101,7 @@ public class GameProperties {
       private final HeavierPacks heavierPacks = new HeavierPacks();
       private final VillageCharter villageCharter = new VillageCharter();
       private final Heir heir = new Heir();
+      private final OfferingStone offeringStone = new OfferingStone();
 
       private static Map<InheritanceType, Integer> defaultCosts() {
         var costs = new EnumMap<InheritanceType, Integer>(InheritanceType.class);
@@ -1171,6 +1184,51 @@ public class GameProperties {
     @Data
     public static class Heir {
       private double healthMultiplier = 1.5;
+    }
+
+    /**
+     * The Offering Stone: Relics still in the Vault at the end of a Campaign are offered, {@code
+     * relicsPerLegacy} for each Legacy, at most {@code maxLegacy} a Generation. Relics now come
+     * only from surplus items, so the threshold is likely too high until the par refit.
+     */
+    @Data
+    public static class OfferingStone {
+      private double relicsPerLegacy = 300.0;
+      private int maxLegacy = 3;
+    }
+
+    /**
+     * Epitaphs: free, stored as a ratchet when the Lifetime Ledger crosses a threshold (checked
+     * when a Campaign ends, effective from the next Generation).
+     */
+    private final Epitaphs epitaphs = new Epitaphs();
+
+    /** The three Epitaphs: when each is earned and what it does. */
+    @Data
+    public static class Epitaphs {
+      private final FirstFooting firstFooting = new FirstFooting();
+      private final NamesOnTheWall namesOnTheWall = new NamesOnTheWall();
+      private final TenSealsBroken tenSealsBroken = new TenSealsBroken();
+    }
+
+    /** First Footing: the Vanguard Camp Shortcut is open from the start. */
+    @Data
+    public static class FirstFooting {
+      private int lifetimeHighestFloor = 10;
+    }
+
+    /** Names on the Wall: every Unit's health total is raised before it is divided into parts. */
+    @Data
+    public static class NamesOnTheWall {
+      private int lifetimeUnitsLost = 100;
+      private double healthBonus = 0.05;
+    }
+
+    /** Ten Seals Broken: Easing is multiplied. */
+    @Data
+    public static class TenSealsBroken {
+      private int lifetimeGuardiansSlain = 15;
+      private double easingMultiplier = 1.25;
     }
 
     private final Counters counters = new Counters();

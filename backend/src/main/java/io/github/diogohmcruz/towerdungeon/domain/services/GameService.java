@@ -44,6 +44,7 @@ import io.github.diogohmcruz.towerdungeon.domain.observation.EventLog;
 import io.github.diogohmcruz.towerdungeon.domain.observation.StateProjection;
 import io.github.diogohmcruz.towerdungeon.domain.prestige.FallenName;
 import io.github.diogohmcruz.towerdungeon.domain.prestige.InheritanceType;
+import io.github.diogohmcruz.towerdungeon.domain.prestige.OpenBreach;
 import io.github.diogohmcruz.towerdungeon.domain.prestige.PlayerMeta;
 import io.github.diogohmcruz.towerdungeon.domain.prestige.RollEffects;
 import io.github.diogohmcruz.towerdungeon.domain.prestige.RollEntry;
@@ -180,7 +181,7 @@ public class GameService {
    */
   GameState newCampaign(PlayerMeta meta, boolean hollow, Map<String, String> choices) {
     var campaignConfig = config.copy().withTowerMemory(meta.generation());
-    var effects = RollEffects.of(meta.roll(), campaignConfig);
+    var effects = RollEffects.of(meta, campaignConfig);
     effects.shape(campaignConfig);
     var campaign =
         newCampaign(campaignConfig, new RandomSource(meta.seed()), meta.generation(), hollow);
@@ -601,7 +602,7 @@ public class GameService {
       var meta = metaOf(result.payload());
       adopt(slot, meta);
       var campaignConfig = config.copy().withTowerMemory(meta.generation());
-      var effects = RollEffects.of(meta.roll(), campaignConfig);
+      var effects = RollEffects.of(meta, campaignConfig);
       effects.shape(campaignConfig);
       state =
           GameState.restore(snapshot, campaignConfig, new RandomSource(meta.seed()), slot.plan());
@@ -1342,6 +1343,9 @@ public class GameService {
     slot.meta(RollRules.refund(meta, id));
     paid -= slot.meta().spent();
     // An answer that needed the Inheritance goes with it.
+    if (id.equals(InheritanceType.THE_OPEN_BREACH.name())) {
+      gameState.unchoose(OpenBreach.GROUP);
+    }
     for (var group : SuccessionChoice.Group.values()) {
       if (group.requires().name().equals(id)) {
         gameState.unchoose(group.name());
@@ -1355,6 +1359,9 @@ public class GameService {
     if (gameState.getPhase() != CampaignPhase.OFFER) {
       return rollSealed();
     }
+    if (OpenBreach.isAnswer(id)) {
+      return chooseBreach(slot, gameState, id);
+    }
     var choice = SuccessionChoice.find(id);
     if (choice.isEmpty()) {
       return CommandResult.rejected(Reason.UNKNOWN_ID, "There is no such choice.");
@@ -1365,6 +1372,24 @@ public class GameService {
       return CommandResult.rejected(Reason.NOT_AVAILABLE, "The Roll holds nothing to choose.");
     }
     gameState.choose(group.name(), choice.get().name());
+    return CommandResult.applied("Chosen.");
+  }
+
+  /** The Open Breach's question: a Guardian Floor slain in an earlier Generation, or none. */
+  private CommandResult chooseBreach(PlayerSlot slot, GameState gameState, String id) {
+    var meta = slot.meta();
+    if (!meta.holds(InheritanceType.THE_OPEN_BREACH)) {
+      return CommandResult.rejected(Reason.NOT_AVAILABLE, "The Roll holds nothing to choose.");
+    }
+    if (!OpenBreach.NONE.equals(id)) {
+      var floor = OpenBreach.floorOf(id);
+      var maxFloor = gameState.getConfig().getTower().getMaxFloor();
+      if (floor.isEmpty() || !OpenBreach.candidates(meta, maxFloor).contains(floor.get())) {
+        return CommandResult.rejected(
+            Reason.NOT_AVAILABLE, "No Guardian of that Floor was slain in an earlier Generation.");
+      }
+    }
+    gameState.choose(OpenBreach.GROUP, id);
     return CommandResult.applied("Chosen.");
   }
 
@@ -1443,6 +1468,10 @@ public class GameService {
       legacy = floor.getPoints();
       pity = true;
     }
+    // The Offering Stone: Relics still in the Vault are offered, and still count as banked.
+    var offering =
+        RollEffects.of(meta.roll(), gameState.getConfig()).offering(gameState.vaultRelics());
+    legacy += offering;
     var report =
         new SuccessionReport(
             outcome,
@@ -1452,14 +1481,23 @@ public class GameService {
             pity,
             forecast.guardians(),
             forecast.tally().highestFloor(),
-            forecast.tally().expeditionsCompleted());
+            forecast.tally().expeditionsCompleted(),
+            offering);
     var wall = gameState.getWallOfNames();
     var fallen =
         wall.subList(Math.max(0, wall.size() - prestige.getChronicleNames()), wall.size()).stream()
             .map(unit -> new FallenName(unit.name(), unit.type()))
             .toList();
+    var tower = gameState.getTower();
     var ended =
-        meta.ended(report, forecast.tally(), wall.size(), fallen, prestige.getChronicleLimit());
+        meta.ended(
+            report,
+            forecast.tally(),
+            wall.size(),
+            fallen,
+            prestige.getChronicleLimit(),
+            tower == null ? List.of() : tower.getSlainGuardians(),
+            prestige.getEpitaphs());
 
     var previousOutcome = gameState.getGameOutcome();
     var previousPhase = gameState.getPhase();
@@ -1553,7 +1591,15 @@ public class GameService {
       return CommandResult.rejected(Reason.NOT_ENDED, "There is no ended Campaign to begin from.");
     }
     var pending = gameState.getPending();
-    var meta = slot.meta().nextGeneration();
+    var ended = slot.meta();
+    var meta =
+        ended
+            .nextGeneration()
+            .withOpenBreach(
+                OpenBreach.resolve(
+                    ended,
+                    gameState.getChoices().get(OpenBreach.GROUP),
+                    gameState.getConfig().getTower().getMaxFloor()));
     var fresh =
         newCampaign(
             meta,

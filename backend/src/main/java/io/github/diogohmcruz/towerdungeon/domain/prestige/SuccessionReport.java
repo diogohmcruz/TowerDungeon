@@ -14,6 +14,8 @@ import io.github.diogohmcruz.towerdungeon.domain.models.GameOutcome;
  * @param guardiansSlain Guardians slain in the Campaign
  * @param highestFloor the Highest Floor reached
  * @param expeditions Expeditions completed
+ * @param offering Legacy the Offering Stone paid for the Relics left in the Vault, already in
+ *     {@code legacy}; 0 without a Stone
  */
 public record SuccessionReport(
     GameOutcome outcome,
@@ -23,4 +25,19 @@ public record SuccessionReport(
     boolean pity,
     int guardiansSlain,
     int highestFloor,
-    int expeditions) {}
+    int expeditions,
+    int offering) {
+
+  /** A report with no Offering. */
+  public SuccessionReport(
+      GameOutcome outcome,
+      int generation,
+      Toll toll,
+      int legacy,
+      boolean pity,
+      int guardiansSlain,
+      int highestFloor,
+      int expeditions) {
+    this(outcome, generation, toll, legacy, pity, guardiansSlain, highestFloor, expeditions, 0);
+  }
+}

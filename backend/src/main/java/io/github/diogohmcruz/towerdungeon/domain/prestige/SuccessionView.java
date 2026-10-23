@@ -17,7 +17,9 @@ import io.github.diogohmcruz.towerdungeon.domain.models.GameState;
  * @param spent Legacy spent on what the Roll holds
  * @param courses the four Courses
  * @param inheritances all seventeen Inheritances, in Course order
- * @param choices the choices open, one entry for each of their options
+ * @param choices the choices open, one entry for each of their options; the Open Breach's are one
+ *     per Guardian Floor slain in an earlier Generation, and {@code BREACH_NONE}
+ * @param epitaphs the Epitaphs earned, by id
  * @param chronicle every ended Campaign, oldest first, the one just ended last
  */
 public record SuccessionView(
@@ -27,6 +29,7 @@ public record SuccessionView(
     List<Course> courses,
     List<Node> inheritances,
     List<Option> choices,
+    List<String> epitaphs,
     List<ChronicleEntry> chronicle) {
 
   /**
@@ -64,7 +67,7 @@ public record SuccessionView(
 
   /**
    * @param id the choice id to send
-   * @param group the question, {@code DOWRY} or {@code HEIR}
+   * @param group the question, {@code DOWRY}, {@code HEIR} or {@code BREACH}
    * @param selected whether it is the answer now
    * @param isDefault whether it is what is taken when none is given
    */
@@ -125,6 +128,20 @@ public record SuccessionView(
         }
       }
     }
+    if (meta.holds(InheritanceType.THE_OPEN_BREACH)) {
+      var answer = state.getChoices().get(OpenBreach.GROUP);
+      options.add(
+          new Option(
+              OpenBreach.NONE,
+              OpenBreach.GROUP,
+              answer == null || OpenBreach.NONE.equals(answer),
+              true));
+      var maxFloor = state.getConfig().getTower().getMaxFloor();
+      for (var floor : OpenBreach.candidates(meta, maxFloor)) {
+        var id = OpenBreach.idOf(floor);
+        options.add(new Option(id, OpenBreach.GROUP, id.equals(answer), false));
+      }
+    }
     return new SuccessionView(
         meta.generation(),
         meta.legacy(),
@@ -132,6 +149,7 @@ public record SuccessionView(
         courses,
         nodes,
         options,
+        meta.epitaphs(),
         meta.chronicle());
   }
 }

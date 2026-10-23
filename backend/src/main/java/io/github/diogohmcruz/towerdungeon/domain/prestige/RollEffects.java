@@ -8,6 +8,7 @@ import java.util.Set;
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
 import io.github.diogohmcruz.towerdungeon.domain.models.GameState;
 import io.github.diogohmcruz.towerdungeon.domain.models.ResourceType;
+import io.github.diogohmcruz.towerdungeon.domain.models.shortcut.ShortcutType;
 
 /**
  * What the Roll does to a Generation, read from the Inheritances held and the numbers in config.
@@ -20,18 +21,58 @@ import io.github.diogohmcruz.towerdungeon.domain.models.ResourceType;
  */
 public final class RollEffects {
   private final Set<InheritanceType> held = EnumSet.noneOf(InheritanceType.class);
+  private final Set<Epitaph> engraved = EnumSet.noneOf(Epitaph.class);
   private final GameProperties.Prestige.Roll numbers;
+  private final GameProperties.Prestige.Epitaphs epitaphNumbers;
+  private final int openBreach;
 
-  private RollEffects(List<RollEntry> roll, GameProperties.Prestige.Roll numbers) {
-    this.numbers = numbers;
+  private RollEffects(
+      List<RollEntry> roll, List<String> epitaphs, int openBreach, GameProperties.Prestige config) {
+    this.numbers = config.getRoll();
+    this.epitaphNumbers = config.getEpitaphs();
+    this.openBreach = openBreach;
     for (var entry : roll) {
       InheritanceType.find(entry.id()).filter(InheritanceType::isAvailable).ifPresent(held::add);
+    }
+    for (var id : epitaphs) {
+      Epitaph.find(id).ifPresent(engraved::add);
     }
   }
 
   /** The effects of {@code roll}, with the numbers of {@code config}. */
   public static RollEffects of(List<RollEntry> roll, GameProperties config) {
-    return new RollEffects(roll, config.getPrestige().getRoll());
+    return new RollEffects(roll, List.of(), 0, config.getPrestige());
+  }
+
+  /**
+   * The effects of the whole meta: its Roll, its Epitaphs and the Guardian Floor the Generation in
+   * play holds open (which only counts while the Roll holds the Open Breach).
+   */
+  public static RollEffects of(PlayerMeta meta, GameProperties config) {
+    return new RollEffects(
+        meta.roll(),
+        meta.epitaphs(),
+        meta.holds(InheritanceType.THE_OPEN_BREACH) ? meta.openBreach() : 0,
+        config.getPrestige());
+  }
+
+  /** Whether the Epitaph has been earned. */
+  public boolean has(Epitaph epitaph) {
+    return engraved.contains(epitaph);
+  }
+
+  /**
+   * Legacy the Offering Stone pays for the Relics still in the Vault when a Campaign ends: one for
+   * each {@code relicsPerLegacy}, at most {@code maxLegacy}. 0 when the Roll holds no Stone.
+   */
+  public int offering(double vaultRelics) {
+    if (!holds(InheritanceType.OFFERING_STONE)
+        || numbers.getOfferingStone().getRelicsPerLegacy() <= 0) {
+      return 0;
+    }
+    var stone = numbers.getOfferingStone();
+    var legacy = (int) Math.floor(vaultRelics / stone.getRelicsPerLegacy());
+    return Math.clamp(legacy, 0, Math.max(0, stone.getMaxLegacy()));
   }
 
   /** Whether the Roll holds the Inheritance and its effect exists. */
@@ -61,12 +102,22 @@ public final class RollEffects {
       var supply = campaignConfig.getSupply();
       supply.setBaseMax(supply.getBaseMax() + numbers.getHeavierPacks().getCapacity());
     }
+    if (openBreach > 0) {
+      campaignConfig.getBoss().setOpenBreach(openBreach);
+    }
+    if (has(Epitaph.TEN_SEALS_BROKEN)) {
+      var enemies = campaignConfig.getEnemies();
+      enemies.setEaseMultiplier(
+          enemies.getEaseMultiplier() * epitaphNumbers.getTenSealsBroken().getEasingMultiplier());
+    }
   }
 
   /** What outlives the start and is not in the saved file: given to a new or a loaded state. */
   public void carry(GameState state) {
     state.setRollDamageBonus(
         holds(InheritanceType.WHETSTONE_HABIT) ? numbers.getWhetstoneHabit().getDamageBonus() : 0);
+    state.setHealthBonus(
+        has(Epitaph.NAMES_ON_THE_WALL) ? epitaphNumbers.getNamesOnTheWall().getHealthBonus() : 0);
   }
 
   /**
@@ -75,6 +126,13 @@ public final class RollEffects {
    */
   public void start(GameState state, Map<String, String> choices) {
     carry(state);
+    state.raiseAllHealth();
+    if (has(Epitaph.FIRST_FOOTING)) {
+      state.openShortcut(ShortcutType.VANGUARD_CAMP);
+    }
+    if (holds(InheritanceType.HARD_WON_HABITS)) {
+      state.grantAllMilestones();
+    }
     if (holds(InheritanceType.VILLAGE_CHARTER)) {
       state.raiseVillageTierTo(numbers.getVillageCharter().getTier());
     }

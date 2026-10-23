@@ -273,6 +273,14 @@ game:
       heavier-packs: {capacity: 25.0}
       village-charter: {tier: 2}
       heir: {health-multiplier: 1.5}
+      # Relics still in the Vault at the end of a Campaign: 300 is +1 Legacy, at most +3 a
+      # Generation. Relics now come only from surplus items, so this is likely too high (#8 refit).
+      offering-stone: {relics-per-legacy: 300.0, max-legacy: 3}
+    # Free, earned when the Lifetime Ledger crosses a threshold, kept for good.
+    epitaphs:
+      first-footing: {lifetime-highest-floor: 10}
+      names-on-the-wall: {lifetime-units-lost: 100, health-bonus: 0.05}
+      ten-seals-broken: {lifetime-guardians-slain: 15, easing-multiplier: 1.25}
     counters:
       food-grown: {marks: 3.0, par: 60000.0}
       materials-banked: {marks: 6.0, par: 17000.0}

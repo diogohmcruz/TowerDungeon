@@ -46,7 +46,10 @@ class RollRulesTest {
             InheritanceType.HEAVIER_PACKS,
             InheritanceType.VILLAGE_CHARTER,
             InheritanceType.THE_HEIR,
-            InheritanceType.BLOOD_OF_THE_DOOR);
+            InheritanceType.BLOOD_OF_THE_DOOR,
+            InheritanceType.HARD_WON_HABITS,
+            InheritanceType.THE_OPEN_BREACH,
+            InheritanceType.OFFERING_STONE);
   }
 
   @Test

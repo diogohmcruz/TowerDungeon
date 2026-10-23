@@ -85,6 +85,9 @@ public class MetaCodec {
         read.residue(),
         read.lifetime(),
         read.chronicle(),
+        read.slainGuardians(),
+        read.epitaphs(),
+        read.openBreach(),
         secret);
   }
 
@@ -97,6 +100,9 @@ public class MetaCodec {
         section.path("residue").asDouble(0),
         null,
         null,
+        null,
+        null,
+        0,
         null);
   }
 }

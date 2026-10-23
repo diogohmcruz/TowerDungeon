@@ -67,6 +67,9 @@ class FieldAccountingTest {
 
   private static final Map<String, String> GAME_STATE_TRANSIENT =
       Map.of(
+          "healthBonus",
+              "derived from the Epitaphs in the player's meta, re-applied on restore; a Unit's own"
+                  + " health factor is saved with it",
           "rollDamageBonus", "derived from the Roll in the player\'s meta, re-applied on restore",
           "maxSupplies", "derived: carrying capacity is recomputed from upgrades and the party",
           "unlockedUnits", "derived: the starting types plus upgrade and milestone unlocks",

@@ -5,10 +5,15 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+import io.github.diogohmcruz.towerdungeon.config.GameProperties;
 
 /**
  * What a player keeps across Generations: the {@code meta} half of the record. Everything else in
@@ -20,6 +25,10 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
  * @param residue Toll Marks carried into the next Toll
  * @param lifetime the Lifetime Ledger
  * @param chronicle every ended Campaign, oldest first, capped
+ * @param slainGuardians the Guardian Floors slain, by the Generation that slew them (capped to the
+ *     Chronicle's length): what the Open Breach chooses from
+ * @param epitaphs the Epitaphs earned, by id; a ratchet
+ * @param openBreach the Guardian Floor the Generation in play holds open, 0 for none
  * @param towerSecret server-only; with the Generation it derives the Tower's seed. In the file it
  *     is sealed
  */
@@ -31,6 +40,9 @@ public record PlayerMeta(
     double residue,
     LifetimeLedger lifetime,
     List<ChronicleEntry> chronicle,
+    Map<Integer, List<Integer>> slainGuardians,
+    List<String> epitaphs,
+    int openBreach,
     String towerSecret) {
 
   public PlayerMeta {
@@ -38,6 +50,25 @@ public record PlayerMeta(
     roll = roll == null ? List.of() : List.copyOf(roll);
     lifetime = lifetime == null ? LifetimeLedger.EMPTY : lifetime;
     chronicle = chronicle == null ? List.of() : List.copyOf(chronicle);
+    var slain = new TreeMap<Integer, List<Integer>>();
+    if (slainGuardians != null) {
+      slainGuardians.forEach((slewIn, floors) -> slain.put(slewIn, List.copyOf(floors)));
+    }
+    slainGuardians = Collections.unmodifiableMap(slain);
+    epitaphs = epitaphs == null ? List.of() : List.copyOf(epitaphs);
+    openBreach = Math.max(0, openBreach);
+  }
+
+  /** A meta with no Guardians on record, no Epitaphs and no Open Breach. */
+  public PlayerMeta(
+      int generation,
+      int legacy,
+      List<RollEntry> roll,
+      double residue,
+      LifetimeLedger lifetime,
+      List<ChronicleEntry> chronicle,
+      String towerSecret) {
+    this(generation, legacy, roll, residue, lifetime, chronicle, null, null, 0, towerSecret);
   }
 
   /** The meta of a player who has never finished a Campaign. */
@@ -55,6 +86,22 @@ public record PlayerMeta(
       int unitsLost,
       List<FallenName> fallen,
       int chronicleLimit) {
+    return ended(report, tally, unitsLost, fallen, chronicleLimit, List.of(), null);
+  }
+
+  /**
+   * As {@link #ended(SuccessionReport, Tally, int, List, int)}, recording the Guardian Floors the
+   * Campaign slew and granting the Epitaphs the new Lifetime Ledger earns ({@code epitaphRules}
+   * null grants none).
+   */
+  public PlayerMeta ended(
+      SuccessionReport report,
+      Tally tally,
+      int unitsLost,
+      List<FallenName> fallen,
+      int chronicleLimit,
+      List<Integer> guardianFloors,
+      GameProperties.Prestige.Epitaphs epitaphRules) {
     var entries = new ArrayList<>(chronicle);
     entries.add(
         new ChronicleEntry(
@@ -69,13 +116,24 @@ public record PlayerMeta(
     while (entries.size() > Math.max(1, chronicleLimit)) {
       entries.removeFirst();
     }
+    var ledger = lifetime.plus(tally, unitsLost, report.outcome());
+    var slain = new TreeMap<>(slainGuardians);
+    if (!guardianFloors.isEmpty()) {
+      slain.put(report.generation(), guardianFloors.stream().sorted().toList());
+    }
+    while (slain.size() > Math.max(1, chronicleLimit)) {
+      slain.remove(slain.firstKey());
+    }
     return new PlayerMeta(
         generation,
         legacy + report.legacy(),
         roll,
         report.toll().residueNext(),
-        lifetime.plus(tally, unitsLost, report.outcome()),
+        ledger,
         entries,
+        slain,
+        epitaphRules == null ? epitaphs : Epitaph.granted(epitaphs, ledger, epitaphRules),
+        openBreach,
         towerSecret);
   }
 
@@ -101,7 +159,16 @@ public record PlayerMeta(
   /** The same meta with a new Roll and the Legacy that is left after it. */
   public PlayerMeta withRoll(List<RollEntry> newRoll, int newLegacy) {
     return new PlayerMeta(
-        generation, newLegacy, newRoll, residue, lifetime, chronicle, towerSecret);
+        generation,
+        newLegacy,
+        newRoll,
+        residue,
+        lifetime,
+        chronicle,
+        slainGuardians,
+        epitaphs,
+        openBreach,
+        towerSecret);
   }
 
   /** Whether the meta has a Tower secret yet. */
@@ -112,12 +179,65 @@ public record PlayerMeta(
 
   /** The same meta under a Tower secret. */
   public PlayerMeta withSecret(String secret) {
-    return new PlayerMeta(generation, legacy, roll, residue, lifetime, chronicle, secret);
+    return new PlayerMeta(
+        generation,
+        legacy,
+        roll,
+        residue,
+        lifetime,
+        chronicle,
+        slainGuardians,
+        epitaphs,
+        openBreach,
+        secret);
   }
 
   /** The meta of the next Generation: the same record, one Generation on. */
   public PlayerMeta nextGeneration() {
-    return new PlayerMeta(generation + 1, legacy, roll, residue, lifetime, chronicle, towerSecret);
+    return new PlayerMeta(
+        generation + 1,
+        legacy,
+        roll,
+        residue,
+        lifetime,
+        chronicle,
+        slainGuardians,
+        epitaphs,
+        0,
+        towerSecret);
+  }
+
+  /** The same meta with the Guardian Floor the Generation in play holds open (0 for none). */
+  public PlayerMeta withOpenBreach(int floor) {
+    return new PlayerMeta(
+        generation,
+        legacy,
+        roll,
+        residue,
+        lifetime,
+        chronicle,
+        slainGuardians,
+        epitaphs,
+        floor,
+        towerSecret);
+  }
+
+  /** Whether the Epitaph has been earned. */
+  public boolean has(Epitaph epitaph) {
+    return epitaphs.contains(epitaph.name());
+  }
+
+  /**
+   * The Guardian Floors slain in any Generation up to and including {@code generation}, lowest
+   * first and without repeats: what the Open Breach may choose from.
+   */
+  public List<Integer> slainUpTo(int generation) {
+    return slainGuardians.entrySet().stream()
+        .filter(entry -> entry.getKey() <= generation)
+        .flatMap(entry -> entry.getValue().stream())
+        .distinct()
+        .sorted()
+        .toList();
   }
 
   /**

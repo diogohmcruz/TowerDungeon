@@ -81,7 +81,14 @@ public class Tower {
 
   /** Number of cleared guardians standing above {@code floor} — the floor's "easing" pressure. */
   private int easingStepsFor(int floor) {
-    return (int) clearedBosses.stream().filter(bossFloor -> bossFloor > floor).count();
+    var breach = openBreach();
+    return (int) clearedBosses.stream().filter(bossFloor -> bossFloor > floor).count()
+        + (breach > floor && !clearedBosses.contains(breach) ? 1 : 0);
+  }
+
+  /** The Open Breach Floor of this Generation, 0 when there is none. */
+  private int openBreach() {
+    return bossConfig.getOpenBreach();
   }
 
   /** Number of cleared guardians standing below {@code floor} — the floor's "step-up" pressure. */
@@ -140,12 +147,19 @@ public class Tower {
         floor % bossConfig.getInterval() == 0
             || floor == maxFloor
             || (finishFloor != null && floor == finishFloor);
+    // The Open Breach holds only its garrison: no Guardian, and so no x3 loot and no kill to count.
+    if (isBossFloor && floor == openBreach() && floor != maxFloor) {
+      isBossFloor = false;
+    }
 
     var easingSteps = easingStepsFor(floor);
     var difficulty =
         (int)
             Math.clamp(
-                baseDifficulty - (double) enemiesConfig.getEaseDifficultyPerBoss() * easingSteps,
+                baseDifficulty
+                    - enemiesConfig.getEaseDifficultyPerBoss()
+                        * enemiesConfig.getEaseMultiplier()
+                        * easingSteps,
                 1,
                 EnemyStats.values().length);
 
@@ -186,7 +200,7 @@ public class Tower {
     if (e.getSurgeInterval() > 0 && floor % e.getSurgeInterval() == 0) {
       budget *= e.getSurgeMultiplier();
     }
-    budget *= Math.pow(1 - e.getEaseBudgetPerBoss(), easingStepsFor(floor));
+    budget *= Math.pow(1 - e.getEaseBudgetPerBoss() * e.getEaseMultiplier(), easingStepsFor(floor));
     budget *= Math.pow(1 + e.getStepBudgetPerBoss(), stepUpsFor(floor));
     budget *= e.getMemoryBudget();
     return budget;

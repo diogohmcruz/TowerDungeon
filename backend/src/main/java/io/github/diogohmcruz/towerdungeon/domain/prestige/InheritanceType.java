@@ -21,10 +21,10 @@ public enum InheritanceType {
   NARROW_STAIR("Narrow Stair", 3, Kind.DECISION, false),
   OVERREACH("Overreach", 3, Kind.DECISION, false),
   QUARTERMASTERS_TALLY("Quartermaster's Tally", 3, Kind.QUALITY, false),
-  HARD_WON_HABITS("Hard-Won Habits", 4, Kind.POWER, false),
-  THE_OPEN_BREACH("The Open Breach", 4, Kind.DECISION, false),
+  HARD_WON_HABITS("Hard-Won Habits", 4, Kind.POWER, true),
+  THE_OPEN_BREACH("The Open Breach", 4, Kind.DECISION, true),
   READER_OF_OMENS("Reader of Omens", 4, Kind.DECISION, false),
-  OFFERING_STONE("Offering Stone", 4, Kind.DECISION, false),
+  OFFERING_STONE("Offering Stone", 4, Kind.DECISION, true),
   SECOND_PACT("Second Pact", 4, Kind.DECISION, false);
 
   /** Power, decision (or access) and quality of life. */

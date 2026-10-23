@@ -110,4 +110,55 @@ class MetaCodecTest {
     assertThat(read.legacy()).isEqualTo(6);
     assertThat(read.roll()).isEmpty();
   }
+
+  @Test
+  void theGuardiansSlainTheEpitaphsAndTheOpenBreachRoundTrip() {
+    var meta =
+        new PlayerMeta(
+            4,
+            2,
+            List.of(new RollEntry("THE_OPEN_BREACH", 6)),
+            0,
+            null,
+            List.of(),
+            java.util.Map.of(1, List.of(10, 20), 3, List.of(30)),
+            List.of("FIRST_FOOTING", "TEN_SEALS_BROKEN"),
+            20,
+            "00112233445566778899aabbccddeeff");
+
+    var read = codec.fromNode(codec.toNode(meta));
+
+    assertThat(read).isEqualTo(meta);
+    assertThat(read.slainGuardians()).containsEntry(3, List.of(30));
+    assertThat(read.epitaphs()).containsExactly("FIRST_FOOTING", "TEN_SEALS_BROKEN");
+    assertThat(read.openBreach()).isEqualTo(20);
+  }
+
+  @Test
+  void aFileFromBeforeCourseIvReadsWithNoGuardiansEpitaphsOrBreach() {
+    var node = codec.toNode(PlayerMeta.first("00112233445566778899aabbccddeeff"));
+    node.remove("slainGuardians");
+    node.remove("epitaphs");
+    node.remove("openBreach");
+
+    var read = codec.fromNode(node);
+
+    assertThat(read.slainGuardians()).isEmpty();
+    assertThat(read.epitaphs()).isEmpty();
+    assertThat(read.openBreach()).isZero();
+  }
+
+  /** Every field of the meta is written to the file: none is lost between a save and a load. */
+  @Test
+  void everyFieldOfTheMetaIsInTheStoredSection() {
+    var node = codec.toNode(PlayerMeta.first("00112233445566778899aabbccddeeff"));
+    var written = new java.util.TreeSet<String>();
+    node.propertyNames().forEach(written::add);
+    var components = new java.util.TreeSet<String>();
+    for (var component : PlayerMeta.class.getRecordComponents()) {
+      components.add(component.getName());
+    }
+
+    assertThat(written).isEqualTo(components);
+  }
 }
