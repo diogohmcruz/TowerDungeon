@@ -13,4 +13,4 @@ We chose it so that gear, maiming, accuracy and aim all have something to act on
 - A kill now needs only the head or torso at zero, so kill speed rises even though total health is conserved. The enemy budget formula and the gentle first reach must be re-tuned in the scaling pass (#8).
 - The campaign file (ADR 0001) and the snapshot must carry each unit's parts, items, sanity and phobias, and the MCP state tools must expose them.
 - The Weakness multiplier applies to a whole hit before it is spread over parts.
-- **Wounded** in the glossary changes meaning once this is built; **Maimed** is the lasting state.
+- **Wounded** in the glossary changes meaning once this is built; **Maimed** is the lasting state, and a Dragon Spore Dose reattaching an arm or a leg is the only remedy (village doc R07).

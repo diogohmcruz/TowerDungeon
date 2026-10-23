@@ -4,14 +4,14 @@ Design only. No repository file was written or edited. Terms follow `CONTEXT.md`
 
 > **Decided by the author (2026-10-10):** the palette is the Tower's state, set by Generation, never a reward (recorded in `docs/adr/0004-the-palette-is-the-towers-state-not-a-reward.md`), and the darker, indigo-tinted night ground is accepted, so Generation 1's slot 0 becomes `#080923` (today's `#0e1424` stays as `LEGACY_INK` for the pinned round-trip test). Whether the dithered indigo shadow still reads as grim bleak stone is judged on screen in the ink spike (issue #15); the lighter CIE76-only alternative in open decision 1 is the fallback.
 
-## 0. What the verification changed
+## 0. Constraints that shaped the ramps
 
-The first draft failed 12 checks (full list in the failures return). The ones that changed the design:
+The ramps satisfy these checks:
 
-1. **Protanopia (the CVD gate).** Guardian crimson `#7a2230` simulates to `#393730`, an olive-grey at L* 22.9. The draft's dark slots (L* 5 to 17) sat only 10.1 to 17.5 CIEDE2000 away from it (the draft quietly relaxed the gate to 10). A neutral slot cannot fix this: a neutral at L* 13 is 7.8 dE00 from simulated crimson, and at L* 19 only 5.0. The only lever left is chroma on the one axis protanopes keep (blue to violet). So **slots 0 and 1 now carry OKLCH chroma 0.053 to 0.067**, hue 271 to 294. This is the biggest tone cost in the document; see open decisions 1 to 3 for the cheaper CIE76 alternative.
-2. **Slot 1 against slot 0** was 1.18 to 1.29:1 on every night ramp (the draft called it deliberate). Slot 1 is now L* 14.6 to 16.2, giving 1.322 to 1.340:1.
-3. **Crimson as a fill on night slot 0** was 1.83 to 1.88:1 on Generations 1 to 4, including today's `#0e1424` (1.834:1; the 1.9:1 in [PB §8.4] is measured on `--panel`, not on `--ink`). Slot 0 now has Y at most 0.0037, giving 1.955 to 2.032:1. **Generation 1 slot 0 is therefore `#080923`, not `#0e1424`** (dE00 4.6, L* 6.5 to 3.3).
-4. Smaller misses (hue rule, Salt gap, day steps, lamp under tritan, adjacent Generation, crimson text on Day Pitch) are fixed in the ramps below.
+1. **Protanopia (the CVD gate).** Guardian crimson `#7a2230` simulates to `#393730`, an olive-grey at L* 22.9. A neutral slot cannot clear the gate against it: a neutral at L* 13 is 7.8 dE00 from simulated crimson, and at L* 19 only 5.0. The only lever left is chroma on the one axis protanopes keep (blue to violet). So **slots 0 and 1 carry OKLCH chroma 0.053 to 0.067**, hue 271 to 294. This is the biggest tone cost in the document; see open decisions 1 to 3 for the cheaper CIE76 alternative.
+2. **Slot 1 against slot 0** is 1.322 to 1.340:1, with slot 1 at L* 14.6 to 16.2.
+3. **Crimson as a fill on night slot 0** is 1.955 to 2.032:1 because slot 0 has Y at most 0.0037. Today's `#0e1424` gives only 1.834:1 (the 1.9:1 in [PB §8.4] is measured on `--panel`, not on `--ink`). **Generation 1 slot 0 is therefore `#080923`, not `#0e1424`** (dE00 4.6, L* 6.5 to 3.3).
+4. Smaller checks (hue rule, Salt gap, day steps, lamp under tritan, adjacent Generation, crimson text on Day Pitch) are met in the ramps below.
 
 ## 1. The ruling: palette is the Tower's state, not a reward
 
@@ -48,7 +48,7 @@ Slot meaning is **ink weight, not luminance**: slot 0 is nothing (fog, clear col
 | 2 | `#c0c1c6` | `#9fa0a6` | `#818086` | `#0c0722` | 78.1 / 66.0 / 53.8 / 3.1 | Dusty overcast. |
 | 3 | `#b4aeb6` | `#8f8892` | `#6c6376` | `#0d0420` | 71.8 / 57.6 / 43.4 / 2.5 | Lilac-grey, heavy sky, a bruise held in the cloud. |
 | 4 | `#c9c9c4` | `#a6a9ad` | `#858a8d` | `#03051f` | 80.8 / 69.1 / 57.2 / 2.0 | White-out. The high end of the proposed ash range. |
-| 5+ | `#a8b0b8` | `#83898f` | `#687079` | `#05021d` | 71.4 / 56.8 / 46.9 / 1.5 | Smoke. Raised from the draft's `#9ca1a6` so crimson stays at least 4.5:1 as `--ember-text` on this ground. Outside the proposed range (open decision 4). |
+| 5+ | `#a8b0b8` | `#83898f` | `#687079` | `#05021d` | 71.4 / 56.8 / 46.9 / 1.5 | Smoke. Chosen so crimson stays at least 4.5:1 as `--ember-text` on this ground. Outside the proposed range (open decision 4). |
 
 Generations 1 to 4 use the proposed ash range `#b9bcc0` to `#c9c9c4` for slot 0, so replacing sky-blue `#9fc0e8` and adding the family are one change. Sky-blue stays switchable by token [Arch §8.4 item 1].
 
@@ -66,7 +66,7 @@ These are shader constants (`uRoleCrimson` and so on), never ramp slots. At most
 
 ### Construction rules (each is a unit test, section 10)
 
-1. **Cold hues only, 245 to 322 degrees OKLCH hue** wherever chroma exceeds 0.0075. Measured: shadows 271 to 294; the coldest and the most violet mid or line slots are 248 and 321. No ramp enters crimson (15.6), amber (68), Quarry (82), bone (86) or Spores (164). This is why there is no "rust" or "verdigris" ramp. (The draft broke this rule by 1 to 3 degrees in three slots.)
+1. **Cold hues only, 245 to 322 degrees OKLCH hue** wherever chroma exceeds 0.0075. Measured: shadows 271 to 294; the coldest and the most violet mid or line slots are 248 and 321. No ramp enters crimson (15.6), amber (68), Quarry (82), bone (86) or Spores (164). This is why there is no "rust" or "verdigris" ramp.
 2. **Chroma budget, two tiers.** Slots 0 and 1 (and Day slot 3, which is Night slot 0): OKLCH C at most 0.070, measured maximum 0.067. Slots 2 and 3 and the Day grounds: at most 0.036, measured maximum 0.031. All chroma beyond 0.0075 sits at L* 17 or below or in slots 2 and 3, so it reads as depth of black, not as colour. For scale, crimson is 0.121 (1.8 times the shadow budget).
 3. **Slot 0 is darker than `#0e1424` and never lighter with Generation**: Y 0.0037, 0.0035, 0.0028, 0.0023, 0.0016 (`#0e1424` is 0.0072). This gives crimson at least 1.9:1 as a fill and the resting lamp 3.32 to 3.45:1 on the plate.
 4. **Crimson CVD gate.** Every slot of every ramp in both themes is at least 20 CIEDE2000 from crimson under normal, protan, deutan and tritan vision (measured minimum 20.8, protan). As a backstop, no slot is within 6 L* of crimson's lightness under any vision (measured minimum 6.1).
@@ -127,7 +127,7 @@ The night slot 0 to 1 step is still the smallest (dE 8.6 to 9.3, was 5.6 to 7.1)
 
 - **Lightness gap** (minimum over the ramp's slots, per vision, night): Cold Stone 12.1 / 6.1 / 15.4 / 11.7 (normal, protan, deutan, tritan); Ash 11.9 / 6.2 / 15.0 / 11.5; Bruise 12.3 / 6.6 / 13.2 / 11.8; Bleach 13.0 / 6.9 / 16.4 / 12.6; Pitch 13.5 / 7.6 / 16.8 / 13.1. Day minimum 12.5.
 - **50% dither mix** (averaged in linear light) of night slots 1 and 2 is 22.1 to 28.1 dE from crimson (normal) and 16.7 to 19.5 under protan. Night slots 0 and 1 mix: 20.8 or more under every vision. **Not gated, stated for honesty:** the Day mix of slots 2 and 3 is only 13.1 to 17.2 dE from crimson under protan, so by day a dithered dark mid-tone can sit near crimson for a protanope; shape and numeral carry the Guardian there (section 5).
-- **Dim crimson `#4a1620`** (slain-this-Campaign seal) against night slot 1 is now 16.4 to 17.0 under protan (the draft had 5.0 to 11.2) and at least 19.7 normal. Against crimson itself it is 10.4 normal and 7.5 protan, unchanged, so the struck numeral still carries that state.
+- **Dim crimson `#4a1620`** (slain-this-Campaign seal) against night slot 1 is 16.4 to 17.0 under protan and at least 19.7 normal. Against crimson itself it is 10.4 normal and 7.5 protan, so the struck numeral still carries that state.
 - Crimson against Day ground (as `--ember-text` in the light variant): 5.25, 5.57, 4.61, 6.02, 4.56:1.
 
 ### 3.4 Lamp amber

@@ -26,18 +26,18 @@ The design makes no manga claims. Names of Companions and Enemy Types come from 
 5. **Lineage actions (Exodus, Roll refunds, Begin Generation) need approval in the game UI**, not an agent-side "are you sure". [Recommendation]
 6. **The sandbox is built first.** Today `GameService.players` is keyed by WebSocket session id, so a Campaign dies with its connection [Repo]. Until persistence slots keyed by `PlayerId` exist (issues #9 to #12), an agent cannot attach to a human's Campaign. A Sandbox Campaign is the only durable thing an agent can drive.
 
-### Corrections made against the code and the research
+### What the code does today
 
-| The research or draft said | The repo says |
+| Topic | Fact |
 |---|---|
-| "10 ms invasion/combat tick" | **Combat runs on the 1000 ms loop.** `gameLoop()` (`game.loop.lifecycle-ms: 1000`) calls `triggerLifecycle` and `updateInvasion`, and `updateInvasion` calls `unitsAttack` and `enemiesAttack`. The 10 ms `invasionTimer` only calls `passingTime(10)`, which is Attrition. [Checked, `GameService` from line 301; `application.yml`] |
-| "Check where Unit names originate" | Unit names come from Datafaker (`BaseUnit` calls `new Faker().greekPhilosopher().name()`). Enemy names also come from Datafaker (`Enemy.nameFor`). **No player-controlled text exists in any state today.** It arrives with `.tdc` import, Campaign labels and multiplayer. One small existing hole: `handleUpgradeAction` logs the raw `upgradeId` string from the WebSocket. [Checked] |
-| Persistence design says `access()` is find-only | The code still does `players.computeIfAbsent(sessionId, ...)` (line 49), so an unknown credential would create a Campaign. The find-only change is planned, not built. [Checked] |
-| Source draft's "Tier 0, 1, 2" for confirmation levels | `CONTEXT.md` avoids bare "Tier" (it means Village Tier). This document uses **consent classes C0, C1, C2**. MCP's own "Tier 2" SDK ranking is written as "SDK ranking: Tier 2 (unrelated to Village Tier)". |
-| "A log of ticks per Floor and per Expedition" is in the roadmap | It is in `roguelite-layer.md` section 7, row H0 ("existing roadmap, no new work"), not in `roadmap.md`. The roadmap's Phase 1 does list actuator, `backend/src/test` and the injectable random. [Checked] |
-| An "injectable clock" is needed for a headless mode | **No clock exists.** `grep` for `Instant`, `Clock`, `currentTimeMillis`, `nanoTime`, `LocalDateTime` in `backend/src/main` returns nothing. Game time is the number of calls the two `@Scheduled` methods make. What is needed is a tick driver, not a clock (5.3). [Checked] |
-| "The same seed replays the same Floor 1 Garrison" (transcript A) | Only if Tower generation has its own random stream. With one per-Campaign stream, recruiting a Unit (which draws a random id and a Faker name) shifts every later draw. Section 5.5 requires split streams. [Inferred from `BaseUnit`, `Tower`, `TowerFloor`] |
-| 8 tools for an observer, 15 for a player | Counted from 4.1: 7 observer tools, 14 for a player with all three act scopes, about 18 for a dev token. |
+| Combat tick | **Combat runs on the 1000 ms loop.** `gameLoop()` (`game.loop.lifecycle-ms: 1000`) calls `triggerLifecycle` and `updateInvasion`, and `updateInvasion` calls `unitsAttack` and `enemiesAttack`. The 10 ms `invasionTimer` only calls `passingTime(10)`, which is Attrition. [Checked, `GameService` from line 301; `application.yml`] |
+| Text the player does not control | Unit names come from Datafaker (`BaseUnit` calls `new Faker().greekPhilosopher().name()`). Enemy names also come from Datafaker (`Enemy.nameFor`). **No player-controlled text exists in any state today.** It arrives with `.tdc` import, Campaign labels and multiplayer. One small existing hole: `handleUpgradeAction` logs the raw `upgradeId` string from the WebSocket. [Checked] |
+| Find-only `access` | `GameService.access()` calls `players.computeIfAbsent(sessionId, ...)` (line 49), so an unknown credential would create a Campaign. Find-only access is owned by the persistence server issue (#11) and is not built. [Checked] |
+| Confirmation levels | `CONTEXT.md` avoids bare "Tier" (it means Village Tier). This document uses **consent classes C0, C1, C2**. MCP's own "Tier 2" SDK ranking is written as "SDK ranking: Tier 2 (unrelated to Village Tier)". |
+| The tick log | The log of ticks per Floor and per Expedition is in `roguelite-layer.md` section 7, row H0 ("existing roadmap, no new work"), not in `roadmap.md`. The roadmap's Phase 1 lists actuator, `backend/src/test` and the injectable random. [Checked] |
+| Clock | **No clock exists.** `grep` for `Instant`, `Clock`, `currentTimeMillis`, `nanoTime`, `LocalDateTime` in `backend/src/main` returns nothing. Game time is the number of calls the two `@Scheduled` methods make. What is needed is a tick driver, not a clock (5.3). [Checked] |
+| Seeded replay | A seed replays the same Floor 1 Garrison only if Tower generation has its own random stream. With one per-Campaign stream, recruiting a unit (which draws a random id and a Faker name) shifts every later draw. Section 5.6 requires split streams (#59). [Inferred from `BaseUnit`, `Tower`, `TowerFloor`] |
+| Tool counts | Counted from 4.1: 7 observer tools, 14 for a player with all three act scopes, about 18 for a dev token. |
 
 ---
 
@@ -73,29 +73,24 @@ Why bots before LLMs for P1 [Recommendation]: the docs put a Campaign at roughly
 | **Deprecated:** Roots, Sampling, Logging, the HTTP+SSE transport, and OAuth Dynamic Client Registration (in favour of Client ID Metadata Documents; DCR stays available for compatibility). The Tasks feature moved to the extension `io.modelcontextprotocol/tasks`. Multi Round-Trip Requests (MRTR) replace server-initiated elicitation, sampling and roots. | [Checked, changelog "Deprecated" and "Major changes"] |
 | The official Java SDK `io.modelcontextprotocol.sdk:mcp` is at **2.0.1**, released on 19 Aug (2026 inferred from the release list). The 2.0.1 notes mention conformance-suite and dependency bumps only. It targets spec **2025-11-25**. The SDK page lists Java at **SDK ranking Tier 2** (unrelated to Village Tier). | [Checked: release page and Maven Central. "No `server/discover`, no Tasks classes, no `subscriptions/listen`" is [Research, jar inspected by the verifier]] |
 | Java SDK 2.2 is expected to implement 2026-07-28 and to work out of the box only with Boot 4.x. Evidence: one Spring maintainer's comment dated 2026-09-15 and a milestone page showing 5 of 21 issues closed with no due date. | [Research, primary, thin: one comment] |
-| Spring AI 2.0.x (2.0.1) uses SDK 2.0.0 and needs Boot 4.x. Spring AI 1.1.8 runs on Boot 3.5.x and pins SDK 0.18.3. Spring AI 2.1.0-M1 still uses SDK 2.0.0 and has no 2026-07-28 support. **From Spring AI 2.0 the Spring transports (`mcp-spring-webflux`, `mcp-spring-webmvc`) live in Spring AI, not in the MCP SDK.** Spring AI issue #6954 asks for SDK 2.0.x on Boot 3.5 and is open. | [Research, POM-verified] [Checked: reference docs list 2.0.1 / 1.1.8 / 1.0.9; issue #6954 states 2.0.0 requires Boot 4.1.0; the transport move is from a secondary summary] |
-| The `@McpTool` annotations moved packages between Spring AI 1.1.8 (`org.springaicommunity.mcp.annotation`) and 2.0.1 (`org.springframework.ai.mcp.annotation`). | [Research, jar-verified] |
-| In 1.1.8, the stateless and streamable WebFlux auto-configurations wire only `jsonMapper` and `messageEndpoint`. Neither `contextExtractor` nor `securityValidator` is wired, so per-request auth and Origin checks need our own transport bean or a filter in front. | [Research, bytecode-verified] |
-| CVE-2026-34237 (GHSA-hv2w-8mjj-jw22), CVSS 6.1: the Java SDK's SSE and streamable HTTP transport providers hardcoded `Access-Control-Allow-Origin: *`. The advisory's remediation lists 0.18.3, 1.0.1 and 1.1.1. One aggregator lists "0.83.0" for the old line, which looks like a typo. Whether the Spring WebFlux transports were affected was not established. | [Checked: advisory pages via search summary]. We do not rely on library CORS handling either way (6.1). |
-| Spring Boot 3.5 open-source support ended 2026-06-30 (commercial support to 2032). Boot 4.0 ends 2026-12-31. Boot 4.1 ends 2027-07-31. | [Checked: several aggregators agree; the official spring.io page was not opened] |
-| **Boot 4 dropped Undertow** (Servlet 6.1 gap; the Boot team opened issue #46917 and offers no replacement). A community starter `io.undertow:undertow-spring-boot-starter` targets Boot 4.1 and, per its README summary, passes 215 of 223 TCK tests with 8 known incompatibilities. Another fork, `jboss-fuse/spring-boot-undertow`, was tested against 4.0.6. | [Checked, secondary summaries; the README was not read in full] |
+| Spring AI 2.0.x (2.0.1) uses SDK 2.0.0 and needs Boot 4.1 (issue #6954). Spring AI 2.1.0-M1 still uses SDK 2.0.0 and has no 2026-07-28 support. **From Spring AI 2.0 the Spring transports (`mcp-spring-webflux`, `mcp-spring-webmvc`) live in Spring AI, not in the MCP SDK.** | [Research, POM-verified] [Checked: reference docs list 2.0.1; issue #6954 states 2.0.0 requires Boot 4.1.0; the transport move is from a secondary summary] |
+| Spring Boot 4.0 open-source support ends 2026-12-31 and Boot 4.1 ends 2027-07-31. | [Checked: several aggregators agree; the official spring.io page was not opened] |
+| **Boot 4 dropped Undertow** (Servlet 6.1 gap; the Boot team opened issue #46917 and offers no replacement). This repo keeps it through the community starter `io.undertow:undertow-spring-boot-starter` (ADR 0005): an unreleased `1.0.0.Alpha1-SNAPSHOT` built from source into the local Maven repository, with a local patch so that `/api/ws` upgrades. Per its README summary it passes 215 of 223 TCK tests with 8 known incompatibilities. Another fork, `jboss-fuse/spring-boot-undertow`, was tested against 4.0.6. | [Checked: ADR 0005 and the repo; the TCK figures are from a secondary summary] |
 | Claude Code supports `claude mcp add --transport http ... --header "Authorization: Bearer ..."` (short forms `-t`, `-H`), `${VAR}` and `${VAR:-default}` expansion in `command`, `args`, `env`, `url` and `headers`, and `headersHelper` (a command that prints a JSON object of headers; 10 s timeout; re-run once after a 401 or 403). Credential variables named like `ANTHROPIC_API_KEY` read as empty in remote `url`/`headers`, so name ours `TD_AGENT_GRANT`. It warns at 10,000 tokens of tool output and caps at 25,000 by default (`MAX_MCP_OUTPUT_TOKENS`). A successful text result over 50,000 characters is saved to a file unless the tool sets `_meta["anthropic/maxResultSizeChars"]` (ceiling 500,000). The SSE transport is deprecated there. | [Checked: Claude Code MCP docs] |
 | Claude Code's v2 runtime "asks HTTP, stdio and claude.ai connector servers whether they support the newer revision (2026-07-28) and uses it with those that do; it connects to every other server as v1 does". `MCP_PROTOCOL_NEGOTIATION=auto\|legacy` controls the probe. | [Checked: Claude Code MCP docs]. The probe mechanism is not described there; M0 check 6 observes it. |
 | Claude web and Desktop custom connectors accept fixed request headers but need a public HTTPS URL, so localhost does not work for them. | [Research, primary]. Not re-checked. |
-| This repo is Boot 3.5.3, Java 24, WebFlux on Undertow with Tomcat excluded. `@EnableWebFlux` is on `WebSocketConfig`. `@EnableScheduling` is on `TowerDungeonApplication`. Actuator is not in `pom.xml` but the roadmap's Phase 1 adds it. | [Checked] |
+| This repo is Boot 4.1.1, Java 24, Jackson 3 (`tools.jackson`), WebFlux on Undertow through the community starter. `@EnableWebFlux` is on `WebSocketConfig`. `@EnableScheduling` is on `TowerDungeonApplication`. Actuator is not in `pom.xml`; step M1 adds it. | [Checked] |
 | `application.yml` sets `management.endpoints.web.exposure.include: '*'` and `show-details: always`. Inert today (no actuator dependency) but dangerous once actuator is added. | [Checked] |
 
 ### 2.2 What is not verified, or where the research disagrees
 
 - **Which hosts speak 2026-07-28.** Claude Code's docs now say its v2 runtime negotiates and falls back to v1 behaviour [Checked], so a legacy-only (2025-11-25) server should still work there provided the probe fails cleanly. Other hosts (Claude web and Desktop, third-party clients) are unconfirmed; the second research report cited conflicting third-party issues. [Research, partly resolved]
-- **The drafter's prototype** (Boot 3.5.3 plus Undertow plus `@EnableWebFlux` working with the Spring AI 1.1.8 starter, the `STREAMABLE` mode leaking a roughly 17 KB stack trace in a 400 body, `server/discover` returning 500 or 400, `Origin: evil.example` returning 200) was **not re-run by either verifier or by the critic**. [Research, drafter-observed]
-- **Boot version needed by Spring AI 2.0.x.** The release post says "Boot 4.0 or 4.1". The POMs and issue #6954 point to 4.1.0 and nobody built against 4.0. Plan for 4.1. [Research, conflict]
-- **Whether swapping SDK 0.18.3 for 0.18.4 under Spring AI 1.1.8 works.** Untested. [Research]
+- **Boot version needed by Spring AI 2.0.x.** The release post says "Boot 4.0 or 4.1"; the POMs and issue #6954 point to 4.1.0. The repo is on 4.1.1. [Research, conflict]
 - **Java SDK 2.2 timing**, and any plan for `server/discover`, `subscriptions/listen` or Tasks in Spring AI. No public date found. [Research]
 - **Token cost** of `structuredContent` plus a duplicate JSON text block as the host presents it to the model. Unmeasured.
 - **Concurrency** of long-lived `td_wait` POSTs under Undertow beside the two schedulers. Unmeasured.
 - **Which static-header and OAuth options each Claude host supports**, and under which plan. Unconfirmed.
-- **The Undertow community starter's real state on Boot 4.1.** Only a README summary was seen.
+- **Whether the Undertow community starter carries MCP traffic.** Its state in this repo is known (ADR 0005); how long-lived `td_wait` POSTs and the protocol filter behave on it is for the spike.
 
 ### 2.3 Recommended placement [Recommendation]
 
@@ -106,7 +101,7 @@ Claude Code / other host
    | stdio (sandbox, CI)             | HTTP POST /mcp   Authorization: Bearer tdg_...
    v                                 v
  [ McpHttpFilter: size cap, Host and Origin check, bearer -> Principal, per-IP limit ]  binding-agnostic WebFilter
- [ MCP binding: protocol only ]   <- swappable (Spring AI 1.1.8 now, a Boot 4.1 binding later)
+ [ MCP binding: protocol only ]   <- swappable (Spring AI 2.0.x, or a hand-written binding)
    | reads ToolCatalogue / ResourceCatalogue / PromptCatalogue (data, with a manifest hash)
    v
  [ AgentFacade (port) ]  Principal(scopes, controller, campaign or sandbox or seat)
@@ -117,7 +112,7 @@ Claude Code / other host
  TickDriver:  Realtime (the two @Scheduled methods)   |   Manual (step on demand, Sandbox only)
 ```
 
-**What `@EnableWebFlux` changes [Inferred].** An explicit `@EnableWebFlux` makes Boot's `WebFluxAutoConfiguration` back off, so `spring.webflux.*` properties and Boot's codec customisation do not apply to this app. A `WebFilter` bean and router-function endpoints still work, because the delegating configuration registers a `RouterFunctionMapping` and applies filter beans. The existing `SimpleUrlHandlerMapping` (order 1, `/api/ws`) is unaffected by a `/mcp` mapping. M0 checks 1 to 3 cover this. The app's `ObjectMapper` is Jackson 2 (`com.fasterxml`); Boot 4 and SDK 2.x use Jackson 3, which is a M12 migration item.
+**What `@EnableWebFlux` changes [Inferred].** An explicit `@EnableWebFlux` makes Boot's `WebFluxAutoConfiguration` back off, so `spring.webflux.*` properties and Boot's codec customisation do not apply to this app. A `WebFilter` bean and router-function endpoints still work, because the delegating configuration registers a `RouterFunctionMapping` and applies filter beans. The existing `SimpleUrlHandlerMapping` (order 1, `/api/ws`) is unaffected by a `/mcp` mapping. M0 checks 1 to 3 cover this. The app's `ObjectMapper` is Jackson 3 (`tools.jackson`), the same family as Spring AI 2.x and SDK 2.x, so there is one mapper family to reconcile and not two (spike check 8).
 
 **Scheduling reality [Checked].** `@EnableScheduling` with Boot's default scheduler gives a **single** scheduler thread (pool size 1) for both `@Scheduled` methods. `forEachPlayer` also calls `access`, which takes each `GameState` monitor. A slow handler that holds a monitor delays that player's tick and, because it is one thread, everyone's.
 
@@ -147,12 +142,12 @@ There is no second port: Boot configures one server port. The path is guarded in
 
 | Option | Fit | Cost |
 |---|---|---|
-| **D. Spring AI 1.1.8 starter, `STATELESS` and `ASYNC`**, legacy era (spec 2025-11-25, SDK 0.18.3), tools registered programmatically from the `ToolCatalogue` | Works with today's clients per the drafter's unverified run. No Boot upgrade. | Old line. Boot 3.5 is out of open-source support. We supply the transport or filter for auth and Origin. |
-| **A. Hand-written stateless endpoint** on WebFlux, dual era (`initialize` fallback plus `server/discover`, and `resultType` on every result) | No new dependency. Independent of the annotation rename and Jackson 3. Fully testable by us. | We track the spec. 2026-07-28 request shapes (`_meta`, `Mcp-Method` and `Mcp-Name` headers, `-32020`, `ttlMs`, `cacheScope`, `resultType`) need conformance tests. |
+| **D. Spring AI 2.0.x starter, `STATELESS` and `ASYNC`** (spec 2025-11-25, SDK 2.0.0), tools registered programmatically from the `ToolCatalogue` | Same family as the app (Boot 4.1, Jackson 3) and the official path. | The Spring transports now live in Spring AI, and the community Undertow starter must carry them. We supply the filter for auth and Origin, because the auto-configuration does not wire per-request auth. |
+| **A. Hand-written stateless endpoint** on WebFlux, dual era (`initialize` fallback plus `server/discover`, and `resultType` on every result) | No new dependency. Independent of Spring AI releases and the annotation rename. Fully testable by us. | We track the spec. 2026-07-28 request shapes (`_meta`, `Mcp-Method` and `Mcp-Name` headers, `-32020`, `ttlMs`, `cacheScope`, `resultType`) need conformance tests. |
 | B. Sidecar in a first-class SDK (TypeScript, Python, C#, Go, Rust, Ruby) | Official and current. | A second deployable and an extra hop. |
-| C. Wait for Boot 4.1 and a Spring AI line on SDK 2.2 | Official path. | SDK 2.2 is only "expected". Couples MCP to a framework migration and to the Undertow question. |
+| C. Wait for a Spring AI line on SDK 2.2 (spec 2026-07-28) | Official and current. | SDK 2.2 is only "expected", so MCP would wait on a date nobody has. |
 
-**M0 spike (one day, S).** Eight pass/fail checks against Boot 3.5.3 plus Undertow plus `@EnableWebFlux`:
+**M0 spike (one day, S).** Eight pass/fail checks against Boot 4.1.1 plus the Undertow community starter plus `@EnableWebFlux`:
 
 1. The app boots with the starter present and `/api/ws` still returns 101.
 2. `claude mcp add --transport http` lists and calls a tool with a static bearer header.
@@ -161,9 +156,9 @@ There is no second port: Boot configures one server port. The path is guarded in
 5. A result with both `structuredContent` and the JSON text block: does the host put both in the model's context (token doubling)?
 6. A modern-era probe (`server/discover`) gets a 400 that Claude Code falls back from, not a 500 and not a hang. Repeat with `MCP_PROTOCOL_NEGOTIATION=legacy` to prove the legacy path alone works.
 7. `agent-stdio` boots with clean stdout.
-8. The library's `jsonMapper` and the app's `ObjectMapper` do not conflict (two Jackson 2 mappers, no autowiring ambiguity in `GameService`).
+8. The library's `jsonMapper` and the app's `ObjectMapper` do not conflict (both Jackson 3; one mapper bean, no autowiring ambiguity in `GameService`).
 
-If checks 1 to 4 pass, use option D. If any of 1 to 4 fails, build option A (M). Either way the swap is confined to `agent.mcp`. Do not use `@McpTool`. Pin the SDK at 0.18.3 or later for the CVE fix. When the project moves to Boot 4.1, re-bind (step M12). Undertow's lack of official Boot 4 support is a roadmap risk independent of MCP.
+If checks 1 to 4 pass, use option D (Spring AI 2.0.x). If any of 1 to 4 fails, build option A (M). Either way the swap is confined to `agent.mcp`. Do not use `@McpTool`. Take an SDK version that includes the CVE fix. Undertow's lack of official Boot 4 support (ADR 0005) is a roadmap risk independent of MCP.
 
 ---
 
@@ -674,7 +669,7 @@ Sizes: S small, M medium, L large (the roadmap's scale). M1 and M2 are the same 
 | # | Step | Size | Needs |
 |---|---|---|---|
 | M0 | **Spike and binding decision** (section 2.4) | S | none |
-| M1 | **Shared foundations:** `backend/src/test` and characterisation tests (#5); domain command records (so `agent` does not depend on `api.dtos`); `CommandResult`, validate-then-mutate, per-command exception handling, find-only `access`; `state_seq`, `EventLog`, capped Expedition Summary list; `StateProjection` with a size budget test; narrow actuator exposure | M | #5 |
+| M1 | **Shared foundations:** `backend/src/test` and characterisation tests (#5); domain command records (so `agent` does not depend on `api.dtos`); `CommandResult` (validate-then-mutate, per-command exception handling and find-only `access` are delivered by the persistence server issue #11 and assumed here); `state_seq`, `EventLog`, capped Expedition Summary list; `StateProjection` with a size budget test; narrow actuator exposure | M | #5 |
 | M2 | **Determinism:** `RandomSource` with three streams (#6 and 5.6), `EnumMap`, seeded shuffle and Faker, the two-JVM hash test | M | M1 |
 | M3 | **`TickDriver` and `SandboxRegistry`:** manual driver, loop skip, `agent-stdio` profile, `@ConditionalOnWebApplication`, per-Campaign config copy | M | M1 |
 | M4 | **Read surface over HTTP and stdio:** catalogue, `McpHttpFilter`, dev token, rate limiter, audit log, projection views, resources, filtered glossary, golden manifest, protocol tests | M | M0, M1 |
@@ -685,7 +680,9 @@ Sizes: S small, M medium, L large (the roadmap's scale). M1 and M2 are the same 
 | M9 | **Agent evals and CI hardening:** an eval set, a conformance run, a concurrency test | S to M | M5 |
 | M10 | **Planned-feature tools** as each lands: Trades (#19), Loadout (#21), Halt decisions, Lineage (#27 to #30), `td_sandbox_fork` (#10) | S each | the feature |
 | M11 | **Multiplayer seats:** labels, queues, tick-boundary command queue and `queued` results, per-seat limits, ladders, race tools, Standing Orders | L | the multiplayer design, M8 |
-| M12 | **Rebind to Boot 4.1 and a binding for spec 2026-07-28.** Includes Jackson 3, the Undertow question, and the Spring transports now living in Spring AI 2.x | M | the framework migration, a Spring AI line on SDK 2.2 |
+| M12 | **A binding for spec 2026-07-28.** Moves the Spring transports in Spring AI 2.x to the newer SDK line | M | a Spring AI line on SDK 2.2 |
+
+**Issues.** M0 is #31, M1 #32, M2 #59, M3 #33, M4 #63, M5 #64 and M6 #65; M7 onward have no issues yet.
 
 **Placement against the roadmap.** M1 and M2 sit in Phase 1. M3 to M7 do not depend on persistence and can run in parallel with Phases 2a and 2b; M3 to M5 no longer wait for M2. M6 produces the measurements the scaling pass (E0, Phase 4) otherwise lacks. M8 follows persistence P3 to P6. The first useful slice (M0 to M6) is about five M.
 
@@ -713,8 +710,8 @@ Sizes: S small, M medium, L large (the roadmap's scale). M1 and M2 are the same 
 
 ### 10.1 Risks
 
-1. **The binding rests on unverified research claims** (Origin handling, the stack-trace leak, `server/discover`, behaviour on Boot 3.5.3 with Undertow and `@EnableWebFlux`). Mitigation: the M0 spike and the `ToolCatalogue` seam.
-2. **The Spring AI 1.1.8 and SDK 0.18.x line is old, and Boot 3.5 is out of open-source support** (since 2026-06-30). The spec moved to a stateless revision the Java SDK does not yet implement, so a modern-only host could break the legacy binding (Claude Code falls back to v1 behaviour [Checked]; other hosts unconfirmed). Mitigation: the dual-era hand-written endpoint as a fallback, and the planned M12 rebind. Undertow's lack of official Boot 4 support is a separate roadmap risk.
+1. **The binding rests on unverified research claims** (Origin handling, the stack-trace leak, `server/discover`, behaviour on Boot 4.1.1 with the Undertow community starter and `@EnableWebFlux`). Mitigation: the M0 spike and the `ToolCatalogue` seam.
+2. **Spring AI 2.0.x is a young line on an unreleased web server.** The spec moved to a stateless revision the Java SDK does not yet implement, so a modern-only host could break the legacy binding (Claude Code falls back to v1 behaviour [Checked]; other hosts unconfirmed). Mitigation: the dual-era hand-written endpoint as a fallback, and step M12 when SDK 2.2 lands. The unreleased Undertow starter (ADR 0005) is a separate roadmap risk.
 3. **No Campaign exists for an agent to attach to** until persistence slots keyed by `PlayerId` land (#9 to #12). Until then only Sandbox and a dev Tap are possible, so the value of P3 and P4 arrives late.
 4. **Determinism is harder than issue #6 states.** Enum-keyed `HashMap` ordering, `Collections.shuffle`, Datafaker, a single shared random stream and the two fixed-rate tasks also break it. The split streams and the two-JVM test are essential.
 5. **The single scheduler thread and per-state monitors.** A slow MCP handler or a blocking `td_wait` could stall every player's tick.
@@ -731,7 +728,7 @@ Sizes: S small, M medium, L large (the roadmap's scale). M1 and M2 are the same 
 
 ### 10.2 Decisions for you
 
-1. **Protocol binding.** Run the one-day spike and choose Spring AI 1.1.8 stateless if checks 1 to 4 pass, otherwise a hand-written dual-era endpoint. Alternative: skip the spike and go straight to the hand-written endpoint.
+1. **Protocol binding.** Run the one-day spike and choose Spring AI 2.0.x stateless if checks 1 to 4 pass, otherwise a hand-written dual-era endpoint. Alternative: skip the spike and go straight to the hand-written endpoint.
 2. **Authentication.** Separate Agent Grants (my recommendation) or the Campaign Key as bearer (less code, but it hands an agent export, import, Exodus and Succession).
 3. **Should an agent ever drive a human's Campaign in a public build, or only Sandbox Campaigns?** I recommend yes, behind opt-in grants, with Lineage actions always needing UI approval.
 4. **Confirmation model.** UI approval for C2 (single-use, bound to arguments), no confirmation on Extraction, explicit amounts plus `WOULD_STARVE` on selling Food. Alternative: MRTR elicitation later, which needs a binding that supports 2026-07-28.
@@ -741,9 +738,9 @@ Sizes: S small, M medium, L large (the roadmap's scale). M1 and M2 are the same 
 8. **Agent seat policy in multiplayer.** Always labelled. A human-only queue by default. An agent-only queue with its own ladder. Mixed rooms only by an everyone-accepted flag and always unranked. Identical per-seat budgets and tool subsets, applied at tick boundaries with `queued` results.
 9. **Sandbox idle advance.** Cap simulated time at 6 hours per Campaign, split Village-only and Expedition ticks, and treat the measured idle rate as a finding.
 10. **Does a player-grant agent get the Enemy Type table?** I recommend no: only types it has met (UI parity). The full table only in sandbox and telemetry scopes.
-11. **Glossary.** Approve Agent Grant, Controller, Sandbox Campaign, Playtest, Approval, and decide on Standing Order and Seat. Decide whether a multiplayer withdrawal is Extraction or a new term. Decide whether `td_get_ledger` may ship as a minimal Ledger ahead of the village-economy work. Approve ADRs 0005 and 0006 as proposals (section 12).
+11. **Glossary.** Approve Agent Grant, Controller, Sandbox Campaign, Playtest, Approval, and decide on Standing Order and Seat. Decide whether a multiplayer withdrawal is Extraction or a new term. Decide whether `td_get_ledger` may ship as a minimal Ledger ahead of the village-economy work. Approve ADRs 0007 and 0008 as proposals (section 12).
 12. **Actuator.** Narrow exposure to `health,info,metrics` in the same change that adds the dependency.
-13. **Framework path.** Whether to schedule the Boot 4.1 migration (with its Undertow question) ahead of or alongside persistence, since MCP library choice depends on it.
+13. **Framework path.** Settled: the repo moved to Boot 4.1.1 before MCP was built (ADR 0005 keeps Undertow through the community starter), so the library choice no longer waits on a migration.
 14. **Sandbox balance experiments.** Allow per-Sandbox config overrides (needs per-Campaign `GameProperties` copies, which Memory and Mutations also need), or keep one shared config and a single `config_hash`.
 15. **Random stream split.** Accept three streams (Tower per Floor, combat, cosmetic) in the #6 implementation, so seeded comparisons are controlled.
 
@@ -781,8 +778,8 @@ All would be marked Planned. Each respects the existing `_Avoid_` lines.
 
 ## 12. Proposed ADRs (not written)
 
-- **ADR 0005: Agents act through grants, never the Campaign Key.** Extends ADR 0001 (anonymous Campaigns). Grants are stored beside the record and are not exported.
-- **ADR 0006: One tool catalogue behind a swappable MCP binding.** Records the library gate and the placement as a package, not a module. Numbered after existing ADR 0004 [Checked: `docs/adr` holds 0001 to 0004].
+- **ADR 0007: Agents act through grants, never the Campaign Key.** Extends ADR 0001 (anonymous Campaigns). Grants are stored beside the record and are not exported.
+- **ADR 0008: One tool catalogue behind a swappable MCP binding.** Records the library gate and the placement as a package, not a module. Numbered after existing ADR 0006 [Checked: `docs/adr` holds 0001 to 0006].
 
 Neither contradicts ADR 0001, 0002 or 0003. The race question in 8.4 touches ADR 0002 (the sealed Door).
 
@@ -880,15 +877,14 @@ tools/list with an observe-only grant       -> 7 tools; td_recruit is not listed
 
 ## 14. What I did not verify
 
-- Everything the research marks drafter-observed or unverified (the prototype results, host support for 2026-07-28 outside Claude Code, Java SDK 2.2 timing). The M0 spike turns these into checks.
+- Everything the research marks unverified (host support for 2026-07-28 outside Claude Code, Java SDK 2.2 timing). The M0 spike turns these into checks.
 - The Angular frontend. Parity claims about "what the UI shows" are a rule, not checked against the templates.
-- The class names of the 0.18.x stateless tool-specification API (from memory of the SDK; confirm in M0).
+- The class names of the Spring AI 2.0.x stateless tool-specification API (confirm in M0).
 - Token and size figures for projections (estimates; M1 measures them).
 - Whether `agent-stdio` boots with the current `@EnableWebFlux` configuration, and the `@EnableWebFlux` effects listed in 2.3 (inferred).
 - Concurrency of long-lived `td_wait` POSTs under Undertow beside the scheduler.
 - Enum `hashCode()` ordering differences across JVM runs (stated from the JDK contract, not run).
-- The Undertow community starter's compatibility on Boot 4.1, the Spring AI 2.0 transport move, the SDK 2.0.1 release year, and the Boot support dates beyond secondary summaries.
-- Whether the Spring WebFlux transports in Spring AI 1.1.8 were affected by CVE-2026-34237.
+- The Undertow community starter carrying MCP traffic on Boot 4.1.1, the Spring AI 2.0 transport move, the SDK 2.0.1 release year, and the Boot support dates beyond secondary summaries.
 - The equivalence claim between `attritionTick(1000)` and 100 steps of 10 ms (reasoned from `passingTime`, `removeUnit` and `updateInvasion`; the 5.6 test proves it).
 - All hand-computed transcript numbers.
 

@@ -61,7 +61,7 @@ Restated in glossary terms:
 | 4 | Nothing is replayable. `ThreadLocalRandom` is everywhere, `units` is a `HashMap` keyed by an enum, and ids are random ints. [code] | Seeded Garrisons, golden replays and fair simultaneous Extraction all need an injected `RandomGenerator`, `EnumMap`, and sequence ids first. |
 | 5 | Persistence, the Campaign Key and the Held Party rule are designed but not built. Today `closeSession` deletes the `GameState`, so nothing "already stops" offline. [code] | Without them a refresh destroys a Trial. Races ship after the Key handshake. A throwaway prototype is possible earlier. |
 | 6 | ADR 0001 (status proposed) freezes the Village offline and holds a disconnected Party. | A shared real-time Floor cannot wait. A Company never holds. Held survives only where nobody else can be wronged. This amends ADR 0001 (task G0). |
-| 7 | Boot 3.5 has had no OSS patches since 2026-06-30. Boot 4 drops Undertow. [research, secondary] | Decide the server before building the WebSocket layer. Otherwise the transport work is done twice. |
+| 7 | Boot 3.5 had no OSS patches after 2026-06-30 and Boot 4 drops Undertow. The repo is now on Boot 4.1.1 and keeps Undertow through the community starter (ADR 0005, an unreleased snapshot). [code, ADR 0005] | The server line is settled: the WebSocket layer is built on Undertow and Boot 4.1.1. If the starter proves unreliable, Reactor Netty is the fallback. |
 | 8 | The upper Tower is unreachable (E0 scaling pass pending). | Race Finish Floors are limited to Guardian Floors 10, 20 or 30. The Door and the Summit race are blocked. |
 | 9 | `enemiesAttack` picks a Unit Type first, then a Unit. [code] | One Porter is as likely a target as 29 Warriors. That is a fairness defect once Parties share a Floor. Make targeting Unit-uniform across the union. |
 | 10 | Loot in hand can Recruit mid-Expedition (`getSpendableCredit` = credit + carriedCredits), and REINFORCE draws from the Pantry. [code] | Both are cross-boundary calls. A Company step must never reach into a Campaign. |
@@ -97,13 +97,13 @@ Each stage is playable without the next. Stage 3 is the first thing to cut. Stag
 |---|---|
 | Credits | 10 (buys 3 Warriors: the Recruit loop spends while `spendable > cost`, 10 > 3, 7 > 3, 4 > 3, then 1) |
 | Villagers, Food | 20 Villagers, 100 Food |
-| Roster | Warrior, Archer, Porter |
+| Roster | Warrior, Archer, Porter recruitable; the four Founders (Yuva five times stronger, as in Generation 1) already in the reserves, with strengths and phobias drawn from the Terms so every Contender starts with the identical four |
 | Roll, Epitaphs, Tower Memory | None. Tower Memory m = 0. |
 | Shortcuts, Upgrades, Milestones | None open at the start. They are earned inside the Trial by the usual thresholds, with the counting rule below. |
 | Package B systems (Trades, Stockroom, Trust, Loadout) | Whatever has shipped, at Village Tier I rules, identical for all. |
 | Mutations (v2) | Sealed in the Terms and the same for all, or none. |
 
-**Terms.** `raceId`, `kind` (SEASON or SPRINT), `planVersion` (pins the Tower plan so old results stay valid), `leversVersion` (pins which Architecture gameplay levers are on; they are off by default, architecture doc 4.1), `seed` (server only, never sent), `finishFloor`, `opensAt`, `startsAt` (Sprint), `closesAt`, `limit`, `maxAttempts`, `maxConcurrent`, and later `echoes`, `aidEnabled`, `jointGuardians`.
+**Terms.** `raceId`, `kind` (SEASON or SPRINT), `planVersion` (pins the Tower plan so old results stay valid), `configHash` (pins the balance config, so results are valid only for the config they were played on), `leversVersion` (pins which Architecture gameplay levers are on; they are off by default, architecture doc 4.1), `seed` (server only, never sent), `finishFloor`, `opensAt`, `startsAt` (Sprint), `closesAt`, `limit`, `maxAttempts`, `maxConcurrent`, and later `echoes`, `aidEnabled`, `jointGuardians`.
 
 **Rules**
 
@@ -113,11 +113,11 @@ Each stage is playable without the next. Stage 3 is the first thing to cut. Stag
 
    | Preset | Finish Floor | Guardian | Planned time [estimate] | Needs [estimate] |
    |---|---|---|---|---|
-   | Short | 10 | Dead Soldiers, 52.5 hp, 6.25/tick | 10 to 15 min | A few Warriors and Archers |
-   | **Standard (first Terms)** | 20 | Tower Beast, 160 hp, 15/tick | 35 to 50 min | About 20 mixed Units and 2 to 3 Porters |
+   | **Short (first Terms)** | 10 | Dead Soldiers, 52.5 hp, 6.25/tick | 10 to 15 min | A few Warriors and Archers |
+   | Standard | 20 | Tower Beast, 160 hp, 15/tick | 35 to 50 min | About 20 mixed Units and 2 to 3 Porters |
    | Long | 30 | Chimera, 315 hp, 31.25/tick | 70 to 100 min | About 40 Units including Mages (Chimera takes x1.5 from Magic and x0.75 from the rest), 7 or more Porters |
    | Blocked until E0 | 40 and above | | | |
-4. **Seeded Garrisons.** The Garrison of Floor `f` on the `k`-th arrival (a Start Floor counts as an arrival) is `floorSeed(f, k) = splitmix64(seed ^ f * C1 ^ k * C2)`. The k-th arrival at Floor f draws the same random numbers for every player, so a re-arrival rerolls the same way for all. Combat dice stay unseeded: equal Garrisons, not equal luck. The Garrison is equal **before** Easing and Risen: Easing, which a Trial earns by slaying Guardians, still thins it, and a Wipe's Risen thicken it. That is earned history and is kept. Because Easing changes the Floor Difficulty, the same random numbers can map to different Enemy Types for different players, and the text says "the same draw", not "the same Enemies".
+4. **Seeded Garrisons.** The Garrison of Floor `f` on the `k`-th arrival (a Start Floor counts as an arrival) is `floorSeed(f, k) = splitmix64(seed ^ f * C1 ^ k * C2)`. The k-th arrival at Floor f draws the same random numbers for every player, so a re-arrival rerolls the same way for all. Combat dice stay unseeded: equal Garrisons, not equal luck. The same split applies to the per-unit draws: the Terms seed the items the tower yields on each floor and the four Founders' rolled strengths and phobias, so every Contender starts with the identical four; combat dice, Aim and miss rolls, who finds an item in a Bundle, and the strengths and phobias of units recruited during the Trial stay unseeded luck. The Garrison is equal **before** Easing and Risen: Easing, which a Trial earns by slaying Guardians, still thins it, and a Wipe's Risen thicken it. That is earned history and is kept. Because Easing changes the Floor Difficulty, the same random numbers can map to different Enemy Types for different players, and the text says "the same draw", not "the same Enemies".
 5. **Two ways to run it.**
    - **Season:** open 7 to 14 days. A player starts a Trial whenever they like, with up to `maxAttempts` = 3 attempts, and the best finish counts. The clock is `ticksSinceStart` (lifecycle ticks). Under the persistence design the Village and the Expedition are frozen while nobody is connected (ADR 0001; the current code deletes the state instead), so connected time orders the table and nobody races a calendar. Cap: 90 minutes of ticks. The attempt counter lives in the server's results store keyed by `(raceId, playerId)`, never in the Trial file, and a Trial file cannot be exported or imported, so an older file cannot buy another attempt. The cap `maxConcurrent` limits connected Trials (20 until the compact frame lands), not registrants.
    - **Sprint:** a scheduled start, wall clock from `startsAt`, no pause. A Held Party freezes the Village but not the Race clock. After 20 minutes without a connection the Contender is marked LOST_CONTACT.
@@ -199,7 +199,7 @@ Guardian Floors are the natural meeting point. A Guardian pays triple, and the c
 1. **The Stand.** The first Party to reach a Guardian Floor below the Finish Floor opens a Stand. A later Party sees "A Stand is open: n Parties, the Guardian at H" and answers **Enter** or **Pass** within one tick (no answer means Pass). Pass means it fights its own seeded Guardian. Entry closes when the Guardian is below half health (H < 0.5): a late entrant adds 0.75 x base health, so unlimited late entry would let a griefer re-inflate a nearly dead Guardian on the Parties that stayed. A Party arriving after the Guardian is dead fights its own seeded Guardian. No waiting window: waiting costs Attrition, and a 10 hp Unit dies in 10 ticks.
 2. **Scaling.** Guardian health x(1 + 0.75(n-1)) for n Parties entered. The Guardian strikes once per Party present per tick (A's `s(n) = n`), where **present** means entered and not yet through the stair. Otherwise per-Party risk would be about half of solo at n = 2. With the strike rule, per-Party exposure is (1 + 0.75(n-1))/n of solo: 0.875, 0.833 and 0.813 for n = 2, 3, 4 [inferred]. Co-op is meant to be 12 to 19% safer here, no more. **Leaving never shrinks the Guardian and it never heals.** H is the Guardian's remaining hp as a fraction of its current maximum, including entrants' additions.
 3. **Targeting.** The Guardian picks a random Unit across all Parties present (union, Unit-uniform).
-4. **Loot.** Instanced per Party present **at the kill** (the roster as it stands at the end of the killing tick), unchanged formulas (Guardian x3). Paid in the next tick's payout step, so a channel that completes in the killing tick still counts as present. Each Party's fraction is `f = min(1, Effort / (0.5 x highest Effort among Parties present))`. A Party below 0.2 earns no Floor Loot, no Easing credit and no Highest Floor or Toll credit for that Floor. A ramp relative to the highest Effort replaces the earlier cliff at 20% of the mean: the mean falls as passengers are added, so a cheap Party could pass it, and a cliff invites tuning to the edge. **Effort** = hp actually removed from Enemies after Weakness (overkill excluded) + hp actually restored (overheal excluded) + 0.5 x hp lost to Enemy hits (Attrition and Starvation excluded). Multiplied by `L(n) = 1 - 0.05(n-1)`, n being the Parties present at the kill (ARC Raiders: safe co-op needs lower Loot [research]). `loot-yield` (1.0) is the valve. Guardian slain is credited to Easing for every present Party with `f >= 0.2`.
+4. **Loot.** Instanced per Party present **at the kill** (the roster as it stands at the end of the killing tick), unchanged formulas (Guardian x3). Paid in the next tick's payout step, so a channel that completes in the killing tick still counts as present. Each Party's fraction is `f = min(1, Effort / (0.5 x highest Effort among Parties present))`. A Party below 0.2 earns no Floor Loot, no Easing credit and no Highest Floor or Toll credit for that Floor. The ramp is relative to the highest Effort, not a cliff at 20% of the mean: the mean falls as passengers are added, so a cheap Party could pass a cliff, and a cliff invites tuning to the edge. **Effort** = hp actually removed from Enemies after Weakness (overkill excluded) + hp actually restored (overheal excluded) + 0.5 x hp lost to Enemy hits (Attrition and Starvation excluded). Multiplied by `L(n) = 1 - 0.05(n-1)`, n being the Parties present at the kill (ARC Raiders: safe co-op needs lower Loot [research]). `loot-yield` (1.0) is the valve. Guardian slain is credited to Easing for every present Party with `f >= 0.2`.
 5. **Calling the stair.** A Party leaving a Stand ends its Expedition as an Extraction. Channel: 3 ticks, announced to all, still fighting and taking Attrition and hits. All calls in one tick resolve together before combat. Cancel allowed before completion, then a 5-tick cooldown, and a cancelled call voids the follow window. **Brace:** no call in the 3 ticks after entering. **Pressed hold** (core, not optional): while another Party is Pressed (half its Units dead, or its mean hp under 30%), a channel is held until that Party recovers or is lost, for at most 3 extra ticks. A leaver cannot walk out on a comrade at the moment it goes under.
 6. **Rearguard Share** (section 4.4): a transfer of Loot in hand and Supplies to the Parties that stay. H is read at channel completion, not at the call, so the damage the leaver does during its channel counts. No new Loot enters from nowhere.
 7. **The Share banks only for those who stand to the kill.** A recipient that calls the stair before the Guardian dies forfeits the Share it received to the Tower ("It stays on the Floor"). This closes the free ride in 4.5 (collect the Share, then leave alone at no Share).
@@ -218,7 +218,7 @@ Guardian Floors are the natural meeting point. A Guardian pays triple, and the c
 | Two Parties | 280 | 5 (4.3 rounds up) | 8, so 4 per Party | 2 to 3 |
 | Two Parties, one calls after tick 1 (its channel runs ticks 2 to 4 and it keeps fighting) | 280 | 5 | 8 | 2 to 3. The leaver deals 4 of the 5 ticks; 20 hp remain for the stayer, who needs 1 more tick. At completion H = 0.07, so the Share is 0.40 x 0.5 x 0.07 = 0.014. |
 
-At Floor 20 the rounding removes the benefit of joining (the joint fight is as long as the solo one) and a call costs the stayer almost nothing. The earlier table (4 ticks, 8 ticks for the stayer) assumed the leaver stops fighting at once. The externality is real only where the fight is longer than the channel (above). The stayer pays for the leaver's exit in time and Units only then, which is why the formula in 4.4 is priced to the pressure and not a flat 25% of Supplies.
+At Floor 20 the rounding removes the benefit of joining (the joint fight is as long as the solo one) and a call costs the stayer almost nothing. The externality is real only where the fight is longer than the channel (above). The stayer pays for the leaver's exit in time and Units only then, which is why the formula in 4.4 is priced to the pressure and not a flat 25% of Supplies.
 
 ### 3.6 Stage 5: The Company (the shared front)
 
@@ -328,7 +328,7 @@ Reference Party: 6 Warriors, 4 Archers, 2 Porters. It costs 50 Credits (18 + 20 
 
 ### 4.2 One Party deciding alone [inferred]
 
-Stay beats leave when `p >= (1 - tau) x A / (A + g)`, with `A` the Loot in hand, `g` the next Floor's pay, `tau` the fraction of `A` that leaving costs, and `p` the survival chance. (The earlier text wrote `(A - tau)`, which mixed a fraction with an amount; the table below was always computed with the fraction.) A row is the Floor the Party stands on, deciding whether to fight the next one: row 9 faces the Floor 10 Guardian.
+Stay beats leave when `p >= (1 - tau) x A / (A + g)`, with `A` the Loot in hand, `g` the next Floor's pay, `tau` the fraction of `A` that leaving costs, and `p` the survival chance. A row is the Floor the Party stands on, deciding whether to fight the next one: row 9 faces the Floor 10 Guardian.
 
 | Floor | tau = 0 | tau = 20% | tau = 40% | tau = 0, Start Floor 15 |
 |---|---|---|---|---|
@@ -341,7 +341,7 @@ With free Extraction a Party must be 77 to 88% sure to stay once it holds Loot f
 
 ### 4.3 The baseline: instant, free Extraction on a shared Floor
 
-Floor 30 Guardian (Chimera, 315 hp). Two Parties each hold A = 7,065 with g = 1,305. Stay-Stay pays `p x (A + g x L(2))` with L(2) = 0.95; a lone stayer pays `p x (A + g)`. The earlier table omitted L(2).
+Floor 30 Guardian (Chimera, 315 hp). Two Parties each hold A = 7,065 with g = 1,305. Stay-Stay pays `p x (A + g x L(2))` with L(2) = 0.95; a lone stayer pays `p x (A + g)`.
 
 **Panel 1: p = 0.70 if both stay, 0.25 if one stays alone against a Guardian built for two.**
 
@@ -366,7 +366,7 @@ Now Extract is no longer dominant: Stay is the best reply to Stay (7,474 > 7,065
 **The externality.** The Garrison does not shrink when a Party leaves. With n equal Parties and m left, the remaining fight costs each remaining Unit P times as much, and P depends on the fight:
 
 - **Garrison Floor (Stage 5).** A fixed number of Enemies each strike once per tick. Fewer Units take the same strikes (n/m) and the fight lasts longer (n/m), so P = (n/m)^2.
-- **Guardian (Stage 4 and Guardian Floors in Stage 5).** The Guardian strikes once per Party present, so the strike rate per Unit does not change when a Party leaves. Only the fight's length does, so P = n/m. The earlier text used (n/m)^2 for Guardian fights as well, which overpriced every Guardian leave.
+- **Guardian (Stage 4 and Guardian Floors in Stage 5).** The Guardian strikes once per Party present, so the strike rate per Unit does not change when a Party leaves. Only the fight's length does, so P = n/m.
 
 | n to m | 2 to 1 | 3 to 2 | 3 to 1 | 4 to 3 | 4 to 1 |
 |---|---|---|---|---|---|
@@ -392,20 +392,20 @@ Now Extract is no longer dominant: Stay is the best reply to Stay (7,474 > 7,065
 
 ### 4.5 The designed game
 
-Floor 30 Guardian, two Parties, A = 7,065, g = 1,305, L(2) = 0.95, mid-fight H = 0.6, Share 0.12 x A = 848 (Guardian shape, 2 to 1). Survival placeholders: p = 0.70 if both stay, 0.30 for a Party alone with a Guardian built for two, 0.90 for a caller covered by the stayers, 0.85 if both call at once (a call is a 3-tick channel; the earlier text used 0.85 without defining it). V is the unpriced value of Easing and Highest Floor. Payoffs in Credits at sell price:
+Floor 30 Guardian, two Parties, A = 7,065, g = 1,305, L(2) = 0.95, mid-fight H = 0.6, Share 0.12 x A = 848 (Guardian shape, 2 to 1). Survival placeholders: p = 0.70 if both stay, 0.30 for a Party alone with a Guardian built for two, 0.90 for a caller covered by the stayers, 0.85 if both call at once (a call is a 3-tick channel). V is the unpriced value of Easing and Highest Floor. Payoffs in Credits at sell price:
 
 | Row / Column | Stay | Call |
 |---|---|---|
 | **Stay** | 5,813 + 0.70V / 5,813 + 0.70V | 2,765 + 0.30V / 5,595 |
 | **Call** | 5,595 / 2,765 + 0.30V | 6,005 / 6,005 |
 
-(The earlier matrix used the Garrison-shaped Share, 1,272, for a Guardian fight and omitted L(2). Recomputed: Stay beside Call is 0.30 x (7,065 + 1,305 + 848); the caller is 0.90 x (7,065 - 848); both calling is 0.85 x 7,065.)
+(Stay beside Call is 0.30 x (7,065 + 1,305 + 848); the caller is 0.90 x (7,065 - 848); both calling is 0.85 x 7,065.)
 
 With V = 500, Stay and Stay pays 6,163 each. Results:
 - **Two equilibria, (Stay, Stay) and (Call, Call): a stag hunt.** Staying beats calling when `p >= 0.674` at V = 0 and `0.636` at V = 500 (earlier: 0.623 and 0.588).
 - (Stay, Stay) is payoff-dominant from V >= 274. At V = 0 the Call pair wins by 192. The unpriced gains are what tip it.
 - (Call, Call) is risk-dominant. Deviating from (Stay, Stay) costs 218 at V = 0 and 568 at V = 500. Staying alone against a calling partner costs 3,240 at V = 0 and 3,090 at V = 500. **Trust and the visible stair record are the coordination device.** The weak point is that deviating from (Stay, Stay) costs only 218: at the Guardian shape and a 0.40 coefficient calling is nearly free. Doubling the coefficient to 0.80 raises it to 981. The coefficient is what the simulator must set.
-- **The war of attrition, and the free ride.** Without the forfeiture rule (3.5 rule 7), if A calls and B waits out the channel, B receives the Share and may then leave alone at no Share: 0.85 x (7,065 + 848) = 6,726 against A's 5,595 and the 6,005 both would get by calling together. The earlier text computed this as 7,086 with the Garrison Share. That makes waiting strictly better than calling together, so nobody calls first. With forfeiture B's payoff for leaving is 6,005 whenever it leaves, waiting buys nothing, and the stall costs only risk. A hard window still has a cliff: a spiteful B who calls at tick 4 instead of tick 3 makes A pay 848 and gains nothing. That is accepted and bounded by the Share; a cancelled call voids the window.
+- **The war of attrition, and the free ride.** Without the forfeiture rule (3.5 rule 7), if A calls and B waits out the channel, B receives the Share and may then leave alone at no Share: 0.85 x (7,065 + 848) = 6,726 against A's 5,595 and the 6,005 both would get by calling together. That makes waiting strictly better than calling together, so nobody calls first. With forfeiture B's payoff for leaving is 6,005 whenever it leaves, waiting buys nothing, and the stall costs only risk. A hard window still has a cliff: a spiteful B who calls at tick 4 instead of tick 3 makes A pay 848 and gains nothing. That is accepted and bounded by the Share; a cancelled call voids the window.
 
 | Rule set | Dominant strategy | What decides |
 |---|---|---|
@@ -495,7 +495,6 @@ Three Parties stand at the Floor 30 Threshold. The Chimera is scaled 315 x (1 + 
 4. Tick 13: Hypatia's Party is lost (a Wipe) while the stair is held. Its Loot in hand is lost, and the Pressed hold ends. Zeno's channel completes at once. The Share goes to Crates's Party alone, subject to the 50% cap. Zeno's stair is shut. Crates's Party is the only Party left and may call at no Share.
 5. Crates stays, clears, and is paid 1,305 x L(1) = 1,305 (n is the Parties present at the kill) plus the Share plus Easing.
 
-(The earlier version had the Share at 0.156 with the Garrison shape, Zeno through at tick 12 despite a hold, and a payout of 1,305 x L(3).)
 
 ---
 
@@ -509,7 +508,7 @@ Three Parties stand at the Floor 30 Threshold. The Chimera is scaled 315 x (1 + 
 | 4 | The same. Joint Guardians sit on the way and may cost time or Units, but the Finish Floor's Guardian is fought alone. |
 | 5 | Two columns, never summed. **Floors Stood** (the last Floor the Party was present on, with Summit Conquered above all). **Cost** (Loot banked, Units lost, Share given and received). Equal Floors Stood are shown as equal. There is no single Place. |
 
-The earlier draft ordered a Company by Effort at the Dragon's death, then Floors Stood, then later departure tick. That rewards the wrong things. Effort turns the Summit into a damage meter that favours whoever brought the most Units. The last Floor stood plus "later tick" placed a Party Wiped at tick 300 above one that Extracted at tick 280, which made withdrawing strictly worse in the order and removed the author's second competition. "First to the Summit" has no meaning on a shared front: every Party present arrives at the same tick. Everyone with the Door open present at the Dragon's death conquers it together. Effort is shown beside the columns and orders nothing.
+A Company is not ordered by Effort at the Dragon's death, nor by Floors Stood and then later departure tick, because that rewards the wrong things. Effort would turn the Summit into a damage meter that favours whoever brought the most Units. The last Floor stood plus "later tick" would place a Party Wiped at tick 300 above one that Extracted at tick 280, which would make withdrawing strictly worse in the order and remove the author's second competition. "First to the Summit" has no meaning on a shared front: every Party present arrives at the same tick. Everyone with the Door open present at the Dragon's death conquers it together. Effort is shown beside the columns and orders nothing.
 
 **Everyone with the Door open may reach Victory.** The race is non-zero-sum. Nothing is ordered across Companies. There is no global board.
 
@@ -563,7 +562,7 @@ The earlier draft ordered a Company by Effort at the Dragon's death, then Floors
 | Recruit from Loot in hand | Not possible inside a Company. Solo keeps it. A rule difference, flagged in section 11. |
 | Gifts | None. Units, Supplies and Loot never pass between Parties, except by the Rearguard Share (and Aid in private Stage 3 Races, Units and Supplies only). |
 | Vault | Touched only at settlement. The Share moves Loot in hand, never Vault contents. |
-| Quarry Heap, Trust, Salt, Dragon Spores | Quarry Heap delivery rides settlement. Loadout travels in the Departure record. Trust (Package B R20) is personal: earned only on a Party's own Extraction from its own survivors, and a Wipe burns half of that Party's own unspent Trust. The Share moves no Trust. |
+| Quarry Heap, Trust, Salt, Dragon Spores | Quarry Heap delivery rides settlement. Loadout travels in the Departure record. Trust (Package B R20) is personal: earned only on a Party's own Extraction from its own survivors, and a Wipe neither earns nor burns any of it. The Share moves no Trust. |
 | Wipe | All Loot in hand of that Party is lost. Its Highest Floor still counts where `f >= 0.2` (3.6). A Wipe does not end the Company. Only a Party's own Expedition ends. |
 | Risen on a Wipe | In a Race Trial: Package B D1 as written (Wipe only, the Floor where the Party fell, never on a Guardian Floor, 15 hp and 5 damage Dead Soldiers). In a Company: none in v1 (3.6). |
 | Easing | Credited to each Party present with `f >= 0.2` at the Guardian's death. A leaver forfeits it. This is the strongest non-Loot reason to stay. |
@@ -634,7 +633,7 @@ Simultaneous Extraction is fair because commands are accepted into tick N+1 with
 
 Transport stays one WebSocket at `/api/ws`. Replace the static `switch` with a `CommandRouter`: one codec per action, central validation, rate limiting and per-message `try/catch`. A bad payload yields a `notice`, never an exception.
 
-New client messages: `RACE_JOIN`, `RACE_LEAVE`, `COMPANY_CREATE` (opens a Gathering), `COMPANY_JOIN {code}`, `COMPANY_COMMIT` (including the pre-set Threshold answer), `COMPANY_READY`, `COMPANY_KICK` (Gathering only), `COMPANY_LEAVE` (Gathering only, in flight leaving is Extraction), `COMPANY_DEPART`, `EXTRACT`, `EXTRACT_CANCEL`, `STAND_ENTER {enter}` (Stage 4), `COMMIT {stand}` (Threshold), `EMOTE {id}`, `PING`, `WATCH {watchCode}` on `/api/ws/watch`. (The earlier `RULE {onDrop}` was a leftover of Package A's Standing Order. The lost-contact rule is fixed, so the message is removed.)
+New client messages: `RACE_JOIN`, `RACE_LEAVE`, `COMPANY_CREATE` (opens a Gathering), `COMPANY_JOIN {code}`, `COMPANY_COMMIT` (including the pre-set Threshold answer), `COMPANY_READY`, `COMPANY_KICK` (Gathering only), `COMPANY_LEAVE` (Gathering only, in flight leaving is Extraction), `COMPANY_DEPART`, `EXTRACT`, `EXTRACT_CANCEL`, `STAND_ENTER {enter}` (Stage 4), `COMMIT {stand}` (Threshold), `EMOTE {id}`, `PING`, `WATCH {watchCode}` on `/api/ws/watch`. (There is no `RULE {onDrop}` message: the lost-contact rule is fixed.)
 
 **Heartbeat.** Contact is declared lost by the server, not by the OS: a `PING` from the client every 2 s, lost after 6 s of silence, because a half-open mobile connection can look open for minutes. The 10-tick Hold starts then, so the whole path to an automatic call is about 6 + 10 + 3 ticks.
 
@@ -698,7 +697,7 @@ No delta compression in v1. Frames are full, idempotent snapshots tagged `tick`.
 | R7 | Campaign Key handshake, close codes, `GameFrame` with `kind`, a reconnecting client socket. | The frontend socket today has no key, no reconnect and a hard-coded `ws://localhost:8080`. |
 | R8 | `CommandRouter` with codecs, a size cap and rate limits. | Unauthenticated input becomes shared-state input. |
 | R9 | A `CompanyScheduler`, confinement assertion, `Throwable` guard, tick re-anchoring, heartbeat. | The default pool has one thread. |
-| R10 | **Decide the server and the Boot line.** Boot 3.5 has had no OSS patches since 2026-06-30 and Boot 4 drops Undertow. The pom excludes only `spring-boot-starter-tomcat` from the WebFlux starter and adds the Undertow starter, so deleting the Undertow starter should leave Reactor Netty, Boot's default WebFlux server [code, change not run]. | A transport rewrite later redoes R7 to R9. |
+| R10 | **The server and the Boot line (settled).** The repo moved to Boot 4.1.1 and keeps Undertow through the community starter (ADR 0005). Reactor Netty, Boot's default WebFlux server, remains the fallback. | None: the transport is built once, on the settled stack. |
 | R11 | `WebSocketConfig` has `@EnableWebFlux`, so Boot's auto-configuration backs off and `spring.codec.max-in-memory-size` has no effect. | A trap for any REST body limits. |
 | R12 | Slot selector in the handshake (real Campaign or Trial), server-side attempt counter, Trial file not exportable. | One connection serves one slot, and an old file must not buy attempts. |
 
@@ -761,7 +760,7 @@ No delta compression in v1. Frames are full, idempotent snapshots tagged `tick`.
 
 **Principles.** Serious, plain, no praise. Losses are written like gains. The Tower does not care who is watching. No banner, no fanfare, no sound. No icons or animation on the call confirmation. Use the glossary: Extraction, Wipe, Floor, Garrison, Guardian, Loot, Party, Unit. Never write retreat, run, climb (as a noun), boss, score, rank, win, Gate or Haul. Do not use "Standing" (an `_Avoid_` under Village Tier). In UI copy the act of leaving in a Company is "call the stair" (copy only, not a glossary term). **That phrase collides with five planned terms:** the Stair (Package C R16, with Repairs), Narrow Stair (an Inheritance), Severed Stair and Long Stair (Mutations), and "The Toll on the Stair" (D6). If the author prefers one word, "Extract" is the glossary's own and needs no new term (decision).
 
-**Colour.** ADR 0004 fixes Guardian crimson as a role colour. The village doc's slabs already use crimson for "Units lost", "Loot lost" and "Trust burned". This design's debts (Share owed) should probably take weight or underline, not crimson, to keep crimson meaning loss of what is carried, not an obligation. Danger must never rely on colour alone (ADR 0003).
+**Colour.** ADR 0004 fixes Guardian crimson as a role colour. The village doc's slabs already use crimson for "Units lost" and "Loot lost". This design's debts (Share owed) should probably take weight or underline, not crimson, to keep crimson meaning loss of what is carried, not an obligation. Danger must never rely on colour alone (ADR 0003).
 
 **Time wording.** The Village says "Time passes only while you are here." A Sprint says "The Race does not wait." A Season says "Only the hours spent here are counted." Inside a Company: "Time passes only while you are here, except for those on the Tower."
 
@@ -788,7 +787,7 @@ No delta compression in v1. Frames are full, idempotent snapshots tagged `tick`.
 | Race record | "Race of 2026-10-24. Floor 20. 3rd of 17. 41:08. 112 fallen." |
 | Gathering stair record | "Stair record: stood 7, called 2, contact lost 1." |
 
-(The Floor 19 lines were checked: 195 + 855 = 1,050 Materials, 78 + 342 = 420 Credits and 3.1 + 13.4 = 16.5 Relics are the Loot of Floors 1 to 19, and 195/1,050 = 0.186 is the Garrison Share at H = 0.62. The earlier "stayer" line, 98 Materials, did not match any split of the leaver's 386.)
+(The Floor 19 lines were checked: 195 + 855 = 1,050 Materials, 78 + 342 = 420 Credits and 3.1 + 13.4 = 16.5 Relics are the Loot of Floors 1 to 19, and 195/1,050 = 0.186 is the Garrison Share at H = 0.62.)
 
 Race Ledger lines are in 3.2. The four tugs idea (Hold, Press, Falling back, Wounded) is subsumed by the eight fixed emotes.
 
@@ -818,7 +817,7 @@ Race Ledger lines are in 3.2. The four tugs idea (Hold, Press, Falling back, Wou
 |---|---|---|---|
 | G0 | Glossary proposals, an ADR 0004 ruling, and two ADRs: "A Company never holds for a disconnected Party" (amends ADR 0001's Held Party) and "A Company has one writer and meets Campaigns through its records". | S | none |
 | Seams | Roadmap Phase 1 and persistence P0 to P4, shared (R1, R2, R3, R6, R7, R8, R12). | about 5 M, shared | none |
-| R10 | Decide the server and the Boot line. | S | none |
+| R10 | The server and the Boot line: settled (ADR 0005). | done | none |
 | **Stage 0** | Terms registry, Trial slot and kit, seeded `floorSeed(f, k)`, `finishFloor`, the Expedition counting rule, clock, `ticksSinceStart`, Contender status. | M | Seams |
 | 0 | Results store, per-Floor timelines, tie rules, Race record line, aliases. | S | Stage 0 core |
 | 0 | Frontend: join screen, Race HUD (clock, Finish Floor, Cost), finished table and timeline. | M | Stage 0 core |
@@ -843,7 +842,7 @@ Race Ledger lines are in 3.2. The four tugs idea (Hold, Press, Falling back, Wou
 | Later | Lineage Race. | L | Prestige v1 and v2, E0 |
 | MCP | Sidecar bridge, then gateway, read tools, AGENT label, scoped token. Needs its own research. | M | Stable protocol, R8 |
 
-**Rough total, excluding the roadmap seams, "Later" and the MCP:** about 68 working days at midpoint sizes (S 1, M 3, L 7.5). Adding the two "Later" items (checkpoints, Lineage Race) gives about 78. Cutting Aid and Recorded Pacers saves about 8, so about 60. The earlier "55 to 65" summed to 68 on the table's own lines. Uncertain by half again either way.
+**Rough total, excluding the roadmap seams, "Later" and the MCP:** about 68 working days at midpoint sizes (S 1, M 3, L 7.5). Adding the two "Later" items (checkpoints, Lineage Race) gives about 78. Cutting Aid and Recorded Pacers saves about 8, so about 60. Uncertain by half again either way.
 
 **Order of play.** Stages 0 and 1 can ship while the engine split is still being built, because they need no shared simulation. The engine split (E3) is the single biggest step and is best combined with persistence P2.
 
@@ -869,7 +868,7 @@ Race Ledger lines are in 3.2. The four tugs idea (Hold, Press, Falling back, Wou
 14. **Tone drift.** A Board of names and times can become a fanfare leaderboard. Copy review is needed.
 15. **Sprint clock contradicts the Village copy.** The wording changes by format.
 16. **Crash semantics rest on unverified behaviour:** Undertow graceful shutdown with upgraded sockets, and clean-close cleanup in `Mono.zip`.
-17. **Server line.** Building the WebSocket layer on Undertow first risks doing the transport twice.
+17. **Server line.** The WebSocket layer runs on an unreleased Undertow community starter (ADR 0005); if it proves unreliable, moving to Reactor Netty costs a dependency swap and a transport recheck.
 18. **Glossary and ADR friction** (11.3, and ADR 0004 in 5.3).
 19. **MCP is unresearched.** Everything in section 8.2 is inference.
 20. **Every capacity figure** comes from a synthetic harness (no JMH, no network, JDK 26 against a JDK 24 target).
@@ -897,7 +896,7 @@ All are [Invented] and pending a ruling. `CONTEXT.md` is not edited.
 | **Company** | The players who share a fight, and the server object that simulates it. A **Company Expedition** is one joint outing. Each Party's own Expedition still ends in its own Expedition Outcome. | `_Avoid_`: squad, party (a Party is one player's Units), group. Collides mildly with "The Second Company" (Defeat flavour, prestige doc) and "a company, not a village", and is near Companion. Rule on it. |
 | **Gathering** | The lobby before Departure. | `_Avoid_`: lobby, room (`_Avoid_` under Architecture), Muster (collides with `Muster Roll` and the village doc's verb). |
 | **Departure** | The commit point where Units and Supplies leave the Campaign. | Already used in the prestige doc and the architecture doc. Register it. |
-| **Race**, **Terms**, **Contender**, **Trial**, **Season**, **Sprint** | The shared-seed competition, its rules, a player's slot in it, a sealed Village under Generation-1 rules, and the two ways to run it. | A Trial is not a Campaign (a Campaign is the whole game for one player) and not a Generation. `_Avoid_` for Race: run, climb. For Terms: Charter (Founders' Charter is planned). For Contender: Entry (Ledger and Chronicle use "entry"). Checked: none of these words appears in the other designs, except "Season" in prose. |
+| **Race**, **Terms**, **Contender**, **Trial**, **Season**, **Sprint** | The shared-seed competition, its rules, a player's slot in it, a sealed Village under Generation-1 rules, and the two ways to run it. | A Trial is not a Campaign (a Campaign is the whole game for one player) and not a Generation. `_Avoid_` for Race: run, climb. For Terms: Charter (Village Charter is planned). For Contender: Entry (Ledger and Chronicle use "entry"). Checked: none of these words appears in the other designs, except "Season" in prose. |
 | **Finish Floor**, **Finish** | The Race's Summit, and reaching it. | Not "Summit", which stays the Tower's top. |
 | **Order of Arrival**, **Cost** | The two columns of a Race result. | `_Avoid_`: score, rank, rating. |
 | **Race record** | A player's line per Race, shown on the Chronicle screen. | The Chronicle's entry covers ended campaigns only. Either extend it or keep this separate. |
@@ -908,7 +907,7 @@ All are [Invented] and pending a ruling. `CONTEXT.md` is not edited.
 | **Threshold** | The 4-tick quiet before a Guardian Floor in a Company, with a sealed Stand or Take-the-stair answer. | The prestige, roguelite, palette and village docs use "Threshold" only as a table column. |
 | **Rearguard Share** | What a leaving Party transfers to the Parties that stay. | `_Avoid_`: Cache (the roguelite layer has one), Levy (engine word only), Toll (taken), tax. |
 | **Effort** | Hp removed from Enemies + hp restored + 0.5 x hp lost to Enemy hits, on one Floor, with a ramp deciding the Loot fraction. | New. `_Avoid_`: score, contribution. |
-| **Floors Stood** | The last Floor a Party was present on. | Replaces the earlier **Place**, which needed `_Avoid_` entries for rank and standing and invited a single order. |
+| **Floors Stood** | The last Floor a Party was present on. | Used in place of **Place**, which would need `_Avoid_` entries for rank and standing and invites a single order. |
 | **Lost-contact rule** | The Hold then automatic call when a connection drops. | `_Avoid_`: Standing Order (roguelite Orders). |
 | **Stair record** | Counts of stood, called and contact lost, shown in the Gathering. | New. |
 | **"Call the stair"** (copy) | The timed Extraction. | Collides with the Stair (R16), Narrow Stair, Severed Stair, Long Stair and "The Toll on the Stair". See section 9. |
@@ -924,7 +923,7 @@ Recommendation first in each.
 1. **Which reading of "first to the top"?** The ladder (parallel race first, shared fights on Guardian Floors, a shared front only if it plays well), or a shared front only. Only the ladder keeps a real speed race.
 2. **Season before Sprint?** Yes. Cheaper, asynchronous, no lobby.
 3. **A Trial in its own file, or a race on real Campaigns?** A Trial.
-4. **Finish Floor.** Floor 20 for the first Terms, separate from `max-floor`.
+4. **Finish Floor.** Floor 10 for the first Terms (the Short preset; Floor 20 follows once the MCP baseline has measured it), separate from `max-floor`.
 5. **What a Race pays the real Campaign.** A Race record line and a cosmetic pillar mark only. The alternative is a capped Toll (at most 1 Legacy per Finish and 3 per Season) after the par values are fitted.
 6. **Seed the Garrison dice everywhere,** or only in Race mode. Recommend everywhere, with a random per-Campaign seed. It departs from prestige doc 3.8, which seeds only the layout.
 7. **Echoes in public Races.** Off in public, on in private.
@@ -944,7 +943,7 @@ Recommendation first in each.
 21. **Tower Memory and Easing scope in a Company.** Memory highest, Easing intersection, or start from none for a simpler first cut.
 22. **Words.** Company, Gathering, Rearguard Share, Lost-contact rule, Floors Stood, and whether "Company" may coexist with "The Second Company". And whether "call the stair" stays given five collisions, or the copy says "Extract".
 23. **Transport for the Campaign Key.** The subprotocol (the prestige doc's choice) or the first message (OWASP's).
-24. **Server.** Swap to Reactor Netty now (probably a pom-only change) and plan Boot 4 and Jackson 3 separately, or stay on Boot 3.5 plus Undertow.
+24. **Server.** Settled: Boot 4.1.1 with Undertow through the community starter (ADR 0005); Reactor Netty is the fallback.
 25. **Solo hosting.** Keep solo as today through `SoloHost`, or unify on Company rules.
 26. **Race Seed fairness shortcut.** A Standard Party for an advisory board in memory, as a cheaper Stage 0, or the Trial. Recommend the Trial.
 27. **MCP scope.** Is the MCP server in scope for Races, for Companies, or only as author tooling? Recommend its own research first, a local sidecar bridge for author tooling before any in-process endpoint, scoped agent tokens (never the Campaign Key), and agent seats only in Races and labelled in private Companies.

@@ -178,8 +178,8 @@ I/O stays off the game threads. `gameLoop` (1000 ms) and `invasionTimer` (10 ms)
 | 1 | `GameService.access()` calls `players.computeIfAbsent`. `renderState` (10 Hz per session) and `forEachPlayer` (which iterates `players.keySet()` and calls `access`) both reach it, so a race with `closeSession` resurrects an empty `GameState`. A ghost could be written over a real Campaign. | `access()` is find-only. Only the handshake loads or creates a slot. |
 | 2 | `closeSession` is called only from `doOnError` and `doOnCancel` on `Mono.zip(receive, send)`. When the client closes cleanly, `receive` completes empty, the zip completes, and neither callback fires. The state stays in the map. Likely leak, to be confirmed with a `WebSocketClient` test. | `doFinally` (all signal types) drives `detach`. |
 | 3 | `handleTextMessage` catches only `JsonProcessingException`. Any `RuntimeException` thrown inside `doOnNext` errors the receive side, which tears down the session and, today, deletes the Campaign. `GameService.sendToTower` throws `InvalidInvasion` from inside a `forEach` after earlier Unit Types have already been moved to the tower, so the failure also leaves a half-sent Party that persistence would then write. | Validate every requested count first, then mutate. Catch per message, log, and answer with a notice. |
-| 4 | `WebSocketConfig` is annotated `@EnableWebFlux`, so Boot's WebFlux auto-configuration backs off. `spring.codec.max-in-memory-size` then has no effect, and the default 256 KB buffer would reject a 1 MiB import. | Set the limit through `WebFluxConfigurer.configureHttpMessageCodecs`, or remove `@EnableWebFlux` and retest the WebSocket mapping. |
-| 5 | `pom.xml` has no `spring-boot-starter-actuator` (the `management.*` yml block does nothing), no `spring-boot-starter-test`, no `reactor-test`, and a dead runtime `h2`. Java is 24, Boot 3.5.3, Undertow. | P0 adds actuator, `spring-boot-starter-test` and `reactor-test` (test scope) and removes `h2`. Nothing else is added: SHA-256, AES-GCM, `FileChannel` and `SplittableRandom` are in the JDK, and Jackson with JSR-310 comes with `spring-boot-starter-json` through WebFlux. No rate-limit library: a per-IP token bucket is a few lines, or deferred to the reverse proxy. |
+| 4 | `WebSocketConfig` is annotated `@EnableWebFlux`, so Boot's WebFlux auto-configuration backs off. `spring.codec.max-in-memory-size` then has no effect, and the default 256 KB buffer would reject a 1 MiB import. | Set the limit through `WebFluxConfigurer.configureHttpMessageCodecs`, or remove `@EnableWebFlux` and retest the WebSocket mapping; re-check under Boot 4.1.1. |
+| 5 | `pom.xml` has no `spring-boot-starter-actuator` (the `management.*` yml block does nothing), no `reactor-test`, and a dead runtime `h2` (`spring-boot-starter-test` is present). Java is 24, Boot 4.1.1 with Jackson 3 (`tools.jackson`), Undertow through the community starter (ADR 0005). | P0 adds actuator and `reactor-test` (test scope) and removes `h2`. Nothing else is added: SHA-256, AES-GCM, `FileChannel` and `SplittableRandom` are in the JDK, and Jackson with JSR-310 comes with `spring-boot-starter-json` through WebFlux. No rate-limit library: a per-IP token bucket is a few lines, or deferred to the reverse proxy. |
 | 6 | `GameState` is built by `new GameState(config)` and `Village` has private setters. `Tower` is created lazily on the first Departure with the shared `GameProperties.Boss` and `Enemies` objects. | `GameState.restore(snapshot, config)`, `Village.restore(food, villagers)`, `Tower.restore(...)`, and a per-Campaign copy of the two config objects (needed for Tower Memory in v1 and Mutations in v2). |
 | 7 | The frontend opens `new WebSocket('ws://localhost:8080/api/ws')` in the constructor of a root service: no key, no reconnect, no close-code handling. The Prestige button is always visible, the template prints `gameState().prestigePoints`, and the Victory banner ends "Ignelia is free. Prestige to raise a new tower", which contradicts the Door and the Succession copy. | P4 and R5 replace the socket service, gate the button, and replace the banner copy. |
 | 8 | `Tower` reads `ease-difficulty-per-boss` as an `int`. Hollowing needs 0.5. | Change the config type to `double`; the existing cast to `double` in `Tower.buildFloor` already tolerates it. |
@@ -243,10 +243,10 @@ Supporting manga facts:
 | Villagers, Pantry | 20 Villagers, 100 Food, all Farmers (Defeat: 15, plus Writ) | `campaign.village` |
 | **Trades, Stockroom (Salt, Spores, Knowledge), Quarry Heap, Tomes** | Emptied. All Fields. | `campaign.village` |
 | Vault (Materials, Relics), Loot in hand | Emptied | `campaign.vault`, `expedition` |
-| Units, Party, Waves, Supplies | All lost. Only the **Heir** survives, if owned. | `campaign.reserves` |
+| Units, Party, Waves, Supplies | All lost, with their items, sanity and phobias. The next Generation begins with its four **Founders** (Yuva is five times stronger in Generation 1 only, an ordinary Warrior after), plus the **Heir** if owned. | `campaign.reserves` |
 | Upgrades, Roster, Milestones | Cleared. Roster back to Warrior, Archer, Porter. | `campaign.upgrades`, `milestones` |
 | Shortcuts opened by kills or Expeditions | Re-earned | `campaign.shortcutsOpened` |
-| **Village Tier** | Back to I (Founders' Charter: II) | `campaign.villageTier` |
+| **Village Tier** | Back to I (Village Charter: II) | `campaign.villageTier` |
 | Highest Floor, Expeditions, kills, summary | Zeroed | `campaign.*` |
 | **Campaign Ledger** | Zeroed | `campaign.ledger` |
 | **Tower, discovered Floors, Easing (`clearedBosses`)** | A new Tower. Easing is forgotten. | `campaign.clearedBosses`, `blueprint` |
@@ -333,8 +333,8 @@ Kind: P = power, D = decision or access, Q = quality of life. The count is 6 P, 
 | I | Whetstone Habit | P | 2 | +5% Party damage (Sharpened Arms gives +10% per level for 35 Materials, x1.7 per level). |
 | II | The Dowry | D | 3 | Each Succession choose one: 80 Credits, 40 Materials (the exact cost of the Healer Unlock Upgrade) or 3 Relics (the exact cost of the Necromancer Unlock Upgrade). All three are worth 75 to 80 Credits at the config sell prices (Materials 2, Relics 25), so none is dominated. |
 | II | Heavier Packs | P | 3 | +25 base Carrying Capacity (one Supply Lines level, which costs 30 Materials in a Campaign). |
-| II | Founders' Charter | P | 3 | Start at Village Tier II (Trades and Salt Pans open). Depends on Package B. |
-| II | The Heir | D | 3 | Choose Warrior, Archer or Porter. Start with one free Unit of that Unit Type. Its health is +50% (a Warrior has 30 instead of 20). |
+| II | Village Charter | P | 3 | Start at Village Tier II (Trades and Salt Pans open). Depends on Package B. |
+| II | The Heir | D | 3 | Choose Warrior, Archer or Porter. Start with one extra free Unit of that Unit Type, on top of the four Founders. Its total health is +50% (a Warrior has 30 instead of 20) before it is divided across Body Parts. |
 | III | **Blood of the Door** | D | 6 | Opens the Door at Floor 99 (3.7). |
 | III | Narrow Stair | D | 5 | A Shortcut starting at Floor 21 (the first Floor after the Floor 20 Guardian, not a Surge Floor, garrison budget 37.4), usable only by a Party of at most 12 Units. [Manga §4, review and wiki: hidden spiral staircase from floor 1 to 80.] The Floor and the Party limit are [Invented] placeholders (see below). |
 | III | Overreach | D | 4 | A switch in the Loadout panel per Expedition: supply drain x1.3 (1.5 to 1.95 per Unit per tick), Starvation damage x2 (5 to 10), all Loot x1.5. |
@@ -345,7 +345,7 @@ Kind: P = power, D = decision or access, Q = quality of life. The count is 6 P, 
 | IV | Offering Stone | D | 5 | At the end of a Campaign, Relics still in the Vault are offered: 300 Relics is +1 Legacy, at most +3 per Generation. They still count as banked. Pays for itself only after about four Generations of keeping 300 or more unsold Relics (300 Relics sell for 7,500 Credits). |
 | IV | Second Pact (v2) | D | 5 | Accept two Omens as Pacts (subject to the Load cap, 3.8). |
 
-**Narrow Stair numbers.** The draft's Floor 35 and Party of 5 do not work on the real config: Floor 35 is a Surge Floor (budget 80 x 1.5 = 120, about 70 enemies and 2,300 hp of garrison), a 5-Unit Party deals at most 25 damage per tick, and 5 Units drain 7.5 Supplies per tick against a capacity of 100 plus 60 per Porter. Floor 21 and 12 Units are placeholders chosen to be survivable on paper. The real values need the measured Supplies and damage figures from 3.11.
+**Narrow Stair numbers.** A Floor 35 Shortcut with a Party of 5 does not work on the real config: Floor 35 is a Surge Floor (budget 80 x 1.5 = 120, about 70 enemies and 2,300 hp of garrison), a 5-Unit Party deals at most 25 damage per tick, and 5 Units drain 7.5 Supplies per tick against a capacity of 100 plus 60 per Porter. Floor 21 and 12 Units are placeholders chosen to be survivable on paper. The real values need the measured Supplies and damage figures from 3.11.
 
 **What the Roll is worth, in config terms.** By the end of Course I and II (15 Legacy), a Generation starts with about 90 Credits of Villagers (Hardy Stock), 10 Credits and 50 Food (Seed Grain), about 80 Credits of Dowry, a free Heir, one Supply Lines level, half a Sharpened Arms level, Village Tier II and the Floor 5 Shortcut. That is roughly 250 Credits of head start against about 900 Credits (when sold) from one Floor 1 to 10 Expedition. **The Roll is a head start, not a power spike**: a player cannot trivialise Floors 1 to 50 after two Prestiges, because Floor 50 has a garrison budget of 143 and a 1,650 hp Guardian that the Campaign's own economy still has to beat. The same fact is the design's weak point (3.11): if the climb is limited by strength rather than time, the Roll cannot lift it.
 
@@ -423,7 +423,7 @@ Garrison rolls keep their existing `ThreadLocalRandom` variance. The imposed Mut
 | **Salt** | The insurance for Chymus Spread (Salt Pack) and Long Stair (Salted Supplies). Under neither, Salters are a waste, which makes the Trades a choice each Generation. |
 | **Dragon Spores** | The answer to Spore Blight (Panacea, Remedy). Under no Spore Mutation a Cellar is a luxury. |
 | **Knowledge** | Gains its second long-lived sink, **Survey**: 15 Knowledge (10 with Reader of Omens) reveals the kind and Floor of the next mutated Floor above Highest Floor. At the brainstorm's 0.05 Knowledge per Scribe per tick, ten Scribes make 0.5 per tick and pay for one Survey every 30 ticks. The Stockroom cap must stay above 15 (the brainstorm already keeps it above the next Tome's cost). [Invented] |
-| **Village Tier** | Back to I (Founders' Charter: II). Gate counters come from the Campaign Ledger, so Tier is re-earned each Generation. Village Tier and the Toll read the same counters, with no inheritance, so the Toll cannot be inflated. |
+| **Village Tier** | Back to I (Village Charter: II). Gate counters come from the Campaign Ledger, so Tier is re-earned each Generation. Village Tier and the Toll read the same counters, with no inheritance, so the Toll cannot be inflated. |
 | **Shortcuts** | Cleared. Re-opened by kills and Expeditions, or by Roll and Epitaph (First Footing, Narrow Stair). Severed Stair cuts them. |
 | **Easing** | Forgotten each Generation. Restored in small ways: Ten Seals Broken (x1.25), the Open Breach. Weakened by Hollowing. |
 | **Guardians** | Harder through Tower Memory and Unburied. Skippable by the Open Breach. Distinct Guardian Floors feed `G`. |
@@ -457,7 +457,7 @@ The model assumes 4 to 6 seconds per Floor, 15 to 17 full-climb Expeditions per 
 | Cumulative | 7 | 16 | 28 | 46 |
 | Legacy per planned hour | 4.7 | 6.8 | 9.6 | 11.4 |
 
-(The draft's P4 column used 13.5 Guardian Marks, which is G = 9, while the row above it said G = 10. Counting the Summit Guardian gives 15.0, `S` 96.5, `T` 138.81. The Legacy earned, 18, is unchanged.)
+(Counting the Summit Guardian gives 15.0 Guardian Marks, `S` 96.5 and `T` 138.81. The Legacy earned is 18.)
 
 **v1 table (no Mutations, `L` = 0).** Same counters. v1 ships first, so this is the table the first playtest will see.
 
@@ -481,7 +481,7 @@ The whole arc to the first Victory is 340 planned minutes, about 5.7 hours, insi
 | At start of | Held (v2) | Buys | Spent | Gate reached |
 |---|---|---|---|---|
 | Gen 2 | 7 | All of Course I (6) | 6 | Course II opens (5) |
-| Gen 3 | 10 (v1: 9) | Three Course II nodes (9): Founders' Charter, Dowry, Heavier Packs | 15 | Course III opens (12) |
+| Gen 3 | 10 (v1: 9) | Three Course II nodes (9): Village Charter, Dowry, Heavier Packs | 15 | Course III opens (12) |
 | Gen 4 | 13 (v1: 10) | Blood of the Door (6) and The Heir (3) | 24 | Door open, Course IV opens (21) |
 | Gen 5 (after Victory) | 22 | Narrow Stair (5), Hard-Won Habits (8), more | | |
 
@@ -492,9 +492,9 @@ The whole Roll (64) completes around Generation 7, about 9 to 10 hours, as post-
 | | Gen 2 | Gen 3 | Gen 4 |
 |---|---|---|---|
 | Villagers, Food, Credits | 25, 150, 20 | 25, 150, 20 | 25, 150, 20 (plus Dowry) |
-| Units | none | none | The Heir |
+| Units | The four Founders | The four Founders | The four Founders and the Heir |
 | Shortcut at start | Floor 5 (First Footing) | Floor 5 | Floor 5 |
-| Village Tier | I | II (Founders' Charter) | II |
+| Village Tier | I | II (Village Charter) | II |
 | Door | sealed | sealed | **open** |
 | Tower Memory m | 1 | 2 | 3 |
 | Mutations (v2) | 1 imposed (Load 2) plus a Pact | 2 imposed plus a Pact | 3 imposed plus a Pact |
@@ -525,7 +525,7 @@ This section exists because the pacing table assumes Floors the current enemy nu
 - The Door at Floor 99 is not the binding wall. Floor 70 to 80 is. Highest Floors of 75 and 99 in 3.10 are unreachable until the enemy and Supplies numbers are reworked.
 - Tower Memory's Guardian health bonus (x1.08 per step, up to x1.32) is a rounding error next to this, but on the Summit it adds 12,800 hp to an already unreachable target. Cap the Memory bonus on Guardian Floors above 70 until the pass is done.
 - A sizing rule for the pass: the Party size N needed for a Guardian is about `sqrt(HP / (1.25 x d))`, with `d` the best per-Unit damage per tick after Weakness. For about 80 Units against a Dragon (d = 2.5), HP should be near 20,000, half the current value, and Supplies per Floor need a matching rise.
-- The Supplies limit applies earlier too. The brainstorm computes an Expedition lasting about 11 ticks on 100 Supplies for 6 Units. Reaching Floor 99 in one Expedition is impossible. It is a chain of Reinforcement Waves and high Start Floors, which is why Shortcuts, Narrow Stair and Founders' Charter matter more than the table suggests.
+- The Supplies limit applies earlier too. The brainstorm computes an Expedition lasting about 11 ticks on 100 Supplies for 6 Units. Reaching Floor 99 in one Expedition is impossible. It is a chain of Reinforcement Waves and high Start Floors, which is why Shortcuts, Narrow Stair and Village Charter matter more than the table suggests.
 
 This is **decision 13**: the scaling pass has to happen before any par value in 3.4 or any Highest Floor in 3.10 is trusted.
 
@@ -537,7 +537,7 @@ This is **decision 13**: the scaling pass has to happen before any par value in 
 | **Samey** | **Not avoided.** Each Generation is the same Tower layout, harder by Tower Memory, with a head start. The decision nodes (Dowry, Heir, Breach, Overreach, which Trades) vary the opening only. | Mutations, Omens and the Pact change the layout and force different Trades. | v1 is the weak point. Playtest v1 specifically for sameness before deciding how much of v2 to build. |
 | **Avoidable (winnable without it)** | Avoided by the Door: Victory needs 18 Legacy, so at least one Prestige. Before the Door a player may skip Prestige by staying in one long Campaign, which costs only a head start. | Same, plus Memory. | Avoided, with one caveat: a player who never meets the Door (never reaches Floor 99) can ignore Prestige indefinitely. That is acceptable, since they also never see an ending. |
 | **Strictly dominant (always prestige at once)** | No: Exodus needs 3 forecast points, and Legacy per model hour is flat in Generation 1 (3.4). | Rises in later Generations. Cycling shallow Campaigns at the 3-point gate earns about 6.7 Legacy per hour, below the deep-run rates in 3.10, so deeper runs win. | Not dominant on the model. Log the Toll per Expedition to confirm. |
-| **Slow late game** | Shortcuts, Founders' Charter and Narrow Stair shorten openings. | Same. | Depends on 3.11. If the late Floors are unreachable, the late game is not slow, it is blocked. |
+| **Slow late game** | Shortcuts, Village Charter and Narrow Stair shorten openings. | Same. | Depends on 3.11. If the late Floors are unreachable, the late game is not slow, it is blocked. |
 | **Perverse incentives** | Exodus can end a Campaign at a rate that is slower than deep play. Defeat farming is closed by the 3-Expedition condition. Names on the Wall rewards loss mildly. | Load is paid only for Mutations met. | Acceptable. |
 
 ### 3.13 Config (`game.prestige.*`)
@@ -730,7 +730,7 @@ This document itself avoids the glossary's `_Avoid_` words: it uses "Ascent" (no
 2. **The upper Tower is unreachable on current numbers (3.11).** The Floor 80, 90 and 100 Guardians (35,000 to 40,000 hp, x0.5 from every attack, 625 damage per tick) need about 180 Rogues and about 24,000 Supplies against a Carrying Capacity of 100 plus 60 per Porter. Until the scaling pass (E0) lands, the Door is not the wall and Highest Floors above about 70 in the pacing table are fiction.
 3. **Time-limited or strength-limited?** The pacing table silently assumes a head start buys Floors. The Roll is worth about one early Expedition. If the Highest Floor is capped by Party strength, no Generation exceeds Generation 1 by much, and Prestige adds nothing. This is decision 13.
 4. **Loot counters sit deep in their square-root tail**, because repeat Expeditions re-clear Floors. If the Quarry or Shortcuts add Materials (the Quarry Heap can add up to 5 Materials per Floor cleared, which is a second Materials stream equal to the base 5 per Floor, so up to 1.41x on that counter's Marks), the economy Marks inflate and Ascent shrinks as a share of `T`. Re-fit.
-5. **Mandatory Prestige can read as padding.** Mitigated by acceleration (Shortcuts, Founders' Charter, Narrow Stair), foreshadowing the Door and a 7 to 18 Legacy climb per Generation. A player who hates starting over may still churn at the Door.
+5. **Mandatory Prestige can read as padding.** Mitigated by acceleration (Shortcuts, Village Charter, Narrow Stair), foreshadowing the Door and a 7 to 18 Legacy climb per Generation. A player who hates starting over may still churn at the Door.
 6. **Mutation hooks are the largest refactor.** `updateInvasion`, `unitsAttack` and `enemiesAttack` are private static with no tests. The `FloorRules` extraction (R7) must be behaviour-neutral for Generation 1, with characterization tests first. Chymus Spread also needs a targeting hook that does not exist.
 7. **Stacking can death-spiral:** Memory, Hollowing, Unburied and Looping Rooms together. The Load cap of 8, exclusions and the anti-repeat weight are guesses. Playtest.
 8. **First-contact masking versus fairness.** Counter-before-effect and no Mutation effect below Floor 12 reduce but do not remove unavoidable early losses. Too punitive turns dread into frustration.

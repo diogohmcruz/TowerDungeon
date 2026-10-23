@@ -28,14 +28,14 @@ These are proposals. The ones marked **author** need your decision.
 | 5 | **Mutations vs Architectures.** Both change Floors. | Mutations are Prestige (per Generation, hidden until met). Architectures are the Floor's structural form. Where both loop a Floor, the Mutation's rule replaces the Architecture's. |
 | 6 | **Loot.** Architectures could have changed loot. | Excluded. The Toll's par values and the Quarry Heap both depend on the existing loot formulas. |
 | 7 | **Unreachable upper Tower.** The prestige doc shows Floors 70-100 cannot be beaten on the current numbers (Floor 80 Dragon: 35,000 hp, about 180 Rogues, 24,000 Supplies). | An enemy and Supplies scaling pass (E0) blocks Prestige par values, Highest Floor targets and the architecture gameplay levers. |
-| 8 | **Wipe consequences.** Risen plus a half Trust burn means two new losses in B. | **Author:** keep both, or only Risen. |
+| 8 | **Wipe consequences.** Risen is the only new loss in B; there is no Trust burn. | **Decided.** Only Risen. |
 
 ## 2. Dependencies
 
 - **Persistence** blocks Prestige. It is also needed by the Tally, the Stockroom, Trust, The Count, the Wall of Names and Risen. Every Package B step that adds state must add its snapshot fields (P9 in the prestige doc).
-- **Test directory.** `backend/src/test` does not exist. All three designs need it first: Village tests, determinism tests for the Floor plan, snapshot field-accounting tests.
-- **Injectable random source.** Needed for Architecture plans and for Mutations.
-- **Scaling pass (E0).** Needs telemetry from the first playable Package B and Prestige v1.
+- **Test directory.** `backend/src/test` exists (issue #5). Village tests, determinism tests for the Floor plan and snapshot field-accounting tests build on it.
+- **Seeded random streams.** A shared random source exists (#6); a per-Campaign `RandomSource` with three streams (#59) is needed for Architecture plans, Trials, Mutations and reproducible Sandbox runs.
+- **Scaling pass (E0).** Needs telemetry from the first playable Package B and Prestige v1, and must follow the Unit depth work (phase 3a), which changes kill speed, damage and the Relic source.
 - **Architecture visuals** (the "Section" slice) depend on none of the above. They can proceed in parallel.
 - **Architecture gameplay levers** wait on the scaling pass and a balance review, and ship behind `game.architecture.enabled`.
 - **Prestige v2 (Mutations)** waits on Prestige v1 being played, to see how samey v1 feels.
@@ -48,6 +48,7 @@ These are proposals. The ones marked **author** need your decision.
 | 1 | Foundations: `backend/src/test`, characterisation tests for `Village`, actuator and test dependencies, injectable random, all new rates in `GameProperties`, read-only Stock panel with per-source rates. | village step 1; prestige P0 |
 | 2a | **Persistence** P1-P8: store port, snapshots, session slots, handshake and key, coordinator, Held Party, migration framework, export/import. | prestige P1-P8 |
 | 2b | **Visual "Section" slice**: panel tokens and pixel face, ink shader spike, backend `Architecture` plan (levers off), strip renderer, figures. In parallel with 2a. | architecture steps 1-5 |
+| 3a | **Unit depth** (the Unit depth milestone, ADR 0006): four Founders and a gentle first reach, rolled strengths, per-part health with Aim, accuracy and evasion, items found in the Bundle, sanity and phobias. Every random draw uses the seeded streams of #59. Blocks the scaling pass. | `CONTEXT.md` (Bodies, gear and mind); ADR 0006 |
 | 3 | **Package B economy**: Trades, Stockroom, Quarry Heap, Tally and Village Tier, Loadout, Salt, Dragon Spores, Trust, Risen slice. Each step adds its snapshot fields. Ship the village diorama with Trades. | village build order; architecture step 8 |
 | 4 | **Prestige v1**: Tolls, Succession, Roll, the Door, Tower Memory, Exodus. Then the **scaling pass E0**. Then playtest for sameness and fit par values from logged data. | prestige R1-R6, E0 |
 | 5 | **Easing visuals, Shortcut fixtures, camera shots**, then architecture levers family by family behind the flag after the balance review. | architecture steps 6, 9-12 |
@@ -62,7 +63,7 @@ Rough weight: persistence about six M; Package B about nine M plus the diorama (
 Numbering is by design doc; each doc lists its own recommendations.
 
 1. Tier and Ledger/Tally wording (rows 1 and 2 above).
-2. Wipe-side losses in Package B (row 8).
+2. Wipe-side losses in Package B (row 8, decided: only Risen).
 3. **Prestige:** is a mandatory Prestige via the Door at Floor 99 acceptable? Is Exodus a good third ending (Defeat is nearly unreachable)? Which reading of the "3-8 hour" target (the whole arc, or each Generation)?
 4. Do exports seal the Tower's Mutation data (AES-GCM, key in deployment config), or may a player read their own save?
 5. Floor 80 and the Summit: keep the Dragon unless the manga resolves the Summit; keep Floor 100 a provisional Gate.
@@ -76,9 +77,9 @@ Numbering is by design doc; each doc lists its own recommendations.
 
 ## 5. Added later: the MCP server and multiplayer
 
-Both designs are complete drafts, but neither is scheduled and no issue exists for them yet. Neither edits `CONTEXT.md`; the proposed ADRs 0005 and 0006 in the MCP document (section 12) are not written.
+Both designs are complete drafts. The MCP server now has issues (#31 to #33, #59 and #63 to #65); multiplayer Stage 0 has #34 to #36. Neither edits `CONTEXT.md`; the proposed ADRs 0007 and 0008 in the MCP document (section 12) are not written.
 
-**MCP server (`mcp-server.md`).** A package inside the Spring app behind an `AgentFacade` port that calls `GameService`, with the tools defined once as data so the MCP library can change underneath. Two drivers of time share one tool set: real time for a human's Campaign, and a headless **Sandbox Campaign** that advances only when a driver calls the tick methods, with seeded random streams. Agents hold a scoped, revocable grant and never the Campaign Key; lineage actions (Exodus, Roll refunds, Begin Generation) need approval in the game UI. Scripted bots come before LLM playtesters for the scaling-pass telemetry (#8). Build the Sandbox first, because today a Campaign dies with its WebSocket and only persistence (#9 to #12) lets an agent attach to a human's Campaign. A one-day spike (M0, eight checks) decides between Spring AI's stateless server and a hand-written endpoint.
+**MCP server (`mcp-server.md`).** A package inside the Spring app behind an `AgentFacade` port that calls `GameService`, with the tools defined once as data so the MCP library can change underneath. Two drivers of time share one tool set: real time for a human's Campaign, and a headless **Sandbox Campaign** that advances only when a driver calls the tick methods, with seeded random streams. Agents hold a scoped, revocable grant and never the Campaign Key; lineage actions (Exodus, Roll refunds, Begin Generation) need approval in the game UI. Scripted bots come before LLM playtesters for the scaling-pass telemetry (#8). Build the Sandbox first, because today a Campaign dies with its WebSocket and only persistence (#9 to #12) lets an agent attach to a human's Campaign. A one-day spike (M0, eight checks, on Boot 4.1.1) decides between Spring AI 2.0.x's stateless server and a hand-written endpoint.
 
 **Multiplayer (`multiplayer.md`).** A ladder in six stages, each already multiplayer on its own:
 
@@ -102,7 +103,7 @@ The withdraw dilemma is worked out with a game-theory table: a Rearguard Share w
 | ADR 0004 (palette is the Tower's state) vs a shared tower in view | Each player keeps their own ramp; the Tower's Memory shows by numeral and base marks. |
 | ADR 0001 sends the Campaign Key as a WebSocket subprotocol | The multiplayer design recommends sending it in the first message (OWASP) and keeping the subprotocol for version negotiation. ADR 0001 would need an amendment. |
 | A Race against Prestige and the Toll | A Race pays a record line and a cosmetic mark only. No Toll bonus (it is farmable with two keys). |
-| Undertow on Boot 3 | The multiplayer design recommends moving to Reactor Netty (probably a pom-only change) and planning the Boot 4 and Jackson 3 move separately. |
+| Undertow on Boot 4 | Settled: the repo moved to Boot 4.1.1 and keeps Undertow through the community starter (ADR 0005); Reactor Netty is the fallback if the starter proves unreliable. |
 | Agent seats in a competitive race | The MCP design asks for Standing Orders (auto-Extract on a threshold) for fairness, which softens the dread of manual Extraction. Both designs label agent seats and keep them out of public human races by default. |
 
 **New glossary terms proposed, not added:** MCP: Agent Grant, Controller, Sandbox Campaign, Playtest, Approval, Standing Order, Seat. Multiplayer: Company, Gathering, Race, Terms, Trial, Season, Sprint, Board, Contender, Departure, Threshold, Effort, Joint Guardian, Rearguard Share, Lost-contact rule. Each document lists its own avoid-word choices.

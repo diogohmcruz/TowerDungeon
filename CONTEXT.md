@@ -205,7 +205,7 @@ Buying a new unit of an unlocked type with credits; the new unit joins the reser
 _Avoid_: Buy, hire, raise, enlist
 
 **Founder**:
-One of the four units a campaign begins with, already in the reserves: the conscript Yuva (a Warrior), two more Warriors, and an Archer. Founders are ordinary units under every rule except that Yuva is not rolled and has no phobias; the word marks where they came from. Planned.
+One of the four units a campaign begins with, already in the reserves: the conscript Yuva (a Warrior, five times as strong in the first generation only), two more Warriors, and an Archer. Founders are ordinary units under every rule except that Yuva is not rolled and has no phobias; the word marks where they came from. Planned.
 _Avoid_: Starter, initial unit, starting party
 
 **Reserves**:
@@ -304,7 +304,7 @@ The middle tier of item, made special by an effect.
 _Avoid_: Charm, enchanted item
 
 **Artifact**:
-The rarest tier of item: a unique, named item from the tower's ancient magic, of which the campaign holds one each; it returns to the floor where it was first found in every generation. Not a relic.
+The rarest tier of item: a unique, named item from the tower's ancient magic, of which the campaign holds one each; it has a home floor and reappears in that floor's bundle in every generation until it is found. Not a relic.
 _Avoid_: Relic, unique
 
 **Bundle**:
