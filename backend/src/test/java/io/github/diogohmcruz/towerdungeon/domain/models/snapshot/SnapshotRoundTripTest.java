@@ -11,6 +11,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
+import io.github.diogohmcruz.towerdungeon.domain.models.EnemyStats;
 import io.github.diogohmcruz.towerdungeon.domain.models.GameState;
 import io.github.diogohmcruz.towerdungeon.domain.models.ResourceType;
 import io.github.diogohmcruz.towerdungeon.domain.models.RunSummary;
@@ -231,6 +232,26 @@ class SnapshotRoundTripTest {
     assertThat(warriorBack.getDamage()).isEqualTo(warrior.getDamage());
     assertThat(mageBack.getCurrentMana()).isEqualTo(mage.getCurrentMana());
     assertThat(mageBack.getMaxMana()).isEqualTo(mage.getMaxMana());
+  }
+
+  @Test
+  void sanityAndPhobiasSurviveARoundTripWithTheirKnownFlags() throws Exception {
+    var original = midCampaign();
+    var archer = original.getUnits().get(UnitStats.ARCHER).getFirst();
+    archer.addPhobia(EnemyStats.CHIMERA);
+    archer.addPhobia(EnemyStats.DRAGON);
+    archer.getPhobias().getFirst().reveal();
+    archer.changeSanity(-37.5);
+
+    var back = viaJson(original).getUnits().get(UnitStats.ARCHER).getFirst();
+
+    assertThat(back.getSanity()).isEqualTo(archer.getSanity());
+    assertThat(back.getMaxSanity()).isEqualTo(archer.getMaxSanity());
+    assertThat(back.getPhobias()).isEqualTo(archer.getPhobias());
+    assertThat(back.getPhobias().get(0).isKnown()).isTrue();
+    assertThat(back.getPhobias().get(1).isKnown()).isFalse();
+    assertThat(back.damageFactorAgainst(EnemyStats.DRAGON))
+        .isEqualTo(archer.damageFactorAgainst(EnemyStats.DRAGON));
   }
 
   @Test

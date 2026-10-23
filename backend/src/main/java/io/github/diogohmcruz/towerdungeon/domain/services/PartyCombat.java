@@ -6,6 +6,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.random.RandomGenerator;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
 
@@ -44,6 +45,8 @@ public class PartyCombat {
     var woundedAtStart = party.stream().filter(Unit::isWounded).toList();
     var enemiesAtStart = List.copyOf(currentEnemies);
     var healersThatCast = new HashSet<Integer>();
+
+    meetFearedEnemies(party, currentEnemies, currentTowerFloor);
 
     party.stream()
         .filter(PartyCombat::isHealer)
@@ -86,7 +89,9 @@ public class PartyCombat {
               var targetEnemy = targets.get(random.nextInt(targets.size()));
               var wasAlive = !targetEnemy.isDead();
               targetEnemy.receiveAttack(
-                  currentUnit.getDamage() * damageMultiplier,
+                  currentUnit.getDamage()
+                      * damageMultiplier
+                      * currentUnit.damageFactorAgainst(targetEnemy.getStats()),
                   currentUnit.getStats().getAttackType());
               if (currentUnit.isCaster()) {
                 currentUnit.spendMana(manaCost);
@@ -95,6 +100,7 @@ public class PartyCombat {
                 log.info("Unit {} defeated enemy {}", currentUnit, targetEnemy);
                 currentTowerFloor.removeEnemy(targetEnemy);
                 gameState.recordEnemyKill();
+                currentUnit.changeSanity(gameState.getConfig().getSanity().getKillGain());
               }
             });
   }
@@ -117,7 +123,8 @@ public class PartyCombat {
           new AimedStrike(random, gameState.getConfig().getAiming())
               .strike(
                   targetUnitElement,
-                  currentEnemy.getEffectiveDamage(),
+                  currentEnemy.getEffectiveDamage()
+                      * targetUnitElement.takenFactorFrom(currentEnemy.getStats()),
                   currentEnemy.getStats().getAttackType(),
                   gameState.getConfig().getAiming().profileOf(currentEnemy.getStats()),
                   currentEnemy.getAccuracy(),
@@ -128,6 +135,16 @@ public class PartyCombat {
             gameState.removeUnit(targetUnitElement);
           }
         });
+  }
+
+  /**
+   * Lets every party member see who garrisons the floor it stands on: a feared type present reveals
+   * the phobia and, once per floor, costs the unit sanity.
+   */
+  private static void meetFearedEnemies(List<Unit> party, List<Enemy> enemies, TowerFloor floor) {
+    var present = enemies.stream().map(Enemy::getStats).collect(Collectors.toSet());
+    var floorId = floor.getId() == null ? 0 : floor.getId();
+    party.forEach(unit -> unit.meetEnemies(floorId, present));
   }
 
   /**

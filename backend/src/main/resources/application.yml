@@ -68,6 +68,18 @@ game:
       head: 0.10
       arm: 0.08
       leg: 0.12
+  sanity:
+    max: 100.0
+    kill-gain: 2.0
+    floor-climbed-gain: 5.0
+    ally-death-drain: 10.0
+    fear-meet-drain: 5.0
+    depth-drain-per-floor: 0.01
+    recovery-per-tick: 2.0
+    recovery-food-per-tick: 0.5
+    phobia-count-chances: [0.40, 0.40, 0.20]
+    severity-at-full-sanity: 0.25
+    phobia-effect: 0.5
   magic:
     max-mana: 5.0
     cost-per-cast: 1.0

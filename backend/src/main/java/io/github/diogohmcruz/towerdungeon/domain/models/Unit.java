@@ -1,6 +1,7 @@
 package io.github.diogohmcruz.towerdungeon.domain.models;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -59,6 +60,25 @@ public class Unit extends BaseUnit {
   @Getter(AccessLevel.NONE)
   @EqualsAndHashCode.Exclude
   private GameProperties.Body.Weights bodyWeights = new GameProperties.Body.Weights();
+
+  /** How sanity gains, severity and phobia draws are tuned; supplied from config at recruit. */
+  @JsonIgnore
+  @Getter(AccessLevel.NONE)
+  @EqualsAndHashCode.Exclude
+  private GameProperties.Sanity sanityRules = new GameProperties.Sanity();
+
+  /** The most sanity this unit can hold. */
+  private double maxSanity = sanityRules.getMax();
+
+  /** Current sanity, from 0 to {@link #maxSanity}. */
+  private double sanity = maxSanity;
+
+  /** What this unit fears; hidden from the player until first met. */
+  @Getter(AccessLevel.NONE)
+  private final List<Phobia> phobias = new ArrayList<>();
+
+  /** The floor on which a feared enemy last cost this unit sanity (-1 for none). */
+  @JsonIgnore private int fearFloor = -1;
 
   public Unit(UnitStats stats) {
     super();
@@ -312,6 +332,140 @@ public class Unit extends BaseUnit {
     this.currentMana = Math.min(maxMana, this.currentMana + Math.max(0, amount));
   }
 
+  /**
+   * Applies the rules that govern this unit's mind and brings it to full sanity. Meant for a
+   * freshly created unit.
+   */
+  public void setSanityRules(GameProperties.Sanity rules) {
+    this.sanityRules = rules;
+    this.maxSanity = rules.getMax();
+    this.sanity = maxSanity;
+  }
+
+  /** Restores a persisted mind as it was; nothing is re-rolled. */
+  public void restoreMind(
+      double sanity,
+      double maxSanity,
+      List<Phobia> savedPhobias,
+      int fearFloor,
+      GameProperties.Sanity rules) {
+    this.sanityRules = rules;
+    this.maxSanity = maxSanity;
+    this.sanity = sanity;
+    this.phobias.clear();
+    this.phobias.addAll(savedPhobias);
+    this.fearFloor = fearFloor;
+  }
+
+  /** The unit's phobias, hidden or revealed. */
+  public List<Phobia> getPhobias() {
+    return Collections.unmodifiableList(phobias);
+  }
+
+  /** Gives the unit a phobia of {@code enemyType} unless it already has one. */
+  public void addPhobia(EnemyStats enemyType) {
+    if (phobias.stream().noneMatch(phobia -> phobia.getFeared() == enemyType)) {
+      phobias.add(new Phobia(enemyType));
+    }
+  }
+
+  /**
+   * Draws this unit's phobias: how many (by the configured chances) and which enemy types, all
+   * distinct, from {@code random}. Units with {@link #fixedStrengths} have none.
+   */
+  public void rollPhobias(RandomGenerator random) {
+    phobias.clear();
+    if (fixedStrengths) {
+      return;
+    }
+    var chances = sanityRules.getPhobiaCountChances();
+    var roll = random.nextDouble();
+    var count = chances.size() - 1;
+    var cumulative = 0.0;
+    for (var i = 0; i < chances.size(); i++) {
+      cumulative += chances.get(i);
+      if (roll < cumulative) {
+        count = i;
+        break;
+      }
+    }
+    var pool = new ArrayList<>(List.of(EnemyStats.values()));
+    for (var i = 0; i < count && !pool.isEmpty(); i++) {
+      addPhobia(pool.remove(random.nextInt(pool.size())));
+    }
+  }
+
+  /**
+   * Moves sanity by {@code delta}, never below zero. Gain beyond the maximum is not lost: it heals
+   * the unit instead, one health per point.
+   */
+  public void changeSanity(double delta) {
+    var target = sanity + delta;
+    if (target > maxSanity) {
+      var excess = target - maxSanity;
+      sanity = maxSanity;
+      heal(excess);
+    } else {
+      sanity = Math.max(0, target);
+    }
+  }
+
+  /**
+   * How hard phobias bite right now: the configured base at full sanity, rising linearly to 1.0 at
+   * zero.
+   */
+  @JsonIgnore
+  public double getSeverity() {
+    var base = sanityRules.getSeverityAtFullSanity();
+    var missing = maxSanity > 0 ? 1 - sanity / maxSanity : 1.0;
+    return base + (1 - base) * missing;
+  }
+
+  private boolean fears(EnemyStats enemyType) {
+    return phobias.stream().anyMatch(phobia -> phobia.getFeared() == enemyType);
+  }
+
+  /** What this unit's damage is multiplied by against {@code enemyType}; 1 unless it fears it. */
+  public double damageFactorAgainst(EnemyStats enemyType) {
+    return fears(enemyType) ? 1 - sanityRules.getPhobiaEffect() * getSeverity() : 1.0;
+  }
+
+  /** What damage from {@code enemyType} is multiplied by; 1 unless this unit fears it. */
+  public double takenFactorFrom(EnemyStats enemyType) {
+    return fears(enemyType) ? 1 + sanityRules.getPhobiaEffect() * getSeverity() : 1.0;
+  }
+
+  /**
+   * Notices which enemy types stand on floor {@code floorId}: every phobia of a type present is
+   * revealed, and the first such meeting on this floor costs the configured sanity.
+   */
+  public void meetEnemies(int floorId, Collection<EnemyStats> present) {
+    var met = phobias.stream().filter(phobia -> present.contains(phobia.getFeared())).toList();
+    if (met.isEmpty()) {
+      return;
+    }
+    met.forEach(Phobia::reveal);
+    if (fearFloor != floorId) {
+      fearFloor = floorId;
+      changeSanity(-sanityRules.getFearMeetDrain());
+    }
+  }
+
+  /** Forgets which floor last frightened the unit, so a new climb can frighten it again. */
+  public void forgetFearFloor() {
+    this.fearFloor = -1;
+  }
+
+  /**
+   * Seam for low sanity dulling aim: percentage points added to {@link #getAccuracy()} (zero for
+   * now, so sanity does not touch accuracy yet). Item sanity gains (#48) and the loss from maiming
+   * (#45) arrive through {@link #changeSanity(double)}.
+   */
+  @JsonIgnore
+  public double getSanityAccuracyModifier() {
+    return 0.0;
+  }
+
   /** The attack scaled by this unit's weakness to the attack type; negative means it heals. */
   public double scaledByWeakness(double attack, AttackType attackType) {
     var multiplier =
@@ -330,7 +484,7 @@ public class Unit extends BaseUnit {
    */
   @JsonIgnore
   public double getAccuracy() {
-    return stats.baseAccuracy();
+    return stats.baseAccuracy() + getSanityAccuracyModifier();
   }
 
   /** How well this unit avoids hits, in percentage points on the attacker's miss chance. */

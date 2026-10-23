@@ -31,6 +31,7 @@ import io.github.diogohmcruz.towerdungeon.domain.models.snapshot.EnemySnapshot;
 import io.github.diogohmcruz.towerdungeon.domain.models.snapshot.ExpeditionSnapshot;
 import io.github.diogohmcruz.towerdungeon.domain.models.snapshot.GameSnapshot;
 import io.github.diogohmcruz.towerdungeon.domain.models.snapshot.PartSnapshot;
+import io.github.diogohmcruz.towerdungeon.domain.models.snapshot.PhobiaSnapshot;
 import io.github.diogohmcruz.towerdungeon.domain.models.snapshot.TowerSnapshot;
 import io.github.diogohmcruz.towerdungeon.domain.models.snapshot.UnitSnapshot;
 import io.github.diogohmcruz.towerdungeon.domain.models.snapshot.WaveSnapshot;
@@ -125,6 +126,7 @@ public class GameState {
     this.lastFoodReturned = 0d;
     this.runEnemiesDefeated = 0;
     this.runUnitsLost = 0;
+    partyMembers().forEach(Unit::forgetFearFloor);
   }
 
   /**
@@ -377,6 +379,7 @@ public class GameState {
             .mapToDouble(entry -> entry.getKey().getSupplyBonus() * entry.getValue().size())
             .sum();
     var capacity = config.getSupply().getBaseMax() + getSupplyCapacityBonus() + porterBonus;
+    waveUnits.values().stream().flatMap(List::stream).forEach(Unit::forgetFearFloor);
     var food = village.takeFood(capacity);
     reinforcements.add(new Reinforcement(waveUnits, food, capacity));
     log.info(
@@ -474,6 +477,7 @@ public class GameState {
       }
     }
     healHomePartyWithFood();
+    recoverHomeSanity();
     rechargeHomeCasters();
   }
 
@@ -504,6 +508,8 @@ public class GameState {
     var unit = new Unit(unitStats);
     unit.setBodyWeights(config.getBody().getWeights());
     unit.rollStrengths(random, config.getRecruit().getStrengthSpread());
+    unit.setSanityRules(config.getSanity());
+    unit.rollPhobias(random);
     if (unit.isCaster()) {
       unit.chargeToFull(config.getMagic().getMaxMana());
     }
@@ -523,6 +529,7 @@ public class GameState {
       unit.setDamageFactor(founder.getStatMultiplier());
     }
     unit.rollStrengths(random, config.getRecruit().getStrengthSpread());
+    unit.setSanityRules(config.getSanity());
     if (unit.isCaster()) {
       unit.chargeToFull(config.getMagic().getMaxMana());
     }
@@ -810,9 +817,44 @@ public class GameState {
       }
       runUnitsLost++;
       recalculateSupplyCapacity();
+      partyMembers().forEach(unit -> unit.changeSanity(-config.getSanity().getAllyDeathDrain()));
     } else {
       log.warn("Unit {} not found on tower. Failed to remove.", targetUnit);
     }
+  }
+
+  private List<Unit> partyMembers() {
+    return unitsOnTower.values().stream().flatMap(List::stream).toList();
+  }
+
+  /** Lifts every party member's spirits for having climbed to the next floor. */
+  public void rewardFloorClimbed() {
+    partyMembers().forEach(unit -> unit.changeSanity(config.getSanity().getFloorClimbedGain()));
+  }
+
+  /** The tower wears on the party: every member loses a little sanity, more the deeper it is. */
+  public void drainDepthSanity(int floor) {
+    var drain = config.getSanity().getDepthDrainPerFloor() * floor;
+    partyMembers().forEach(unit -> unit.changeSanity(-drain));
+  }
+
+  /**
+   * Rests the minds of the reserves: each one below its maximum regains the configured sanity for
+   * the configured food, until the pantry runs dry. A reserve the pantry can only part-pay for
+   * recovers the matching share.
+   */
+  public void recoverHomeSanity() {
+    var rules = config.getSanity();
+    units.values().stream()
+        .flatMap(List::stream)
+        .filter(unit -> unit.getSanity() < unit.getMaxSanity())
+        .forEach(
+            unit -> {
+              var cost = rules.getRecoveryFoodPerTick();
+              var paid = cost > 0 ? village.takeFood(cost) : 0d;
+              var share = cost > 0 ? paid / cost : 0d;
+              unit.changeSanity(rules.getRecoveryPerTick() * share);
+            });
   }
 
   public boolean hasUnitsOnTower() {
@@ -930,7 +972,13 @@ public class GameState {
                                     part.getMaxHealth(),
                                     part.getCurrentHealth(),
                                     part.isLost()))
-                        .toList()))
+                        .toList(),
+                    unit.getSanity(),
+                    unit.getMaxSanity(),
+                    unit.getPhobias().stream()
+                        .map(phobia -> new PhobiaSnapshot(phobia.getFeared(), phobia.isKnown()))
+                        .toList(),
+                    unit.getFearFloor()))
         .toList();
   }
 
@@ -938,28 +986,34 @@ public class GameState {
       List<UnitSnapshot> snapshots, GameProperties config) {
     Map<UnitStats, List<Unit>> byType = new HashMap<>();
     for (var u : snapshots) {
-      byType
-          .computeIfAbsent(u.type(), _ -> new ArrayList<>())
-          .add(
-              Unit.restore(
-                  u.type(),
-                  u.id(),
-                  u.name(),
-                  u.healthFactor(),
-                  u.damageFactor(),
-                  u.fixedStrengths(),
-                  u.maxMana(),
-                  u.currentMana(),
-                  u.parts().stream()
-                      .map(
-                          p -> {
-                            var part = new Part(p.kind(), p.maxHealth());
-                            part.setCurrentHealth(p.currentHealth());
-                            part.setLost(p.lost());
-                            return part;
-                          })
-                      .toList(),
-                  config.getBody().getWeights()));
+      var unit =
+          Unit.restore(
+              u.type(),
+              u.id(),
+              u.name(),
+              u.healthFactor(),
+              u.damageFactor(),
+              u.fixedStrengths(),
+              u.maxMana(),
+              u.currentMana(),
+              u.parts().stream()
+                  .map(
+                      p -> {
+                        var part = new Part(p.kind(), p.maxHealth());
+                        part.setCurrentHealth(p.currentHealth());
+                        part.setLost(p.lost());
+                        return part;
+                      })
+                  .toList(),
+              config.getBody().getWeights());
+      var maxSanity = u.maxSanity() == null ? config.getSanity().getMax() : u.maxSanity();
+      unit.restoreMind(
+          u.sanity() == null ? maxSanity : u.sanity(),
+          maxSanity,
+          u.phobias().stream().map(p -> new Phobia(p.enemyType(), p.known())).toList(),
+          u.fearFloor(),
+          config.getSanity());
+      byType.computeIfAbsent(u.type(), _ -> new ArrayList<>()).add(unit);
     }
     return byType;
   }

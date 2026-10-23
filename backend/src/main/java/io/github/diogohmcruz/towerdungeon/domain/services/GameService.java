@@ -346,6 +346,7 @@ public class GameService {
     gameState.drainSupplies(
         gameState.getTowerPartySize() * config.getLoop().getSupplyDrainPerUnit());
     gameState.rechargeTowerCasters();
+    gameState.drainDepthSanity(tower.getCurrentFloor());
     gameState.advanceReinforcements();
     if (!gameState.hasSupplies()) {
       applyStarvation(gameState);
@@ -377,6 +378,7 @@ public class GameService {
       }
       tower.moveToNextFloor();
       gameState.recordFloorReached(tower.getCurrentFloor());
+      gameState.rewardFloorClimbed();
       log.info("Beat the floor {}!", tower.getCurrentFloor());
       return;
     }

@@ -34,6 +34,7 @@ public class GameProperties {
   private final Recruit recruit = new Recruit();
   private final Body body = new Body();
   private final Aiming aiming = new Aiming();
+  private final Sanity sanity = new Sanity();
   private final Magic magic = new Magic();
   private final Reinforcements reinforcements = new Reinforcements();
   private final Supply supply = new Supply();
@@ -298,6 +299,46 @@ public class GameProperties {
     public double headBiasOf(UnitStats type) {
       return headBias.getOrDefault(type, 1.0);
     }
+  }
+
+  /**
+   * Sanity and phobias: what a unit's mind gains and loses, how phobias are drawn at recruit, and
+   * how hard they bite. Values are provisional; the balance pass (#8) tunes them.
+   */
+  @Data
+  public static class Sanity {
+    /** Every unit starts at, and recovers toward, this much sanity. */
+    private double max = 100.0;
+
+    /** Gained by the unit that lands a killing blow. */
+    private double killGain = 2.0;
+
+    /** Gained by every party member when the party climbs to the next floor. */
+    private double floorClimbedGain = 5.0;
+
+    /** Lost by each living party member when an ally dies on the tower. */
+    private double allyDeathDrain = 10.0;
+
+    /** Lost, once per floor, by a unit that meets an enemy type it fears. */
+    private double fearMeetDrain = 5.0;
+
+    /** Lost by every party member each lifecycle tick, times the floor number. */
+    private double depthDrainPerFloor = 0.01;
+
+    /** Gained per lifecycle tick by each reserve whose sanity is below its maximum. */
+    private double recoveryPerTick = 2.0;
+
+    /** Pantry food that one reserve's tick of recovery costs. */
+    private double recoveryFoodPerTick = 0.5;
+
+    /** Chances of drawing 0, 1 and 2 phobias at recruit, in that order. */
+    private List<Double> phobiaCountChances = new ArrayList<>(List.of(0.40, 0.40, 0.20));
+
+    /** Severity at full sanity; it climbs linearly to 1.0 at zero sanity. */
+    private double severityAtFullSanity = 0.25;
+
+    /** Share of damage a phobia moves at severity 1: dealt x(1 - this), taken x(1 + this). */
+    private double phobiaEffect = 0.5;
   }
 
   /** Expedition food-carrying capacity. */

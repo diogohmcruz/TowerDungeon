@@ -84,22 +84,27 @@ class FieldAccountingTest {
           "layoutVersion", "client redraw counter, recomputed on restore");
 
   private static final Map<String, String> UNIT_MAPPED =
-      Map.of(
-          "id", "UnitSnapshot.id",
-          "name", "UnitSnapshot.name",
-          "stats", "UnitSnapshot.type",
-          "parts", "UnitSnapshot.parts",
-          "maxMana", "UnitSnapshot.maxMana",
-          "currentMana", "UnitSnapshot.currentMana",
-          "healthFactor", "UnitSnapshot.healthFactor",
-          "damageFactor", "UnitSnapshot.damageFactor",
-          "fixedStrengths", "UnitSnapshot.fixedStrengths");
+      Map.ofEntries(
+          Map.entry("id", "UnitSnapshot.id"),
+          Map.entry("name", "UnitSnapshot.name"),
+          Map.entry("stats", "UnitSnapshot.type"),
+          Map.entry("parts", "UnitSnapshot.parts"),
+          Map.entry("maxMana", "UnitSnapshot.maxMana"),
+          Map.entry("currentMana", "UnitSnapshot.currentMana"),
+          Map.entry("healthFactor", "UnitSnapshot.healthFactor"),
+          Map.entry("damageFactor", "UnitSnapshot.damageFactor"),
+          Map.entry("fixedStrengths", "UnitSnapshot.fixedStrengths"),
+          Map.entry("sanity", "UnitSnapshot.sanity"),
+          Map.entry("maxSanity", "UnitSnapshot.maxSanity"),
+          Map.entry("phobias", "UnitSnapshot.phobias"),
+          Map.entry("fearFloor", "UnitSnapshot.fearFloor"));
 
   private static final Map<String, String> UNIT_TRANSIENT =
       Map.of(
           "currentHealth", "derived: the sum of the present parts' health",
           "maxHealth", "derived: the sum of the present parts' maximum health",
-          "bodyWeights", "game balance, supplied from config on restore");
+          "bodyWeights", "game balance, supplied from config on restore",
+          "sanityRules", "game balance, supplied from config on restore");
 
   private static Set<String> fieldsOf(Class<?> type) {
     var names = new TreeSet<String>();
