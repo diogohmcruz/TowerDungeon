@@ -22,6 +22,11 @@ public record Item(
     return stats.getOrDefault(stat, 0.0);
   }
 
+  /** Whether the item carries the given effect. */
+  public boolean has(ItemEffect effect) {
+    return effect.id().equals(effectId);
+  }
+
   public boolean hasEffect() {
     return effectId != null;
   }

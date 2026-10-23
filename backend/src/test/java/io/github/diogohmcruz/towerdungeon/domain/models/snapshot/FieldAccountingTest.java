@@ -118,7 +118,8 @@ class FieldAccountingTest {
           "currentHealth", "derived: the sum of the present parts' health",
           "maxHealth", "derived: the sum of the present parts' maximum health",
           "bodyWeights", "game balance, supplied from config on restore",
-          "sanityRules", "game balance, supplied from config on restore");
+          "sanityRules", "game balance, supplied from config on restore",
+          "itemEffects", "game balance, supplied from config on restore");
 
   private static Set<String> fieldsOf(Class<?> type) {
     var names = new TreeSet<String>();

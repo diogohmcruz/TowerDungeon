@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 
 import io.github.diogohmcruz.towerdungeon.domain.items.Item;
 import io.github.diogohmcruz.towerdungeon.domain.models.AttackType;
+import io.github.diogohmcruz.towerdungeon.domain.models.BodyPart;
 import io.github.diogohmcruz.towerdungeon.domain.models.Enemy;
 import io.github.diogohmcruz.towerdungeon.domain.models.GameState;
 import io.github.diogohmcruz.towerdungeon.domain.models.TowerFloor;
@@ -122,35 +123,68 @@ public class PartyCombat {
   public List<Item> enemiesAttack(
       GameState gameState, List<Enemy> currentEnemies, Map<UnitStats, List<Unit>> unitsOnTower) {
     var drops = new ArrayList<Item>();
-    currentEnemies.forEach(
-        currentEnemy -> {
-          var unitStatsKeys = new ArrayList<>(unitsOnTower.keySet());
-          Collections.shuffle(unitStatsKeys, random);
-          var targetUnit = unitsOnTower.get(unitStatsKeys.getFirst());
-          if (targetUnit.isEmpty()) {
-            log.info("No units available for enemy {} to attack. Skipping attack.", currentEnemy);
-            return;
-          }
-          var randomUnitOnTowerIndex = random.nextInt(targetUnit.size());
-          var targetUnitElement = targetUnit.get(randomUnitOnTowerIndex);
-          drops.addAll(
-              new AimedStrike(random, gameState.getConfig().getAiming())
-                  .strike(
-                      targetUnitElement,
-                      currentEnemy.getEffectiveDamage()
-                          * targetUnitElement.takenFactorFrom(currentEnemy.getStats()),
-                      currentEnemy.getStats().getAttackType(),
-                      gameState.getConfig().getAiming().profileOf(currentEnemy.getStats()),
-                      currentEnemy.getAccuracy(),
-                      1.0));
+    List.copyOf(currentEnemies)
+        .forEach(
+            currentEnemy -> {
+              if (currentEnemy.isDead()) {
+                return;
+              }
+              var unitStatsKeys = new ArrayList<>(unitsOnTower.keySet());
+              Collections.shuffle(unitStatsKeys, random);
+              var targetUnit = unitsOnTower.get(unitStatsKeys.getFirst());
+              if (targetUnit.isEmpty()) {
+                log.info(
+                    "No units available for enemy {} to attack. Skipping attack.", currentEnemy);
+                return;
+              }
+              var randomUnitOnTowerIndex = random.nextInt(targetUnit.size());
+              var targetUnitElement = targetUnit.get(randomUnitOnTowerIndex);
+              var healthBefore = targetUnitElement.getCurrentHealth();
+              drops.addAll(
+                  new AimedStrike(random, gameState.getConfig().getAiming())
+                      .strike(
+                          targetUnitElement,
+                          currentEnemy.getEffectiveDamage()
+                              * targetUnitElement.takenFactorFrom(currentEnemy.getStats()),
+                          currentEnemy.getStats().getAttackType(),
+                          gameState.getConfig().getAiming().profileOf(currentEnemy.getStats()),
+                          currentEnemy.getAccuracy(),
+                          1.0));
 
-          if (targetUnitElement.isDead()) {
-            log.info("Enemy {} defeated unit {}", currentEnemy, targetUnitElement);
-            drops.addAll(targetUnitElement.dropAll());
-            gameState.removeUnit(targetUnitElement);
-          }
-        });
+              returnThorns(
+                  gameState, currentEnemies, currentEnemy, targetUnitElement, healthBefore);
+
+              if (targetUnitElement.isDead()) {
+                log.info("Enemy {} defeated unit {}", currentEnemy, targetUnitElement);
+                drops.addAll(targetUnitElement.dropAll());
+                gameState.removeUnit(targetUnitElement);
+              }
+            });
     return drops;
+  }
+
+  /**
+   * A melee attacker that hurt a unit wearing Thorn takes the thorn damage back on its torso.
+   * One that dies of it leaves the garrison and counts as a kill.
+   */
+  private static void returnThorns(
+      GameState gameState,
+      List<Enemy> currentEnemies,
+      Enemy attacker,
+      Unit victim,
+      double healthBefore) {
+    var thorn = victim.thornDamage();
+    if (thorn <= 0
+        || attacker.getStats().getAttackType() != AttackType.MELEE
+        || victim.getCurrentHealth() >= healthBefore) {
+      return;
+    }
+    attacker.damagePart(BodyPart.TORSO, thorn);
+    if (attacker.isDead()) {
+      log.info("Enemy {} died on the thorns of unit {}", attacker, victim);
+      currentEnemies.removeIf(enemy -> enemy.getId().equals(attacker.getId()));
+      gameState.recordEnemyKill();
+    }
   }
 
   /**

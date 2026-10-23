@@ -117,6 +117,28 @@ game:
         accuracy: 5.0
         evasion: 5.0
         sanity: 5.0
+    drop-rates:
+      leftover: 0.9
+      talisman: 0.1
+    surplus-relics:
+      talisman: 3
+    effects:
+      steadfast-max-sanity: 10.0
+      keen-accuracy: 10.0
+      wary-evasion: 10.0
+      ember-magic-damage: 1.0
+      gloom-taken-reduction: 0.05
+      salted-taken-reduction: 0.25
+      thorn-damage: 1.0
+      lantern-sanity-per-floor: 2.0
+      mana-vessel-max-mana: 5.0
+      dragon-slayer-multiplier: 2.0
+      salt-satchel-attrition-factor: 0.5
+    artifacts:
+      sargans-mask-floor: 40
+      mana-vessel-floor: 30
+      dragon-slayer-floor: 60
+      salt-satchel-floor: 20
   magic:
     max-mana: 5.0
     cost-per-cast: 1.0

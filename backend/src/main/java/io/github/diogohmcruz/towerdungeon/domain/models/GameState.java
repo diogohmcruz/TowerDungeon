@@ -699,6 +699,7 @@ public class GameState {
     unit.setBodyWeights(config.getBody().getWeights());
     unit.rollStrengths(random, config.getRecruit().getStrengthSpread());
     unit.setSanityRules(config.getSanity());
+    unit.setItemEffects(config.getItems().getEffects());
     unit.rollPhobias(random);
     if (unit.isCaster()) {
       unit.chargeToFull(config.getMagic().getMaxMana());
@@ -720,6 +721,7 @@ public class GameState {
     }
     unit.rollStrengths(random, config.getRecruit().getStrengthSpread());
     unit.setSanityRules(config.getSanity());
+    unit.setItemEffects(config.getItems().getEffects());
     if (unit.isCaster()) {
       unit.chargeToFull(config.getMagic().getMaxMana());
     }
@@ -1054,7 +1056,8 @@ public class GameState {
 
   /** Lifts every party member's spirits for having climbed to the next floor. */
   public void rewardFloorClimbed() {
-    partyMembers().forEach(unit -> unit.changeSanity(config.getSanity().getFloorClimbedGain()));
+    var gain = config.getSanity().getFloorClimbedGain();
+    partyMembers().forEach(unit -> unit.changeSanity(gain + unit.floorClimbedSanityBonus()));
   }
 
   /** The tower wears on the party: every member loses a little sanity, more the deeper it is. */
@@ -1091,7 +1094,7 @@ public class GameState {
     var unitsToRemove =
         unitsOnTower.values().stream()
             .flatMap(List::stream)
-            .peek(unit -> dropGearOnCurrentFloor(unit.receiveAttack(attack, null)))
+            .peek(unit -> dropGearOnCurrentFloor(unit.receiveAttrition(attack)))
             .filter(BaseUnit::isDead)
             .toList();
     unitsToRemove.forEach(this::removeUnit);
@@ -1202,11 +1205,11 @@ public class GameState {
                     unit.getHealthFactor(),
                     unit.getDamageFactor(),
                     unit.isFixedStrengths(),
-                    unit.getMaxMana(),
+                    unit.getBaseMaxMana(),
                     unit.getCurrentMana(),
                     partSnapshots(unit.getParts()),
                     unit.getSanity(),
-                    unit.getMaxSanity(),
+                    unit.getBaseMaxSanity(),
                     unit.getPhobias().stream()
                         .map(phobia -> new PhobiaSnapshot(phobia.getFeared(), phobia.isKnown()))
                         .toList(),
@@ -1254,6 +1257,7 @@ public class GameState {
               u.gear(),
               config.getBody().getWeights());
       var maxSanity = u.maxSanity() == null ? config.getSanity().getMax() : u.maxSanity();
+      unit.setItemEffects(config.getItems().getEffects());
       unit.restoreMind(
           u.sanity() == null ? maxSanity : u.sanity(),
           maxSanity,

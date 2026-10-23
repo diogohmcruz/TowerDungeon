@@ -57,9 +57,11 @@ public class Loadout {
    * item is reported as surplus.
    */
   public EquipResult equip(Item item, ItemRating rating, Predicate<Slot> usable) {
+    // The item's own category first, so a Talisman takes a trinket slot before a body slot.
     var fitting =
         java.util.Arrays.stream(Slot.values())
-            .filter(slot -> slot.accepts(item.category()) && usable.test(slot))
+            .filter(slot -> slot.fits(item) && usable.test(slot))
+            .sorted(Comparator.comparing(slot -> !slot.accepts(item.category())))
             .toList();
     for (var slot : fitting) {
       if (!slots.containsKey(slot)) {
@@ -67,13 +69,25 @@ public class Loadout {
         return new EquipResult(slot, null);
       }
     }
+    // An Artifact is never displaced, and never turned away while a slot holds anything lesser.
     var weakest =
-        fitting.stream().min(Comparator.comparingDouble(slot -> rating.of(slots.get(slot))));
-    if (weakest.isPresent() && rating.of(item) > rating.of(slots.get(weakest.get()))) {
+        fitting.stream()
+            .filter(slot -> slots.get(slot).tier() != ItemTier.ARTIFACT)
+            .min(Comparator.comparingDouble(slot -> rating.of(slots.get(slot))));
+    var takesPlace =
+        weakest.isPresent()
+            && (item.tier() == ItemTier.ARTIFACT
+                || rating.of(item) > rating.of(slots.get(weakest.get())));
+    if (takesPlace) {
       var displaced = slots.put(weakest.get(), item);
       return new EquipResult(weakest.get(), displaced);
     }
     return new EquipResult(null, item);
+  }
+
+  /** How many worn items carry {@code effect}. */
+  public int countOf(ItemEffect effect) {
+    return (int) slots.values().stream().filter(item -> item.has(effect)).count();
   }
 
   /** Takes the item off a slot, returning it, or {@code null} if the slot was empty. */

@@ -15,6 +15,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
 import io.github.diogohmcruz.towerdungeon.domain.items.EquipResult;
 import io.github.diogohmcruz.towerdungeon.domain.items.Item;
+import io.github.diogohmcruz.towerdungeon.domain.items.ItemEffect;
 import io.github.diogohmcruz.towerdungeon.domain.items.ItemRating;
 import io.github.diogohmcruz.towerdungeon.domain.items.ItemStat;
 import io.github.diogohmcruz.towerdungeon.domain.items.Loadout;
@@ -29,9 +30,11 @@ import lombok.Getter;
 public class Unit extends BaseUnit implements Aimable {
   private final UnitStats stats;
 
-  /** Personal mana reserve (only casters carry one; non-casters keep 0). */
+  /** Personal mana reserve (only casters carry one; non-casters keep 0), before items add. */
+  @Getter(AccessLevel.NONE)
   private double maxMana = 0.0;
 
+  @Getter(AccessLevel.NONE)
   private double currentMana = 0.0;
 
   /** This unit's health relative to its type's baseline (1.0 = average); rolled at recruit. */
@@ -80,10 +83,18 @@ public class Unit extends BaseUnit implements Aimable {
   @EqualsAndHashCode.Exclude
   private GameProperties.Sanity sanityRules = new GameProperties.Sanity();
 
-  /** The most sanity this unit can hold. */
+  /** The numbers behind the special effects of the items this unit wears; supplied from config. */
+  @JsonIgnore
+  @Getter(AccessLevel.NONE)
+  @EqualsAndHashCode.Exclude
+  private GameProperties.Items.Effects itemEffects = new GameProperties.Items.Effects();
+
+  /** The most sanity this unit has of its own, before what it wears adds to it. */
+  @Getter(AccessLevel.NONE)
   private double maxSanity = sanityRules.getMax();
 
-  /** Current sanity, from 0 to {@link #maxSanity}. */
+  /** Current sanity as last set; reads are held to the current maximum. */
+  @Getter(AccessLevel.NONE)
   private double sanity = maxSanity;
 
   /** What this unit fears; hidden from the player until first met. */
@@ -115,6 +126,16 @@ public class Unit extends BaseUnit implements Aimable {
   /** Takes off and returns everything the unit wears, trinkets included: what a death drops. */
   public List<Item> dropAll() {
     return gear.releaseAll();
+  }
+
+  /** How many of the worn items carry {@code effect}. */
+  private int worn(ItemEffect effect) {
+    return gear.countOf(effect);
+  }
+
+  /** Supplies the numbers behind the effects of worn items. */
+  public void setItemEffects(GameProperties.Items.Effects effects) {
+    this.itemEffects = effects;
   }
 
   /** The unit's body parts, in the order torso, head, arms, legs; lost parts stay listed. */
@@ -335,7 +356,11 @@ public class Unit extends BaseUnit implements Aimable {
     var damage = stats.getDamage() * damageFactor;
     var scaled =
         isCaster() ? damage : damage * Math.pow(LOST_ARM_DAMAGE_FACTOR, lostCount(BodyPart::isArm));
-    return scaled + gear.total(ItemStat.POWER);
+    var ember =
+        stats.getAttackType() == AttackType.MAGIC
+            ? worn(ItemEffect.EMBER) * itemEffects.getEmberMagicDamage()
+            : 0.0;
+    return scaled + gear.total(ItemStat.POWER) + ember;
   }
 
   /**
@@ -367,20 +392,41 @@ public class Unit extends BaseUnit implements Aimable {
 
   /** Whether the unit is a caster with enough mana left to pay for one cast. */
   public boolean canCast(double cost) {
-    return isCaster() && currentMana >= cost;
+    return isCaster() && getCurrentMana() >= cost;
+  }
+
+  /** The most mana the unit can hold: its own reserve, plus Lilicen's Mana Vessel for a caster. */
+  public double getMaxMana() {
+    var vessel =
+        isCaster()
+            ? worn(ItemEffect.LILICENS_MANA_VESSEL) * itemEffects.getManaVesselMaxMana()
+            : 0.0;
+    return maxMana + vessel;
+  }
+
+  /** The unit's own mana reserve, before what it wears adds to it. */
+  @JsonIgnore
+  public double getBaseMaxMana() {
+    return maxMana;
+  }
+
+  /** The mana left, never above the current maximum. */
+  public double getCurrentMana() {
+    return Math.min(currentMana, getMaxMana());
   }
 
   /** Spends {@code cost} mana for a cast, never dropping below empty. */
   public void spendMana(double cost) {
-    this.currentMana = Math.max(0, this.currentMana - cost);
+    this.currentMana = Math.max(0, getCurrentMana() - cost);
   }
 
   /** Regains {@code amount} mana while recharging at home, capped at the reserve's maximum. */
   public void rechargeMana(double amount) {
-    if (maxMana <= 0) {
+    var max = getMaxMana();
+    if (max <= 0) {
       return;
     }
-    this.currentMana = Math.min(maxMana, this.currentMana + Math.max(0, amount));
+    this.currentMana = Math.min(max, getCurrentMana() + Math.max(0, amount));
   }
 
   /**
@@ -391,6 +437,24 @@ public class Unit extends BaseUnit implements Aimable {
     this.sanityRules = rules;
     this.maxSanity = rules.getMax();
     this.sanity = maxSanity;
+  }
+
+  /** The most sanity the unit can hold now: its own, plus what it wears. */
+  public double getMaxSanity() {
+    return maxSanity
+        + gear.total(ItemStat.SANITY)
+        + worn(ItemEffect.STEADFAST) * itemEffects.getSteadfastMaxSanity();
+  }
+
+  /** The unit's own maximum sanity, before what it wears adds to it. */
+  @JsonIgnore
+  public double getBaseMaxSanity() {
+    return maxSanity;
+  }
+
+  /** Current sanity, from 0 to {@link #getMaxSanity()}. */
+  public double getSanity() {
+    return Math.min(sanity, getMaxSanity());
   }
 
   /** Restores a persisted mind as it was; nothing is re-rolled. */
@@ -451,10 +515,11 @@ public class Unit extends BaseUnit implements Aimable {
    * the unit instead, one health per point.
    */
   public void changeSanity(double delta) {
-    var target = sanity + delta;
-    if (target > maxSanity) {
-      var excess = target - maxSanity;
-      sanity = maxSanity;
+    var max = getMaxSanity();
+    var target = getSanity() + delta;
+    if (target > max) {
+      var excess = target - max;
+      sanity = max;
       heal(excess);
     } else {
       sanity = Math.max(0, target);
@@ -468,22 +533,76 @@ public class Unit extends BaseUnit implements Aimable {
   @JsonIgnore
   public double getSeverity() {
     var base = sanityRules.getSeverityAtFullSanity();
-    var missing = maxSanity > 0 ? 1 - sanity / maxSanity : 1.0;
+    var max = getMaxSanity();
+    var missing = max > 0 ? 1 - getSanity() / max : 1.0;
     return base + (1 - base) * missing;
   }
 
+  /** Whether a phobia of {@code enemyType} bites: held, and not warded off by Sargan's Mask. */
   private boolean fears(EnemyStats enemyType) {
-    return phobias.stream().anyMatch(phobia -> phobia.getFeared() == enemyType);
+    return !isImmuneToPhobias()
+        && phobias.stream().anyMatch(phobia -> phobia.getFeared() == enemyType);
   }
 
-  /** What this unit's damage is multiplied by against {@code enemyType}; 1 unless it fears it. */
+  /** Whether phobias have no effect on this unit: it wears Sargan's Mask. */
+  public boolean isImmuneToPhobias() {
+    return worn(ItemEffect.SARGANS_MASK) > 0;
+  }
+
+  /**
+   * What this unit's damage is multiplied by against {@code enemyType}: down if it fears it,
+   * doubled against dragons by the Dragon-Slayer's Blade.
+   */
   public double damageFactorAgainst(EnemyStats enemyType) {
-    return fears(enemyType) ? 1 - sanityRules.getPhobiaEffect() * getSeverity() : 1.0;
+    var fear = fears(enemyType) ? 1 - sanityRules.getPhobiaEffect() * getSeverity() : 1.0;
+    var slaying =
+        enemyType == EnemyStats.DRAGON || enemyType == EnemyStats.DEAD_DRAGON
+            ? Math.pow(
+                itemEffects.getDragonSlayerMultiplier(), worn(ItemEffect.DRAGON_SLAYERS_BLADE))
+            : 1.0;
+    return fear * slaying;
   }
 
-  /** What damage from {@code enemyType} is multiplied by; 1 unless this unit fears it. */
+  /**
+   * What damage from {@code enemyType} is multiplied by: up if this unit fears it, down by Gloom
+   * against Dead Soldiers and Necromancers and by Salted against Slimes.
+   */
   public double takenFactorFrom(EnemyStats enemyType) {
-    return fears(enemyType) ? 1 + sanityRules.getPhobiaEffect() * getSeverity() : 1.0;
+    var fear = fears(enemyType) ? 1 + sanityRules.getPhobiaEffect() * getSeverity() : 1.0;
+    var warding =
+        switch (enemyType) {
+          case DEAD_SOLDIERS, NECROMANCER ->
+              reduction(worn(ItemEffect.GLOOM), itemEffects.getGloomTakenReduction());
+          case SLIME -> reduction(worn(ItemEffect.SALTED), itemEffects.getSaltedTakenReduction());
+          default -> 1.0;
+        };
+    return fear * warding;
+  }
+
+  private static double reduction(int count, double share) {
+    return Math.max(0.0, 1 - count * share);
+  }
+
+  /** Damage this unit returns to a melee attacker that hurts it, from Thorn. */
+  public double thornDamage() {
+    return worn(ItemEffect.THORN) * itemEffects.getThornDamage();
+  }
+
+  /** Sanity this unit gains on top of the usual when the party climbs a floor, from Lantern. */
+  public double floorClimbedSanityBonus() {
+    return worn(ItemEffect.LANTERN) * itemEffects.getLanternSanityPerFloor();
+  }
+
+  /**
+   * Attrition: steady wear from being on the tower, not aimed and not armoured. Yuva's Salt Satchel
+   * cuts it.
+   *
+   * @return the items worn on parts this cost the unit
+   */
+  public List<Item> receiveAttrition(double amount) {
+    var factor =
+        Math.pow(itemEffects.getSaltSatchelAttritionFactor(), worn(ItemEffect.YUVAS_SALT_SATCHEL));
+    return receiveAttack(amount * factor, null);
   }
 
   /**
@@ -491,6 +610,9 @@ public class Unit extends BaseUnit implements Aimable {
    * revealed, and the first such meeting on this floor costs the configured sanity.
    */
   public void meetEnemies(int floorId, Collection<EnemyStats> present) {
+    if (isImmuneToPhobias()) {
+      return;
+    }
     var met = phobias.stream().filter(phobia -> present.contains(phobia.getFeared())).toList();
     if (met.isEmpty()) {
       return;
@@ -535,13 +657,15 @@ public class Unit extends BaseUnit implements Aimable {
    */
   @JsonIgnore
   public double getAccuracy() {
-    return stats.baseAccuracy() + getSanityAccuracyModifier();
+    return stats.baseAccuracy()
+        + getSanityAccuracyModifier()
+        + worn(ItemEffect.KEEN) * itemEffects.getKeenAccuracy();
   }
 
   /** How well this unit avoids hits, in percentage points on the attacker's miss chance. */
   @JsonIgnore
   public double getEvasion() {
-    return stats.baseEvasion();
+    return stats.baseEvasion() + worn(ItemEffect.WARY) * itemEffects.getWaryEvasion();
   }
 
   /** Whether the part with this kind is still attached. */

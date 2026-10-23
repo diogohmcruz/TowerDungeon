@@ -9,6 +9,8 @@ import java.util.Map;
 import org.springframework.beans.BeanUtils;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
+import io.github.diogohmcruz.towerdungeon.domain.items.ItemEffect;
+import io.github.diogohmcruz.towerdungeon.domain.items.ItemTier;
 import io.github.diogohmcruz.towerdungeon.domain.models.Aim;
 import io.github.diogohmcruz.towerdungeon.domain.models.BodyPart;
 import io.github.diogohmcruz.towerdungeon.domain.models.EnemyStats;
@@ -413,6 +415,10 @@ public class GameProperties {
     private final Weights weights = new Weights();
     private final Leftover leftover = new Leftover();
     private final Bundle bundle = new Bundle();
+    private final DropRates dropRates = new DropRates();
+    private final SurplusRelics surplusRelics = new SurplusRelics();
+    private final Effects effects = new Effects();
+    private final Artifacts artifacts = new Artifacts();
 
     /** Most items a floor keeps for the party to find again; the lowest rating vanish first. */
     private int floorGearCap = 12;
@@ -428,6 +434,87 @@ public class GameProperties {
 
       /** Sanity a unit gains from finding an item. */
       private double sanityGain = 10.0;
+    }
+
+    /**
+     * How likely a find is each tier, as weights (they need not sum to 1). Talismans are rarer than
+     * Leftovers. Artifacts are never rolled: they sit at their home floor.
+     */
+    @Data
+    public static class DropRates {
+      private double leftover = 0.9;
+      private double talisman = 0.1;
+    }
+
+    /** What a surplus item of a tier is worth when it is turned into Relics. */
+    @Data
+    public static class SurplusRelics {
+      private int talisman = 3;
+
+      /**
+       * Relics for a surplus item of {@code tier}; a Leftover pays none here, an Artifact is never
+       * surplus.
+       */
+      public int of(ItemTier tier) {
+        return tier == ItemTier.TALISMAN ? talisman : 0;
+      }
+    }
+
+    /** The numbers behind each special effect. */
+    @Data
+    public static class Effects {
+      /** Steadfast: maximum sanity added. */
+      private double steadfastMaxSanity = 10.0;
+
+      /** Keen: accuracy added, in percentage points. */
+      private double keenAccuracy = 10.0;
+
+      /** Wary: evasion added, in percentage points. */
+      private double waryEvasion = 10.0;
+
+      /** Ember: damage added to a Magic attack. */
+      private double emberMagicDamage = 1.0;
+
+      /** Gloom: share off damage taken from Dead Soldiers and Necromancers. */
+      private double gloomTakenReduction = 0.05;
+
+      /** Salted: share off damage taken from Slimes. */
+      private double saltedTakenReduction = 0.25;
+
+      /** Thorn: damage returned to a melee attacker that hurts the wearer. */
+      private double thornDamage = 1.0;
+
+      /** Lantern: sanity gained per floor climbed, on top of the usual gain. */
+      private double lanternSanityPerFloor = 2.0;
+
+      /** Lilicen's Mana Vessel: maximum mana added to a caster. */
+      private double manaVesselMaxMana = 5.0;
+
+      /** The Dragon-Slayer's Blade: damage multiplier against Dragon and Dead Dragon. */
+      private double dragonSlayerMultiplier = 2.0;
+
+      /** Yuva's Salt Satchel: what attrition damage is multiplied by. */
+      private double saltSatchelAttritionFactor = 0.5;
+    }
+
+    /** The home floor of each Artifact. */
+    @Data
+    public static class Artifacts {
+      private int sargansMaskFloor = 40;
+      private int manaVesselFloor = 30;
+      private int dragonSlayerFloor = 60;
+      private int saltSatchelFloor = 20;
+
+      /** The floor whose Bundle holds the Artifact of this effect. */
+      public int homeFloorOf(ItemEffect effect) {
+        return switch (effect) {
+          case SARGANS_MASK -> sargansMaskFloor;
+          case LILICENS_MANA_VESSEL -> manaVesselFloor;
+          case DRAGON_SLAYERS_BLADE -> dragonSlayerFloor;
+          case YUVAS_SALT_SATCHEL -> saltSatchelFloor;
+          default -> throw new IllegalArgumentException(effect + " is not an Artifact effect");
+        };
+      }
     }
 
     /** What one point of each stat adds to an item's rating, and what an effect adds. */

@@ -30,6 +30,11 @@ public enum Slot {
     return accepts == category;
   }
 
+  /** Whether this slot can hold the item: its own category, or any item of a special tier. */
+  public boolean fits(Item item) {
+    return item.tier().fitsAnySlot() || accepts(item.category());
+  }
+
   /** The body part this slot sits on; empty for a trinket slot. */
   public Optional<BodyPart> bodyPart() {
     return Optional.ofNullable(bodyPart);
