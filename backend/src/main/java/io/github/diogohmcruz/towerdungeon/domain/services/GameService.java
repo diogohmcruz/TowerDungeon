@@ -874,6 +874,7 @@ public class GameService {
           Command.BuyTome _,
           Command.BuyRing _,
           Command.BuyPosts _,
+          Command.BuildPort _,
           Command.SendReinforcements _,
           Command.Exodus _,
           Command.MusterRoll _,
@@ -925,6 +926,7 @@ public class GameService {
             case Command.GiveRemedy remedy -> giveRemedy(slot, gameState, playerId, remedy);
             case Command.ReattachPart reattach -> reattachPart(slot, gameState, playerId, reattach);
             case Command.BuyPosts posts -> buyPosts(slot, gameState, playerId, posts);
+            case Command.BuildPort _ -> buildPort(slot, gameState, playerId);
             case Command.Resume _ -> resume(slot, playerId);
             case Command.SendReinforcements wave ->
                 sendReinforcements(slot, gameState, playerId, wave);
@@ -1182,6 +1184,16 @@ public class GameService {
     }
     slot.emit("POSTS_BOUGHT", Map.of("trade", command.trade().name()));
     return CommandResult.applied("The Posts were bought.");
+  }
+
+  private CommandResult buildPort(PlayerSlot slot, GameState gameState, String playerId) {
+    var refused = gameState.buildPort();
+    log.info("Player[{}] Port -> {}", playerId, refused.orElse("built"));
+    if (refused.isPresent()) {
+      return CommandResult.rejected(Reason.PURCHASE_REFUSED, refused.get());
+    }
+    slot.emit("PORT_BUILT", Map.of());
+    return CommandResult.applied("The Port was finished.");
   }
 
   private CommandResult startExpedition(

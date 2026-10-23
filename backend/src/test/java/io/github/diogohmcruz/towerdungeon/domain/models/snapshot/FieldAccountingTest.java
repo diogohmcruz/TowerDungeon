@@ -40,6 +40,7 @@ class FieldAccountingTest {
           Map.entry("phase", "CampaignSnapshot.phase"),
           Map.entry("pending", "CampaignSnapshot.pending"),
           Map.entry("choices", "CampaignSnapshot.choices"),
+          Map.entry("portBuilt", "CampaignSnapshot.portBuilt"),
           Map.entry("village", "CampaignSnapshot.villageFood"),
           Map.entry("resources", "CampaignSnapshot.vault"),
           Map.entry("carriedLoot", "ExpeditionSnapshot.carriedLoot"),

@@ -52,6 +52,7 @@ public class GameProperties {
   private final Salt salt = new Salt();
   private final Trust trust = new Trust();
   private final Spores spores = new Spores();
+  private final Port port = new Port();
   private final Architecture architecture = new Architecture();
   private final Prestige prestige = new Prestige();
   private final Persistence persistence = new Persistence();
@@ -998,6 +999,22 @@ public class GameProperties {
 
     /** Multiplier of that loot on a Guardian Floor. */
     private double guardianLootMultiplier = 3.0;
+  }
+
+  /**
+   * The Port: its footing opens once the Campaign has completed enough Expeditions, and the player
+   * finishes it from the Vault. The costs are placeholders until the Boat and Voyages are measured.
+   */
+  @Data
+  public static class Port {
+    /** Expeditions the Campaign must have completed before the Port's footing opens. */
+    private int footingExpeditions = 12;
+
+    /** Materials from the Vault that finish the Port. */
+    private double materialsCost = 600.0;
+
+    /** Credits from the Vault that finish the Port. */
+    private double creditsCost = 300.0;
   }
 
   /** Floor Architectures: the seeded plan, and the switch for their gameplay effects. */

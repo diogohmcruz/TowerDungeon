@@ -229,6 +229,12 @@ game:
     loot-from-floor: 20
     loot-per-floor: 1.0
     guardian-loot-multiplier: 3.0
+  port:
+    # Placeholders: the footing opens at this many completed Expeditions; finishing it costs these
+    # from the Vault.
+    footing-expeditions: 12
+    materials-cost: 600.0
+    credits-cost: 300.0
   architecture:
     enabled: false
     seed: 362108372306

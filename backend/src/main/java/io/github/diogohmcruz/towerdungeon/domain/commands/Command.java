@@ -213,6 +213,17 @@ public sealed interface Command {
     }
   }
 
+  /**
+   * Finish the Port with Materials and Credits from the Vault. Refused until the footing is open,
+   * once built, in a Trial, and when the Vault cannot pay.
+   */
+  record BuildPort() implements Command {
+    @Override
+    public String kind() {
+      return "BUILD_PORT";
+    }
+  }
+
   /** Spend one Spore on a Remedy: a Unit at home recovers 20 health at once. */
   record GiveRemedy(Integer unitId) implements Command {
     @Override

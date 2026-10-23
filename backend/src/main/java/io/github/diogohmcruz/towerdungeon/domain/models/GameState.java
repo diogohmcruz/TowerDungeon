@@ -142,6 +142,9 @@ public class GameState {
   private int highestFloor = 0;
   private int expeditionsCompleted = 0;
 
+  /** Whether the Port has been finished. Its footing is derived from the Expedition count. */
+  private boolean portBuilt;
+
   /** The Trial this Campaign is; null for a real Campaign. Shown to the client without a seed. */
   @JsonInclude(JsonInclude.Include.NON_NULL)
   private TrialRun trial;
@@ -1092,6 +1095,54 @@ public class GameState {
         village.ringBlocked().orElse(null));
   }
 
+  /** The Port's state as the Village panel shows it: hidden, footing or built, and its cost. */
+  public PortView getPort() {
+    var rules = config.getPort();
+    return new PortView(
+        portState(),
+        rules.getFootingExpeditions(),
+        expeditionsCompleted,
+        rules.getMaterialsCost(),
+        rules.getCreditsCost());
+  }
+
+  private PortState portState() {
+    if (trial != null) {
+      return PortState.HIDDEN;
+    }
+    if (portBuilt) {
+      return PortState.BUILT;
+    }
+    return expeditionsCompleted >= config.getPort().getFootingExpeditions()
+        ? PortState.FOOTING
+        : PortState.HIDDEN;
+  }
+
+  /** Finishes the Port for its cost from the Vault. Returns why not, or empty. */
+  public Optional<String> buildPort() {
+    if (gameOutcome != GameOutcome.PLAYING) {
+      return Optional.of("Nothing built.");
+    }
+    switch (portState()) {
+      case HIDDEN -> {
+        return Optional.of("The Port has no footing yet.");
+      }
+      case BUILT -> {
+        return Optional.of("The Port is already finished.");
+      }
+      case FOOTING -> {}
+    }
+    var rules = config.getPort();
+    if (vaultMaterials() < rules.getMaterialsCost() || credit < rules.getCreditsCost()) {
+      return Optional.of("The Vault cannot pay for the Port.");
+    }
+    resources.merge(ResourceType.MATERIALS, -rules.getMaterialsCost(), Double::sum);
+    credit -= rules.getCreditsCost();
+    portBuilt = true;
+    writeLedger("The Port is finished. The pier stands over the dark water.", false);
+    return Optional.empty();
+  }
+
   /** Raises the Posts of {@code trade} for Materials from the Vault. Returns why not, or empty. */
   public Optional<String> buyPosts(Trade trade) {
     if (gameOutcome != GameOutcome.PLAYING) {
@@ -1422,6 +1473,23 @@ public class GameState {
       int capacityBonus,
       int capacityPerLevel,
       String blocked) {}
+
+  /** Where the Port stands: out of sight, a footing to build on, or finished. */
+  public enum PortState {
+    HIDDEN,
+    FOOTING,
+    BUILT
+  }
+
+  /**
+   * The Port for the frame: its state, when the footing opens, how far the Campaign is and cost.
+   */
+  public record PortView(
+      PortState state,
+      int footingExpeditions,
+      int expeditionsCompleted,
+      double materialsCost,
+      double creditsCost) {}
 
   /** The next Post upgrade of a workplace and what it costs in Materials. */
   public record PostUpgradeView(
@@ -2241,7 +2309,8 @@ public class GameState {
             List.copyOf(wallOfNames),
             phase,
             pending,
-            Map.copyOf(choices));
+            Map.copyOf(choices),
+            portBuilt);
     return new GameSnapshot(
         campaign,
         expeditionActive ? expeditionSnapshot() : null,
@@ -2421,6 +2490,7 @@ public class GameState {
     state.openedShortcuts.addAll(c.shortcutsOpened());
     state.highestFloor = c.highestFloor();
     state.expeditionsCompleted = c.expeditionsCompleted();
+    state.portBuilt = Boolean.TRUE.equals(c.portBuilt()) && snapshot.trial() == null;
     state.enemiesDefeated = c.enemiesDefeated();
     state.gameOutcome = c.outcome();
     state.lastRunSummary = c.lastExpeditionSummary();

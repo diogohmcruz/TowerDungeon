@@ -33,6 +33,8 @@ import io.github.diogohmcruz.towerdungeon.domain.prestige.SuccessionReport;
  * @param pending the Succession report computed when the Campaign ended; null while it is active
  * @param choices the Succession's answers for the next Generation, by question; absent in older
  *     saves
+ * @param portBuilt whether the Port was finished; absent in older saves, which read as not built
+ *     (the footing is derived from the Expedition count)
  */
 public record CampaignSnapshot(
     double credit,
@@ -56,7 +58,8 @@ public record CampaignSnapshot(
     List<Fallen> wallOfNames,
     CampaignPhase phase,
     SuccessionReport pending,
-    Map<String, String> choices) {
+    Map<String, String> choices,
+    Boolean portBuilt) {
 
   /** A save from before Artifacts has none taken, and before the Wall of Names no names on it. */
   public CampaignSnapshot {
@@ -64,6 +67,7 @@ public record CampaignSnapshot(
     wallOfNames = wallOfNames == null ? List.of() : wallOfNames;
     phase = phase == null ? CampaignPhase.ACTIVE : phase;
     choices = choices == null ? Map.of() : choices;
+    portBuilt = Boolean.TRUE.equals(portBuilt);
   }
 
   /** The same record with the reserves cleared, for comparing everything but who is in them. */
@@ -90,6 +94,7 @@ public record CampaignSnapshot(
         wallOfNames,
         phase,
         pending,
-        choices);
+        choices,
+        portBuilt);
   }
 }
