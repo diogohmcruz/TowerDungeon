@@ -1,0 +1,65 @@
+<section class="loadout" [class.open]="open()">
+  <button
+    class="btn loadout-toggle"
+    type="button"
+    [attr.aria-expanded]="open()"
+    aria-controls="loadout-body"
+    (click)="toggle()"
+  >
+    Loadout {{ open() ? '(hide)' : '(options)' }}
+  </button>
+
+  @if (open()) {
+  <div class="loadout-body" id="loadout-body">
+    <p class="loadout-line capacity">
+      Carrying Capacity {{ preview().carryingCapacity | number: '1.0-0' }}.
+      Taking {{ preview().suppliesTaken | number: '1.0-0' }} Supplies.
+    </p>
+
+    @if (!preview().saltPansOpen) {
+    <p class="loadout-line salting">Salt: the Salt Pans are not open yet.</p>
+    } @else {
+    <p class="loadout-line salting">
+      <span class="line-name">Salting</span>
+      <span class="stepper">
+        <button
+          class="btn btn-ghost step"
+          type="button"
+          aria-label="Use one less Salt"
+          [disabled]="disabled() || saltChosen() <= 0"
+          (click)="fewer()"
+        >
+          -
+        </button>
+        <button
+          class="btn btn-ghost step"
+          type="button"
+          aria-label="Use one more Salt"
+          [disabled]="disabled() || saltChosen() >= saltMax()"
+          (click)="more()"
+        >
+          +
+        </button>
+      </span>
+      {{ saltChosen() }} of {{ preview().saltHeld }} Salt held. 1 Salt salts {{
+      preview().suppliesPerSalt | number: '1.0-0' }} Supplies. Drain {{
+      preview().saltedDrainPerUnit | number: '1.0-2' }} per Unit per second
+      instead of {{ preview().drainPerUnit | number: '1.0-2' }}.
+    </p>
+    }
+
+    <p class="loadout-line lasts">
+      @if (lastsChosen() === null) { No Party to feed. } @else { Supplies last
+      about {{ lastsChosen() }} s at Party size {{ preview().partySize }}. @if
+      (lastsPlain() !== lastsFullySalted()) { {{ lastsPlain() }} s plain, {{
+      lastsFullySalted() }} s if fully salted. } }
+    </p>
+
+    <p class="loadout-line hold" [class.short]="pantryHoldsShort()">
+      Setting out takes {{ preview().suppliesTaken | number: '1.0-0' }} Food.
+      @if (preview().pantryHoldSeconds === null) { Fields cover Upkeep. } @else
+      { Pantry would hold {{ preview().pantryHoldSeconds }} s. }
+    </p>
+  </div>
+  }
+</section>

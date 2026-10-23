@@ -15,6 +15,7 @@ import { MilestoneCard } from '../milestone-card/milestone-card';
 import { ShortcutCard } from '../shortcut-card/shortcut-card';
 import { RunSummaryCard } from '../run-summary-card/run-summary-card';
 import { Reinforcement } from '../../interfaces/game-state';
+import { Loadout } from '../loadout/loadout';
 
 @Component({
   selector: 'app-game-component',
@@ -29,6 +30,7 @@ import { Reinforcement } from '../../interfaces/game-state';
     MilestoneCard,
     ShortcutCard,
     RunSummaryCard,
+    Loadout,
   ],
   templateUrl: './game-component.html',
   styleUrls: ['./game-component.scss'],
@@ -46,6 +48,9 @@ export class GameComponent {
 
   /** Floor the next expedition begins on: 0 = base of the tower, otherwise an open shortcut. */
   readonly selectedStartFloor = signal(0);
+
+  /** Salt the Loadout has chosen; 0 unless the player opened it and chose some. */
+  readonly saltToUse = signal(0);
 
   readonly openShortcuts = computed(() =>
     (this.gameState().shortcuts ?? []).filter((s) => s.unlocked),
@@ -74,8 +79,15 @@ export class GameComponent {
 
   sendInvadeAction() {
     const units = new Map();
-    const payload = { units, startFloor: this.selectedStartFloor() };
+    const loadout = this.gameState().loadout;
+    const salt = Math.min(
+      this.saltToUse(),
+      loadout?.saltHeld ?? 0,
+      loadout?.saltUseful ?? 0,
+    );
+    const payload = { units, startFloor: this.selectedStartFloor(), salt };
     this.ws.sendAction(GameAction.INVADE, payload);
+    this.saltToUse.set(0);
   }
 
   selectStartFloor(floor: number) {

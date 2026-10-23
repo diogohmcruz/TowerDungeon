@@ -508,7 +508,7 @@ public class GameService {
           }
           gameState.getTower().startNewRunAt(requestedFloor);
           gameState.setRunStartFloor(requestedFloor > 0 ? requestedFloor : 0);
-          gameState.startRun();
+          gameState.startRun(invadeActionDTO.salt() == null ? 0 : invadeActionDTO.salt());
           if (requestedFloor > 0) {
             gameState.recordFloorReached(requestedFloor);
           }
@@ -641,8 +641,7 @@ public class GameService {
       endRunOnWipe(gameState);
       return;
     }
-    gameState.drainSupplies(
-        gameState.getTowerPartySize() * config.getLoop().getSupplyDrainPerUnit());
+    gameState.drainExpeditionSupplies(gameState.getTowerPartySize());
     gameState.rechargeTowerCasters();
     gameState.drainDepthSanity(tower.getCurrentFloor());
     gameState.advanceReinforcements();
@@ -715,6 +714,7 @@ public class GameService {
     gameState.returnReinforcementsHome();
     gameState.setExpeditionActive(false);
     gameState.setSupplies(0d);
+    gameState.setSaltedSupplies(0d);
     gameState.getUnitsOnTower().clear();
     gameState.completeExpedition();
   }

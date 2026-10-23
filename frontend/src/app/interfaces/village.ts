@@ -4,12 +4,14 @@ export interface Village {
   productionRate: number;
   breakers: number;
   scribes: number;
+  salters: number;
   knowledge: number;
+  salt: number;
   quarryHeap: number;
   emergencyTilling: boolean;
 }
 
-export type TradeId = 'TILLER' | 'BREAKER' | 'SCRIBE';
+export type TradeId = 'TILLER' | 'BREAKER' | 'SCRIBE' | 'SALTER';
 
 export interface TradeView {
   trade: TradeId;
@@ -83,4 +85,25 @@ export interface Tally {
 export interface TheCount {
   villagers: number;
   reserves: number;
+}
+
+/**
+ * What setting out with the default party (every Reserve) would do. One field group per Loadout
+ * line; Panacea and Trust join as more fields.
+ */
+export interface LoadoutPreview {
+  carryingCapacity: number;
+  suppliesTaken: number;
+  pantryAfter: number;
+  partySize: number;
+  reservesStaying: number;
+  /** Seconds the Pantry holds after setting out; null when the Fields cover Upkeep. */
+  pantryHoldSeconds: number | null;
+  drainPerUnit: number;
+  saltedDrainPerUnit: number;
+  suppliesPerSalt: number;
+  /** Salt that would still salt something. */
+  saltUseful: number;
+  saltHeld: number;
+  saltPansOpen: boolean;
 }

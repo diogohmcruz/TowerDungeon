@@ -70,6 +70,10 @@ public class GameState {
   @JsonIgnore private Set<String> artifactsTaken = new TreeSet<>();
 
   private Double supplies = 0d;
+
+  /** How much of {@code supplies} is salted: it drains slower, and comes home unsalted. */
+  private double saltedSupplies = 0d;
+
   private Double maxSupplies;
   private Double lastFoodReturned = 0d;
   private List<Reinforcement> reinforcements = new ArrayList<>();
@@ -144,6 +148,7 @@ public class GameState {
     this.maxSupplies = config.getSupply().getBaseMax();
     this.village = new Village(config.getVillage(), config.getTrades());
     this.tally = new CampaignTally(village.getVillagersCount());
+    this.village.setSaltRules(config.getSalt());
   }
 
   /**
@@ -153,9 +158,22 @@ public class GameState {
    * then healed using the village's food.
    */
   public void startRun() {
+    startRun(0);
+  }
+
+  /**
+   * As {@link #startRun()}, spending up to {@code saltToUse} Salt from the Stockroom to salt the
+   * Supplies carried, 10 Supplies to the Salt. Salt that is not held, or would salt nothing, is not
+   * spent.
+   */
+  public void startRun(int saltToUse) {
     this.expeditionActive = true;
     this.maxSupplies = computeSupplyCapacity();
     this.supplies = village.takeFood(this.maxSupplies);
+    var perSalt = config.getSalt().getSuppliesPerSalt();
+    var useful = (int) Math.ceil(this.supplies / perSalt);
+    var spent = village.takeSalt(Math.min(saltToUse, useful));
+    this.saltedSupplies = Math.min(this.supplies, spent * perSalt);
     this.carriedLoot = ResourceType.emptyWallet();
     this.carriedCredits = 0d;
     this.lastFoodReturned = 0d;
@@ -197,6 +215,7 @@ public class GameState {
     if (this.supplies > this.maxSupplies) {
       this.supplies = this.maxSupplies;
     }
+    this.saltedSupplies = Math.min(this.saltedSupplies, this.supplies);
   }
 
   /** Number of units in the party currently on the tower. */
@@ -209,6 +228,7 @@ public class GameState {
     this.lastFoodReturned = this.supplies;
     village.addFood(this.supplies);
     this.supplies = 0d;
+    this.saltedSupplies = 0d;
   }
 
   /**
@@ -337,6 +357,22 @@ public class GameState {
 
   public void drainSupplies(Double amount) {
     this.supplies = Math.max(0d, this.supplies - amount);
+    this.saltedSupplies = Math.min(this.saltedSupplies, this.supplies);
+  }
+
+  /**
+   * One tick of the Party's drain: each Unit eats the plain rate, less the difference to the salted
+   * rate in proportion to how much of the Supplies is salted. The salted share is eaten in
+   * proportion too.
+   */
+  public void drainExpeditionSupplies(int units) {
+    var share = supplies > 0 ? Math.min(1d, saltedSupplies / supplies) : 0d;
+    var plain = config.getLoop().getSupplyDrainPerUnit();
+    var perUnit = plain - share * (plain - config.getSalt().getSaltedDrainPerUnit());
+    var before = supplies;
+    var saltedBefore = saltedSupplies;
+    drainSupplies(units * perUnit);
+    this.saltedSupplies = Math.max(0d, saltedBefore - (before - supplies) * share);
   }
 
   public boolean hasSupplies() {
@@ -613,7 +649,22 @@ public class GameState {
     if (delta == 0 || gameOutcome != GameOutcome.PLAYING) {
       return Optional.of("Nothing moved.");
     }
-    return village.assign(trade, delta);
+    return village.assign(trade, delta, this::tradeGate);
+  }
+
+  /** The Salt Pans open with Village Tier II, Sheltered. */
+  public boolean isSaltPansOpen() {
+    return villageTier.atLeast(VillageTier.SHELTERED);
+  }
+
+  /** Why a Trade is not yet open, or null. */
+  private String tradeGate(Trade trade) {
+    if (trade == Trade.SALTER && !isSaltPansOpen()) {
+      return "The Salt Pans open at Village Tier II, "
+          + VillageTier.SHELTERED.getDisplayName()
+          + ".";
+    }
+    return null;
   }
 
   /**
@@ -682,7 +733,7 @@ public class GameState {
         continue;
       }
       for (var delta : new int[] {1, -1}) {
-        var p = village.preview(trade, delta, getHomeUnitCount(), ceiling);
+        var p = village.preview(trade, delta, getHomeUnitCount(), ceiling, this::tradeGate);
         previews.add(
             new TradePreview(
                 trade.name(),
@@ -756,6 +807,54 @@ public class GameState {
                     village.postUpgradeBlocked(trade, vaultMaterials()).orElse(null)))
         .toList();
   }
+
+  /** Salt the Salt Pans make each tick. */
+  public double getSaltRate() {
+    return village.saltPerTick();
+  }
+
+  /**
+   * What setting out with the default party (every Reserve) would do, before the irreversible step:
+   * the Carrying Capacity, the Supplies taken from the Pantry and the Pantry's hold after.
+   */
+  public LoadoutPreview getLoadout() {
+    var partySize = (int) units.values().stream().flatMap(List::stream).count();
+    var porterBonus =
+        units.entrySet().stream()
+            .mapToDouble(entry -> entry.getKey().getSupplyBonus() * entry.getValue().size())
+            .sum();
+    var capacity = config.getSupply().getBaseMax() + getSupplyCapacityBonus() + porterBonus;
+    var taken = Math.min(village.getFood(), capacity);
+    var perSalt = config.getSalt().getSuppliesPerSalt();
+    return new LoadoutPreview(
+        capacity,
+        taken,
+        village.getFood() - taken,
+        partySize,
+        0,
+        village.secondsUntilStarvationAfter(taken, 0, 0d),
+        config.getLoop().getSupplyDrainPerUnit(),
+        config.getSalt().getSaltedDrainPerUnit(),
+        perSalt,
+        (int) Math.ceil(taken / perSalt),
+        (int) Math.floor(village.getSalt()),
+        isSaltPansOpen());
+  }
+
+  /** The Loadout's lines about Supplies. Each later line joins it as one more component. */
+  public record LoadoutPreview(
+      double carryingCapacity,
+      double suppliesTaken,
+      double pantryAfter,
+      int partySize,
+      int reservesStaying,
+      Integer pantryHoldSeconds,
+      double drainPerUnit,
+      double saltedDrainPerUnit,
+      double suppliesPerSalt,
+      int saltUseful,
+      int saltHeld,
+      boolean saltPansOpen) {}
 
   /** The Count: what the Campaign has lost to Starvation. */
   public TheCount getTheCount() {
@@ -1394,7 +1493,10 @@ public class GameState {
                 village.getVillagersLost(),
                 village.getReservesLost(),
                 new EnumMap<>(village.getTomes()),
-                new EnumMap<>(village.getPostLevels())),
+                new EnumMap<>(village.getPostLevels()),
+                village.getSalters(),
+                List.copyOf(village.getSettling().get(Trade.SALTER)),
+                village.getSalt()),
             List.copyOf(artifactsTaken),
             tally.toSnapshot(),
             villageTier.getLevel(),
@@ -1440,7 +1542,8 @@ public class GameState {
         runUnitsLost,
         List.copyOf(runFallen),
         garrison,
-        waves);
+        waves,
+        saltedSupplies);
   }
 
   /** Units in a stable order: by type, then in list order. */
@@ -1577,6 +1680,7 @@ public class GameState {
           t.villagersLost(),
           t.reservesLost());
       state.village.restoreUpgrades(t.tomes(), t.postLevels());
+      state.village.restoreSalt(t.salters(), t.salt(), t.settlingSalters());
     }
     state.tally = new CampaignTally(c.villagers());
     if (c.tally() != null) {
@@ -1591,6 +1695,7 @@ public class GameState {
       state.expeditionActive = true;
       state.unitsOnTower = unitsFrom(e.party(), config);
       state.supplies = e.supplies();
+      state.saltedSupplies = Math.min(e.saltedSupplies(), e.supplies());
       state.carriedLoot.putAll(e.carriedLoot());
       state.carriedCredits = e.carriedCredits();
       state.surplus.putAll(e.surplus());

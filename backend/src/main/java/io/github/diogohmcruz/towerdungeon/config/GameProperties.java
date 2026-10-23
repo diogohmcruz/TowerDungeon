@@ -47,6 +47,7 @@ public class GameProperties {
   private final Village village = new Village();
   private final Trades trades = new Trades();
   private final Tiers tiers = new Tiers();
+  private final Salt salt = new Salt();
   private final Architecture architecture = new Architecture();
   private final Prestige prestige = new Prestige();
   private final Persistence persistence = new Persistence();
@@ -740,6 +741,21 @@ public class GameProperties {
 
     /** Each further Post upgrade costs this many times the one before. */
     private double postCostGrowth = 1.6;
+  }
+
+  /** Salt: made in the Salt Pans, spent at the Loadout to salt Supplies. */
+  @Data
+  public static class Salt {
+    /** Salt one Salter makes per tick. */
+    private double perSalterPerTick = 0.15;
+
+    /** Supplies one Salt salts. */
+    private double suppliesPerSalt = 10.0;
+
+    /**
+     * Drain per Unit per tick of fully salted Supplies, against {@code loop.supplyDrainPerUnit}.
+     */
+    private double saltedDrainPerUnit = 1.25;
   }
 
   /** Floor Architectures: the seeded plan, and the switch for their gameplay effects. */

@@ -4,7 +4,8 @@ package io.github.diogohmcruz.towerdungeon.domain.models;
 public enum Trade {
   TILLER("Tiller", "Fields"),
   BREAKER("Breaker", "Quarry"),
-  SCRIBE("Scribe", "Scribe's Study");
+  SCRIBE("Scribe", "Scribe's Study"),
+  SALTER("Salter", "Salt Pans");
 
   private final String noun;
   private final String workplace;

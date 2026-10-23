@@ -18,6 +18,9 @@ import io.github.diogohmcruz.towerdungeon.domain.models.Trade;
  * @param reservesLost The Count: Reserves lost to Starvation
  * @param tomes levels bought of each Tome; null in older saves
  * @param postLevels Post upgrades bought for each Trade; null in older saves
+ * @param salters Villagers in the Salt Pans
+ * @param settlingSalters ticks left for each Salter still Settling; null in older saves
+ * @param salt Salt in the Stockroom
  */
 public record TradesSnapshot(
     int breakers,
@@ -31,4 +34,7 @@ public record TradesSnapshot(
     int villagersLost,
     int reservesLost,
     Map<Tome, Integer> tomes,
-    Map<Trade, Integer> postLevels) {}
+    Map<Trade, Integer> postLevels,
+    int salters,
+    List<Integer> settlingSalters,
+    double salt) {}

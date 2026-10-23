@@ -1,0 +1,54 @@
+:host {
+  display: block;
+  margin: 6px 0;
+}
+
+.loadout {
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  padding: 8px 12px;
+}
+
+.loadout-toggle {
+  padding: 3px 10px;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.loadout-body {
+  margin-top: 8px;
+  border-top: 1px solid var(--rule);
+  padding-top: 6px;
+}
+
+.loadout-line {
+  color: var(--text);
+  margin: 0 0 4px;
+  font-variant-numeric: tabular-nums;
+
+  .line-name {
+    color: var(--bone);
+    text-transform: uppercase;
+    font-size: 12px;
+    margin-right: 6px;
+  }
+
+  .stepper {
+    display: inline-flex;
+    gap: 4px;
+    margin-right: 6px;
+
+    .step {
+      min-width: 2rem;
+      padding: 2px 8px;
+    }
+  }
+
+  &.hold {
+    color: var(--bone);
+
+    &.short {
+      color: var(--ember-text);
+    }
+  }
+}

@@ -5,6 +5,7 @@ import {
   LedgerLine,
   PostUpgradeView,
   Tally,
+  LoadoutPreview,
   TheCount,
   TomeView,
   TradePreview,
@@ -124,6 +125,12 @@ export interface GameState {
   tradeViews: TradeView[];
   tradePreviews: TradePreview[];
   quarryRate: number;
+  /** Salt the Salt Pans make per second. */
+  saltRate: number;
+  /** What setting out with every Reserve would do, for the Loadout. */
+  loadout: LoadoutPreview;
+  /** Supplies carried that are salted. */
+  saltedSupplies: number;
   studyRate: number;
   /** Share the Quarry and the Study yield above their base, from Highest Floor. */
   yieldBonus: number;

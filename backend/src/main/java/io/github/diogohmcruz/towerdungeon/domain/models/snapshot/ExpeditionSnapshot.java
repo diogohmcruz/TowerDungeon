@@ -13,6 +13,7 @@ import io.github.diogohmcruz.towerdungeon.domain.models.ResourceType;
  *
  * @param surplus items that fitted nobody, counted per tier
  * @param runFallen the Units that fell on this Expedition, in the order they fell
+ * @param saltedSupplies how much of the Supplies carried is salted
  * @param garrison the enemies standing on the party's current floor
  */
 public record ExpeditionSnapshot(
@@ -27,7 +28,8 @@ public record ExpeditionSnapshot(
     int runUnitsLost,
     List<Fallen> runFallen,
     List<EnemySnapshot> garrison,
-    List<WaveSnapshot> waves) {
+    List<WaveSnapshot> waves,
+    double saltedSupplies) {
 
   /** A save from before the fallen were recorded has none. */
   public ExpeditionSnapshot {

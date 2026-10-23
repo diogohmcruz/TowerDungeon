@@ -9,8 +9,8 @@
     <h2>Summit Conquered</h2>
     <p>
       Your party has clawed its way to the summit and cast down the tower's
-      final guardian. Its hold over the village is broken — and Ignelia is
-      free. Prestige to raise a new tower and climb again.
+      final guardian. Its hold over the village is broken — and Ignelia is free.
+      Prestige to raise a new tower and climb again.
     </p>
     } @else {
     <h2>Defeat</h2>
@@ -71,6 +71,12 @@
     }
   </section>
 
+  <app-loadout
+    [preview]="gameState().loadout"
+    [disabled]="gameState().expeditionActive || gameOver()"
+    [(salt)]="saltToUse"
+  />
+
   <button
     (click)="this.sendInvadeAction()"
     [disabled]="gameState().expeditionActive || gameOver()"
@@ -122,8 +128,7 @@
   } @if (gameState().homePartyWounds > 0) {
   <p class="home-heal">
     Recovery: {{ gameState().homePartyWounds | number: '1.0-0' }} hp to heal,
-    about {{ gameState().foodHealRate | number: '1.0-0' }} hp/s from the
-    Pantry.
+    about {{ gameState().foodHealRate | number: '1.0-0' }} hp/s from the Pantry.
   </p>
   }
 

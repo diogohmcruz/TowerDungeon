@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.Function;
 import java.util.random.RandomGenerator;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -62,6 +63,14 @@ public class Village {
   @Setter(AccessLevel.NONE)
   private boolean emergencyTilling;
 
+  /** Villagers in the Salt Pans. */
+  @Setter(AccessLevel.NONE)
+  private int salters;
+
+  /** Salt in the Stockroom. */
+  @Setter(AccessLevel.NONE)
+  private double salt;
+
   /** The Count: Villagers lost to Starvation this Campaign. */
   @Setter(AccessLevel.NONE)
   private int villagersLost;
@@ -73,6 +82,7 @@ public class Village {
   @JsonIgnore private double villagerFoodProduction;
   @JsonIgnore private double unitFoodConsumption;
   @JsonIgnore private GameProperties.Trades trades;
+  @JsonIgnore private GameProperties.Salt saltRules = new GameProperties.Salt();
 
   /** What Emergency Tilling did this tick. {@code moved} is null when no one could be moved. */
   public record EmergencyTillingResult(boolean active, boolean started, Trade moved) {}
@@ -148,9 +158,24 @@ public class Village {
     clampTrades();
   }
 
+  /** Restores the Salt Pans. Call after {@link #restoreTrades}, which clamps the Trades. */
+  public void restoreSalt(int salters, double salt, List<Integer> settlingSalters) {
+    this.salters = Math.max(0, salters);
+    this.salt = Math.max(0, salt);
+    settling.put(
+        Trade.SALTER, new ArrayList<>(settlingSalters == null ? List.of() : settlingSalters));
+    clampTrades();
+  }
+
+  /** Restores the Salt Pans' hands and the Stockroom's Salt, leaving any Settling as it is. */
+  public void restoreSalt(int salters, double salt) {
+    restoreSalt(salters, salt, settling.get(Trade.SALTER));
+  }
+
   private void clampTrades() {
     scribes = Math.min(scribes, villagersCount);
     breakers = Math.min(breakers, villagersCount - scribes);
+    salters = Math.min(salters, villagersCount - scribes - breakers);
     for (var trade : Trade.values()) {
       var ticks = settling.get(trade);
       while (ticks.size() > hands(trade)) {
@@ -176,6 +201,7 @@ public class Village {
     this.setFood(Math.max(0, this.food + getProductionRate() - upkeepFor(unitCount)));
     this.quarryHeap = filled(quarryHeap, materialsPerTick(highestFloor), heapCap(highestFloor));
     this.knowledge = filled(knowledge, knowledgePerTick(highestFloor), stockroomCap(highestFloor));
+    this.salt = filled(salt, saltPerTick(), stockroomCap(highestFloor));
     settling.values().forEach(ticks -> ticks.replaceAll(left -> left - 1));
     settling.values().forEach(ticks -> ticks.removeIf(left -> left <= 0));
     return checkStarvation();
@@ -189,9 +215,10 @@ public class Village {
   /** Villagers working {@code trade}; Tillers are whoever is not a Breaker or a Scribe. */
   public int hands(Trade trade) {
     return switch (trade) {
-      case TILLER -> villagersCount - breakers - scribes;
+      case TILLER -> villagersCount - breakers - scribes - salters;
       case BREAKER -> breakers;
       case SCRIBE -> scribes;
+      case SALTER -> salters;
     };
   }
 
@@ -329,6 +356,18 @@ public class Village {
     return scribes * trades.getScribeKnowledgePerTick() * yieldMultiplier(highestFloor);
   }
 
+  /** Salt the Salt Pans make each tick; it does not grow with the Highest Floor. */
+  public double saltPerTick() {
+    return salters * saltRules.getPerSalterPerTick();
+  }
+
+  /** Takes up to {@code amount} whole Salt from the Stockroom; returns what was taken. */
+  public int takeSalt(int amount) {
+    var taken = (int) Math.min(Math.floor(salt), Math.max(0, amount));
+    salt -= taken;
+    return taken;
+  }
+
   public double stockroomCap(int highestFloor) {
     return trades.getStockroomBase() + trades.getStockroomPerFloor() * Math.max(0, highestFloor);
   }
@@ -353,7 +392,12 @@ public class Village {
    * the Trade, {@code delta < 0} sends one back. Returns why not, or empty when it was done.
    */
   public Optional<String> assign(Trade trade, int delta) {
-    var blocked = blockedReason(trade, delta);
+    return assign(trade, delta, _ -> null);
+  }
+
+  /** As {@link #assign(Trade, int)}, with {@code gate} naming why a Trade is not yet open. */
+  public Optional<String> assign(Trade trade, int delta, Function<Trade, String> gate) {
+    var blocked = blockedReason(trade, delta, gate);
     if (blocked != null) {
       return Optional.of(blocked);
     }
@@ -366,11 +410,15 @@ public class Village {
   }
 
   /** The reason a move is not allowed, or null. Warnings about Food are not reasons. */
-  private String blockedReason(Trade trade, int delta) {
+  private String blockedReason(Trade trade, int delta, Function<Trade, String> gate) {
     if (trade == Trade.TILLER) {
       return "The Fields take whoever is not assigned.";
     }
     if (delta > 0) {
+      var closed = gate.apply(trade);
+      if (closed != null) {
+        return closed;
+      }
       if (emergencyTilling) {
         return "Held at the Fields until the Pantry passes "
             + whole(trades.getEmergencyTillingAbove())
@@ -411,6 +459,7 @@ public class Village {
     switch (trade) {
       case BREAKER -> breakers += by;
       case SCRIBE -> scribes += by;
+      case SALTER -> salters += by;
       case TILLER -> {
         // Tillers are the remainder.
       }
@@ -440,7 +489,7 @@ public class Village {
     Trade moved = null;
     if (upkeep > getProductionRate()) {
       moved =
-          List.of(Trade.BREAKER, Trade.SCRIBE).stream()
+          List.of(Trade.BREAKER, Trade.SCRIBE, Trade.SALTER).stream()
               .filter(trade -> hands(trade) > settlingHands(trade))
               .max(Comparator.comparingInt(this::hands))
               .orElse(null);
@@ -495,11 +544,25 @@ public class Village {
   }
 
   private Integer secondsUntilStarvation(double production, int unitCount, double recoverySpend) {
+    return secondsUntilStarvation(food, production, unitCount, recoverySpend);
+  }
+
+  private Integer secondsUntilStarvation(
+      double pantry, double production, int unitCount, double recoverySpend) {
     var gap = upkeepFor(unitCount) - production;
     if (gap <= 0) {
-      return food + -gap <= 0 ? 0 : null;
+      return pantry + -gap <= 0 ? 0 : null;
     }
-    return (int) Math.max(0, Math.floor((food - gap) / (gap + Math.max(0d, recoverySpend))));
+    return (int) Math.max(0, Math.floor((pantry - gap) / (gap + Math.max(0d, recoverySpend))));
+  }
+
+  /**
+   * How long the Pantry would hold after {@code taken} Food leaves it with a Party, with {@code
+   * staying} Reserves left behind to feed. Null means the Fields cover Upkeep.
+   */
+  public Integer secondsUntilStarvationAfter(double taken, int staying, double recoverySpend) {
+    return secondsUntilStarvation(
+        Math.max(0, food - taken), getProductionRate(), staying, recoverySpend);
   }
 
   /**
@@ -507,6 +570,11 @@ public class Village {
    * assignment row states it. The margin is shown even when the move is blocked.
    */
   public MovePreview preview(Trade trade, int delta, int unitCount, double recoverySpend) {
+    return preview(trade, delta, unitCount, recoverySpend, _ -> null);
+  }
+
+  public MovePreview preview(
+      Trade trade, int delta, int unitCount, double recoverySpend, Function<Trade, String> gate) {
     var tillers = hands(Trade.TILLER) - Integer.signum(delta);
     var fields = Math.max(0, tillers) * villagerFoodProduction * fieldsMultiplier();
     var upkeep = upkeepFor(unitCount);
@@ -517,7 +585,7 @@ public class Village {
         upkeep,
         fields >= upkeep,
         secondsUntilStarvation(fields, unitCount, recoverySpend),
-        blockedReason(trade, delta));
+        blockedReason(trade, delta, gate));
   }
 
   private boolean checkStarvation() {

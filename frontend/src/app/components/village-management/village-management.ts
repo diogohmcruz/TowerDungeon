@@ -89,9 +89,14 @@ export class VillageManagement {
 
   /** Output per second of a Trade, in its own good. */
   output(trade: TradeId): number {
-    return trade === 'BREAKER'
-      ? this.gameState().quarryRate
-      : this.gameState().studyRate;
+    switch (trade) {
+      case 'BREAKER':
+        return this.gameState().quarryRate;
+      case 'SALTER':
+        return this.gameState().saltRate;
+      default:
+        return this.gameState().studyRate;
+    }
   }
 
   onClickAssign(trade: TradeId, delta: 1 | -1) {

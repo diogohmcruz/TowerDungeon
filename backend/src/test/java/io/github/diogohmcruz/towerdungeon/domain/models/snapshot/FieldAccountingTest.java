@@ -36,6 +36,7 @@ class FieldAccountingTest {
           Map.entry("carriedCredits", "ExpeditionSnapshot.carriedCredits"),
           Map.entry("surplus", "ExpeditionSnapshot.surplus"),
           Map.entry("supplies", "ExpeditionSnapshot.supplies"),
+          Map.entry("saltedSupplies", "ExpeditionSnapshot.saltedSupplies"),
           Map.entry("lastFoodReturned", "ExpeditionSnapshot.lastFoodReturned"),
           Map.entry("reinforcements", "ExpeditionSnapshot.waves"),
           Map.entry("purchasedUpgrades", "CampaignSnapshot.upgrades"),
@@ -77,13 +78,16 @@ class FieldAccountingTest {
           Map.entry("villagersLost", "TradesSnapshot.villagersLost"),
           Map.entry("reservesLost", "TradesSnapshot.reservesLost"),
           Map.entry("tomes", "TradesSnapshot.tomes"),
-          Map.entry("postLevels", "TradesSnapshot.postLevels"));
+          Map.entry("postLevels", "TradesSnapshot.postLevels"),
+          Map.entry("salters", "TradesSnapshot.salters"),
+          Map.entry("salt", "TradesSnapshot.salt"));
 
   private static final Map<String, String> VILLAGE_TRANSIENT =
       Map.of(
           "villagerFoodProduction", "game balance, copied from config on creation",
           "unitFoodConsumption", "game balance, copied from config on creation",
-          "trades", "game balance, copied from config on creation");
+          "trades", "game balance, copied from config on creation",
+          "saltRules", "game balance, copied from config on creation");
 
   private static final Map<String, String> TOWER_MAPPED =
       Map.of(

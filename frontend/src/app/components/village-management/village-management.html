@@ -106,8 +106,9 @@
       <span class="trade-note">
         @if (view.settling > 0) { Settling {{ view.settlingSeconds }} s. } @if
         (view.trade === 'BREAKER') { +{{ this.output(view.trade) | number:
-        '1.0-2' }} Materials/s into the Heap } @else { +{{
-        this.output(view.trade) | number: '1.0-2' }} Knowledge/s }
+        '1.0-2' }} Materials/s into the Heap } @else if (view.trade ===
+        'SALTER') { +{{ this.output(view.trade) | number: '1.0-2' }} Salt/s }
+        @else { +{{ this.output(view.trade) | number: '1.0-2' }} Knowledge/s }
       </span>
     </div>
     }
@@ -130,7 +131,8 @@
   <div class="stores">
     <p>
       Stockroom: Knowledge {{ this.gameState().village.knowledge | number:
-      '1.0-1' }} of {{ this.gameState().stockroomCap | number: '1.0-0' }}.
+      '1.0-1' }}, Salt {{ this.gameState().village.salt | number: '1.0-1' }},
+      each of {{ this.gameState().stockroomCap | number: '1.0-0' }}.
     </p>
     <p>
       Quarry Heap {{ this.gameState().village.quarryHeap | number: '1.0-1' }} of

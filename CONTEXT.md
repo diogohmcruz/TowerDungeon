@@ -159,7 +159,7 @@ How an expedition ended: Extraction, Wipe, or Summit Conquered.
 _Avoid_: Run outcome, result
 
 **Loadout**:
-What a party takes when it sets out: its supplies and the consumables chosen in the village beforehand. Planned.
+What a party takes when it sets out: its supplies and the consumables chosen in the village beforehand. Collapsed by default, so setting out stays one click with the defaults. It states the Carrying Capacity and what setting out leaves in the Pantry, and lets the player salt Supplies (1 Salt per 10 Supplies, drain 1.25 instead of 1.5 per unit per tick).
 _Avoid_: Kit, pack list, inventory
 
 **Ledger**:

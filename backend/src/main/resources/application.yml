@@ -186,6 +186,10 @@ game:
   wipe:
     risen-cap-max: 3
     risen-cap-fraction: 0.30
+  salt:
+    per-salter-per-tick: 0.15
+    supplies-per-salt: 10.0
+    salted-drain-per-unit: 1.25
   architecture:
     enabled: false
     seed: 362108372306

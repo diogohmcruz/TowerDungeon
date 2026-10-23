@@ -3,20 +3,28 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 
 import { GameComponent } from './game-component';
+import { GameAction } from '../../interfaces/game-action.enum';
 import { GameStateService } from '../../services/game-state.service';
 import { GameWebSocketService } from '../../services/game-web-socket.service';
-import { GameAction } from '../../interfaces/game-action.enum';
 
 describe('GameComponent', () => {
   let component: GameComponent;
   let fixture: ComponentFixture<GameComponent>;
+  let sendAction: jasmine.Spy;
+  let stateService: GameStateService;
 
   beforeEach(async () => {
+    sendAction = jasmine.createSpy('sendAction');
     await TestBed.configureTestingModule({
       imports: [GameComponent],
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: GameWebSocketService, useValue: { sendAction } },
+      ],
     }).compileComponents();
 
+    stateService = TestBed.inject(GameStateService);
     fixture = TestBed.createComponent(GameComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
@@ -30,7 +38,7 @@ describe('GameComponent', () => {
     const host: HTMLElement = fixture.nativeElement;
     expect(host.querySelector('.held-party')).toBeNull();
 
-    TestBed.inject(GameStateService).update({
+    stateService.update({
       session: {
         resumed: true,
         savedAt: null,
@@ -47,10 +55,45 @@ describe('GameComponent', () => {
   });
 
   it('sends RESUME', () => {
-    const send = spyOn(TestBed.inject(GameWebSocketService), 'sendAction');
-
     component.resume();
 
-    expect(send).toHaveBeenCalledWith(GameAction.RESUME, null);
+    expect(sendAction).toHaveBeenCalledWith(GameAction.RESUME, null);
+  });
+
+  it('keeps the Loadout collapsed, so setting out stays one click', () => {
+    const root = fixture.nativeElement as HTMLElement;
+
+    expect(root.querySelector('.loadout-toggle')).not.toBeNull();
+    expect(root.querySelector('.loadout-body')).toBeNull();
+  });
+
+  it('sets out with the defaults and no Salt on one click without opening the Loadout', () => {
+    component.sendInvadeAction();
+
+    expect(sendAction).toHaveBeenCalledOnceWith(GameAction.INVADE, {
+      units: new Map(),
+      startFloor: 0,
+      salt: 0,
+    });
+  });
+
+  it('sends the Salt the Loadout chose, never more than is held, then forgets it', () => {
+    stateService.update({
+      loadout: {
+        ...stateService.state().loadout,
+        saltHeld: 2,
+        saltUseful: 10,
+        saltPansOpen: true,
+      },
+    });
+    component.saltToUse.set(5);
+
+    component.sendInvadeAction();
+
+    expect(sendAction).toHaveBeenCalledWith(
+      GameAction.INVADE,
+      jasmine.objectContaining({ salt: 2 }),
+    );
+    expect(component.saltToUse()).toBe(0);
   });
 });
