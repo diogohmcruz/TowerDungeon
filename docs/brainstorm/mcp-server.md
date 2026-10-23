@@ -138,7 +138,9 @@ Package `io.github.diogohmcruz.towerdungeon.agent`, gated by `game.agent.enabled
 
 There is no second port: Boot configures one server port. The path is guarded instead. In production, block `/mcp` at the reverse proxy unless you mean to expose it. stdio needs stdout to carry only protocol, so that profile must send logs to stderr and turn ANSI off (`application.yml` currently sets `ansi.enabled: always`), and the web-only beans (`WebSocketConfig`, `GameWebSocketHandler`, `UnitStatsController`) need `@ConditionalOnWebApplication`. [Inferred; confirmed or refuted by the spike]
 
-### 2.4 Library choice: a decision gate, not yet a decision [Recommendation]
+### 2.4 Library choice [Decided: option D, ADR 0007]
+
+The M0 spike (#31, `docs/research/mcp-binding-spike.md`) ran option D on this stack and chose it. The other options stay as the record of what was weighed.
 
 | Option | Fit | Cost |
 |---|---|---|
@@ -147,18 +149,13 @@ There is no second port: Boot configures one server port. The path is guarded in
 | B. Sidecar in a first-class SDK (TypeScript, Python, C#, Go, Rust, Ruby) | Official and current. | A second deployable and an extra hop. |
 | C. Wait for a Spring AI line on SDK 2.2 (spec 2026-07-28) | Official and current. | SDK 2.2 is only "expected", so MCP would wait on a date nobody has. |
 
-**M0 spike (one day, S).** Eight pass/fail checks against Boot 4.1.1 plus the Undertow community starter plus `@EnableWebFlux`:
-
-1. The app boots with the starter present and `/api/ws` still returns 101.
-2. `claude mcp add --transport http` lists and calls a tool with a static bearer header.
-3. Our `McpHttpFilter` returns 401 with no token and 403 for a bad `Origin`, before the library sees the request.
-4. 400 and 500 bodies contain no stack trace.
-5. A result with both `structuredContent` and the JSON text block: does the host put both in the model's context (token doubling)?
-6. A modern-era probe (`server/discover`) gets a 400 that Claude Code falls back from, not a 500 and not a hang. Repeat with `MCP_PROTOCOL_NEGOTIATION=legacy` to prove the legacy path alone works.
-7. `agent-stdio` boots with clean stdout.
-8. The library's `jsonMapper` and the app's `ObjectMapper` do not conflict (both Jackson 3; one mapper bean, no autowiring ambiguity in `GameService`).
-
-If checks 1 to 4 pass, use option D (Spring AI 2.0.x). If any of 1 to 4 fails, build option A (M). Either way the swap is confined to `agent.mcp`. Do not use `@McpTool`. Take an SDK version that includes the CVE fix. Undertow's lack of official Boot 4 support (ADR 0005) is a roadmap risk independent of MCP.
+**Decision.** Option D: the Spring AI 2.0.1 stateless, async server (SDK 2.0.0), with tools registered programmatically. Fallback: option A. Either way the swap is confined to `agent.mcp`, and `@McpTool` is not used. Requirements the spike established:
+- Tools reach the library as one `List<AsyncToolSpecification>` bean; individual beans are ignored.
+- `McpHttpFilter` answers 401, 403 and 405 before the library, and installs a response sanitiser that replaces every 4xx and 5xx body, because the library serialises exceptions with their stack trace. An error handler maps an unknown method (including `server/discover`) to a clean 400 JSON-RPC error.
+- The `ToolCatalogue` adapter wraps every handler, because a thrown exception's message is returned to the caller.
+- A result carries `structuredContent`; Claude Code passes the model one copy, so a duplicate text block costs no extra tokens.
+- The stdio profile uses the stateful specification types (the stateless transport gives no stdio reply), the web-free application type, and logging on stderr with ANSI off.
+- One Jackson 3 `JsonMapper` serves the app and the library.
 
 ---
 
@@ -668,7 +665,7 @@ Sizes: S small, M medium, L large (the roadmap's scale). M1 and M2 are the same 
 
 | # | Step | Size | Needs |
 |---|---|---|---|
-| M0 | **Spike and binding decision** (section 2.4) | S | none |
+| M0 | **Spike and binding decision** (section 2.4): done, ADR 0007 | S | none |
 | M1 | **Shared foundations:** `backend/src/test` and characterisation tests (#5); domain command records (so `agent` does not depend on `api.dtos`); `CommandResult` (validate-then-mutate, per-command exception handling and find-only `access` are delivered by the persistence server issue #11 and assumed here); `state_seq`, `EventLog`, capped Expedition Summary list; `StateProjection` with a size budget test; narrow actuator exposure | M | #5 |
 | M2 | **Determinism:** `RandomSource` with three streams (#6 and 5.6), `EnumMap`, seeded shuffle and Faker, the two-JVM hash test | M | M1 |
 | M3 | **`TickDriver` and `SandboxRegistry`:** manual driver, loop skip, `agent-stdio` profile, `@ConditionalOnWebApplication`, per-Campaign config copy | M | M1 |
@@ -710,7 +707,7 @@ Sizes: S small, M medium, L large (the roadmap's scale). M1 and M2 are the same 
 
 ### 10.1 Risks
 
-1. **The binding rests on unverified research claims** (Origin handling, the stack-trace leak, `server/discover`, behaviour on Boot 4.1.1 with the Undertow community starter and `@EnableWebFlux`). Mitigation: the M0 spike and the `ToolCatalogue` seam.
+1. **The binding's error handling is ours, not the library's.** The library writes stack traces into error bodies; the spike showed a response sanitiser and an error handler contain it. Mitigation: tests for both in M4, and the `ToolCatalogue` seam so the library can change.
 2. **Spring AI 2.0.x is a young line on an unreleased web server.** The spec moved to a stateless revision the Java SDK does not yet implement, so a modern-only host could break the legacy binding (Claude Code falls back to v1 behaviour [Checked]; other hosts unconfirmed). Mitigation: the dual-era hand-written endpoint as a fallback, and step M12 when SDK 2.2 lands. The unreleased Undertow starter (ADR 0005) is a separate roadmap risk.
 3. **No Campaign exists for an agent to attach to** until persistence slots keyed by `PlayerId` land (#9 to #12). Until then only Sandbox and a dev Tap are possible, so the value of P3 and P4 arrives late.
 4. **Determinism is harder than issue #6 states.** Enum-keyed `HashMap` ordering, `Collections.shuffle`, Datafaker, a single shared random stream and the two fixed-rate tasks also break it. The split streams and the two-JVM test are essential.
@@ -728,7 +725,7 @@ Sizes: S small, M medium, L large (the roadmap's scale). M1 and M2 are the same 
 
 ### 10.2 Decisions for you
 
-1. **Protocol binding.** Run the one-day spike and choose Spring AI 2.0.x stateless if checks 1 to 4 pass, otherwise a hand-written dual-era endpoint. Alternative: skip the spike and go straight to the hand-written endpoint.
+1. **Protocol binding.** Settled by the spike: Spring AI 2.0.x stateless (ADR 0007), with the hand-written dual-era endpoint as the fallback.
 2. **Authentication.** Separate Agent Grants (my recommendation) or the Campaign Key as bearer (less code, but it hands an agent export, import, Exodus and Succession).
 3. **Should an agent ever drive a human's Campaign in a public build, or only Sandbox Campaigns?** I recommend yes, behind opt-in grants, with Lineage actions always needing UI approval.
 4. **Confirmation model.** UI approval for C2 (single-use, bound to arguments), no confirmation on Extraction, explicit amounts plus `WOULD_STARVE` on selling Food. Alternative: MRTR elicitation later, which needs a binding that supports 2026-07-28.
@@ -738,7 +735,7 @@ Sizes: S small, M medium, L large (the roadmap's scale). M1 and M2 are the same 
 8. **Agent seat policy in multiplayer.** Always labelled. A human-only queue by default. An agent-only queue with its own ladder. Mixed rooms only by an everyone-accepted flag and always unranked. Identical per-seat budgets and tool subsets, applied at tick boundaries with `queued` results.
 9. **Sandbox idle advance.** Cap simulated time at 6 hours per Campaign, split Village-only and Expedition ticks, and treat the measured idle rate as a finding.
 10. **Does a player-grant agent get the Enemy Type table?** I recommend no: only types it has met (UI parity). The full table only in sandbox and telemetry scopes.
-11. **Glossary.** Approve Agent Grant, Controller, Sandbox Campaign, Playtest, Approval, and decide on Standing Order and Seat. Decide whether a multiplayer withdrawal is Extraction or a new term. Decide whether `td_get_ledger` may ship as a minimal Ledger ahead of the village-economy work. Approve ADRs 0007 and 0008 as proposals (section 12).
+11. **Glossary.** Approve Agent Grant, Controller, Sandbox Campaign, Playtest, Approval, and decide on Standing Order and Seat. Decide whether a multiplayer withdrawal is Extraction or a new term. Decide whether `td_get_ledger` may ship as a minimal Ledger ahead of the village-economy work. Approve ADRs 0007 and 0008 as proposals (section 12); 0007 is written.
 12. **Actuator.** Narrow exposure to `health,info,metrics` in the same change that adds the dependency.
 13. **Framework path.** Settled: the repo moved to Boot 4.1.1 before MCP was built (ADR 0005 keeps Undertow through the community starter), so the library choice no longer waits on a migration.
 14. **Sandbox balance experiments.** Allow per-Sandbox config overrides (needs per-Campaign `GameProperties` copies, which Memory and Mutations also need), or keep one shared config and a single `config_hash`.
@@ -778,8 +775,8 @@ All would be marked Planned. Each respects the existing `_Avoid_` lines.
 
 ## 12. Proposed ADRs (not written)
 
-- **ADR 0007: Agents act through grants, never the Campaign Key.** Extends ADR 0001 (anonymous Campaigns). Grants are stored beside the record and are not exported.
-- **ADR 0008: One tool catalogue behind a swappable MCP binding.** Records the library gate and the placement as a package, not a module. Numbered after existing ADR 0006 [Checked: `docs/adr` holds 0001 to 0006].
+- **ADR 0008: Agents act through grants, never the Campaign Key.** Extends ADR 0001 (anonymous Campaigns). Grants are stored beside the record and are not exported.
+- **ADR 0007: One tool catalogue behind a Spring AI stateless binding.** Written (proposed) with the spike. The placement as a package, not a module, is recorded there too.
 
 Neither contradicts ADR 0001, 0002 or 0003. The race question in 8.4 touches ADR 0002 (the sealed Door).
 
@@ -877,7 +874,7 @@ tools/list with an observe-only grant       -> 7 tools; td_recruit is not listed
 
 ## 14. What I did not verify
 
-- Everything the research marks unverified (host support for 2026-07-28 outside Claude Code, Java SDK 2.2 timing). The M0 spike turns these into checks.
+- Everything the research marks unverified (host support for 2026-07-28 outside Claude Code, Java SDK 2.2 timing). The M4 tests turn these into checks.
 - The Angular frontend. Parity claims about "what the UI shows" are a rule, not checked against the templates.
 - The class names of the Spring AI 2.0.x stateless tool-specification API (confirm in M0).
 - Token and size figures for projections (estimates; M1 measures them).
