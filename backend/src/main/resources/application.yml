@@ -4,6 +4,18 @@ spring:
   output:
     ansi:
       enabled: always
+  ai:
+    mcp:
+      server:
+        # The MCP server is off unless the agent or agent-stdio profile turns it on.
+        enabled: false
+        name: tower-dungeon
+        version: 1.0.0
+        type: ASYNC
+        request-timeout: 30s
+        capabilities:
+          prompt: false
+          completion: false
 
 management:
   endpoint:
@@ -254,6 +266,19 @@ game:
     # Production behind TLS should set this to true.
     require-wss: false
   agent:
+    # The whole agent surface (tools, resources, filter) exists only when this is true, which the
+    # agent and agent-stdio profiles set.
+    enabled: false
+    http:
+      endpoint: /mcp
+      # SHA-256 of the developer bearer token, as hex; never the token itself:
+      #   printf '%s' "$TD_AGENT_DEV_TOKEN" | shasum -a 256
+      dev-token-hash: ${TD_AGENT_DEV_TOKEN_HASH:}
+      # The human Campaign (a player id) the developer token may read; empty for none.
+      dev-campaign: ""
+      allowed-origins: []
+      allowed-hosts: [localhost, 127.0.0.1, "[::1]"]
+      max-body-bytes: 65536
     sandbox:
       # Never true on a public server: a Sandbox Campaign runs headless, as fast as the CPU allows.
       enabled: false

@@ -31,9 +31,22 @@
         <googleJavaFormat.version>1.36.0</googleJavaFormat.version>
         <java.version>24</java.version>
         <spotless.version>3.10.4</spotless.version>
+        <spring-ai.version>2.0.1</spring-ai.version>
         <springdoc.version>3.1.1</springdoc.version>
         <undertow-starter.version>1.0.0.Alpha1-SNAPSHOT</undertow-starter.version>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.ai</groupId>
+                <artifactId>spring-ai-bom</artifactId>
+                <version>${spring-ai.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <dependency>
@@ -84,6 +97,13 @@
             <scope>provided</scope>
         </dependency>
 
+        <!-- The MCP server binding (docs/adr/0007). Inert unless spring.ai.mcp.server.enabled is true,
+             which only the agent and agent-stdio profiles set. -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-mcp-server-webflux</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webflux-ui</artifactId>
@@ -116,6 +136,19 @@
     </repositories>
 
     <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+            </resource>
+            <!-- The glossary the agent surface reads (filtered at runtime: shipped terms only). -->
+            <resource>
+                <targetPath>agent</targetPath>
+                <directory>..</directory>
+                <includes>
+                    <include>CONTEXT.md</include>
+                </includes>
+            </resource>
+        </resources>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

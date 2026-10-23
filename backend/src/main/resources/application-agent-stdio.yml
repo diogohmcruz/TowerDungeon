@@ -8,9 +8,16 @@ spring:
   output:
     ansi:
       enabled: never
+  ai:
+    mcp:
+      server:
+        enabled: true
+        stdio: true
+        type: ASYNC
 
 game:
   agent:
+    enabled: true
     sandbox:
       enabled: true
   persistence:

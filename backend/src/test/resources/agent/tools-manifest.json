@@ -1,0 +1,259 @@
+{
+  "tools" : [ {
+    "annotations" : {
+      "destructiveHint" : false,
+      "idempotentHint" : true,
+      "openWorldHint" : false,
+      "readOnlyHint" : true
+    },
+    "description" : "List what the Campaign would accept now: which Unit Types can be recruited and how many, Villager and sale options, affordable Upgrades, and whether an Expedition can set out, a Reinforcement Wave can follow or the Party can Extract. Each refusal carries a reason code. Reads only.",
+    "inputSchema" : {
+      "additionalProperties" : false,
+      "properties" : {
+        "campaign" : {
+          "description" : "A Sandbox handle. Omit to use your only open Sandbox.",
+          "pattern" : "^[A-Za-z0-9_-]{1,64}$",
+          "type" : "string"
+        }
+      },
+      "type" : "object"
+    },
+    "name" : "td_get_actions"
+  }, {
+    "annotations" : {
+      "destructiveHint" : false,
+      "idempotentHint" : true,
+      "openWorldHint" : false,
+      "readOnlyHint" : true
+    },
+    "description" : "Read the event feed of the Campaign after an event id: recruits, sales, Floors reached, Enemies slain, Expeditions ended. Oldest first. Use last_id as the next 'since'.",
+    "inputSchema" : {
+      "additionalProperties" : false,
+      "properties" : {
+        "campaign" : {
+          "description" : "A Sandbox handle. Omit to use your only open Sandbox.",
+          "pattern" : "^[A-Za-z0-9_-]{1,64}$",
+          "type" : "string"
+        },
+        "limit" : {
+          "description" : "The most events in one answer. Default 100.",
+          "maximum" : 200,
+          "minimum" : 1,
+          "type" : "integer"
+        },
+        "since" : {
+          "description" : "Only events after this id. Default 0.",
+          "maximum" : 9223372036854775807,
+          "minimum" : 0,
+          "type" : "integer"
+        }
+      },
+      "type" : "object"
+    },
+    "name" : "td_get_events"
+  }, {
+    "annotations" : {
+      "destructiveHint" : false,
+      "idempotentHint" : true,
+      "openWorldHint" : false,
+      "readOnlyHint" : true
+    },
+    "description" : "Read the Village's Ledger: its latest plain lines, and the latest Expedition Summaries with the fallen named. Losses are written as plainly as gains.",
+    "inputSchema" : {
+      "additionalProperties" : false,
+      "properties" : {
+        "campaign" : {
+          "description" : "A Sandbox handle. Omit to use your only open Sandbox.",
+          "pattern" : "^[A-Za-z0-9_-]{1,64}$",
+          "type" : "string"
+        },
+        "expeditions" : {
+          "description" : "How many Expedition Summaries. Default 5.",
+          "maximum" : 20,
+          "minimum" : 1,
+          "type" : "integer"
+        },
+        "lines" : {
+          "description" : "How many Ledger lines, newest last. Default 20.",
+          "maximum" : 50,
+          "minimum" : 1,
+          "type" : "integer"
+        }
+      },
+      "type" : "object"
+    },
+    "name" : "td_get_ledger"
+  }, {
+    "annotations" : {
+      "destructiveHint" : false,
+      "idempotentHint" : true,
+      "openWorldHint" : false,
+      "readOnlyHint" : true
+    },
+    "description" : "Read the fixed rules in sections: units, upgrades, shortcuts, milestones, tick. Call with no section for the list of sections. A Sandbox caller may also ask for 'enemies'. These are the values the player sees; nothing in them is Campaign state.",
+    "inputSchema" : {
+      "additionalProperties" : false,
+      "properties" : {
+        "campaign" : {
+          "description" : "A Sandbox handle. Omit to use your only open Sandbox.",
+          "pattern" : "^[A-Za-z0-9_-]{1,64}$",
+          "type" : "string"
+        },
+        "section" : {
+          "description" : "The section to read. Omit for the list.",
+          "enum" : [ "units", "upgrades", "shortcuts", "milestones", "tick", "enemies" ],
+          "type" : "string"
+        }
+      },
+      "type" : "object"
+    },
+    "name" : "td_get_rules"
+  }, {
+    "annotations" : {
+      "destructiveHint" : false,
+      "idempotentHint" : true,
+      "openWorldHint" : false,
+      "readOnlyHint" : true
+    },
+    "description" : "Read the Campaign's current state: Vault, Pantry, Villagers, Reserves, and the Party, Supplies, Loot and Garrison while an Expedition is out. 'brief' is a few hundred tokens; 'full' adds the Roster, Upgrades, Milestones, Shortcuts and Trades. Units are counted by type, never listed one by one. Pass since_seq to skip an unchanged state.",
+    "inputSchema" : {
+      "additionalProperties" : false,
+      "properties" : {
+        "campaign" : {
+          "description" : "A Sandbox handle. Omit to use your only open Sandbox.",
+          "pattern" : "^[A-Za-z0-9_-]{1,64}$",
+          "type" : "string"
+        },
+        "since_seq" : {
+          "description" : "Skip the state if it has not moved past this sequence number.",
+          "minimum" : 0,
+          "type" : "integer"
+        },
+        "view" : {
+          "description" : "How much detail. Default brief.",
+          "enum" : [ "brief", "full" ],
+          "type" : "string"
+        }
+      },
+      "type" : "object"
+    },
+    "name" : "td_get_state"
+  }, {
+    "annotations" : {
+      "destructiveHint" : false,
+      "idempotentHint" : true,
+      "openWorldHint" : false,
+      "readOnlyHint" : true
+    },
+    "description" : "Read the Tower as far as the Party has climbed: highest Floor, Guardian and Surge Floors met, Guardians slain, Shortcuts, Milestones, and the Garrison of the current Floor during an Expedition. Floors not yet reached are not shown.",
+    "inputSchema" : {
+      "additionalProperties" : false,
+      "properties" : {
+        "campaign" : {
+          "description" : "A Sandbox handle. Omit to use your only open Sandbox.",
+          "pattern" : "^[A-Za-z0-9_-]{1,64}$",
+          "type" : "string"
+        }
+      },
+      "type" : "object"
+    },
+    "name" : "td_get_tower"
+  }, {
+    "annotations" : {
+      "destructiveHint" : true,
+      "idempotentHint" : true,
+      "openWorldHint" : false,
+      "readOnlyHint" : false
+    },
+    "description" : "Close a Sandbox Campaign you opened and discard it. This cannot be undone.",
+    "inputSchema" : {
+      "additionalProperties" : false,
+      "properties" : {
+        "campaign" : {
+          "description" : "The Sandbox handle returned by td_sandbox_new.",
+          "pattern" : "^sandbox-[0-9a-f-]{36}$",
+          "type" : "string"
+        }
+      },
+      "required" : [ "campaign" ],
+      "type" : "object"
+    },
+    "name" : "td_sandbox_close"
+  }, {
+    "annotations" : {
+      "destructiveHint" : false,
+      "idempotentHint" : false,
+      "openWorldHint" : false,
+      "readOnlyHint" : false
+    },
+    "description" : "Open a Sandbox Campaign: a headless Campaign on a manual clock that advances only through td_wait, with its own copy of the rules. Pass a seed to repeat an earlier one; the seed in use is returned. The number open per grant and in all is capped, and so is its simulated time. Returns its handle for the 'campaign' argument.",
+    "inputSchema" : {
+      "additionalProperties" : false,
+      "properties" : {
+        "max_simulated_seconds" : {
+          "description" : "A lower ceiling on its simulated time. Default the server's.",
+          "maximum" : 21600,
+          "minimum" : 1,
+          "type" : "integer"
+        },
+        "seed" : {
+          "description" : "The Sandbox's seed. Omit for a fresh one.",
+          "type" : "integer"
+        }
+      },
+      "type" : "object"
+    },
+    "name" : "td_sandbox_new"
+  }, {
+    "annotations" : {
+      "destructiveHint" : false,
+      "idempotentHint" : false,
+      "openWorldHint" : false,
+      "readOnlyHint" : false
+    },
+    "description" : "Wait for something to change. In a Sandbox this advances time, one simulated second per tick, until a condition holds or max_ticks pass. On a live Campaign it only watches, up to timeout_ms. Conditions: floor_changed, unit_lost, expedition_ended, supplies_below, party_health_fraction_below, ticks. One wait at a time.",
+    "inputSchema" : {
+      "additionalProperties" : false,
+      "properties" : {
+        "campaign" : {
+          "description" : "A Sandbox handle. Omit to use your only open Sandbox.",
+          "pattern" : "^[A-Za-z0-9_-]{1,64}$",
+          "type" : "string"
+        },
+        "conditions" : {
+          "items" : {
+            "additionalProperties" : false,
+            "properties" : {
+              "type" : {
+                "enum" : [ "floor_changed", "unit_lost", "expedition_ended", "supplies_below", "party_health_fraction_below", "ticks" ]
+              },
+              "value" : {
+                "type" : "number"
+              }
+            },
+            "required" : [ "type" ],
+            "type" : "object"
+          },
+          "maxItems" : 6,
+          "minItems" : 1,
+          "type" : "array"
+        },
+        "max_ticks" : {
+          "description" : "Sandbox only. Default 60.",
+          "maximum" : 3600,
+          "minimum" : 1,
+          "type" : "integer"
+        },
+        "timeout_ms" : {
+          "description" : "Live Campaign only. Default 15000.",
+          "maximum" : 20000,
+          "minimum" : 100,
+          "type" : "integer"
+        }
+      },
+      "required" : [ "conditions" ],
+      "type" : "object"
+    },
+    "name" : "td_wait"
+  } ]
+}

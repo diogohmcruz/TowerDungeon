@@ -113,6 +113,15 @@ public class SandboxRegistry {
     return mine.size();
   }
 
+  /** The ids of the Sandboxes a grant holds, in a stable order. */
+  public synchronized java.util.List<String> heldBy(String grantId) {
+    return owners.entrySet().stream()
+        .filter(e -> e.getValue().equals(grantId))
+        .map(Map.Entry::getKey)
+        .sorted()
+        .toList();
+  }
+
   /** Live Sandboxes held by a grant. */
   public synchronized int liveFor(String grantId) {
     return (int) owners.values().stream().filter(grantId::equals).count();

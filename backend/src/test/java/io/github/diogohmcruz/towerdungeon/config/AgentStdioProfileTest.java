@@ -27,13 +27,17 @@ class AgentStdioProfileTest {
   void theProfileBootsWithoutAWebServerAndKeepsStdoutClean() throws Exception {
     var dataDir = Files.createTempDirectory("td-stdio-test");
     var realOut = System.out;
+    var realIn = System.in;
     var captured = new ByteArrayOutputStream();
     System.setOut(new PrintStream(captured, true));
+    // The MCP server reads stdin; give it an empty one, not the test runner's own channel.
+    System.setIn(new java.io.ByteArrayInputStream(new byte[0]));
     try (var context =
         new SpringApplicationBuilder(TowerDungeonApplication.class)
             .profiles("agent-stdio")
             .run("--game.persistence.data-dir=" + dataDir)) {
       System.setOut(realOut);
+      System.setIn(realIn);
 
       assertThat(context)
           .isNotInstanceOf(org.springframework.web.context.WebApplicationContext.class);
@@ -42,10 +46,12 @@ class AgentStdioProfileTest {
       assertThat(context.getBeansOfType(HandshakeGuardFilter.class)).isEmpty();
       assertThat(context.getBeansOfType(UnitStatsController.class)).isEmpty();
       assertThat(context.getBean(GameService.class)).isNotNull();
+      assertThat(context.getBean(io.modelcontextprotocol.server.McpAsyncServer.class)).isNotNull();
       assertThat(context.getBean(SandboxRegistry.class).open("grant", null, null).sandboxId())
           .isNotNull();
     } finally {
       System.setOut(realOut);
+      System.setIn(realIn);
     }
 
     // Devtools (a test-classpath dependency, absent from the packaged jar) logs one line to stdout

@@ -1,0 +1,21 @@
+# The agent profile: the MCP server over HTTP (POST /mcp) on the same port as the game, behind the
+# guarding filter. It needs a developer token hash (game.agent.http.dev-token-hash, or the
+# TD_AGENT_DEV_TOKEN_HASH variable); without one every call is 401. Sandboxes stay off unless
+# game.agent.sandbox.enabled is set. Local and private runs only: block /mcp at any public proxy.
+spring:
+  ai:
+    mcp:
+      server:
+        enabled: true
+        protocol: STATELESS
+        type: ASYNC
+
+game:
+  agent:
+    enabled: true
+
+logging:
+  level:
+    # The stateless server logs a warning for the client's initialized notification, which has no
+    # handler and needs none.
+    io.modelcontextprotocol.server.DefaultMcpStatelessServerHandler: ERROR

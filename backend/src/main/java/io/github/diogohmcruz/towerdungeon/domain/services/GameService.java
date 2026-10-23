@@ -572,6 +572,29 @@ public class GameService {
     return observe(playerId, (slot, _) -> slot.summaries().all());
   }
 
+  /** What a read sees besides the state itself. */
+  public record Meta(long seq, boolean held, ClockMode clock) {}
+
+  /** A read of one Campaign, run under its lock. */
+  @FunctionalInterface
+  public interface View<T> {
+    T read(GameState state, Meta meta);
+  }
+
+  /**
+   * Runs a read of a Campaign under its lock, with its sequence number, whether its Party is Held
+   * and which clock drives it; empty with no live Campaign. The state must not leave the callback.
+   */
+  public <T> Optional<T> view(String playerId, View<T> read) {
+    return observe(
+        playerId,
+        (slot, state) ->
+            read.read(
+                state,
+                new Meta(
+                    slot.stateSeq(), slot.isHeld() && state.isExpeditionActive(), slot.clock())));
+  }
+
   private <T> Optional<T> observe(String playerId, BiFunction<PlayerSlot, GameState, T> read) {
     var slot = players.get(playerId);
     return slot == null ? Optional.empty() : access(slot, state -> read.apply(slot, state));
