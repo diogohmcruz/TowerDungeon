@@ -269,6 +269,8 @@ class RollCommandsTest {
     var seed = view.inheritances().stream().filter(n -> n.id().equals("SEED_GRAIN")).findFirst();
     assertThat(seed.orElseThrow().whyNot()).isNull();
     assertThat(view.courses()).extracting(c -> c.open()).containsExactly(true, false, false, false);
+    assertThat(view.chronicle()).hasSize(1);
+    assertThat(view.chronicle().get(0).generation()).isEqualTo(view.generation());
   }
 
   @Test

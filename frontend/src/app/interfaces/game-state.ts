@@ -1,4 +1,5 @@
 import { Unit } from './unit.enum';
+import { SuccessionView } from './succession';
 import { Tower } from './tower';
 import { Member } from './member';
 import {
@@ -129,6 +130,7 @@ export interface SessionMeta {
   notices: { code: string; message: string }[];
   /** A Held Party is waiting for the player to resume. */
   held: boolean;
+  succession?: SuccessionView | null;
 }
 
 export interface GameState {

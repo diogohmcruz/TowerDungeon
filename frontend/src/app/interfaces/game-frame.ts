@@ -1,4 +1,5 @@
 import { GameState } from './game-state';
+import { SuccessionView } from './succession';
 
 export interface SessionNotice {
   code: string;
@@ -12,6 +13,8 @@ export interface SessionMeta {
   schema: number;
   notices: SessionNotice[];
   held: boolean;
+  /** The Roll and the choices, while the Campaign waits in OFFER; null while it is played. */
+  succession?: SuccessionView | null;
 }
 
 /** One frame from the server: the state, unwrapped, plus `session`. */

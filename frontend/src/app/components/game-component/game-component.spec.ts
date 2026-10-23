@@ -239,4 +239,75 @@ describe('GameComponent', () => {
     );
     expect(component.packSalt()).toBe(0);
   });
+
+  describe('the Succession', () => {
+    const host = () => fixture.nativeElement as HTMLElement;
+    const succession = {
+      generation: 1,
+      legacy: 4,
+      spent: 0,
+      courses: [{ course: 1, gate: 0, spentBelow: 0, open: true }],
+      inheritances: [
+        {
+          id: 'SEED_GRAIN',
+          name: 'Seed Grain',
+          course: 1,
+          kind: 'POWER',
+          cost: 2,
+          available: true,
+          held: false,
+          paid: 0,
+          whyNot: null,
+          refundable: false,
+        },
+      ],
+      choices: [],
+      chronicle: [],
+    };
+    const meta = {
+      resumed: false,
+      savedAt: null,
+      schema: 1,
+      notices: [],
+      held: false,
+      succession,
+    };
+
+    it('shows the screen only in OFFER', () => {
+      stateService.setSession(meta);
+      stateService.update({ phase: 'ACTIVE' });
+      fixture.detectChanges();
+      expect(host().querySelector('app-succession-screen')).toBeNull();
+
+      stateService.update({ phase: 'OFFER', gameOutcome: 'EXODUS' });
+      fixture.detectChanges();
+      expect(host().querySelector('app-succession-screen')).not.toBeNull();
+      expect(host().querySelector('app-village-management')).toBeNull();
+
+      stateService.update({ phase: 'ACTIVE', gameOutcome: 'PLAYING' });
+      stateService.setSession({ ...meta, succession: null });
+      fixture.detectChanges();
+      expect(host().querySelector('app-succession-screen')).toBeNull();
+    });
+
+    it('sends the Roll actions and Begin Generation', () => {
+      stateService.setSession(meta);
+      stateService.update({ phase: 'OFFER', gameOutcome: 'EXODUS' });
+      fixture.detectChanges();
+
+      (host().querySelector('.node-buy') as HTMLElement).click();
+      expect(sendAction).toHaveBeenCalledWith(GameAction.ROLL_BUY, {
+        id: 'SEED_GRAIN',
+      });
+
+      fixture.detectChanges();
+      (host().querySelector('.begin') as HTMLElement).click();
+      fixture.detectChanges();
+      (host().querySelector('.begin-yes') as HTMLElement).click();
+      expect(sendAction).toHaveBeenCalledWith(
+        GameAction.BEGIN_GENERATION,
+        null,
+      );
+    });
+  });
 });

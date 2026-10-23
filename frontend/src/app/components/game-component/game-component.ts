@@ -17,6 +17,7 @@ import { RunSummaryCard } from '../run-summary-card/run-summary-card';
 import { Reinforcement } from '../../interfaces/game-state';
 import { Loadout } from '../loadout/loadout';
 import { TollBar } from '../toll-bar/toll-bar';
+import { SuccessionScreen } from '../succession-screen/succession-screen';
 
 @Component({
   selector: 'app-game-component',
@@ -33,12 +34,24 @@ import { TollBar } from '../toll-bar/toll-bar';
     RunSummaryCard,
     Loadout,
     TollBar,
+    SuccessionScreen,
   ],
   templateUrl: './game-component.html',
   styleUrls: ['./game-component.scss'],
 })
 export class GameComponent {
-  readonly gameState = inject(GameStateService).state;
+  private readonly stateService = inject(GameStateService);
+  readonly gameState = this.stateService.state;
+
+  /** The Campaign has ended and waits for the Succession. */
+  readonly offer = computed(() => this.gameState().phase === 'OFFER');
+  /** The Roll and the choices the server sent for the Succession. */
+  readonly succession = computed(
+    () =>
+      this.stateService.session()?.succession ??
+      this.gameState().session?.succession ??
+      null,
+  );
   private ws = inject(GameWebSocketService);
   private unitStatsService = inject(UnitStatsService);
 
@@ -136,6 +149,22 @@ export class GameComponent {
 
   exodus() {
     this.ws.sendAction(GameAction.EXODUS, null);
+  }
+
+  rollBuy(id: string) {
+    this.ws.sendAction(GameAction.ROLL_BUY, { id });
+  }
+
+  rollRefund(id: string) {
+    this.ws.sendAction(GameAction.ROLL_REFUND, { id });
+  }
+
+  choose(id: string) {
+    this.ws.sendAction(GameAction.CHOOSE, { id });
+  }
+
+  beginGeneration() {
+    this.ws.sendAction(GameAction.BEGIN_GENERATION, null);
   }
 
   resume() {

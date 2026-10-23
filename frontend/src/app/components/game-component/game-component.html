@@ -32,6 +32,16 @@
     <button class="btn" (click)="resume()">Resume</button>
   </section>
   }
+  @if (offer() && succession(); as view) {
+  <app-succession-screen
+    [view]="view"
+    [report]="gameState().pending ?? null"
+    (buy)="rollBuy($event)"
+    (refund)="rollRefund($event)"
+    (choose)="choose($event)"
+    (begin)="beginGeneration()"
+  />
+  } @else {
   <hr />
 
   <app-village-management />
@@ -198,6 +208,7 @@
     (remedy)="giveRemedy($event)"
     (reattach)="reattachPart($event)"
   />
+  }
 </article>
 
 <app-tower

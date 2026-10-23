@@ -18,6 +18,7 @@ import io.github.diogohmcruz.towerdungeon.domain.models.GameState;
  * @param courses the four Courses
  * @param inheritances all seventeen Inheritances, in Course order
  * @param choices the choices open, one entry for each of their options
+ * @param chronicle every ended Campaign, oldest first, the one just ended last
  */
 public record SuccessionView(
     int generation,
@@ -25,7 +26,8 @@ public record SuccessionView(
     int spent,
     List<Course> courses,
     List<Node> inheritances,
-    List<Option> choices) {
+    List<Option> choices,
+    List<ChronicleEntry> chronicle) {
 
   /**
    * @param course 1 to 4
@@ -124,6 +126,12 @@ public record SuccessionView(
       }
     }
     return new SuccessionView(
-        meta.generation(), meta.legacy(), meta.spent(), courses, nodes, options);
+        meta.generation(),
+        meta.legacy(),
+        meta.spent(),
+        courses,
+        nodes,
+        options,
+        meta.chronicle());
   }
 }
