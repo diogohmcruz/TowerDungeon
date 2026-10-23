@@ -5,3 +5,20 @@
 .content {
   height: inherit;
 }
+
+.connection-notice {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 150px;
+  z-index: 900;
+  margin: 0;
+  padding: 8px 14px;
+  color: var(--bone);
+  background: var(--ember-dim);
+  border-bottom: 1px solid var(--ember);
+
+  .btn {
+    margin-left: 10px;
+  }
+}

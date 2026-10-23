@@ -1,0 +1,32 @@
+<button
+  type="button"
+  class="settings-toggle"
+  (click)="toggle()"
+  [attr.aria-expanded]="open()"
+  aria-controls="settings-body"
+>
+  Key
+</button>
+@if (open()) {
+<section id="settings-body" class="settings-body">
+  <h3>Campaign Key</h3>
+  <p class="settings-note">
+    Whoever holds this key holds the Campaign. Keep a copy to resume it from
+    another browser.
+  </p>
+  <div class="settings-row">
+    <input
+      class="key-field"
+      type="text"
+      readonly
+      aria-label="Campaign Key"
+      [value]="key()"
+      (focus)="$any($event.target).select()"
+    />
+    <button type="button" class="btn copy" (click)="copy()">Copy</button>
+  </div>
+  @if (copied()) {
+  <p class="settings-note" role="status">Copied.</p>
+  }
+</section>
+}

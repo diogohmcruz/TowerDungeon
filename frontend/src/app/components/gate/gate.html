@@ -1,0 +1,54 @@
+<section class="gate">
+  <h2>Tower Dungeon</h2>
+
+  @if (reason(); as r) {
+  <p class="gate-reason" role="alert">{{ r.message }}</p>
+  }
+
+  <div class="gate-block">
+    <button type="button" class="btn btn-primary begin" (click)="begin()">
+      Begin
+    </button>
+    <p class="gate-note">
+      @if (hasCampaign) { This browser already holds a Campaign Key. Begin
+      returns to that Campaign. } @else { Begin starts a new Campaign and keeps
+      its key in this browser. }
+    </p>
+  </div>
+
+  <form class="gate-block" (submit)="$event.preventDefault(); resume()">
+    <label for="resume-key">Resume with key</label>
+    <div class="gate-row">
+      <input
+        id="resume-key"
+        class="key-input"
+        type="text"
+        autocomplete="off"
+        spellcheck="false"
+        maxlength="64"
+        placeholder="22-character Campaign Key"
+        [value]="pasted()"
+        (input)="onInput($event)"
+        [attr.aria-invalid]="pastedInvalid()"
+      />
+      <button type="submit" class="btn resume" [disabled]="!canResume()">
+        Resume
+      </button>
+    </div>
+    @if (pastedInvalid()) {
+    <p class="gate-error">A Campaign Key is 22 letters, digits, - or _.</p>
+    }
+  </form>
+
+  <div class="gate-block">
+    <button
+      type="button"
+      class="btn import"
+      disabled
+      title="Importing a Campaign file is not available yet."
+    >
+      Import file
+    </button>
+    <p class="gate-note">Importing a Campaign file is not available yet.</p>
+  </div>
+</section>

@@ -1,6 +1,7 @@
 import { Injectable, Signal, signal } from '@angular/core';
 import { GameState } from '../interfaces/game-state';
 import { Unit } from '../interfaces/unit.enum';
+import { SessionMeta } from '../interfaces/game-frame';
 
 @Injectable({ providedIn: 'root' })
 export class GameStateService {
@@ -79,8 +80,16 @@ export class GameStateService {
   });
   readonly state: Signal<GameState> = this._state.asReadonly();
 
+  private _session = signal<SessionMeta | null>(null);
+  /** The latest frame's session facts (resumed, notices, held), or null before the first frame. */
+  readonly session: Signal<SessionMeta | null> = this._session.asReadonly();
+
   setState(newState: GameState) {
     this._state.set(newState);
+  }
+
+  setSession(session: SessionMeta | null) {
+    this._session.set(session);
   }
 
   update(partial: Partial<GameState>) {
