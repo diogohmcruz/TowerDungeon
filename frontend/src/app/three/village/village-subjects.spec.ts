@@ -102,4 +102,31 @@ describe('village subjects', () => {
     expect(subjectOfVolume(outline[0].id)).toEqual({ kind: 'port', id: 'PORT' });
     for (const x of outline) expect(x.x + x.w / 2).toBeLessThanOrEqual(5.5);
   });
+
+  it('makes every part of a doorway one Shortcut subject, and an outline of it too', () => {
+    const v = buildVillage({
+      ...busy,
+      shortcuts: [{ id: 'NARROW_STAIR', floor: 21 }],
+      hovered: 'NARROW_STAIR',
+    });
+    const parts = v.filter((x) => x.id.startsWith('shortcut-mark-'));
+    expect(parts.length).toBeGreaterThan(4);
+    for (const x of parts) {
+      expect(subjectOfVolume(x.id)).toEqual({
+        kind: 'shortcut',
+        id: 'NARROW_STAIR',
+      });
+    }
+    const outline = v.filter((x) => x.id.startsWith('outline-NARROW_STAIR'));
+    expect(outline.length).toBe(4);
+    expect(subjectOfVolume(outline[0].id)).toEqual({
+      kind: 'shortcut',
+      id: 'NARROW_STAIR',
+    });
+  });
+
+  it('draws no outline for a hovered Shortcut that is locked (not drawn)', () => {
+    const v = buildVillage({ ...busy, shortcuts: [], hovered: 'NARROW_STAIR' });
+    expect(v.some((x) => x.id.startsWith('outline-NARROW_STAIR'))).toBeFalse();
+  });
 });

@@ -8,7 +8,9 @@
 import type { PortState } from '../../interfaces/game-state';
 import type { Quarter } from '../../interfaces/game-state';
 import type { TradeId } from '../../interfaces/village';
-import { outlineVolumes } from './village-subjects';
+import { outlineVolumes, SHORTCUT_MARK_ID } from './village-subjects';
+
+export { SHORTCUT_MARK_ID };
 
 /** Width of the frame at the Village's depth. The camera is fitted to this. */
 export const FRAME_WIDTH = 11;
@@ -51,8 +53,16 @@ export const TOWER_SEGMENTS = 14;
 /** Shortcut marks sit on the Tower's flank at this x and just in front of its face. */
 export const SHORTCUT_MARK_X = 1.9;
 export const SHORTCUT_MARK_Z = -0.27;
-/** Id prefix of a Shortcut mark volume; the rest is the Shortcut id. */
-export const SHORTCUT_MARK_ID = 'shortcut-mark-';
+/**
+ * The doorway, in world units (one virtual pixel is 0.05): the lit opening, the
+ * lintel over it, the ledge at its sill and the stub of a stair below, to its left.
+ */
+export const SHORTCUT_DOOR = {
+  opening: { w: 0.3, h: 0.5 },
+  lintel: { w: 0.5, h: 0.1 },
+  ledge: { w: 0.5, h: 0.05 },
+  step: { w: 0.2, h: 0.05, dx: 0.35 },
+} as const;
 
 /** `port` is the shore: sea, pier and Boat, drawn in the outer right-hand 20% of the frame. */
 export type VolumeGroup = 'village' | 'tower' | 'port';
@@ -98,8 +108,6 @@ export interface VillageInput {
   salt: number;
   /** Open Shortcuts only; a locked Shortcut is never passed in, so it draws nothing. */
   shortcuts: VillageShortcut[];
-  /** Shortcut whose mark is drawn thicker (hook for the shared selection service). */
-  highlightedShortcut: string | null;
   /** The Port from the frame: hidden draws no sea at all; footing and built follow it. */
   port: PortState;
   /**
@@ -140,7 +148,6 @@ export const EMPTY_VILLAGE: VillageInput = {
   saltPansOpen: false,
   salt: 0,
   shortcuts: [],
-  highlightedShortcut: null,
   port: 'HIDDEN',
   boatDocked: false,
   tick: 0,
@@ -551,30 +558,29 @@ export function shortcutMarkHeight(floor: number): number {
 }
 
 /**
- * One small lit mark on the Tower's flank per open Shortcut, at its Floor's
- * relative height. No numeral. Locked Shortcuts are not in the input, so they
- * leave nothing, not even a hairline. The highlighted one is drawn thicker.
+ * A doorway cut into the Tower's face per open Shortcut, at its Floor's relative
+ * height: a lit opening in a dark frame of two jambs and a lintel, a ledge at the sill and
+ * a stair stub below it. No numeral. Locked Shortcuts are not in the input, so they
+ * leave nothing, not even a hairline. Hover outlines come from the subjects module.
  */
-function shortcutMarks(
-  out: Volume[],
-  shortcuts: VillageShortcut[],
-  highlighted: string | null,
-): void {
+function shortcutMarks(out: Volume[], shortcuts: VillageShortcut[]): void {
+  const d = SHORTCUT_DOOR;
   for (const sc of shortcuts) {
     if (sc.floor <= 0) continue;
-    const on = sc.id === highlighted;
-    box(
-      out,
-      `${SHORTCUT_MARK_ID}${sc.id}`,
-      'tower',
-      SHORTCUT_MARK_X,
-      shortcutMarkHeight(sc.floor) - 0.05,
-      SHORTCUT_MARK_Z,
-      on ? 0.3 : 0.18,
-      on ? 0.1 : 0.05,
-      0.04,
-      VILLAGE_TONE.lit,
-    );
+    const id = `${SHORTCUT_MARK_ID}${sc.id}`;
+    const x = SHORTCUT_MARK_X;
+    const y = shortcutMarkHeight(sc.floor);
+    const z = SHORTCUT_MARK_Z;
+    const part = (n: string, px: number, py: number, w: number, h: number, depth: number, pz: number, tone: number) =>
+      box(out, `${id}:${n}`, 'tower', px, py, pz, w, h, depth, tone);
+    part('opening', x, y, d.opening.w, d.opening.h, 0.04, z, VILLAGE_TONE.lit);
+    const jamb = (d.lintel.w - d.opening.w) / 2;
+    const jx = (d.opening.w + jamb) / 2;
+    part('jamb-w', x - jx, y, jamb, d.opening.h, 0.05, z - 0.005, VILLAGE_TONE.dark);
+    part('jamb-e', x + jx, y, jamb, d.opening.h, 0.05, z - 0.005, VILLAGE_TONE.dark);
+    part('lintel', x, y + d.opening.h, d.lintel.w, d.lintel.h, 0.07, z + 0.01, VILLAGE_TONE.dark);
+    part('ledge', x, y - d.ledge.h, d.ledge.w, d.ledge.h, 0.2, z + 0.08, VILLAGE_TONE.stone);
+    part('step', x - d.step.dx, y - d.ledge.h - d.step.h, d.step.w, d.step.h, 0.16, z + 0.06, VILLAGE_TONE.stone);
   }
 }
 
@@ -799,7 +805,7 @@ export function buildVillage(input: VillageInput): Volume[] {
   vault(out, input.materials, input.relics);
   pans(out, input.saltPansOpen, input.salt);
   port(out, input.port ?? 'HIDDEN', input.boatDocked ?? false, input.seaRisk);
-  shortcutMarks(out, input.shortcuts, input.highlightedShortcut);
+  shortcutMarks(out, input.shortcuts);
   growth(out, input.upgrades ?? {});
   reserves(out, input.reserves);
   villagers(out, input.hands, input.tick, input.still);

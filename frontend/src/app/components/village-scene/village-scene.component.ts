@@ -78,11 +78,6 @@ export class VillageScene {
   private readonly tick = signal(0);
   /** Dev tooling: draws this state instead of the game's (see `/village-fixture`). */
   readonly fixture = input<VillageInput | null>(null);
-  /**
-   * Hook for the shared selection service (#78): bind the hovered Shortcut id
-   * here so its mark thickens. Not wired yet because that service has not landed.
-   */
-  readonly highlightedShortcut = input<string | null>(null);
   private readonly still =
     typeof matchMedia === 'function' &&
     matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -115,8 +110,6 @@ export class VillageScene {
       const t = this.tick();
       return {
         ...fixed,
-        highlightedShortcut:
-          this.highlightedShortcut() ?? fixed.highlightedShortcut,
         tick: t,
         flicker: (t * STEP_MS) / 1000,
         hovered: this.selection.hovered()?.id ?? null,
@@ -157,7 +150,6 @@ export class VillageScene {
       shortcuts: (s.shortcuts ?? [])
         .filter((sc) => sc.unlocked)
         .map((sc) => ({ id: sc.id, floor: sc.floor })),
-      highlightedShortcut: this.highlightedShortcut(),
       port: s.port?.state ?? 'HIDDEN',
       boatDocked: s.boat?.state === 'DOCKED',
       quarter: s.quarter ?? null,

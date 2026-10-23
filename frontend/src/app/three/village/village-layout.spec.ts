@@ -318,13 +318,15 @@ describe('village layout', () => {
   describe('Shortcut marks', () => {
     const marks = (v: Volume[]) =>
       v.filter((x) => x.id.startsWith(SHORTCUT_MARK_ID));
+    const openings = (v: Volume[]) =>
+      marks(v).filter((x) => x.id.endsWith(':opening'));
 
     it('draws nothing when no Shortcut is open', () => {
       expect(marks(buildVillage(EMPTY_VILLAGE))).toEqual([]);
     });
 
-    it('draws one lit mark per open Shortcut at its Floor relative height', () => {
-      const v = marks(
+    it('draws one lit doorway per open Shortcut at its Floor relative height', () => {
+      const v = openings(
         buildVillage({
           ...EMPTY_VILLAGE,
           shortcuts: [
@@ -364,22 +366,85 @@ describe('village layout', () => {
           shortcuts: [{ id: 'NARROW_STAIR', floor: 21 }],
         }),
       );
-      expect(ids(v)).toEqual([`${SHORTCUT_MARK_ID}NARROW_STAIR`]);
+      expect(new Set(marks(v).map((x) => x.id.split(':')[0]))).toEqual(
+        new Set([`${SHORTCUT_MARK_ID}NARROW_STAIR`]),
+      );
     });
 
-    it('thickens only the highlighted mark', () => {
-      const v = marks(
-        buildVillage({
-          ...EMPTY_VILLAGE,
-          shortcuts: [
-            { id: 'a', floor: 3 },
-            { id: 'b', floor: 5 },
-          ],
-          highlightedShortcut: 'b',
-        }),
+    it('draws each mark as a doorway: opening, jambs, lintel, ledge and a stair stub', () => {
+      const v = buildVillage({
+        ...EMPTY_VILLAGE,
+        shortcuts: [{ id: 'a', floor: 10 }],
+      });
+      const parts = marks(v).map((x) => x.id.split(':')[1]);
+      expect(parts.sort()).toEqual(
+        ['jamb-e', 'jamb-w', 'ledge', 'lintel', 'opening', 'step'].sort(),
       );
-      const [a, b] = v;
-      expect(b.h).toBeGreaterThan(a.h);
+      const part = (n: string) =>
+        v.find((x) => x.id === `${SHORTCUT_MARK_ID}a:${n}`)!;
+      const opening = part('opening');
+      expect(opening.tone).toBe(1);
+      // At pixel scale 2 a virtual pixel is 0.05 world units: at least 5 by 8 pixels.
+      expect(opening.w).toBeGreaterThanOrEqual(0.25);
+      expect(opening.h).toBeGreaterThanOrEqual(0.4);
+      expect(part('lintel').y).toBeGreaterThan(opening.y);
+      expect(part('lintel').w).toBeGreaterThan(opening.w);
+      expect(part('ledge').y).toBeLessThan(opening.y);
+      expect(part('step').y).toBeLessThan(part('ledge').y);
+      expect(marks(v).every((x) => x.w >= 0.05 && x.h >= 0.05)).toBeTrue();
+    });
+
+    it('draws nothing for a Shortcut that is not passed in (locked)', () => {
+      const v = buildVillage({ ...BUSY, shortcuts: [] });
+      expect(marks(v)).toEqual([]);
+    });
+
+    it('stays on the Tower face, clear of the Port, the Upgrade modules and the Annexes', () => {
+      const floors = [1, 3, 10, 21, 50, 100];
+      const all = buildVillage({
+        ...BUSY,
+        port: 'BUILT',
+        boatDocked: true,
+        upgrades: Object.fromEntries(
+          Object.entries(UPGRADE_MODULES).map(([id, m]) => [id, m.cap]),
+        ),
+        shortcuts: floors.map((f) => ({ id: `f${f}`, floor: f })),
+      });
+      const doors = marks(all);
+      const others = all.filter(
+        (x) => x.group !== 'tower' && !x.id.startsWith('outline-'),
+      );
+      const tower = all.find((x) => x.id === 'tower-0')!;
+      for (const m of doors) {
+        expect(m.x - m.w / 2).toBeGreaterThanOrEqual(tower.x - tower.w / 2);
+        expect(m.x + m.w / 2).toBeLessThanOrEqual(tower.x + tower.w / 2);
+        expect(m.x + m.w / 2).toBeLessThan(SHORE_X0);
+        for (const o of others) {
+          const apartX = Math.abs(m.x - o.x) >= (m.w + o.w) / 2;
+          const apartY = Math.abs(m.y - o.y) >= (m.h + o.h) / 2;
+          expect(apartX || apartY).withContext(`${m.id} vs ${o.id}`).toBeTrue();
+        }
+      }
+    });
+
+    it('outlines the whole doorway when hovered, and only that Shortcut', () => {
+      const v = buildVillage({
+        ...EMPTY_VILLAGE,
+        shortcuts: [
+          { id: 'a', floor: 3 },
+          { id: 'b', floor: 30 },
+        ],
+        hovered: 'b',
+      });
+      const outline = v.filter((x) => x.id.startsWith('outline-b:hover:shortcut'));
+      expect(outline.length).toBe(4);
+      expect(v.some((x) => x.id.startsWith('outline-a'))).toBeFalse();
+      const step = v.find((x) => x.id === `${SHORTCUT_MARK_ID}b:step`)!;
+      const lintel = v.find((x) => x.id === `${SHORTCUT_MARK_ID}b:lintel`)!;
+      const top = Math.max(...outline.map((x) => x.y + x.h / 2));
+      const bottom = Math.min(...outline.map((x) => x.y - x.h / 2));
+      expect(top).toBeGreaterThanOrEqual(lintel.y + lintel.h / 2);
+      expect(bottom).toBeLessThanOrEqual(step.y - step.h / 2);
     });
   });
 

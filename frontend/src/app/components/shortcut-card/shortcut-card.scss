@@ -16,3 +16,17 @@ app-card.unlocked .shortcut-status {
   margin: 0;
   color: var(--muted);
 }
+
+// Only line weight: a hairline when its doorway is pointed at, a second pixel when chosen.
+app-card {
+  display: block;
+}
+
+:host(.linked) app-card {
+  --card-border: var(--bone);
+}
+
+:host(.chosen) app-card {
+  --card-border: var(--bone);
+  box-shadow: inset 0 0 0 1px var(--bone);
+}

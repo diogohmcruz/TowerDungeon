@@ -182,4 +182,34 @@ describe('village captions', () => {
       expect(captionFor({ kind: 'port', id: 'PORT' }, state)).toBeNull();
     });
   });
+
+  describe('Shortcut', () => {
+    const offer = (unlocked: boolean) => ({
+      id: 'NARROW_STAIR',
+      name: 'Narrow Stair',
+      description: 'A way up.',
+      trigger: '10 enemies',
+      floor: 21,
+      unlocked,
+    });
+
+    it('says in words that an open Shortcut is a place to start from', () => {
+      load({ shortcuts: [offer(true)] });
+      const c = captionFor({ kind: 'shortcut', id: 'NARROW_STAIR' }, state)!;
+      expect(c.name).toBe('Narrow Stair');
+      expect(c.lock).toBeNull();
+      expect(captionText(c)).toContain(
+        'A Shortcut stands open. An Expedition can start from here.',
+      );
+      expect(captionText(c)).toContain('Start Floor 21');
+    });
+
+    it('has no caption for a locked or unknown Shortcut', () => {
+      load({ shortcuts: [offer(false)] });
+      expect(
+        captionFor({ kind: 'shortcut', id: 'NARROW_STAIR' }, state),
+      ).toBeNull();
+      expect(captionFor({ kind: 'shortcut', id: 'NOPE' }, state)).toBeNull();
+    });
+  });
 });

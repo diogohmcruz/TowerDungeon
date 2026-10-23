@@ -2,9 +2,8 @@
  * The short caption of a Village subject: its name, whether it works, what it
  * makes. A locked footing states its real unlock condition in words. Pure.
  *
- * `CAPTION_BUILDERS` is the extension point: the Port footing and the Shortcut
- * marks add a kind and a builder. A Shortcut stays hidden until open, so its
- * builder is only reached for an open one.
+ * `CAPTION_BUILDERS` is the extension point: a new kind adds a builder. A
+ * Shortcut stays hidden until open, so its builder answers null for a locked one.
  */
 import type { GameState } from '../../interfaces/game-state';
 import type { TradeId, TradeView } from '../../interfaces/village';
@@ -163,11 +162,27 @@ const port: CaptionBuilder = (_subject, state) => {
   };
 };
 
+/**
+ * A Shortcut mark: only an open Shortcut has one. Says what stands there in words,
+ * and names the Start Floor, which the mark itself never shows.
+ */
+const shortcut: CaptionBuilder = (subject, state) => {
+  const sc = (state.shortcuts ?? []).find((s) => s.id === subject.id);
+  if (!sc || !sc.unlocked) return null;
+  return {
+    name: sc.name,
+    status: 'A Shortcut stands open. An Expedition can start from here.',
+    makes: `Start Floor ${sc.floor}`,
+    lock: null,
+  };
+};
+
 export const CAPTION_BUILDERS: Partial<Record<SubjectKind, CaptionBuilder>> = {
   annex,
   villagers,
   upgrade,
   port,
+  shortcut,
 };
 
 export function captionFor(

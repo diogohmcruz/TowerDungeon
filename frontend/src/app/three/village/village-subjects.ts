@@ -3,17 +3,21 @@
  * section 5.2, Selection). A subject is a kind and an id; the id is what links a
  * Trade row, an Upgrade row and the scene volumes of that Trade. Pure, no three.js.
  *
- * Extending: the Port footing and the Shortcut marks add their volume id prefix
- * to `VOLUME_SUBJECTS`, their kind to `SubjectKind`, and a builder to
+ * Extending: a new kind of thing adds its volume id prefix to `VOLUME_SUBJECTS`
+ * (or a branch in `subjectOfVolume` when the id is in the volume id, as the
+ * Shortcut marks do), its kind to `SubjectKind`, and a builder to
  * `CAPTION_BUILDERS` in `village-captions.ts`.
  */
 import type { TradeId } from '../../interfaces/village';
 import type { Volume } from './village-layout';
 
-export type SubjectKind = 'annex' | 'villagers' | 'upgrade' | 'port';
+export type SubjectKind = 'annex' | 'villagers' | 'upgrade' | 'port' | 'shortcut';
 
 /** The id of the Port subject: the footing, the pier and the Boat are one thing. */
 export const PORT_SUBJECT = 'PORT';
+
+/** Id prefix of a Shortcut mark volume; the Shortcut id follows, then `:` and the part. */
+export const SHORTCUT_MARK_ID = 'shortcut-mark-';
 
 export interface VillageSubject {
   kind: SubjectKind;
@@ -62,7 +66,11 @@ export function sameThing(
 export function subjectOfVolume(volumeId: string): VillageSubject | null {
   if (volumeId.startsWith(OUTLINE)) {
     const id = volumeId.slice(OUTLINE.length).split(':')[0];
+    if (volumeId.includes(':shortcut-')) return { kind: 'shortcut', id };
     return { kind: id === PORT_SUBJECT ? 'port' : 'annex', id };
+  }
+  if (volumeId.startsWith(SHORTCUT_MARK_ID)) {
+    return { kind: 'shortcut', id: volumeId.slice(SHORTCUT_MARK_ID.length).split(':')[0] };
   }
   const villager = /^villager-([A-Z]+)-/.exec(volumeId);
   if (villager && (TRADES as readonly string[]).includes(villager[1])) {
@@ -98,7 +106,7 @@ export function outlineVolumes(
 ): Volume[] {
   const out: Volume[] = [];
   const t = PIXEL * weight;
-  for (const kind of ['annex', 'villagers', 'port'] as const) {
+  for (const kind of ['annex', 'villagers', 'port', 'shortcut'] as const) {
     const parts = ofSubject(volumes, id, kind);
     if (parts.length === 0) continue;
     const x0 = Math.min(...parts.map((v) => v.x - v.w / 2)) - PAD;
