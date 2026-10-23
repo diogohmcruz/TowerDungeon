@@ -125,25 +125,42 @@ await send("Runtime.enable");
 await send("Fetch.enable", {
   patterns: [{ urlPattern: "http://localhost:8080/*" }],
 });
+// VIEW_W x VIEW_H is the page viewport (default 1440 x 900), DPR the device
+// pixel ratio (default 2), SCALES the pixel scales to capture (default 1,2,3),
+// THEMES dark,light. #17 captures the scene column at its 440 px minimum:
+//   VIEW_W=440 VIEW_H=1000 DPR=1 SCALES=2 node tools/capture-scene.mjs ...
+const VIEW_W = Number(process.env.VIEW_W ?? 1440);
+const VIEW_H = Number(process.env.VIEW_H ?? 900);
+const DPR = Number(process.env.DPR ?? 2);
+const SCALES = (process.env.SCALES ?? "1,2,3").split(",").map(Number);
+const THEMES = (process.env.THEMES ?? "dark,light").split(",");
 await send("Emulation.setDeviceMetricsOverride", {
-  width: 1440,
-  height: 900,
-  deviceScaleFactor: 2,
+  width: VIEW_W,
+  height: VIEW_H,
+  deviceScaleFactor: DPR,
   mobile: false,
 });
 
 const results = [];
 try {
-  for (const theme of ["dark", "light"]) {
-    for (const scale of [1, 2, 3]) {
+  for (const theme of THEMES) {
+    for (const scale of SCALES) {
       const url = `${baseUrl}/?inkFixture=${floors}&floor=${current}&garrison=${garrison}&pixelScale=${scale}`;
       await send("Page.navigate", { url: "about:blank" });
       await send("Page.navigate", { url });
       await evaluate(`localStorage.setItem('td-theme', '${theme}')`);
+      // The app opens on a Campaign Key screen without a key (added after #15).
+      await evaluate(
+        `localStorage.setItem('td-campaign-key', 'AAAAAAAAAAAAAAAAAAAAAA')`,
+      );
       await send("Page.reload");
       let ok = false;
       for (let i = 0; i < 60 && !ok; i++) {
         await sleep(500);
+        // Past the Campaign Key gate (a key is already stored above).
+        await evaluate(`document.querySelector('.begin')?.click()`).catch(
+          () => {},
+        );
         ok = await evaluate(
           `!!window.__tower && !!document.querySelector('app-tower-scene canvas') && window.__tower.info().calls > 0`,
         ).catch(() => false);
@@ -172,7 +189,7 @@ try {
           scale: 1,
         },
       });
-      const name = `${label}-${theme === "dark" ? "night" : "day"}-${scale}x.png`;
+      const name = `${label}-${theme === "dark" ? "night" : "day"}-${scale}x${DPR === 2 ? "" : `-dpr${DPR}`}.png`;
       writeFileSync(join(outDir, name), Buffer.from(shot.data, "base64"));
       results.push({
         name,

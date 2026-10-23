@@ -1,6 +1,6 @@
 import { Reinforcement, Squad } from '../../interfaces/game-state';
 import { Member } from '../../interfaces/member';
-import { Tower, TowerFloor } from '../../interfaces/tower';
+import { ArchitectureId, Tower, TowerFloor } from '../../interfaces/tower';
 import { Unit } from '../../interfaces/unit.enum';
 
 /**
@@ -14,6 +14,30 @@ export interface InkFixture {
   party: Squad;
   reinforcements: Reinforcement[];
 }
+
+/** The pinned Floors of the plan (architecture brainstorm 4.2), so captures show them. */
+const PINS: Record<number, ArchitectureId> = {
+  1: 'COLONNADE',
+  3: 'STAIR_SHAFT',
+  5: 'COLONNADE',
+  10: 'GATE',
+  14: 'LOOP_ROOMS',
+  15: 'WATERWAY',
+  20: 'WELL',
+  25: 'PILLAR_MAZE',
+  40: 'GATE',
+  50: 'GATE',
+  59: 'STATUARY',
+  60: 'GATE',
+  80: 'EXPANSE',
+  100: 'GATE',
+};
+const FILLER: ArchitectureId[] = [
+  'COLONNADE',
+  'NAVE',
+  'STAIR_SHAFT',
+  'COLONNADE',
+];
 
 const ENEMY_TYPES = ['SLIME', 'DEAD_SOLDIERS', 'TOWER_BEAST', 'CHIMERA'];
 const UNIT_TYPES: Unit[] = [
@@ -72,8 +96,8 @@ export function buildFixture(p: {
       id: n,
       difficulty: 1,
       boss,
-      architecture: 'COLONNADE',
-      variant: 0,
+      architecture: PINS[n] ?? FILLER[n % FILLER.length],
+      variant: (n % 4) as 0 | 1 | 2 | 3,
       enemies: Array.from({ length: count }, (_, i) =>
         member(n * 1000 + i, ENEMY_TYPES[(n + i) % ENEMY_TYPES.length]),
       ),
@@ -92,7 +116,10 @@ export function buildFixture(p: {
       maxFloor: 100,
       floors,
       layoutVersion: 1,
-      slainGuardians: [],
+      slainGuardians: Array.from(
+        { length: Math.floor(p.floors / 10) },
+        (_, i) => (i + 1) * 10,
+      ).filter((n) => n < p.current),
     },
     party,
     reinforcements: [],

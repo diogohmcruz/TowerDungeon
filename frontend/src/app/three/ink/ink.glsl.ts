@@ -38,19 +38,8 @@ void main() {
 }
 `;
 
-export const INK_FRAGMENT = /* glsl */ `
-uniform vec3 uRamp[4];
-uniform vec3 uCrimson;
-uniform float uCell;
-uniform float uAmount;
-uniform float uFogDensity;
-
-varying float vTone;
-varying float vAlpha;
-varying float vRole;
-varying float vFace;
-varying float vDepth;
-
+/** Bayer threshold and fog helpers shared by every ink fragment shader (needs `uFogDensity`). */
+export const INK_DITHER = /* glsl */ `
 const float BAYER[16] = float[16](
    0.0,  8.0,  2.0, 10.0,
   12.0,  4.0, 14.0,  6.0,
@@ -69,7 +58,22 @@ float inkFog(float depth) {
   float d = depth * uFogDensity;
   return exp(-d * d);
 }
+`;
 
+export const INK_FRAGMENT = /* glsl */ `
+uniform vec3 uRamp[4];
+uniform vec3 uCrimson;
+uniform float uCell;
+uniform float uAmount;
+uniform float uFogDensity;
+
+varying float vTone;
+varying float vAlpha;
+varying float vRole;
+varying float vFace;
+varying float vDepth;
+
+${INK_DITHER}
 void main() {
   // uAmount 0 gives flat bands (threshold 0.5), 1 full dither.
   float threshold = mix(0.5, bayer4(gl_FragCoord.xy / uCell), uAmount);

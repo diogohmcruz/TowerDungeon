@@ -9,6 +9,7 @@ import {
   input,
   isDevMode,
   signal,
+  untracked,
   viewChild,
   ElementRef,
 } from '@angular/core';
@@ -35,18 +36,53 @@ import {
 } from '../../three/ink/ink-material';
 import { INK_FRAGMENT, INK_VERTEX } from '../../three/ink/ink.glsl';
 import { InkTheme, RAMPS } from '../../three/ink/palette';
+import {
+  ATLAS_COLS,
+  ATLAS_ROWS,
+  CELL_H,
+  CELL_W,
+  createAtlasTexture,
+  SEAL_CENTER,
+} from '../../three/floor-strip/architecture-atlas';
+import {
+  createDigitTexture,
+  DIGIT_COUNT,
+  DIGIT_H,
+  DIGIT_W,
+} from '../../three/floor-strip/digit-atlas';
+import {
+  NUMERAL_FRAGMENT,
+  NUMERAL_VERTEX,
+  STRIP_FRAGMENT,
+  STRIP_VERTEX,
+} from '../../three/floor-strip/floor-strip.glsl';
+import {
+  FLOOR_SURFACE_OFFSET,
+  floorToY,
+  NUMERAL_CAPACITY,
+  NUMERAL_SIZE,
+  NUMERAL_Z,
+  PILLAR_COUNT,
+  PILLAR_SPACING,
+  planFloorStrips,
+  STRIP_CAPACITY,
+  STRIP_H,
+  STRIP_W,
+  stripY,
+} from '../../three/floor-strip/floor-strip-plan';
 import '../../three/catalogue';
 
-/** Instances each instanced mesh can hold (floors + base + ghosts + backdrop). */
-const INK_CAPACITY = 256;
+/** Instances of the box mesh: the foundation and the backdrop wall. */
+const BOX_CAPACITY = 4;
+/** Fog starts to eat the ink beyond the focal distance of the battle shot. */
+const FOG_NEAR = 13;
 
-const FLOOR_HEIGHT = 2.2;
-const GHOST_FLOORS_AHEAD = 8;
 const SPRITE_Z = 1.7;
-// World Y of the walkable deck surface above a floor's base (matches the thin
-// platform mesh at slab.y + 0.9, half its 0.16 thickness on top). Sprites are
-// anchored by their feet here so they stay planted as the formation scales.
-const FLOOR_SURFACE_OFFSET = 0.98;
+// The strips are flat planes and the camera looks down, so a figure standing
+// (SPRITE_Z - lip z) in front of a strip's floor line would read as standing
+// below it. Lifting the feet by that depth times tan(camera pitch), plus the
+// slab's thickness, plants them on the drawn floor line.
+const SPRITE_SURFACE_LIFT = 0.68;
 
 /**
  * Formation rectangle used to lay out a group of billboards. The grid keeps
@@ -71,27 +107,12 @@ const ROW_STEP_Y = 0;
 const ROW_STEP_X = 0.34;
 const SPRITE_SCALE = 0.72;
 
-interface FloorSlab {
-  n: number;
-  y: number;
-  boss: boolean;
-  current: boolean;
-  ceiling: boolean;
-  opacity: number;
-  color: string;
-}
-
 interface SpriteDesc {
   id: string;
   texture: THREE.Texture;
   tint: string;
   position: [number, number, number];
   scale: [number, number, number];
-}
-
-/** floor number -> world Y (floor 1 sits at the base, y = 0). */
-function floorToY(n: number): number {
-  return (n - 1) * FLOOR_HEIGHT;
 }
 
 /** Golden-angle hue per wave index, matching the old 2D markers. */
@@ -113,10 +134,79 @@ function gridCols(n: number): number {
     <!-- Drawn, not lit (ADR 0003): clear colour = ramp slot 0, no lights, no scene fog. -->
     <ngt-color *args="[clearHex()]" attach="background" />
 
-    <!-- Slab bodies, ghost floors and the backdrop wall: one instanced draw call. -->
+    <!-- Floor strips: three layers per floor and the pencil above the Highest Floor, one draw call. -->
+    <ngt-instanced-mesh
+      #strips
+      *args="[undefined, undefined, STRIP_CAPACITY]"
+      [frustumCulled]="false"
+    >
+      <ngt-plane-geometry *args="[STRIP_W, STRIP_H]">
+        <ngt-instanced-buffer-attribute
+          attach="attributes.aCell"
+          *args="[stripCell, 4]"
+        />
+        <ngt-instanced-buffer-attribute
+          attach="attributes.aState"
+          *args="[stripState, 4]"
+        />
+      </ngt-plane-geometry>
+      <ngt-shader-material
+        [vertexShader]="stripVertex"
+        [fragmentShader]="stripFragment"
+        [uniforms]="stripUniforms"
+      />
+    </ngt-instanced-mesh>
+
+    <!-- Floor numerals stencilled on the reference pillars: one draw call. -->
+    <ngt-instanced-mesh
+      #numerals
+      *args="[undefined, undefined, NUMERAL_CAPACITY]"
+      [frustumCulled]="false"
+    >
+      <ngt-plane-geometry *args="[1, 1]">
+        <ngt-instanced-buffer-attribute
+          attach="attributes.aDigit"
+          *args="[numeralDigit, 2]"
+        />
+      </ngt-plane-geometry>
+      <ngt-shader-material
+        [vertexShader]="numeralVertex"
+        [fragmentShader]="numeralFragment"
+        [uniforms]="numeralUniforms"
+      />
+    </ngt-instanced-mesh>
+
+    <!-- The twelve: tall dark columns behind the stack, one draw call. -->
+    <ngt-instanced-mesh
+      #pillars
+      *args="[undefined, undefined, PILLAR_COUNT]"
+      [frustumCulled]="false"
+    >
+      <ngt-box-geometry *args="[1, 1, 1]">
+        <ngt-instanced-buffer-attribute
+          attach="attributes.aTone"
+          *args="[pillarTone, 1]"
+        />
+        <ngt-instanced-buffer-attribute
+          attach="attributes.aAlpha"
+          *args="[pillarAlpha, 1]"
+        />
+        <ngt-instanced-buffer-attribute
+          attach="attributes.aRole"
+          *args="[pillarRole, 1]"
+        />
+      </ngt-box-geometry>
+      <ngt-shader-material
+        [vertexShader]="inkVertex"
+        [fragmentShader]="inkFragment"
+        [uniforms]="inkUniforms"
+      />
+    </ngt-instanced-mesh>
+
+    <!-- The foundation and the backdrop wall behind the fight: one draw call. -->
     <ngt-instanced-mesh
       #bodies
-      *args="[undefined, undefined, INK_CAPACITY]"
+      *args="[undefined, undefined, BOX_CAPACITY]"
       [frustumCulled]="false"
     >
       <ngt-box-geometry *args="[1, 1, 1]">
@@ -140,33 +230,6 @@ function gridCols(n: number): number {
       />
     </ngt-instanced-mesh>
 
-    <!-- Walkable decks: a second instanced draw call. -->
-    <ngt-instanced-mesh
-      #decks
-      *args="[undefined, undefined, INK_CAPACITY]"
-      [frustumCulled]="false"
-    >
-      <ngt-box-geometry *args="[1, 1, 1]">
-        <ngt-instanced-buffer-attribute
-          attach="attributes.aTone"
-          *args="[deckTone, 1]"
-        />
-        <ngt-instanced-buffer-attribute
-          attach="attributes.aAlpha"
-          *args="[deckAlpha, 1]"
-        />
-        <ngt-instanced-buffer-attribute
-          attach="attributes.aRole"
-          *args="[deckRole, 1]"
-        />
-      </ngt-box-geometry>
-      <ngt-shader-material
-        [vertexShader]="inkVertex"
-        [fragmentShader]="inkFragment"
-        [uniforms]="inkUniforms"
-      />
-    </ngt-instanced-mesh>
-
     @if (pickProbe) {
       <!-- Spike #15: pointer events on ngt-primitive (see docs/research/ink-spike.md). -->
       <ngt-primitive #probe *args="[pickProbe]" />
@@ -178,18 +241,6 @@ function gridCols(n: number): number {
         <ngt-sprite-material
           [map]="s.texture"
           [color]="s.tint"
-          [transparent]="true"
-          [depthWrite]="false"
-          [fog]="false"
-        />
-      </ngt-sprite>
-    }
-
-    <!-- Floor-number plaques -->
-    @for (l of labels(); track l.id) {
-      <ngt-sprite [position]="l.position" [scale]="l.scale">
-        <ngt-sprite-material
-          [map]="l.texture"
           [transparent]="true"
           [depthWrite]="false"
           [fog]="false"
@@ -217,23 +268,75 @@ export class TowerSceneGraph {
   /** Ramp slot 0: the clear colour, which is also what fog resolves into. */
   protected readonly clearHex = computed(() => RAMPS[this.theme()][0]);
 
-  protected readonly INK_CAPACITY = INK_CAPACITY;
+  protected readonly BOX_CAPACITY = BOX_CAPACITY;
+  protected readonly STRIP_CAPACITY = STRIP_CAPACITY;
+  protected readonly NUMERAL_CAPACITY = NUMERAL_CAPACITY;
+  protected readonly PILLAR_COUNT = PILLAR_COUNT;
+  protected readonly STRIP_W = STRIP_W;
+  protected readonly STRIP_H = STRIP_H;
   protected readonly inkVertex = INK_VERTEX;
   protected readonly inkFragment = INK_FRAGMENT;
+  protected readonly stripVertex = STRIP_VERTEX;
+  protected readonly stripFragment = STRIP_FRAGMENT;
+  protected readonly numeralVertex = NUMERAL_VERTEX;
+  protected readonly numeralFragment = NUMERAL_FRAGMENT;
   protected readonly inkUniforms = createInkUniforms(this.theme());
 
-  // Per-instance ink attributes (tone, dithered alpha, crimson role flag).
-  protected readonly bodyTone = new Float32Array(INK_CAPACITY);
-  protected readonly bodyAlpha = new Float32Array(INK_CAPACITY);
-  protected readonly bodyRole = new Float32Array(INK_CAPACITY);
-  protected readonly deckTone = new Float32Array(INK_CAPACITY);
-  protected readonly deckAlpha = new Float32Array(INK_CAPACITY);
-  protected readonly deckRole = new Float32Array(INK_CAPACITY);
+  // Textures owned here, disposed on destroy.
+  private readonly atlas = createAtlasTexture();
+  private readonly digits = createDigitTexture();
 
+  // The strip and numeral materials share the ink ramp, fog and dither uniforms.
+  protected readonly stripUniforms = {
+    ...this.inkUniforms,
+    uAtlas: { value: this.atlas },
+    uGrid: { value: new THREE.Vector2(ATLAS_COLS, ATLAS_ROWS) },
+    uCellPx: { value: new THREE.Vector2(CELL_W, CELL_H) },
+    uSeal: { value: new THREE.Vector2(...SEAL_CENTER) },
+    uFogNear: { value: FOG_NEAR },
+  };
+  protected readonly numeralUniforms = {
+    ...this.inkUniforms,
+    uDigits: { value: this.digits },
+    uGlyphPx: { value: new THREE.Vector2(DIGIT_W, DIGIT_H) },
+    uDigitCount: { value: DIGIT_COUNT },
+    uFogNear: { value: FOG_NEAR },
+  };
+
+  // Per-instance attributes: strips (cell, state), numerals (digit, struck),
+  // and the ink boxes (tone, dithered alpha, crimson role flag).
+  protected readonly stripCell = new Float32Array(STRIP_CAPACITY * 4);
+  protected readonly stripState = new Float32Array(STRIP_CAPACITY * 4);
+  protected readonly numeralDigit = new Float32Array(NUMERAL_CAPACITY * 2);
+  protected readonly bodyTone = new Float32Array(BOX_CAPACITY);
+  protected readonly bodyAlpha = new Float32Array(BOX_CAPACITY);
+  protected readonly bodyRole = new Float32Array(BOX_CAPACITY);
+  protected readonly pillarTone = new Float32Array(PILLAR_COUNT);
+  protected readonly pillarAlpha = new Float32Array(PILLAR_COUNT);
+  protected readonly pillarRole = new Float32Array(PILLAR_COUNT);
+
+  private readonly stripsRef =
+    viewChild<ElementRef<THREE.InstancedMesh>>('strips');
+  private readonly numeralsRef =
+    viewChild<ElementRef<THREE.InstancedMesh>>('numerals');
+  private readonly pillarsRef =
+    viewChild<ElementRef<THREE.InstancedMesh>>('pillars');
   private readonly bodiesRef =
     viewChild<ElementRef<THREE.InstancedMesh>>('bodies');
-  private readonly decksRef =
-    viewChild<ElementRef<THREE.InstancedMesh>>('decks');
+
+  /**
+   * The strip plan is rebuilt only when the tower's `layoutVersion` changes
+   * (floor added or a Guardian first slain), not on the 100 ms state pushes or
+   * when a floor is repopulated with new Enemies.
+   */
+  private readonly layoutKey = computed(() => {
+    const t = this.tower();
+    return t ? `v${t.layoutVersion}` : 'none';
+  });
+  protected readonly plan = computed(() => {
+    this.layoutKey();
+    return untracked(() => planFloorStrips(this.tower()));
+  });
 
   private readonly floors = computed<[number, TowerFloor][]>(() => {
     const map = this.tower()?.floors ?? {};
@@ -260,82 +363,17 @@ export class TowerSceneGraph {
     Math.max(0, this.currentFloor() - 1),
   );
 
-  protected readonly slabs = computed<FloorSlab[]>(() => {
-    const anchor = this.anchorFloor();
-    const discovered = this.floors();
-    // Nothing to show until the first expedition has actually started building
-    // the tower.
-    if (discovered.length === 0) {
-      return [];
-    }
-    // The tower's foundation: a base platform below floor 1 that the party
-    // stands on while fighting floor 1, mirroring how they stand on floor N-1
-    // while fighting floor N. Without it, floor 1 has nothing to stand on.
-    const base: FloorSlab = {
-      n: 0,
-      y: floorToY(0),
-      boss: false,
-      current: anchor === 0,
-      ceiling: false,
-      opacity: 1,
-      color: '#4c5464',
-    };
-    const rest = discovered.map(([n, floor]) => {
-      const ceiling = n === anchor + 1;
-      // The floor the units actually stand on gets the warm highlight; the glow
-      // above it is a separate backdrop wall (see `backdrop`).
-      const current = n === anchor;
-      return {
-        n,
-        y: floorToY(n),
-        boss: floor.boss === true,
-        current,
-        ceiling,
-        // The slab above the fight doubles as the ceiling; keep it translucent
-        // so it never covers the units below.
-        opacity: ceiling ? 0.22 : 1,
-        color: floor.boss ? '#7a2230' : '#5b6472',
-      } satisfies FloorSlab;
-    });
-    return [base, ...rest];
-  });
-
   /**
-   * A glowing panel that stands directly behind the battle. Its base rests on
-   * the anchor floor's deck and it rises up *within* that floor's room, so it
-   * reads as the background wall above the floor the units stand on — not as a
-   * separate floor slab one level higher.
+   * A dim panel directly behind the battle, filling the room of the current
+   * Floor so the figures read against it. Shown only once the tower's floor
+   * data has arrived, so units never render without a floor under them.
    */
-  protected readonly backdrop = computed(() => {
-    const anchor = this.anchorFloor();
-    const base = floorToY(anchor) + FLOOR_SURFACE_OFFSET;
-    const height = 1.9;
-    return {
-      // Wait until the tower's floor data has arrived: otherwise the backdrop
-      // (and units) would render for a frame or two with no floor deck beneath
-      // them, which looks like the battle is floating one floor too low.
-      show: this.active() && this.floors().length > 0,
-      y: base + height / 2,
-      height,
-      boss: this.tower()?.floors?.[this.currentFloor()]?.boss === true,
-    };
-  });
-
-  protected readonly ghostSlabs = computed(() => {
-    const floors = this.floors();
-    const maxDiscovered = floors.length ? floors[floors.length - 1][0] : 0;
-    const maxFloor = this.tower()?.maxFloor ?? 0;
-    const top = Math.min(maxFloor, maxDiscovered + GHOST_FLOORS_AHEAD);
-    const out: { n: number; y: number; opacity: number }[] = [];
-    for (let n = maxDiscovered + 1; n <= top; n++) {
-      const dist = n - maxDiscovered;
-      // The first ghost floor is the immediate ceiling over the current
-      // battle, so keep it very faint; higher ghosts fade into the fog.
-      const opacity = dist === 1 ? 0.12 : Math.max(0.05, 0.5 - dist * 0.06);
-      out.push({ n, y: floorToY(n), opacity });
-    }
-    return out;
-  });
+  protected readonly backdrop = computed(() => ({
+    show: this.active() && this.floors().length > 0,
+    y: stripY(this.currentFloor()),
+    height: STRIP_H,
+    boss: this.tower()?.floors?.[this.currentFloor()]?.boss === true,
+  }));
 
   protected readonly sprites = computed<SpriteDesc[]>(() => {
     const out: SpriteDesc[] = [];
@@ -347,7 +385,8 @@ export class TowerSceneGraph {
 
     const current = this.currentFloor();
     const anchor = this.anchorFloor();
-    const surfaceY = floorToY(anchor) + FLOOR_SURFACE_OFFSET;
+    const surfaceY =
+      floorToY(anchor) + FLOOR_SURFACE_OFFSET + SPRITE_SURFACE_LIFT;
 
     const partyMembers = this.flattenSquad(this.party());
     const floor = this.tower()?.floors?.[current];
@@ -399,7 +438,8 @@ export class TowerSceneGraph {
     waveList.forEach((wave, index) => {
       const raw = wave.currentFloor ?? 1;
       const waveFloor = Math.min(anchor, Math.max(1, raw));
-      const wy = floorToY(waveFloor) + FLOOR_SURFACE_OFFSET + 0.35;
+      const wy =
+        floorToY(waveFloor) + FLOOR_SURFACE_OFFSET + SPRITE_SURFACE_LIFT + 0.35;
       const count = waveList.length;
       const step = count > 1 ? 2.4 / (count - 1) : 0;
       const wx = count > 1 ? -1.2 + index * step : 0;
@@ -466,39 +506,6 @@ export class TowerSceneGraph {
     });
   }
 
-  /** Floor-number plaques (and a GUARDIAN tag on boss floors) on each slab. */
-  protected readonly labels = computed<SpriteDesc[]>(() => {
-    const out: SpriteDesc[] = [];
-    const current = this.anchorFloor();
-
-    for (const [n, floor] of this.floors()) {
-      const y = floorToY(n);
-      const boss = floor.boss === true;
-      const numColor = boss ? '#f0c866' : n === current ? '#ffe6a3' : '#e7dcc4';
-      const label = this.textures.text(`FLOOR ${n}`, { color: numColor });
-      const h = 0.42;
-      out.push({
-        id: `label-${n}`,
-        texture: label.texture,
-        tint: '#ffffff',
-        position: [0, y - 0.5, 1.5],
-        scale: [h * label.aspect, h, 1],
-      });
-      if (boss) {
-        const tag = this.textures.text('GUARDIAN', { color: '#ffd873' });
-        const gh = 0.34;
-        out.push({
-          id: `boss-${n}`,
-          texture: tag.texture,
-          tint: '#ffffff',
-          position: [0, y + 0.2, 1.5],
-          scale: [gh * tag.aspect, gh, 1],
-        });
-      }
-    }
-    return out;
-  });
-
   private typeKey(kind: SpriteKind, member: Member): string {
     if (kind === 'enemy') {
       return member.stats?.type ?? member.name ?? 'enemy';
@@ -537,6 +544,10 @@ export class TowerSceneGraph {
     inject(DestroyRef).onDestroy(() => observer.disconnect());
 
     this.bindPanControls();
+    inject(DestroyRef).onDestroy(() => {
+      this.atlas.dispose();
+      this.digits.dispose();
+    });
 
     // The template type of `ngt-primitive` only allows lifecycle outputs, so
     // pointer events on a primitive go through injectObjectEvents.
@@ -620,30 +631,89 @@ export class TowerSceneGraph {
 
   private readonly probeRef = viewChild<ElementRef<THREE.Mesh>>('probe');
 
-  /** Rewrites both instanced meshes from the slab, ghost and backdrop state. */
+  /** Rewrites the strip, numeral, pillar and box meshes from the plan and the current floor. */
   private writeInstances(): void {
+    const strips = this.stripsRef()?.nativeElement;
+    const numerals = this.numeralsRef()?.nativeElement;
+    const pillars = this.pillarsRef()?.nativeElement;
     const bodies = this.bodiesRef()?.nativeElement;
-    const decks = this.decksRef()?.nativeElement;
-    const slabs = this.slabs();
-    const ghosts = this.ghostSlabs();
+    const plan = this.plan();
+    const current = this.currentFloor();
     const backdrop = this.backdrop();
+    const hasFloors = plan.top > 0;
     this.pickProbe?.position.set(0, floorToY(this.anchorFloor()) + 1.9, 1.7);
-    if (!bodies?.isInstancedMesh || !decks?.isInstancedMesh) {
+    if (
+      !strips?.isInstancedMesh ||
+      !numerals?.isInstancedMesh ||
+      !pillars?.isInstancedMesh ||
+      !bodies?.isInstancedMesh
+    ) {
       return;
     }
 
-    const body = new InstanceWriter(bodies);
-    for (const s of slabs) {
-      body.add(
-        [0, s.y, 0],
-        [4.4, 1.7, 2.8],
-        s.n === 0 ? TONE.base : TONE.slab,
-        s.opacity,
-        s.boss,
+    const m = new THREE.Matrix4();
+    const p = new THREE.Vector3();
+    const sc = new THREE.Vector3(1, 1, 1);
+
+    plan.strips.forEach((s, i) => {
+      strips.setMatrixAt(
+        i,
+        m.compose(p.set(0, s.y, s.z), IDENTITY_QUATERNION, sc),
       );
+      this.stripCell.set([s.col, s.row, s.layer, s.alpha], i * 4);
+      this.stripState.set(
+        [s.floor === current ? 1 : 0, s.seal, s.tone, 0],
+        i * 4,
+      );
+    });
+    strips.count = plan.strips.length;
+    strips.instanceMatrix.needsUpdate = true;
+    markAttributes(strips, ['aCell', 'aState']);
+
+    const size = new THREE.Vector3(NUMERAL_SIZE[0], NUMERAL_SIZE[1], 1);
+    plan.numerals.forEach((n, i) => {
+      numerals.setMatrixAt(
+        i,
+        m.compose(p.set(n.x, n.y, NUMERAL_Z), IDENTITY_QUATERNION, size),
+      );
+      this.numeralDigit.set([n.digit, n.struck ? 1 : 0], i * 2);
+    });
+    numerals.count = plan.numerals.length;
+    numerals.instanceMatrix.needsUpdate = true;
+    markAttributes(numerals, ['aDigit']);
+
+    // The twelve: two fogged rings behind the stack, tall enough for the stack
+    // and the pencil above it.
+    const bottom = floorToY(0) - 1;
+    const topY = stripY(plan.top + 10);
+    const pillar = new InstanceWriter(pillars);
+    if (hasFloors) {
+      for (let i = 0; i < PILLAR_COUNT; i++) {
+        pillar.add(
+          [
+            (i - (PILLAR_COUNT - 1) / 2) * PILLAR_SPACING,
+            (bottom + topY) / 2,
+            i % 2 ? -3 : -6,
+          ],
+          [0.55, topY - bottom, 0.55],
+          i % 2 ? 1 : 0.8,
+          1,
+          false,
+        );
+      }
     }
-    for (const g of ghosts) {
-      body.add([0, g.y, -0.3], [4.2, 1.7, 2.6], TONE.ghost, g.opacity, false);
+    pillar.finish();
+
+    const body = new InstanceWriter(bodies);
+    if (hasFloors) {
+      // The foundation the party stands on while fighting floor 1.
+      body.add(
+        [0, floorToY(0) + 0.13, 0],
+        [4.4, 1.7, 2.8],
+        TONE.base,
+        1,
+        false,
+      );
     }
     if (backdrop.show) {
       body.add(
@@ -655,18 +725,6 @@ export class TowerSceneGraph {
       );
     }
     body.finish();
-
-    const deck = new InstanceWriter(decks);
-    for (const s of slabs) {
-      deck.add(
-        [0, s.y + 0.9, 0.2],
-        [4.7, 0.16, 3.1],
-        s.current ? TONE.deckCurrent : TONE.deck,
-        s.opacity,
-        false,
-      );
-    }
-    deck.finish();
   }
 
   /** Spike #15: renderable objects and triangles in the scene, ignoring culling. */
@@ -754,7 +812,10 @@ class InstanceWriter {
   private readonly alpha: THREE.BufferAttribute;
   private readonly role: THREE.BufferAttribute;
 
+  private readonly capacity: number;
+
   constructor(private readonly mesh: THREE.InstancedMesh) {
+    this.capacity = mesh.instanceMatrix.count;
     const a = mesh.geometry.attributes;
     this.tone = a['aTone'] as THREE.BufferAttribute;
     this.alpha = a['aAlpha'] as THREE.BufferAttribute;
@@ -768,7 +829,7 @@ class InstanceWriter {
     alpha: number,
     crimson: boolean,
   ): void {
-    if (this.n >= INK_CAPACITY) {
+    if (this.n >= this.capacity) {
       return;
     }
     this.matrix.compose(
@@ -793,3 +854,11 @@ class InstanceWriter {
 }
 
 const IDENTITY_QUATERNION = new THREE.Quaternion();
+
+/** Flags per-instance attributes for upload after their backing arrays were rewritten. */
+function markAttributes(mesh: THREE.InstancedMesh, names: string[]): void {
+  for (const name of names) {
+    const a = mesh.geometry.attributes[name];
+    if (a) a.needsUpdate = true;
+  }
+}
