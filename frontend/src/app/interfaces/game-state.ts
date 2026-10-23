@@ -1,7 +1,13 @@
 import { Unit } from './unit.enum';
 import { Tower } from './tower';
 import { Member } from './member';
-import { Village } from './village';
+import {
+  LedgerLine,
+  TheCount,
+  TradePreview,
+  TradeView,
+  Village,
+} from './village';
 
 export type Squad = {
   [unit in Unit]: Member[];
@@ -95,4 +101,15 @@ export interface GameState {
   shortcuts: ShortcutOffer[];
   lastRunSummary: RunSummary | null;
   reinforcements: Reinforcement[];
+  tradeViews: TradeView[];
+  tradePreviews: TradePreview[];
+  quarryRate: number;
+  studyRate: number;
+  /** Share the Quarry and the Study yield above their base, from Highest Floor. */
+  yieldBonus: number;
+  stockroomCap: number;
+  quarryHeapCap: number;
+  heapDeliveryPerFloor: number;
+  theCount: TheCount;
+  ledger: LedgerLine[];
 }

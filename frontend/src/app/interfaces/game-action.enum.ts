@@ -9,4 +9,5 @@ export enum GameAction {
   REINFORCE = 'REINFORCE',
   UPGRADE = 'UPGRADE',
   PRESTIGE = 'PRESTIGE',
+  ASSIGN_TRADE = 'ASSIGN_TRADE',
 }

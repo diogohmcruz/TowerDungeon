@@ -34,6 +34,11 @@ export class GameStateService {
       food: 0,
       villagersCount: 0,
       productionRate: 0,
+      breakers: 0,
+      scribes: 0,
+      knowledge: 0,
+      quarryHeap: 0,
+      emergencyTilling: false,
     },
     expeditionActive: false,
     gameOutcome: 'PLAYING',
@@ -61,6 +66,16 @@ export class GameStateService {
     shortcuts: [],
     lastRunSummary: null,
     reinforcements: [],
+    tradeViews: [],
+    tradePreviews: [],
+    quarryRate: 0,
+    studyRate: 0,
+    yieldBonus: 0,
+    stockroomCap: 60,
+    quarryHeapCap: 0,
+    heapDeliveryPerFloor: 5,
+    theCount: { villagers: 0, reserves: 0 },
+    ledger: [],
   });
   readonly state: Signal<GameState> = this._state.asReadonly();
 

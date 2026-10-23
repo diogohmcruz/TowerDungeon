@@ -96,3 +96,86 @@
     color: var(--ember-text);
   }
 }
+
+.trades {
+  margin-top: 12px;
+  border-top: 1px solid var(--rule);
+  padding-top: 8px;
+}
+
+.trade-row {
+  display: grid;
+  grid-template-columns: 9rem 11rem auto 1fr;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+
+  .trade-name {
+    color: var(--bone);
+    text-transform: uppercase;
+    font-size: 12px;
+  }
+
+  .trade-hands {
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .trade-note {
+    color: var(--muted);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .trade-stepper {
+    display: inline-flex;
+    gap: 4px;
+
+    .step {
+      min-width: 2rem;
+      padding: 2px 8px;
+    }
+  }
+}
+
+.trade-yield {
+  color: var(--muted);
+  margin: 6px 0 2px;
+}
+
+.trade-preview {
+  color: var(--text);
+  margin: 0 0 2px;
+  min-height: 1.5em;
+
+  &.short {
+    color: var(--ember-text);
+  }
+}
+
+.stores {
+  margin-top: 8px;
+
+  p {
+    color: var(--text);
+    margin: 0 0 2px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .count {
+    color: var(--muted);
+  }
+}
+
+.ledger {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text);
+
+  li.loss {
+    color: var(--ember-text);
+  }
+}
