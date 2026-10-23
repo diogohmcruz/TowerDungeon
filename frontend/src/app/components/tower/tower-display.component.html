@@ -47,10 +47,14 @@
 </div>
 
 <div class="tower-scene-host">
-  <app-tower-scene
-    [tower]="tower()"
-    [party]="party()"
-    [active]="active()"
-    [reinforcements]="reinforcements()"
-  />
+  @if (active()) {
+    <app-tower-scene
+      [tower]="tower()"
+      [party]="party()"
+      [active]="active()"
+      [reinforcements]="reinforcements()"
+    />
+  } @else {
+    <app-village-scene />
+  }
 </div>

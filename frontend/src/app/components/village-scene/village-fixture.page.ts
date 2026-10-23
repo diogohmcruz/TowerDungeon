@@ -1,0 +1,48 @@
+import { Component } from '@angular/core';
+
+import {
+  EMPTY_VILLAGE,
+  VillageInput,
+} from '../../three/village/village-layout';
+import { VillageScene } from './village-scene.component';
+
+/**
+ * Dev tooling (route `/village-fixture`, dev mode only): the Village Elevation
+ * without a backend. `?empty=1` shows a new Campaign instead of a busy Village.
+ */
+@Component({
+  selector: 'app-village-fixture',
+  imports: [VillageScene],
+  template: `<app-village-scene [fixture]="state" />`,
+  styles: `
+    :host {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      display: block;
+      width: 440px;
+      height: 900px;
+    }
+  `,
+})
+export class VillageFixturePage {
+  protected readonly state: VillageInput = new URLSearchParams(
+    location.search,
+  ).has('empty')
+    ? EMPTY_VILLAGE
+    : {
+        ...EMPTY_VILLAGE,
+        food: 400,
+        reserves: 18,
+        hands: { TILLER: 14, BREAKER: 8, SCRIBE: 4, SALTER: 6 },
+        posts: { SCRIBE: 6 },
+        quarryHeap: 24,
+        quarryHeapCap: 40,
+        materials: 300,
+        relics: 3,
+        villageTierLevel: 2,
+        saltPansOpen: true,
+        salt: 40,
+        still: false,
+      };
+}

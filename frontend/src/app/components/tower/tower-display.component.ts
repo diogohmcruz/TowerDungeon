@@ -8,10 +8,11 @@ import { Army } from '../army/army';
 import { ExpeditionLoot } from '../expedition-loot/expedition-loot';
 import { Supplies } from '../supplies/supplies';
 import { TowerScene } from '../tower-scene/tower-scene.component';
+import { VillageScene } from '../village-scene/village-scene.component';
 
 @Component({
   selector: 'app-tower',
-  imports: [EnemyCard, Army, ExpeditionLoot, Supplies, LowerCasePipe, TowerScene],
+  imports: [EnemyCard, Army, ExpeditionLoot, Supplies, LowerCasePipe, TowerScene, VillageScene],
   templateUrl: './tower-display.component.html',
   styleUrl: './tower-display.component.scss',
 })

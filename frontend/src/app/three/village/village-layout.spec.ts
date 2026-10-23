@@ -1,0 +1,315 @@
+import * as THREE from 'three';
+
+import {
+  ANNEX_X,
+  BASE_GAP,
+  buildVillage,
+  EMPTY_VILLAGE,
+  figureCounts,
+  FRAME_WIDTH,
+  heapBlocks,
+  LANES,
+  litLamps,
+  litSlits,
+  MAX_RESERVE_FIGURES,
+  MAX_VILLAGE_HEIGHT,
+  MAX_VILLAGE_SHARE,
+  MAX_VILLAGER_FIGURES,
+  siloFill,
+  VillageInput,
+  villageBounds,
+  vaultCrates,
+  Volume,
+} from './village-layout';
+import { VILLAGE_FOV, villagePose } from './village-camera';
+
+const BUSY: VillageInput = {
+  ...EMPTY_VILLAGE,
+  food: 900,
+  reserves: 45,
+  hands: { TILLER: 60, BREAKER: 30, SCRIBE: 12, SALTER: 20 },
+  posts: { SCRIBE: 12 },
+  quarryHeap: 40,
+  quarryHeapCap: 40,
+  materials: 5000,
+  relics: 30,
+  villageTierLevel: 4,
+  saltPansOpen: true,
+  salt: 500,
+  tick: 3,
+  still: false,
+};
+
+const ids = (volumes: Volume[]) => volumes.map((v) => v.id);
+
+describe('village layout', () => {
+  describe('frame', () => {
+    for (const [name, input] of [
+      ['an empty village', EMPTY_VILLAGE],
+      ['a busy village', BUSY],
+    ] as const) {
+      it(`keeps ${name} within 60% of the width and 2 units tall`, () => {
+        const b = villageBounds(buildVillage(input));
+        expect(b.maxX - b.minX).toBeLessThanOrEqual(
+          MAX_VILLAGE_SHARE * FRAME_WIDTH,
+        );
+        expect(b.maxY - b.minY).toBeLessThan(MAX_VILLAGE_HEIGHT);
+        // The outer 20% of the frame on each side stays empty.
+        expect(b.minX).toBeGreaterThanOrEqual(-FRAME_WIDTH * 0.3);
+        expect(b.maxX).toBeLessThanOrEqual(FRAME_WIDTH * 0.3);
+        expect(b.minY).toBeGreaterThanOrEqual(0);
+      });
+    }
+
+    it('stays within bounds as villagers pace', () => {
+      for (let tick = 0; tick < 16; tick++) {
+        const b = villageBounds(buildVillage({ ...BUSY, tick }));
+        expect(b.maxX - b.minX).toBeLessThanOrEqual(
+          MAX_VILLAGE_SHARE * FRAME_WIDTH,
+        );
+      }
+    });
+
+    it('floats the Base slab above a black gap, with the Tower rising behind', () => {
+      const v = buildVillage(EMPTY_VILLAGE);
+      const slab = v.find((x) => x.id === 'base-slab')!;
+      expect(slab.y - slab.h / 2).toBeCloseTo(BASE_GAP, 5);
+      // Smaller than the Tower: the Fort is lower than the slab's top.
+      const fort = v.find((x) => x.id === 'fort-merlon-0')!;
+      expect(fort.y + fort.h / 2).toBeLessThan(slab.y + slab.h / 2);
+      // The top of the Tower is dithered away.
+      const top = v.find((x) => x.id === 'tower-13')!;
+      expect(top.alpha).toBeLessThan(0.2);
+    });
+
+    it('uses rectangular volumes only: every volume is a box with positive size', () => {
+      for (const v of buildVillage(BUSY)) {
+        expect(v.w).toBeGreaterThan(0);
+        expect(v.h).toBeGreaterThan(0);
+        expect(v.d).toBeGreaterThan(0);
+      }
+    });
+
+    it('fits the budget: well under the instance capacity, unique ids', () => {
+      const v = buildVillage(BUSY);
+      expect(v.length).toBeLessThan(512);
+      expect(new Set(ids(v)).size).toBe(v.length);
+    });
+  });
+
+  describe('Annexes', () => {
+    it('keeps the Annexes apart along x', () => {
+      const ranges = Object.entries(ANNEX_X)
+        .filter(([k]) => k !== 'pans') // the Pans stand in front of the Quarry
+        .map(([, r]) => r)
+        .sort((a, b) => a[0] - b[0]);
+      for (let i = 1; i < ranges.length; i++) {
+        expect(ranges[i][0]).toBeGreaterThanOrEqual(ranges[i - 1][1]);
+      }
+    });
+
+    it('builds the Fort, stair, Fields, silo, Quarry, Study and Vault Annex always', () => {
+      const names = ids(buildVillage(EMPTY_VILLAGE));
+      for (const id of [
+        'fort-plinth',
+        'stair-0',
+        'field-0',
+        'silo',
+        'quarry-cut-0',
+        'gantry-beam',
+        'study-cell',
+        'vault',
+        'vault-door',
+      ]) {
+        expect(names).toContain(id);
+      }
+    });
+
+    it('shows the Salt Pans as a footing until they open', () => {
+      const locked = ids(buildVillage(EMPTY_VILLAGE));
+      expect(locked).toContain('footing-n');
+      expect(locked).not.toContain('pan-0');
+      const open = ids(buildVillage({ ...EMPTY_VILLAGE, saltPansOpen: true }));
+      expect(open).toContain('pan-0');
+      expect(open).not.toContain('footing-n');
+    });
+
+    it('gives each Annex a shape from its Trade: stepped Fields, a gantry, a stilted cell', () => {
+      const names = ids(buildVillage(EMPTY_VILLAGE));
+      expect(names.filter((n) => n.startsWith('field-')).length).toBe(3);
+      expect(names.filter((n) => n.startsWith('gantry-pier')).length).toBe(2);
+      expect(names.filter((n) => n.startsWith('stilt-')).length).toBe(4);
+    });
+
+    it('reads data off the Annexes: silo fill, Vault crates, Heap blocks, Study slits', () => {
+      expect(siloFill(0)).toBe(0);
+      expect(siloFill(999)).toBeCloseTo(1, 5);
+      expect(siloFill(1e9)).toBe(1);
+      expect(vaultCrates(0, 0)).toBe(0);
+      expect(vaultCrates(7, 0)).toBe(3);
+      expect(vaultCrates(1e9, 1e9)).toBe(12);
+      expect(heapBlocks(0, 40)).toBe(0);
+      expect(heapBlocks(20, 40)).toBe(6);
+      expect(heapBlocks(40, 40)).toBe(12);
+      expect(heapBlocks(5, 0)).toBe(0);
+      expect(litSlits(0, 12)).toBe(0);
+      expect(litSlits(1, 12)).toBe(1);
+      expect(litSlits(12, 12)).toBe(3);
+
+      const v = buildVillage(BUSY);
+      expect(ids(v).filter((n) => n.startsWith('crate-')).length).toBe(12);
+      expect(ids(v).filter((n) => n.startsWith('heap-')).length).toBe(12);
+      const slits = v.filter((x) => x.id.startsWith('slit-'));
+      expect(slits.filter((s) => s.tone === 1).length).toBe(3);
+      const empty = buildVillage(EMPTY_VILLAGE);
+      expect(empty.find((x) => x.id === 'silo-fill')).toBeUndefined();
+      expect(empty.filter((x) => x.id.startsWith('crate-')).length).toBe(0);
+    });
+
+    it('lights one lamp per Village Tier along the stair, at most four', () => {
+      expect(litLamps(0)).toBe(0);
+      expect(litLamps(2)).toBe(2);
+      expect(litLamps(9)).toBe(4);
+      const lit = (tier: number) =>
+        buildVillage({ ...EMPTY_VILLAGE, villageTierLevel: tier })
+          .filter((x) => /^lamp-\d$/.test(x.id) && x.tone > 0.5)
+          .length;
+      expect(lit(0)).toBe(0);
+      expect(lit(1)).toBe(1);
+      expect(lit(3)).toBe(3);
+      expect(lit(4)).toBe(4);
+    });
+
+    it('flickers a lit lamp by at most 8% and freezes it when still', () => {
+      const tones = new Set<number>();
+      for (let f = 0; f < 40; f++) {
+        const lamp = buildVillage({
+          ...EMPTY_VILLAGE,
+          villageTierLevel: 1,
+          still: false,
+          flicker: f * 0.25,
+        }).find((x) => x.id === 'lamp-0')!;
+        expect(lamp.tone).toBeLessThanOrEqual(1);
+        expect(lamp.tone).toBeGreaterThanOrEqual(0.92);
+        tones.add(lamp.tone);
+      }
+      expect(tones.size).toBeGreaterThan(1);
+      const still = new Set(
+        [0, 1, 2, 3].map(
+          (f) =>
+            buildVillage({
+              ...EMPTY_VILLAGE,
+              villageTierLevel: 1,
+              still: true,
+              flicker: f,
+            }).find((x) => x.id === 'lamp-0')!.tone,
+        ),
+      );
+      expect(still.size).toBe(1);
+    });
+  });
+
+  describe('villagers and Reserves', () => {
+    it('shows one figure per two Villagers, capped at 40 in all', () => {
+      expect(
+        figureCounts({ TILLER: 5, BREAKER: 2, SCRIBE: 0, SALTER: 1 }),
+      ).toEqual({ TILLER: 3, BREAKER: 1, SCRIBE: 0, SALTER: 1 });
+      const capped = figureCounts({
+        TILLER: 400,
+        BREAKER: 100,
+        SCRIBE: 40,
+        SALTER: 40,
+      });
+      const total = Object.values(capped).reduce((a, b) => a + b, 0);
+      expect(total).toBe(MAX_VILLAGER_FIGURES);
+    });
+
+    it('draws no more than 40 villager figures and 30 Reserves', () => {
+      const v = buildVillage({
+        ...BUSY,
+        reserves: 500,
+        hands: { TILLER: 900, BREAKER: 90, SCRIBE: 90, SALTER: 90 },
+      });
+      expect(
+        v.filter((x) => /^villager-[A-Z]+-\d+$/.test(x.id)).length,
+      ).toBe(MAX_VILLAGER_FIGURES);
+      expect(v.filter((x) => x.id.startsWith('reserve-')).length).toBe(
+        MAX_RESERVE_FIGURES,
+      );
+    });
+
+    it('walks each Trade in its own lane, in single file, within its lane', () => {
+      const v = buildVillage(BUSY);
+      const homes = buildVillage({ ...BUSY, still: true });
+      for (const trade of ['TILLER', 'BREAKER', 'SCRIBE', 'SALTER'] as const) {
+        const lane = LANES[trade];
+        const walkers = v.filter((x) =>
+          new RegExp(`^villager-${trade}-\\d+$`).test(x.id),
+        );
+        expect(walkers.length).toBeGreaterThan(0);
+        for (const w of walkers) {
+          expect(w.z).toBe(lane.z);
+          expect(w.x).toBeGreaterThanOrEqual(lane.x0 - 0.1);
+          expect(w.x).toBeLessThanOrEqual(lane.x1 + 0.1);
+        }
+        const xs = homes
+          .filter((x) => new RegExp(`^villager-${trade}-\\d+$`).test(x.id))
+          .map((w) => w.x)
+          .sort((a, b) => a - b);
+        for (let i = 1; i < xs.length; i++) {
+          expect(xs[i] - xs[i - 1]).toBeGreaterThan(0.04);
+        }
+      }
+    });
+
+    it('moves by single virtual pixels and not at all when reduced motion is on', () => {
+      const x = (tick: number, still: boolean) =>
+        buildVillage({ ...BUSY, tick, still }).find(
+          (v) => v.id === 'villager-TILLER-0',
+        )!.x;
+      expect(Math.abs(x(1, false) - x(0, false))).toBeLessThan(0.06);
+      expect(x(1, false)).not.toBe(x(0, false));
+      expect(x(1, true)).toBe(x(0, true));
+    });
+
+    it('shows the Trade by what is carried, never by tone', () => {
+      const v = buildVillage(BUSY);
+      const body = (id: string) => v.find((x) => x.id === id)!;
+      for (const id of [
+        'villager-TILLER-0',
+        'villager-BREAKER-0',
+        'villager-SCRIBE-0',
+        'villager-SALTER-0',
+      ]) {
+        expect(body(id).tone).toBe(body('villager-TILLER-0').tone);
+        expect(ids(v)).toContain(`${id}-load`);
+      }
+    });
+  });
+
+  describe('camera', () => {
+    it('frames the same width at any aspect and looks up about 15 degrees', () => {
+      for (const aspect of [0.49, 0.8, 1.6]) {
+        const pose = villagePose(aspect);
+        const cam = new THREE.PerspectiveCamera(VILLAGE_FOV, aspect);
+        cam.position.set(...pose.position);
+        cam.lookAt(...pose.target);
+        cam.updateMatrixWorld();
+        cam.updateProjectionMatrix();
+        // Width visible at the Village's depth equals FRAME_WIDTH.
+        const visible =
+          2 * pose.distance * Math.tan(THREE.MathUtils.degToRad(VILLAGE_FOV / 2)) * aspect;
+        expect(visible).toBeCloseTo(FRAME_WIDTH, 5);
+        const dir = cam.getWorldDirection(new THREE.Vector3());
+        expect(THREE.MathUtils.radToDeg(Math.asin(dir.y))).toBeCloseTo(15, 1);
+        // The ground at the Village's depth sits inside the frame.
+        const ground = new THREE.Vector3(0, 0, 1).project(cam);
+        expect(ground.y).toBeGreaterThan(-1);
+        expect(ground.y).toBeLessThan(-0.5);
+        // The Village's top stays in the lower 40% of the frame.
+        const top = new THREE.Vector3(0, MAX_VILLAGE_HEIGHT, 1).project(cam);
+        expect(top.y).toBeLessThan(-0.2);
+      }
+    });
+  });
+});
