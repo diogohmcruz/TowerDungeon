@@ -7,7 +7,7 @@ import { Unit } from '../../interfaces/unit.enum';
  * Spike tooling for #15: a synthetic tower so the scene can be captured and
  * profiled without the backend. Active only when the page URL carries
  * `?inkFixture=<floors>` (optionally `&floor=<current>`, `&garrison=<n>`,
- * `&party=<n>`), and only in dev mode (see TowerScene).
+ * `&party=<n>`, `&waves=<n>`), and only in dev mode (see TowerScene).
  */
 export interface InkFixture {
   tower: Tower;
@@ -39,7 +39,17 @@ const FILLER: ArchitectureId[] = [
   'COLONNADE',
 ];
 
-const ENEMY_TYPES = ['SLIME', 'DEAD_SOLDIERS', 'TOWER_BEAST', 'CHIMERA'];
+const ENEMY_TYPES = [
+  'SLIME',
+  'DEAD_SOLDIERS',
+  'TOWER_BEAST',
+  'CHIMERA',
+  'CHYMUS_INSECT',
+  'STONE_GOLEM',
+  'NECROMANCER',
+  'DEAD_DRAGON',
+  'DRAGON',
+];
 const UNIT_TYPES: Unit[] = [
   Unit.WARRIOR,
   Unit.ARCHER,
@@ -68,6 +78,7 @@ export function readFixtureParams(search: string): {
   current: number;
   garrison: number;
   party: number;
+  waves: number;
 } | null {
   const q = new URLSearchParams(search);
   const floors = Number(q.get('inkFixture'));
@@ -79,6 +90,7 @@ export function readFixtureParams(search: string): {
     current: Math.min(floors, Number(q.get('floor') ?? floors)),
     garrison: Number(q.get('garrison') ?? 5),
     party: Number(q.get('party') ?? 8),
+    waves: Number(q.get('waves') ?? 0),
   };
 }
 
@@ -87,6 +99,7 @@ export function buildFixture(p: {
   current: number;
   garrison: number;
   party: number;
+  waves?: number;
 }): InkFixture {
   const floors: Record<number, TowerFloor> = {};
   for (let n = 1; n <= p.floors; n++) {
@@ -98,9 +111,10 @@ export function buildFixture(p: {
       boss,
       architecture: PINS[n] ?? FILLER[n % FILLER.length],
       variant: (n % 4) as 0 | 1 | 2 | 3,
-      enemies: Array.from({ length: count }, (_, i) =>
-        member(n * 1000 + i, ENEMY_TYPES[(n + i) % ENEMY_TYPES.length]),
-      ),
+      enemies: Array.from({ length: count }, (_, i) => ({
+        ...member(n * 1000 + i, ENEMY_TYPES[(n + i) % ENEMY_TYPES.length]),
+        ...(boss ? { boss: true } : {}),
+      })),
     };
   }
   const party = Object.fromEntries(
@@ -122,6 +136,20 @@ export function buildFixture(p: {
       ).filter((n) => n < p.current),
     },
     party,
-    reinforcements: [],
+    reinforcements: Array.from({ length: p.waves ?? 0 }, (_, i) => {
+      const units = Object.fromEntries(
+        Object.values(Unit).map((u) => [u, [] as Member[]]),
+      ) as unknown as Squad;
+      for (let k = 0; k < 2 + i * 3; k++) {
+        const t = UNIT_TYPES[k % UNIT_TYPES.length];
+        units[t].push(member(5000 + i * 100 + k, t));
+      }
+      return {
+        units,
+        currentFloor: Math.max(1, p.current - 1 - i * 2),
+        supplies: 10,
+        maxSupplies: 10,
+      };
+    }),
   };
 }

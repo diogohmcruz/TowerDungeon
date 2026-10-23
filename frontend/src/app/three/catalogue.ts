@@ -26,5 +26,15 @@ export const SPRITE_ART: Record<'unit' | 'enemy', readonly string[]> = {
     'draco-metamorph',
     'porter',
   ],
-  enemy: ['slime', 'dead-soldiers', 'tower-beast', 'chimera', 'stone-golem'],
+  enemy: [
+    'slime',
+    'dead-soldiers',
+    'tower-beast',
+    'chimera',
+    'stone-golem',
+    'chymus-insect',
+    'necromancer',
+    'dead-dragon',
+    'dragon',
+  ],
 };

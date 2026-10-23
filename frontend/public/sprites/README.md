@@ -1,9 +1,11 @@
 # Tower sprites (2.5D billboards)
 
 PNG art in this folder replaces the procedurally-drawn placeholder tokens shown
-in the 3D tower scene. Files are loaded lazily by `SpriteTextureService`. Only
-slugs listed in `catalogue.ts` are requested, so a type without art keeps its
-colored placeholder token and causes no 404.
+in the 3D tower scene. The PNGs are packed into one silhouette atlas
+(`three/figures/figure-atlas.ts`) that the scene draws with instanced quads
+through the ink module. Only slugs listed in `catalogue.ts` are requested, so a
+type without art keeps the drawn placeholder cell and causes no 404. At most
+about 24 figures are drawn as sprites; the rest are specks.
 
 ## Naming
 
@@ -13,7 +15,7 @@ characters collapsed to `-`.
 - Units: `units/{slug}.png` — `warrior`, `archer`, `mage`, `healer`, `tank`,
   `captain`, `rogue`, `necromancer`, `draco-metamorph`, `porter`
 - Enemies: `enemies/{slug}.png`, keyed by the enemy's `stats.type` — `slime`,
-  `dead-soldiers`, `tower-beast`, `chimera`, `stone-golem`
+  `dead-soldiers`, `tower-beast`, `chimera`, `stone-golem`, `chymus-insect`, `necromancer`, `dead-dragon`, `dragon`
 
 Adding art for a new type means dropping the PNG here **and** adding its slug to
 the list in `catalogue.ts`.

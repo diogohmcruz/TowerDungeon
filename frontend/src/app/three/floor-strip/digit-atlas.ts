@@ -10,7 +10,7 @@ export const DIGIT_H = 9;
 /** Row of the glyph a struck numeral is crossed through. */
 export const STRIKE_ROW = 4;
 
-const FONT: readonly (readonly string[])[] = [
+export const FONT: readonly (readonly string[])[] = [
   ['01110', '10001', '10011', '10101', '11001', '10001', '01110'],
   ['00100', '01100', '00100', '00100', '00100', '00100', '01110'],
   ['01110', '10001', '00001', '00010', '00100', '01000', '11111'],

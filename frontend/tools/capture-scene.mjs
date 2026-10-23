@@ -145,7 +145,7 @@ const results = [];
 try {
   for (const theme of THEMES) {
     for (const scale of SCALES) {
-      const url = `${baseUrl}/?inkFixture=${floors}&floor=${current}&garrison=${garrison}&pixelScale=${scale}`;
+      const url = `${baseUrl}/?inkFixture=${floors}&floor=${current}&garrison=${garrison}&pixelScale=${scale}${process.env.FIXTURE_EXTRA ?? ""}`;
       await send("Page.navigate", { url: "about:blank" });
       await send("Page.navigate", { url });
       await evaluate(`localStorage.setItem('td-theme', '${theme}')`);

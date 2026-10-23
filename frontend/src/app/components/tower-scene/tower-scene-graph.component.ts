@@ -25,10 +25,25 @@ import { Tower, TowerFloor } from '../../interfaces/tower';
 import { Squad, Reinforcement } from '../../interfaces/game-state';
 import { Member } from '../../interfaces/member';
 import {
-  SpriteTextureService,
-  SpriteKind,
-  SPRITE_ASPECT,
-} from '../../three/sprite-texture.service';
+  createFigureAtlas,
+  FIGURE_COLS,
+  FIGURE_H,
+  FIGURE_ROWS,
+  FIGURE_W,
+  TEXEL_STEP,
+} from '../../three/figures/figure-atlas';
+import {
+  FigureInstance,
+  FigureMember,
+  MARK_CAPACITY,
+  planFigures,
+  SPECK_CAPACITY,
+  SURFACE_LIFT,
+} from '../../three/figures/figure-layout';
+import {
+  FIGURE_FRAGMENT,
+  FIGURE_VERTEX,
+} from '../../three/figures/figure.glsl';
 import {
   createInkUniforms,
   setInkTheme,
@@ -77,52 +92,12 @@ const BOX_CAPACITY = 4;
 /** Fog starts to eat the ink beyond the focal distance of the battle shot. */
 const FOG_NEAR = 13;
 
-const SPRITE_Z = 1.7;
-// The strips are flat planes and the camera looks down, so a figure standing
-// (SPRITE_Z - lip z) in front of a strip's floor line would read as standing
-// below it. Lifting the feet by that depth times tan(camera pitch), plus the
-// slab's thickness, plants them on the drawn floor line.
-const SPRITE_SURFACE_LIFT = 0.68;
+/** Specks and figures are tinted by ink density only; this is the tone of a figure over the cap. */
+const SPECK_TONE = 0.85;
 
-/**
- * Formation rectangle used to lay out a group of billboards. The grid keeps
- * this columns:rows aspect ratio as the group grows, so with the default 5:3
- * a group of 15 becomes 5×3 and a group of 8 becomes ~4×2. The wide ratio
- * spreads units sideways rather than deep. Change these two numbers to
- * reconfigure the ratio.
- */
-const FORMATION_COLUMNS = 5;
-const FORMATION_ROWS = 3;
-const FORMATION_RATIO = FORMATION_COLUMNS / FORMATION_ROWS;
-
-const GROUP_OFFSET_X = 1.9;
-const COL_STEP = 0.52;
-const ROW_STEP_Z = 0.6;
-// Ranks are NOT lifted vertically: every unit's feet rest on the flat deck.
-// Back ranks read as "further in" purely through depth (Z) + the sideways
-// diagonal shift, exactly like figures standing on a real floor.
-const ROW_STEP_Y = 0;
-// Each rank shifts sideways so the group reads as a loose diagonal wedge
-// instead of a rigid grid, and so back ranks peek out beside the front rank.
-const ROW_STEP_X = 0.34;
-const SPRITE_SCALE = 0.72;
-
-interface SpriteDesc {
-  id: string;
-  texture: THREE.Texture;
-  tint: string;
-  position: [number, number, number];
-  scale: [number, number, number];
-}
-
-/** Golden-angle hue per wave index, matching the old 2D markers. */
-function waveColor(index: number): string {
-  return `hsl(${(index * 137.5) % 360}, 72%, 55%)`;
-}
-
-/** Columns a group of `n` members occupies, preserving FORMATION_RATIO. */
-function gridCols(n: number): number {
-  return Math.max(1, Math.round(Math.sqrt(n * FORMATION_RATIO)));
+/** World Y of the walkable surface of floor `n` (figures stand here, before the lift). */
+function floorSurfaceY(n: number): number {
+  return floorToY(n) + FLOOR_SURFACE_OFFSET;
 }
 
 @Component({
@@ -235,23 +210,46 @@ function gridCols(n: number): number {
       <ngt-primitive #probe *args="[pickProbe]" />
     }
 
-    <!-- Billboarded characters -->
-    @for (s of sprites(); track s.id) {
-      <ngt-sprite [position]="s.position" [scale]="s.scale">
-        <ngt-sprite-material
-          [map]="s.texture"
-          [color]="s.tint"
-          [transparent]="true"
-          [depthWrite]="false"
-          [fog]="false"
+    <!-- Figures, Wave columns and their numerals: light silhouettes from one atlas, one draw call. -->
+    <ngt-instanced-mesh
+      #marks
+      *args="[undefined, undefined, MARK_CAPACITY]"
+      [frustumCulled]="false"
+    >
+      <ngt-plane-geometry *args="[1, 1]">
+        <ngt-instanced-buffer-attribute
+          attach="attributes.aCell"
+          *args="[markCell, 4]"
         />
-      </ngt-sprite>
-    }
+      </ngt-plane-geometry>
+      <ngt-shader-material
+        [vertexShader]="figureVertex"
+        [fragmentShader]="figureFragment"
+        [uniforms]="figureUniforms"
+      />
+    </ngt-instanced-mesh>
+
+    <!-- Specks: the figures over the cap, one more draw call. -->
+    <ngt-instanced-mesh
+      #specks
+      *args="[undefined, undefined, SPECK_CAPACITY]"
+      [frustumCulled]="false"
+    >
+      <ngt-plane-geometry *args="[1, 1]">
+        <ngt-instanced-buffer-attribute
+          attach="attributes.aCell"
+          *args="[speckCell, 4]"
+        />
+      </ngt-plane-geometry>
+      <ngt-shader-material
+        [vertexShader]="figureVertex"
+        [fragmentShader]="figureFragment"
+        [uniforms]="figureUniforms"
+      />
+    </ngt-instanced-mesh>
   `,
 })
 export class TowerSceneGraph {
-  private readonly textures = inject(SpriteTextureService);
-
   tower = input<Tower | undefined>();
   party = input<Squad>();
   active = input<boolean>(false);
@@ -272,6 +270,8 @@ export class TowerSceneGraph {
   protected readonly STRIP_CAPACITY = STRIP_CAPACITY;
   protected readonly NUMERAL_CAPACITY = NUMERAL_CAPACITY;
   protected readonly PILLAR_COUNT = PILLAR_COUNT;
+  protected readonly MARK_CAPACITY = MARK_CAPACITY;
+  protected readonly SPECK_CAPACITY = SPECK_CAPACITY;
   protected readonly STRIP_W = STRIP_W;
   protected readonly STRIP_H = STRIP_H;
   protected readonly inkVertex = INK_VERTEX;
@@ -280,11 +280,14 @@ export class TowerSceneGraph {
   protected readonly stripFragment = STRIP_FRAGMENT;
   protected readonly numeralVertex = NUMERAL_VERTEX;
   protected readonly numeralFragment = NUMERAL_FRAGMENT;
+  protected readonly figureVertex = FIGURE_VERTEX;
+  protected readonly figureFragment = FIGURE_FRAGMENT;
   protected readonly inkUniforms = createInkUniforms(this.theme());
 
   // Textures owned here, disposed on destroy.
   private readonly atlas = createAtlasTexture();
   private readonly digits = createDigitTexture();
+  private readonly figures = createFigureAtlas();
 
   // The strip and numeral materials share the ink ramp, fog and dither uniforms.
   protected readonly stripUniforms = {
@@ -293,6 +296,14 @@ export class TowerSceneGraph {
     uGrid: { value: new THREE.Vector2(ATLAS_COLS, ATLAS_ROWS) },
     uCellPx: { value: new THREE.Vector2(CELL_W, CELL_H) },
     uSeal: { value: new THREE.Vector2(...SEAL_CENTER) },
+    uFogNear: { value: FOG_NEAR },
+  };
+  protected readonly figureUniforms = {
+    ...this.inkUniforms,
+    uFigures: { value: this.figures.texture },
+    uGrid: { value: new THREE.Vector2(FIGURE_COLS, FIGURE_ROWS) },
+    uCellPx: { value: new THREE.Vector2(FIGURE_W, FIGURE_H) },
+    uTexelStep: { value: TEXEL_STEP },
     uFogNear: { value: FOG_NEAR },
   };
   protected readonly numeralUniforms = {
@@ -308,6 +319,8 @@ export class TowerSceneGraph {
   protected readonly stripCell = new Float32Array(STRIP_CAPACITY * 4);
   protected readonly stripState = new Float32Array(STRIP_CAPACITY * 4);
   protected readonly numeralDigit = new Float32Array(NUMERAL_CAPACITY * 2);
+  protected readonly markCell = new Float32Array(MARK_CAPACITY * 4);
+  protected readonly speckCell = new Float32Array(SPECK_CAPACITY * 4);
   protected readonly bodyTone = new Float32Array(BOX_CAPACITY);
   protected readonly bodyAlpha = new Float32Array(BOX_CAPACITY);
   protected readonly bodyRole = new Float32Array(BOX_CAPACITY);
@@ -323,6 +336,10 @@ export class TowerSceneGraph {
     viewChild<ElementRef<THREE.InstancedMesh>>('pillars');
   private readonly bodiesRef =
     viewChild<ElementRef<THREE.InstancedMesh>>('bodies');
+  private readonly marksRef =
+    viewChild<ElementRef<THREE.InstancedMesh>>('marks');
+  private readonly specksRef =
+    viewChild<ElementRef<THREE.InstancedMesh>>('specks');
 
   /**
    * The strip plan is rebuilt only when the tower's `layoutVersion` changes
@@ -375,142 +392,45 @@ export class TowerSceneGraph {
     boss: this.tower()?.floors?.[this.currentFloor()]?.boss === true,
   }));
 
-  protected readonly sprites = computed<SpriteDesc[]>(() => {
-    const out: SpriteDesc[] = [];
+  /** The fight and the Waves as plain data (see `planFigures`). */
+  protected readonly figurePlan = computed(() => {
     // Hold off until the tower's floor data has loaded, so the party never
     // renders for a frame without the floor deck it should be standing on.
     if (!this.active() || this.floors().length === 0) {
-      return out;
-    }
-
-    const current = this.currentFloor();
-    const anchor = this.anchorFloor();
-    const surfaceY =
-      floorToY(anchor) + FLOOR_SURFACE_OFFSET + SPRITE_SURFACE_LIFT;
-
-    const partyMembers = this.flattenSquad(this.party());
-    const floor = this.tower()?.floors?.[current];
-    const enemies = floor?.enemies ?? [];
-
-    // Shrink both formations when there isn't room to show them at full size:
-    // the visible width scales with the (portrait) canvas aspect, so the more
-    // units per side and the narrower the column, the smaller the sprites.
-    const partyCols = gridCols(partyMembers.length || 1);
-    const enemyCols = gridCols(enemies.length || 1);
-    const maxCols = Math.max(partyCols, enemyCols, 1);
-    const maxRows = Math.max(
-      Math.ceil((partyMembers.length || 1) / partyCols),
-      Math.ceil((enemies.length || 1) / enemyCols),
-      1,
-    );
-    const diagHalf = ((maxRows - 1) / 2) * ROW_STEP_X;
-    const naturalHalf =
-      GROUP_OFFSET_X +
-      ((maxCols - 1) * COL_STEP) / 2 +
-      diagHalf +
-      SPRITE_SCALE / 2;
-    const visibleHalf = Math.max(1.05, 2.5 * this.viewAspect());
-    const fit = Math.min(1, Math.max(0.24, (visibleHalf * 0.92) / naturalHalf));
-
-    // Party formation on the left, enemies on the right of the current floor.
-    // The two wedges lean opposite ways so they mirror across the centre.
-    this.layoutGroup(
-      'unit',
-      partyMembers,
-      -GROUP_OFFSET_X * fit,
-      surfaceY,
-      fit,
-      1,
-      out,
-    );
-    this.layoutGroup(
-      'enemy',
-      enemies,
-      GROUP_OFFSET_X * fit,
-      surfaceY,
-      fit,
-      -1,
-      out,
-    );
-
-    // Reinforcement waves climbing up the front of the tower toward the party.
-    const waveList = this.reinforcements();
-    waveList.forEach((wave, index) => {
-      const raw = wave.currentFloor ?? 1;
-      const waveFloor = Math.min(anchor, Math.max(1, raw));
-      const wy =
-        floorToY(waveFloor) + FLOOR_SURFACE_OFFSET + SPRITE_SURFACE_LIFT + 0.35;
-      const count = waveList.length;
-      const step = count > 1 ? 2.4 / (count - 1) : 0;
-      const wx = count > 1 ? -1.2 + index * step : 0;
-      out.push({
-        id: `wave-${index}`,
-        texture: this.textures.get('unit', 'PORTER'),
-        tint: waveColor(index),
-        position: [wx, wy, SPRITE_Z + 0.4],
-        scale: [1.25 * SPRITE_ASPECT, 1.25, 1],
+      return planFigures({
+        party: [],
+        enemies: [],
+        waves: [],
+        surfaceY: 0,
+        floorSurfaceY: floorSurfaceY,
+        viewAspect: this.viewAspect(),
+        anchorFloor: 0,
       });
+    }
+    const anchor = this.anchorFloor();
+    const floor = this.tower()?.floors?.[this.currentFloor()];
+    return planFigures({
+      party: this.flattenSquad(this.party()).map((m) =>
+        this.figureMember(m, 'unit'),
+      ),
+      enemies: (floor?.enemies ?? []).map((m) => this.figureMember(m, 'enemy')),
+      waves: this.reinforcements().map((w) => ({
+        size: this.flattenSquad(w.units).length,
+        floor: w.currentFloor ?? 1,
+      })),
+      surfaceY: floorSurfaceY(anchor) + SURFACE_LIFT,
+      floorSurfaceY,
+      viewAspect: this.viewAspect(),
+      anchorFloor: anchor,
     });
-
-    return out;
   });
 
-  /**
-   * Arranges a group of members into a rectangle that preserves
-   * `FORMATION_RATIO`: columns run left→right, rows recede into the tower
-   * (stepping back in Z and up in Y so back ranks stay visible). `surfaceY` is
-   * the deck the front rank stands on; every sprite is anchored by its feet so
-   * the group stays planted as it scales. `diagSign` (±1) leans the wedge.
-   */
-  private layoutGroup(
-    kind: SpriteKind,
-    members: Member[],
-    centerX: number,
-    surfaceY: number,
-    scale: number,
-    diagSign: number,
-    out: SpriteDesc[],
-  ): void {
-    const n = members.length;
-    if (!n) {
-      return;
-    }
-    const cols = gridCols(n);
-    const rows = Math.ceil(n / cols);
-    const colStep = COL_STEP * scale;
-    const rowStepZ = ROW_STEP_Z * scale;
-    const rowStepY = ROW_STEP_Y * scale;
-    const rowStepX = ROW_STEP_X * scale;
-    const spriteScale = SPRITE_SCALE * scale;
-    // Feet sit on the deck: raise the (centre-anchored) sprite by half its
-    // height plus the per-rank rise that keeps back rows visible.
-    const feetY = surfaceY + spriteScale / 2;
-
-    members.forEach((member, i) => {
-      const c = i % cols;
-      const r = Math.floor(i / cols);
-      const itemsInRow = r === rows - 1 ? n - r * cols : cols;
-      const rowWidth = (itemsInRow - 1) * colStep;
-      // Centre the diagonal so the wedge stays balanced around centerX.
-      const diag = diagSign * (r - (rows - 1) / 2) * rowStepX;
-      const x = centerX + c * colStep - rowWidth / 2 + diag;
-      const z = SPRITE_Z - r * rowStepZ;
-      const y = feetY + r * rowStepY;
-      out.push({
-        id: `${kind}-${member.id}`,
-        texture: this.textures.get(kind, this.typeKey(kind, member)),
-        tint: '#ffffff',
-        position: [x, y, z],
-        scale: [spriteScale * SPRITE_ASPECT, spriteScale, 1],
-      });
-    });
-  }
-
-  private typeKey(kind: SpriteKind, member: Member): string {
-    if (kind === 'enemy') {
-      return member.stats?.type ?? member.name ?? 'enemy';
-    }
-    return member.stats?.type ?? member.name ?? 'unit';
+  private figureMember(member: Member, kind: 'unit' | 'enemy'): FigureMember {
+    return {
+      id: member.id,
+      typeKey: member.stats?.type ?? member.name ?? kind,
+      guardian: kind === 'enemy' && member.boss === true,
+    };
   }
 
   private flattenSquad(squad: Squad | undefined): Member[] {
@@ -547,7 +467,9 @@ export class TowerSceneGraph {
     inject(DestroyRef).onDestroy(() => {
       this.atlas.dispose();
       this.digits.dispose();
+      this.figures.dispose();
     });
+    this.figures.loadArt();
 
     // The template type of `ngt-primitive` only allows lifecycle outputs, so
     // pointer events on a primitive go through injectObjectEvents.
@@ -655,6 +577,8 @@ export class TowerSceneGraph {
     const p = new THREE.Vector3();
     const sc = new THREE.Vector3(1, 1, 1);
 
+    this.writeFigures();
+
     plan.strips.forEach((s, i) => {
       strips.setMatrixAt(
         i,
@@ -725,6 +649,49 @@ export class TowerSceneGraph {
       );
     }
     body.finish();
+  }
+
+  /** Rewrites the figure and speck meshes from the figure plan. */
+  private writeFigures(): void {
+    const plan = this.figurePlan();
+    const write = (
+      mesh: THREE.InstancedMesh | undefined,
+      list: FigureInstance[],
+      cells: Float32Array,
+      tone: number,
+    ) => {
+      if (!mesh?.isInstancedMesh) {
+        return;
+      }
+      const m = new THREE.Matrix4();
+      const p = new THREE.Vector3();
+      const sc = new THREE.Vector3();
+      const n = Math.min(list.length, cells.length / 4);
+      for (let i = 0; i < n; i++) {
+        const f = list[i];
+        mesh.setMatrixAt(
+          i,
+          m.compose(
+            p.set(f.x, f.y, f.z),
+            IDENTITY_QUATERNION,
+            sc.set(f.w, f.h, 1),
+          ),
+        );
+        const col = f.cell % FIGURE_COLS;
+        const row = Math.floor(f.cell / FIGURE_COLS);
+        cells.set([col, row, f.role, tone], i * 4);
+      }
+      mesh.count = n;
+      mesh.instanceMatrix.needsUpdate = true;
+      markAttributes(mesh, ['aCell']);
+    };
+    write(this.marksRef()?.nativeElement, plan.marks, this.markCell, 1);
+    write(
+      this.specksRef()?.nativeElement,
+      plan.specks,
+      this.speckCell,
+      SPECK_TONE,
+    );
   }
 
   /** Spike #15: renderable objects and triangles in the scene, ignoring culling. */

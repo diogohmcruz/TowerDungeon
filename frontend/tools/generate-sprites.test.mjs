@@ -1,25 +1,49 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { inflateSync } from "node:zlib";
+import { existsSync, readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { SPRITES, renderSprite, encodePng } from "./generate-sprites.mjs";
 
 const WIDTH = 12;
 const HEIGHT = 16;
-const SLUGS = {
-  units: [
-    "warrior",
-    "archer",
-    "mage",
-    "healer",
-    "tank",
-    "captain",
-    "rogue",
-    "necromancer",
-    "draco-metamorph",
-    "porter",
-  ],
-  enemies: ["slime", "dead-soldiers", "tower-beast", "chimera", "stone-golem"],
-};
+// The slugs come from catalogue.ts, the list the renderer requests art for.
+const catalogue = readFileSync(
+  fileURLToPath(new URL("../src/app/three/catalogue.ts", import.meta.url)),
+  "utf8",
+);
+function slugsOf(kind) {
+  const body = new RegExp(`${kind}: \\[([^\\]]*)\\]`).exec(catalogue)[1];
+  return [...body.matchAll(/'([a-z0-9-]+)'/g)].map((m) => m[1]);
+}
+const SLUGS = { units: slugsOf("unit"), enemies: slugsOf("enemy") };
+
+const ENEMY_TYPES = [
+  "SLIME",
+  "DEAD_SOLDIERS",
+  "TOWER_BEAST",
+  "CHIMERA",
+  "CHYMUS_INSECT",
+  "STONE_GOLEM",
+  "NECROMANCER",
+  "DEAD_DRAGON",
+  "DRAGON",
+];
+
+test("catalogue.ts lists art for all 9 enemy types and every slug has a committed PNG", () => {
+  assert.deepEqual(
+    SLUGS.enemies.sort(),
+    ENEMY_TYPES.map((t) => t.toLowerCase().replace(/_/g, "-")).sort(),
+  );
+  for (const [kind, slugs] of Object.entries(SLUGS)) {
+    for (const slug of slugs) {
+      const file = fileURLToPath(
+        new URL(`../public/sprites/${kind}/${slug}.png`, import.meta.url),
+      );
+      assert.ok(existsSync(file), `missing ${kind}/${slug}.png`);
+    }
+  }
+});
 
 test("every unit and enemy slug has a recipe", () => {
   for (const [kind, slugs] of Object.entries(SLUGS)) {

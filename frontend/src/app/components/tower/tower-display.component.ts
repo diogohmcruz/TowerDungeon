@@ -1,4 +1,4 @@
-import { Component, computed, input } from '@angular/core';
+import { Component, computed, input, isDevMode } from '@angular/core';
 import { LowerCasePipe } from '@angular/common';
 import { Tower } from '../../interfaces/tower';
 import { Member } from '../../interfaces/member';
@@ -9,6 +9,7 @@ import { ExpeditionLoot } from '../expedition-loot/expedition-loot';
 import { Supplies } from '../supplies/supplies';
 import { TowerScene } from '../tower-scene/tower-scene.component';
 import { VillageScene } from '../village-scene/village-scene.component';
+import { readFixtureParams } from '../../three/ink/ink-fixture';
 
 @Component({
   selector: 'app-tower',
@@ -25,6 +26,11 @@ export class TowerDisplay {
   carriedCredits = input<number>(0);
   active = input<boolean>(false);
   reinforcements = input<Reinforcement[]>([]);
+
+  /** Dev only: `?inkFixture=<floors>` shows the Tower scene without an Expedition (capture tooling). */
+  private readonly fixtureOn =
+    isDevMode() && readFixtureParams(location.search) !== null;
+  sceneShown = computed(() => this.fixtureOn || this.active());
 
   towerFloors = computed(() => this.tower()?.floors ?? {});
   currentFloor = computed(() => this.tower()?.currentFloor ?? 0);
