@@ -18,6 +18,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
 import io.github.diogohmcruz.towerdungeon.config.ThreadLocalRandomGenerator;
+import io.github.diogohmcruz.towerdungeon.domain.items.ItemTier;
 import io.github.diogohmcruz.towerdungeon.domain.models.architecture.ArchitecturePlan;
 import io.github.diogohmcruz.towerdungeon.domain.models.healing.FoodDistributionStrategy;
 import io.github.diogohmcruz.towerdungeon.domain.models.healing.FoodHealingConfig;
@@ -55,6 +56,7 @@ public class GameState {
   private Map<ResourceType, Double> resources = ResourceType.emptyWallet();
   private Map<ResourceType, Double> carriedLoot = ResourceType.emptyWallet();
   private Double carriedCredits = 0d;
+  private Map<ItemTier, Integer> surplus = new EnumMap<>(ItemTier.class);
   private Double supplies = 0d;
   private Double maxSupplies;
   private Double lastFoodReturned = 0d;
@@ -305,7 +307,13 @@ public class GameState {
     return supplies > 0;
   }
 
+  /** Counts one item that did not fit on anyone: kept per tier, banked like loot on extraction. */
+  public void addSurplus(ItemTier tier) {
+    surplus.merge(tier, 1, Integer::sum);
+  }
+
   public void bankLoot() {
+    this.surplus = new EnumMap<>(ItemTier.class);
     carriedLoot.forEach((type, amount) -> resources.merge(type, amount, Double::sum));
     this.carriedLoot = ResourceType.emptyWallet();
     this.credit += this.carriedCredits;
@@ -313,6 +321,7 @@ public class GameState {
   }
 
   public void forfeitLoot() {
+    this.surplus = new EnumMap<>(ItemTier.class);
     this.carriedLoot = ResourceType.emptyWallet();
     this.carriedCredits = 0d;
   }
@@ -940,6 +949,7 @@ public class GameState {
         supplies,
         new EnumMap<>(carriedLoot),
         carriedCredits,
+        new EnumMap<>(surplus),
         lastFoodReturned,
         runStartFloor,
         runEnemiesDefeated,
@@ -1067,6 +1077,7 @@ public class GameState {
       state.supplies = e.supplies();
       state.carriedLoot.putAll(e.carriedLoot());
       state.carriedCredits = e.carriedCredits();
+      state.surplus.putAll(e.surplus());
       state.lastFoodReturned = e.lastFoodReturned();
       state.runStartFloor = e.runStartFloor();
       state.runEnemiesDefeated = e.runEnemiesDefeated();

@@ -81,6 +81,10 @@ game:
     severity-at-full-sanity: 0.25
     phobia-effect: 0.5
   items:
+    bundle:
+      leftover-chance: 0.20
+      find-chance: 0.15
+      sanity-gain: 10.0
     weights:
       power: 1.0
       armour: 0.8

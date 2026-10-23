@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
 import io.github.diogohmcruz.towerdungeon.domain.items.ItemRating;
+import io.github.diogohmcruz.towerdungeon.domain.items.ItemTier;
 import io.github.diogohmcruz.towerdungeon.domain.items.LeftoverGenerator;
 import io.github.diogohmcruz.towerdungeon.domain.models.EnemyStats;
 import io.github.diogohmcruz.towerdungeon.domain.models.GameState;
@@ -95,6 +96,8 @@ class SnapshotRoundTripTest {
     garrison.getFirst().receiveAttack(3d, null);
     state.gatherLoot(ResourceType.MATERIALS, 12d);
     state.gatherCredits(33d);
+    state.addSurplus(ItemTier.LEFTOVER);
+    state.addSurplus(ItemTier.LEFTOVER);
     state.drainSupplies(9d);
     state.setRunStartFloor(0);
     state.recordEnemyKill();
@@ -215,7 +218,20 @@ class SnapshotRoundTripTest {
     assertThat(restored.getMaxSupplies()).isEqualTo(original.getMaxSupplies());
     assertThat(restored.getCarriedLoot()).isEqualTo(original.getCarriedLoot());
     assertThat(restored.getCarriedCredits()).isEqualTo(33d);
+    assertThat(restored.getSurplus()).containsEntry(ItemTier.LEFTOVER, 2);
     assertThat(restored.getRunEnemiesDefeated()).isEqualTo(original.getRunEnemiesDefeated());
+  }
+
+  @Test
+  void aWipeForfeitsTheSurplusAndExtractionResetsIt() {
+    var state = midExpedition();
+    assertThat(state.getSurplus()).containsEntry(ItemTier.LEFTOVER, 2);
+    state.forfeitLoot();
+    assertThat(state.getSurplus()).isEmpty();
+
+    state.addSurplus(ItemTier.LEFTOVER);
+    state.bankLoot();
+    assertThat(state.getSurplus()).isEmpty();
   }
 
   @Test

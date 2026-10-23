@@ -46,7 +46,8 @@ class PlayerSlotsTest {
             new SplittableRandom(7),
             mock(ArchitecturePlan.class),
             new PartyCombat(new SplittableRandom(7)),
-            store);
+            store,
+            mock(FloorBundle.class));
   }
 
   private void saveCampaign(int schema, byte[] payload) {

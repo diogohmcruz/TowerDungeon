@@ -51,6 +51,7 @@ public class GameService {
   private final ArchitecturePlan architecturePlan;
   private final PartyCombat partyCombat;
   private final CampaignStore store;
+  private final FloorBundle floorBundle;
   private final Map<String, PlayerSlot> players = new ConcurrentHashMap<>();
 
   /** What a connection gets back from {@link #attach}: a signal for when it has been replaced. */
@@ -523,6 +524,7 @@ public class GameService {
       var rewardMultiplier = bossCleared ? reward.getBossRewardMultiplier() : 1.0;
       gameState.gatherCredits(clearedFloor * reward.getCreditPerFloor() * rewardMultiplier);
       gatherFloorLoot(gameState, clearedFloor, rewardMultiplier);
+      floorBundle.resolve(gameState, clearedFloor, bossCleared);
       if (bossCleared) {
         tower.markBossCleared(clearedFloor);
         log.info(

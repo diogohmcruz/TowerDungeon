@@ -365,6 +365,20 @@ public class GameProperties {
   public static class Items {
     private final Weights weights = new Weights();
     private final Leftover leftover = new Leftover();
+    private final Bundle bundle = new Bundle();
+
+    /** The Bundle of a cleared floor and the rolls that share it out. */
+    @Data
+    public static class Bundle {
+      /** Chance that a cleared non-guardian floor generates a Leftover. */
+      private double leftoverChance = 0.20;
+
+      /** Chance that one living party member finds an item, before any affinity multiplier. */
+      private double findChance = 0.15;
+
+      /** Sanity a unit gains from finding an item. */
+      private double sanityGain = 10.0;
+    }
 
     /** What one point of each stat adds to an item's rating, and what an effect adds. */
     @Data

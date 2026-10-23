@@ -33,7 +33,8 @@ class FoundersTest {
         new SplittableRandom(7),
         mock(ArchitecturePlan.class),
         new PartyCombat(new SplittableRandom(7)),
-        store);
+        store,
+        mock(FloorBundle.class));
   }
 
   private static List<Unit> reserves(GameState state) {

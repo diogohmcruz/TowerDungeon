@@ -34,6 +34,7 @@ class FieldAccountingTest {
           Map.entry("resources", "CampaignSnapshot.vault"),
           Map.entry("carriedLoot", "ExpeditionSnapshot.carriedLoot"),
           Map.entry("carriedCredits", "ExpeditionSnapshot.carriedCredits"),
+          Map.entry("surplus", "ExpeditionSnapshot.surplus"),
           Map.entry("supplies", "ExpeditionSnapshot.supplies"),
           Map.entry("lastFoodReturned", "ExpeditionSnapshot.lastFoodReturned"),
           Map.entry("reinforcements", "ExpeditionSnapshot.waves"),
