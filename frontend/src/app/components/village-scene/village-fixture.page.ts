@@ -43,6 +43,11 @@ export class VillageFixturePage {
         villageTierLevel: 2,
         saltPansOpen: true,
         salt: 40,
+        shortcuts: [
+          { id: 'a', floor: 3 },
+          { id: 'b', floor: 10 },
+          { id: 'c', floor: 21 },
+        ],
         still: false,
       };
 }

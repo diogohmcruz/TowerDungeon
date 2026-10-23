@@ -38,6 +38,19 @@ export const VILLAGE_TONE = {
   tower: 0.32,
 } as const;
 
+/** Floors the Tower's drawn height stands for, so a Floor maps to a relative height. */
+export const SHORTCUT_FLOOR_SPAN = 100;
+/** Where the first Tower segment starts above the ground (the Base slab's top). */
+export const TOWER_FOOT = BASE_GAP + 1.25;
+/** Height of one Tower segment and the number drawn. */
+export const TOWER_SEGMENT = 2.2;
+export const TOWER_SEGMENTS = 14;
+/** Shortcut marks sit on the Tower's flank at this x and just in front of its face. */
+export const SHORTCUT_MARK_X = 1.9;
+export const SHORTCUT_MARK_Z = -0.27;
+/** Id prefix of a Shortcut mark volume; the rest is the Shortcut id. */
+export const SHORTCUT_MARK_ID = 'shortcut-mark-';
+
 export type VolumeGroup = 'village' | 'tower';
 
 /** A box: `x`, `y`, `z` are the centre; `y` is the centre height above the ground top. */
@@ -52,6 +65,12 @@ export interface Volume {
   d: number;
   tone: number;
   alpha: number;
+}
+
+/** An open Shortcut as the Village sees it: no name, no numeral. */
+export interface VillageShortcut {
+  id: string;
+  floor: number;
 }
 
 export interface VillageInput {
@@ -71,6 +90,10 @@ export interface VillageInput {
   saltPansOpen: boolean;
   /** Salt held, for the crust height. */
   salt: number;
+  /** Open Shortcuts only; a locked Shortcut is never passed in, so it draws nothing. */
+  shortcuts: VillageShortcut[];
+  /** Shortcut whose mark is drawn thicker (hook for the shared selection service). */
+  highlightedShortcut: string | null;
   /** Seconds-ish counter: villagers step once per tick. */
   tick: number;
   /** Lamp flicker phase in seconds; 0 freezes the lamps. */
@@ -91,6 +114,8 @@ export const EMPTY_VILLAGE: VillageInput = {
   villageTierLevel: 0,
   saltPansOpen: false,
   salt: 0,
+  shortcuts: [],
+  highlightedShortcut: null,
   tick: 0,
   flicker: 0,
   still: true,
@@ -384,9 +409,43 @@ function tower(out: Volume[]): void {
   // The Base slab floats above a black gap and the Tower rises behind the Village
   // into dither: dissolving alpha, not fog, so the top fades into ink.
   box(out, 'base-slab', 'tower', 0, BASE_GAP, -1.7, 4.8, 1.25, 3.0, VILLAGE_TONE.tower + 0.1);
-  for (let i = 0; i < 14; i++) {
+  for (let i = 0; i < TOWER_SEGMENTS; i++) {
     const alpha = Math.max(0.06, 1 - i * 0.075);
-    box(out, `tower-${i}`, 'tower', 0, BASE_GAP + 1.25 + i * 2.2, -1.7, 4.4, 2.2, 2.8, VILLAGE_TONE.tower, alpha);
+    box(out, `tower-${i}`, 'tower', 0, TOWER_FOOT + i * TOWER_SEGMENT, -1.7, 4.4, TOWER_SEGMENT, 2.8, VILLAGE_TONE.tower, alpha);
+  }
+}
+
+/** Height above the ground of the mark for a Floor (relative to the drawn Tower). */
+export function shortcutMarkHeight(floor: number): number {
+  const rel = Math.min(1, Math.max(0, floor) / SHORTCUT_FLOOR_SPAN);
+  return TOWER_FOOT + rel * TOWER_SEGMENT * TOWER_SEGMENTS;
+}
+
+/**
+ * One small lit mark on the Tower's flank per open Shortcut, at its Floor's
+ * relative height. No numeral. Locked Shortcuts are not in the input, so they
+ * leave nothing, not even a hairline. The highlighted one is drawn thicker.
+ */
+function shortcutMarks(
+  out: Volume[],
+  shortcuts: VillageShortcut[],
+  highlighted: string | null,
+): void {
+  for (const sc of shortcuts) {
+    if (sc.floor <= 0) continue;
+    const on = sc.id === highlighted;
+    box(
+      out,
+      `${SHORTCUT_MARK_ID}${sc.id}`,
+      'tower',
+      SHORTCUT_MARK_X,
+      shortcutMarkHeight(sc.floor) - 0.05,
+      SHORTCUT_MARK_Z,
+      on ? 0.3 : 0.18,
+      on ? 0.1 : 0.05,
+      0.04,
+      VILLAGE_TONE.lit,
+    );
   }
 }
 
@@ -470,6 +529,7 @@ export function buildVillage(input: VillageInput): Volume[] {
   study(out, input.hands.SCRIBE, input.posts.SCRIBE);
   vault(out, input.materials, input.relics);
   pans(out, input.saltPansOpen, input.salt);
+  shortcutMarks(out, input.shortcuts, input.highlightedShortcut);
   reserves(out, input.reserves);
   villagers(out, input.hands, input.tick, input.still);
   return out;

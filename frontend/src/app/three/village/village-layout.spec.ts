@@ -15,6 +15,8 @@ import {
   MAX_VILLAGE_HEIGHT,
   MAX_VILLAGE_SHARE,
   MAX_VILLAGER_FIGURES,
+  SHORTCUT_MARK_ID,
+  shortcutMarkHeight,
   siloFill,
   VillageInput,
   villageBounds,
@@ -171,9 +173,9 @@ describe('village layout', () => {
       expect(litLamps(2)).toBe(2);
       expect(litLamps(9)).toBe(4);
       const lit = (tier: number) =>
-        buildVillage({ ...EMPTY_VILLAGE, villageTierLevel: tier })
-          .filter((x) => /^lamp-\d$/.test(x.id) && x.tone > 0.5)
-          .length;
+        buildVillage({ ...EMPTY_VILLAGE, villageTierLevel: tier }).filter(
+          (x) => /^lamp-\d$/.test(x.id) && x.tone > 0.5,
+        ).length;
       expect(lit(0)).toBe(0);
       expect(lit(1)).toBe(1);
       expect(lit(3)).toBe(3);
@@ -249,9 +251,9 @@ describe('village layout', () => {
           SPOREWARDEN: 0,
         },
       });
-      expect(
-        v.filter((x) => /^villager-[A-Z]+-\d+$/.test(x.id)).length,
-      ).toBe(MAX_VILLAGER_FIGURES);
+      expect(v.filter((x) => /^villager-[A-Z]+-\d+$/.test(x.id)).length).toBe(
+        MAX_VILLAGER_FIGURES,
+      );
       expect(v.filter((x) => x.id.startsWith('reserve-')).length).toBe(
         MAX_RESERVE_FIGURES,
       );
@@ -306,6 +308,74 @@ describe('village layout', () => {
     });
   });
 
+  describe('Shortcut marks', () => {
+    const marks = (v: Volume[]) =>
+      v.filter((x) => x.id.startsWith(SHORTCUT_MARK_ID));
+
+    it('draws nothing when no Shortcut is open', () => {
+      expect(marks(buildVillage(EMPTY_VILLAGE))).toEqual([]);
+    });
+
+    it('draws one lit mark per open Shortcut at its Floor relative height', () => {
+      const v = marks(
+        buildVillage({
+          ...EMPTY_VILLAGE,
+          shortcuts: [
+            { id: 'a', floor: 3 },
+            { id: 'b', floor: 21 },
+            { id: 'c', floor: 50 },
+          ],
+        }),
+      );
+      expect(v.length).toBe(3);
+      const ys = v.map((x) => x.y);
+      expect(ys).toEqual([...ys].sort((p, q) => p - q));
+      expect(new Set(ys).size).toBe(3);
+      for (const m of v) {
+        expect(m.tone).toBe(1);
+        expect(m.group).toBe('tower');
+      }
+      expect(shortcutMarkHeight(50)).toBeGreaterThan(shortcutMarkHeight(21));
+    });
+
+    it('leaves the Village bounds and every other volume untouched', () => {
+      const base = buildVillage(BUSY);
+      const withMarks = buildVillage({
+        ...BUSY,
+        shortcuts: [{ id: 'a', floor: 10 }],
+      });
+      expect(villageBounds(withMarks)).toEqual(villageBounds(base));
+      expect(
+        ids(withMarks).filter((i) => !i.startsWith(SHORTCUT_MARK_ID)),
+      ).toEqual(ids(base));
+    });
+
+    it('adds a mark for any open Shortcut, such as the Narrow Stair on Floor 21', () => {
+      const v = marks(
+        buildVillage({
+          ...EMPTY_VILLAGE,
+          shortcuts: [{ id: 'NARROW_STAIR', floor: 21 }],
+        }),
+      );
+      expect(ids(v)).toEqual([`${SHORTCUT_MARK_ID}NARROW_STAIR`]);
+    });
+
+    it('thickens only the highlighted mark', () => {
+      const v = marks(
+        buildVillage({
+          ...EMPTY_VILLAGE,
+          shortcuts: [
+            { id: 'a', floor: 3 },
+            { id: 'b', floor: 5 },
+          ],
+          highlightedShortcut: 'b',
+        }),
+      );
+      const [a, b] = v;
+      expect(b.h).toBeGreaterThan(a.h);
+    });
+  });
+
   describe('camera', () => {
     it('frames the same width at any aspect and looks up about 15 degrees', () => {
       for (const aspect of [0.49, 0.8, 1.6]) {
@@ -317,7 +387,10 @@ describe('village layout', () => {
         cam.updateProjectionMatrix();
         // Width visible at the Village's depth equals FRAME_WIDTH.
         const visible =
-          2 * pose.distance * Math.tan(THREE.MathUtils.degToRad(VILLAGE_FOV / 2)) * aspect;
+          2 *
+          pose.distance *
+          Math.tan(THREE.MathUtils.degToRad(VILLAGE_FOV / 2)) *
+          aspect;
         expect(visible).toBeCloseTo(FRAME_WIDTH, 5);
         const dir = cam.getWorldDirection(new THREE.Vector3());
         expect(THREE.MathUtils.radToDeg(Math.asin(dir.y))).toBeCloseTo(15, 1);
