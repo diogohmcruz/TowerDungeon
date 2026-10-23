@@ -7,9 +7,17 @@ import {
   effect,
   inject,
   input,
+  isDevMode,
   signal,
+  viewChild,
+  ElementRef,
 } from '@angular/core';
-import { injectBeforeRender, injectStore, NgtArgs } from 'angular-three';
+import {
+  injectBeforeRender,
+  injectObjectEvents,
+  injectStore,
+  NgtArgs,
+} from 'angular-three';
 import * as THREE from 'three';
 
 import { Tower, TowerFloor } from '../../interfaces/tower';
@@ -20,7 +28,17 @@ import {
   SpriteKind,
   SPRITE_ASPECT,
 } from '../../three/sprite-texture.service';
+import {
+  createInkUniforms,
+  setInkTheme,
+  TONE,
+} from '../../three/ink/ink-material';
+import { INK_FRAGMENT, INK_VERTEX } from '../../three/ink/ink.glsl';
+import { InkTheme, RAMPS } from '../../three/ink/palette';
 import '../../three/catalogue';
+
+/** Instances each instanced mesh can hold (floors + base + ghosts + backdrop). */
+const INK_CAPACITY = 256;
 
 const FLOOR_HEIGHT = 2.2;
 const GHOST_FLOORS_AHEAD = 8;
@@ -92,70 +110,66 @@ function gridCols(n: number): number {
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   imports: [NgtArgs],
   template: `
-    <ngt-color *args="[bgColor()]" attach="background" />
-    <ngt-fog-exp2 *args="[bgColor(), fogDensity()]" attach="fog" />
+    <!-- Drawn, not lit (ADR 0003): clear colour = ramp slot 0, no lights, no scene fog. -->
+    <ngt-color *args="[clearHex()]" attach="background" />
 
-    <ngt-ambient-light [intensity]="ambient()" />
-    <ngt-directional-light [position]="[6, 12, 8]" [intensity]="1.2" />
-    <ngt-directional-light
-      [position]="[-5, 4, -6]"
-      [intensity]="0.35"
-      [color]="'#8fb7ff'"
-    />
-
-    <!-- Solid, discovered floors -->
-    @for (slab of slabs(); track slab.n) {
-      <ngt-mesh [position]="[0, slab.y, 0]">
-        <ngt-box-geometry *args="[4.4, 1.7, 2.8]" />
-        <ngt-mesh-standard-material
-          [color]="slab.color"
-          [roughness]="0.85"
-          [metalness]="0.1"
-          [transparent]="slab.ceiling"
-          [opacity]="slab.opacity"
+    <!-- Slab bodies, ghost floors and the backdrop wall: one instanced draw call. -->
+    <ngt-instanced-mesh
+      #bodies
+      *args="[undefined, undefined, INK_CAPACITY]"
+      [frustumCulled]="false"
+    >
+      <ngt-box-geometry *args="[1, 1, 1]">
+        <ngt-instanced-buffer-attribute
+          attach="attributes.aTone"
+          *args="[bodyTone, 1]"
         />
-      </ngt-mesh>
-
-      <ngt-mesh [position]="[0, slab.y + 0.9, 0.2]">
-        <ngt-box-geometry *args="[4.7, 0.16, 3.1]" />
-        <ngt-mesh-standard-material
-          [color]="slab.current ? '#6a5326' : '#2b3346'"
-          [roughness]="0.9"
-          [emissive]="slab.current ? '#8a5a1e' : '#000000'"
-          [emissiveIntensity]="slab.current ? 0.85 : 0"
-          [transparent]="slab.ceiling"
-          [opacity]="slab.opacity"
+        <ngt-instanced-buffer-attribute
+          attach="attributes.aAlpha"
+          *args="[bodyAlpha, 1]"
         />
-      </ngt-mesh>
-    }
-
-    <!-- Glowing backdrop wall standing behind the current battle -->
-    @if (backdrop().show) {
-      <ngt-mesh [position]="[0, backdrop().y, -1.25]">
-        <ngt-box-geometry *args="[4.2, backdrop().height, 0.12]" />
-        <ngt-mesh-standard-material
-          [color]="backdrop().boss ? '#6a2030' : '#7b6a45'"
-          [roughness]="0.85"
-          [metalness]="0.1"
-          [transparent]="true"
-          [opacity]="0.55"
-          [emissive]="backdrop().boss ? '#8a1e33' : '#8a5a1e'"
-          [emissiveIntensity]="0.9"
+        <ngt-instanced-buffer-attribute
+          attach="attributes.aRole"
+          *args="[bodyRole, 1]"
         />
-      </ngt-mesh>
-    }
+      </ngt-box-geometry>
+      <ngt-shader-material
+        [vertexShader]="inkVertex"
+        [fragmentShader]="inkFragment"
+        [uniforms]="inkUniforms"
+      />
+    </ngt-instanced-mesh>
 
-    <!-- Faint ghost floors rising into the fog above the explored top -->
-    @for (g of ghostSlabs(); track g.n) {
-      <ngt-mesh [position]="[0, g.y, -0.3]">
-        <ngt-box-geometry *args="[4.2, 1.7, 2.6]" />
-        <ngt-mesh-standard-material
-          [color]="'#3a4256'"
-          [transparent]="true"
-          [opacity]="g.opacity"
-          [roughness]="1"
+    <!-- Walkable decks: a second instanced draw call. -->
+    <ngt-instanced-mesh
+      #decks
+      *args="[undefined, undefined, INK_CAPACITY]"
+      [frustumCulled]="false"
+    >
+      <ngt-box-geometry *args="[1, 1, 1]">
+        <ngt-instanced-buffer-attribute
+          attach="attributes.aTone"
+          *args="[deckTone, 1]"
         />
-      </ngt-mesh>
+        <ngt-instanced-buffer-attribute
+          attach="attributes.aAlpha"
+          *args="[deckAlpha, 1]"
+        />
+        <ngt-instanced-buffer-attribute
+          attach="attributes.aRole"
+          *args="[deckRole, 1]"
+        />
+      </ngt-box-geometry>
+      <ngt-shader-material
+        [vertexShader]="inkVertex"
+        [fragmentShader]="inkFragment"
+        [uniforms]="inkUniforms"
+      />
+    </ngt-instanced-mesh>
+
+    @if (pickProbe) {
+      <!-- Spike #15: pointer events on ngt-primitive (see docs/research/ink-spike.md). -->
+      <ngt-primitive #probe *args="[pickProbe]" />
     }
 
     <!-- Billboarded characters -->
@@ -166,6 +180,7 @@ function gridCols(n: number): number {
           [color]="s.tint"
           [transparent]="true"
           [depthWrite]="false"
+          [fog]="false"
         />
       </ngt-sprite>
     }
@@ -177,6 +192,7 @@ function gridCols(n: number): number {
           [map]="l.texture"
           [transparent]="true"
           [depthWrite]="false"
+          [fog]="false"
         />
       </ngt-sprite>
     }
@@ -195,11 +211,29 @@ export class TowerSceneGraph {
   /** Canvas width/height ratio; drives how much the formations shrink to fit. */
   private readonly viewAspect = signal(0.6);
 
-  protected readonly bgColor = computed(() =>
-    this.dark() ? '#0e1424' : '#9fc0e8',
+  protected readonly theme = computed<InkTheme>(() =>
+    this.dark() ? 'night' : 'day',
   );
-  protected readonly fogDensity = computed(() => (this.dark() ? 0.05 : 0.028));
-  protected readonly ambient = computed(() => (this.dark() ? 0.85 : 1.1));
+  /** Ramp slot 0: the clear colour, which is also what fog resolves into. */
+  protected readonly clearHex = computed(() => RAMPS[this.theme()][0]);
+
+  protected readonly INK_CAPACITY = INK_CAPACITY;
+  protected readonly inkVertex = INK_VERTEX;
+  protected readonly inkFragment = INK_FRAGMENT;
+  protected readonly inkUniforms = createInkUniforms(this.theme());
+
+  // Per-instance ink attributes (tone, dithered alpha, crimson role flag).
+  protected readonly bodyTone = new Float32Array(INK_CAPACITY);
+  protected readonly bodyAlpha = new Float32Array(INK_CAPACITY);
+  protected readonly bodyRole = new Float32Array(INK_CAPACITY);
+  protected readonly deckTone = new Float32Array(INK_CAPACITY);
+  protected readonly deckAlpha = new Float32Array(INK_CAPACITY);
+  protected readonly deckRole = new Float32Array(INK_CAPACITY);
+
+  private readonly bodiesRef =
+    viewChild<ElementRef<THREE.InstancedMesh>>('bodies');
+  private readonly decksRef =
+    viewChild<ElementRef<THREE.InstancedMesh>>('decks');
 
   private readonly floors = computed<[number, TowerFloor][]>(() => {
     const map = this.tower()?.floors ?? {};
@@ -481,6 +515,7 @@ export class TowerSceneGraph {
 
   private readonly camTarget = new THREE.Vector3(0, floorToY(0) + 1.3, 0);
   private readonly camPos = new THREE.Vector3(0, floorToY(0) + 7, 12.5);
+  private readonly lookAtSmooth = this.camTarget.clone();
 
   /** Vertical world offset from scroll-to-pan; decays back to 0 when idle. */
   private panY = 0;
@@ -502,6 +537,41 @@ export class TowerSceneGraph {
     inject(DestroyRef).onDestroy(() => observer.disconnect());
 
     this.bindPanControls();
+
+    // The template type of `ngt-primitive` only allows lifecycle outputs, so
+    // pointer events on a primitive go through injectObjectEvents.
+    const count = (key: string) => () => {
+      const w = window as unknown as Record<string, number>;
+      w[key] = (w[key] ?? 0) + 1;
+    };
+    injectObjectEvents(() => this.probeRef()?.nativeElement, {
+      click: count('__towerPicks'),
+      pointerover: count('__towerHovers'),
+    });
+
+    effect(() => setInkTheme(this.inkUniforms, this.theme()));
+    effect(() => this.writeInstances());
+
+    if (isDevMode()) {
+      // Spike #15 measurement hook: renderer.info of the last frame.
+      (window as unknown as Record<string, unknown>)['__tower'] = {
+        info: () => {
+          const gl = this.store.gl();
+          const i = gl.info;
+          return {
+            calls: i.render.calls,
+            triangles: i.render.triangles,
+            programs: i.programs?.length ?? 0,
+            geometries: i.memory.geometries,
+            textures: i.memory.textures,
+            // What the scene holds before frustum culling (draw-call upper bound).
+            ...this.countScene(),
+            dpr: gl.getPixelRatio(),
+            size: [gl.domElement.width, gl.domElement.height],
+          };
+        },
+      };
+    }
 
     injectBeforeRender(({ camera, delta }) => {
       const focusY = floorToY(this.anchorFloor());
@@ -529,9 +599,89 @@ export class TowerSceneGraph {
       this.camTarget.set(0, viewY + 1.3, 0);
       this.camPos.set(0, viewY + 7, 12.5);
 
+      // Both the position and the look-at target ease, so the view never snaps.
       camera.position.lerp(this.camPos, damp);
-      camera.lookAt(this.camTarget);
+      this.lookAtSmooth.lerp(this.camTarget, damp);
+      camera.lookAt(this.lookAtSmooth);
     });
+  }
+
+  /**
+   * Spike #15: a probe mesh for the "pointer events on ngt-primitive" claim,
+   * built only with `?inkPick=1`. It covers the current floor's front face.
+   */
+  protected readonly pickProbe: THREE.Mesh | null =
+    isDevMode() && new URLSearchParams(location.search).has('inkPick')
+      ? new THREE.Mesh(
+          new THREE.PlaneGeometry(4, 2),
+          new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false }),
+        )
+      : null;
+
+  private readonly probeRef = viewChild<ElementRef<THREE.Mesh>>('probe');
+
+  /** Rewrites both instanced meshes from the slab, ghost and backdrop state. */
+  private writeInstances(): void {
+    const bodies = this.bodiesRef()?.nativeElement;
+    const decks = this.decksRef()?.nativeElement;
+    const slabs = this.slabs();
+    const ghosts = this.ghostSlabs();
+    const backdrop = this.backdrop();
+    this.pickProbe?.position.set(0, floorToY(this.anchorFloor()) + 1.9, 1.7);
+    if (!bodies?.isInstancedMesh || !decks?.isInstancedMesh) {
+      return;
+    }
+
+    const body = new InstanceWriter(bodies);
+    for (const s of slabs) {
+      body.add(
+        [0, s.y, 0],
+        [4.4, 1.7, 2.8],
+        s.n === 0 ? TONE.base : TONE.slab,
+        s.opacity,
+        s.boss,
+      );
+    }
+    for (const g of ghosts) {
+      body.add([0, g.y, -0.3], [4.2, 1.7, 2.6], TONE.ghost, g.opacity, false);
+    }
+    if (backdrop.show) {
+      body.add(
+        [0, backdrop.y, -1.25],
+        [4.2, backdrop.height, 0.12],
+        TONE.backdrop,
+        0.55,
+        backdrop.boss,
+      );
+    }
+    body.finish();
+
+    const deck = new InstanceWriter(decks);
+    for (const s of slabs) {
+      deck.add(
+        [0, s.y + 0.9, 0.2],
+        [4.7, 0.16, 3.1],
+        s.current ? TONE.deckCurrent : TONE.deck,
+        s.opacity,
+        false,
+      );
+    }
+    deck.finish();
+  }
+
+  /** Spike #15: renderable objects and triangles in the scene, ignoring culling. */
+  private countScene(): { objects: number; sceneTriangles: number } {
+    let objects = 0;
+    let sceneTriangles = 0;
+    this.store.scene().traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (!(m.isMesh || (o as THREE.Sprite).isSprite) || !o.visible) return;
+      objects++;
+      const g = m.geometry;
+      const tris = (g.index?.count ?? g.attributes['position'].count) / 3;
+      sceneTriangles += tris * ((o as THREE.InstancedMesh).count ?? 1);
+    });
+    return { objects, sceneTriangles };
   }
 
   /** Mouse-wheel and drag on the canvas pan the camera vertically. */
@@ -593,3 +743,53 @@ export class TowerSceneGraph {
     return document.documentElement.dataset['theme'] === 'dark';
   }
 }
+
+/** Fills an instanced ink mesh (matrices plus the three ink attributes) in order. */
+class InstanceWriter {
+  private n = 0;
+  private readonly matrix = new THREE.Matrix4();
+  private readonly position = new THREE.Vector3();
+  private readonly scale = new THREE.Vector3();
+  private readonly tone: THREE.BufferAttribute;
+  private readonly alpha: THREE.BufferAttribute;
+  private readonly role: THREE.BufferAttribute;
+
+  constructor(private readonly mesh: THREE.InstancedMesh) {
+    const a = mesh.geometry.attributes;
+    this.tone = a['aTone'] as THREE.BufferAttribute;
+    this.alpha = a['aAlpha'] as THREE.BufferAttribute;
+    this.role = a['aRole'] as THREE.BufferAttribute;
+  }
+
+  add(
+    position: [number, number, number],
+    scale: [number, number, number],
+    tone: number,
+    alpha: number,
+    crimson: boolean,
+  ): void {
+    if (this.n >= INK_CAPACITY) {
+      return;
+    }
+    this.matrix.compose(
+      this.position.set(...position),
+      IDENTITY_QUATERNION,
+      this.scale.set(...scale),
+    );
+    this.mesh.setMatrixAt(this.n, this.matrix);
+    this.tone.setX(this.n, tone);
+    this.alpha.setX(this.n, alpha);
+    this.role.setX(this.n, crimson ? 1 : 0);
+    this.n++;
+  }
+
+  finish(): void {
+    this.mesh.count = this.n;
+    this.mesh.instanceMatrix.needsUpdate = true;
+    this.tone.needsUpdate = true;
+    this.alpha.needsUpdate = true;
+    this.role.needsUpdate = true;
+  }
+}
+
+const IDENTITY_QUATERNION = new THREE.Quaternion();
