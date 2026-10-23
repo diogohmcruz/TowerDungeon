@@ -119,6 +119,19 @@ game:
     starting-villagers: 20
     villager-food-production: 0.5
     unit-food-consumption: 1.0
+  trades:
+    breaker-materials-per-tick: 0.25
+    scribe-knowledge-per-tick: 0.05
+    yield-per-highest-floor: 0.02
+    starting-posts: 10
+    tiller-minimum: 5
+    settling-ticks: 10
+    emergency-tilling-below: 20.0
+    emergency-tilling-above: 60.0
+    stockroom-base: 60.0
+    stockroom-per-floor: 4.0
+    heap-per-floor: 10.0
+    heap-delivery-per-floor-cleared: 5.0
   architecture:
     enabled: false
     seed: 362108372306

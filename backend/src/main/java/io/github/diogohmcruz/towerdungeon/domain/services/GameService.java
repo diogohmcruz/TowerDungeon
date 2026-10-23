@@ -13,6 +13,7 @@ import java.util.random.RandomGenerator;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import io.github.diogohmcruz.towerdungeon.api.dtos.AssignTradeActionDTO;
 import io.github.diogohmcruz.towerdungeon.api.dtos.BuyActionDTO;
 import io.github.diogohmcruz.towerdungeon.api.dtos.GameFrame;
 import io.github.diogohmcruz.towerdungeon.api.dtos.GameFrame.Notice;
@@ -317,6 +318,24 @@ public class GameService {
         });
   }
 
+  public void handleAssignTradeAction(String playerId, AssignTradeActionDTO dto) {
+    withPlayer(
+        playerId,
+        gameState -> {
+          if (dto == null || dto.trade() == null || dto.delta() == null) {
+            log.warn("Player[{}] sent an incomplete trade assignment. Ignoring.", playerId);
+            return;
+          }
+          var refused = gameState.assignTrade(dto.trade(), Integer.signum(dto.delta()));
+          log.info(
+              "Player[{}] assign {} {} -> {}",
+              playerId,
+              dto.trade(),
+              dto.delta(),
+              refused.orElse("moved"));
+        });
+  }
+
   public void handleUpgradeAction(String playerId, UpgradeActionDTO upgradeActionDTO) {
     withPlayer(
         playerId,
@@ -406,6 +425,7 @@ public class GameService {
           gameState.returnReinforcementsHome();
           gameState.returnPartyHome();
           gameState.bankLoot();
+          gameState.deliverQuarryHeap();
           gameState.setExpeditionActive(false);
           gameState.completeExpedition();
           log.info(
@@ -589,6 +609,7 @@ public class GameService {
     gameState.returnReinforcementsHome();
     gameState.returnPartyHome();
     gameState.bankLoot();
+    gameState.deliverQuarryHeap();
     gameState.setExpeditionActive(false);
     gameState.completeExpedition();
     gameState.winCampaign();

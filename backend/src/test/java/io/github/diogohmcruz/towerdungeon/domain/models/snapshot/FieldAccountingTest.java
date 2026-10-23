@@ -55,17 +55,28 @@ class FieldAccountingTest {
           "unlockedUnits", "derived: the starting types plus upgrade and milestone unlocks",
           "recoverySpend", "recomputed by the next lifecycle tick",
           "foodDistributionStrategy", "behaviour, not state; a default is installed on creation",
-          "config", "game balance, supplied on restore");
+          "config", "game balance, supplied on restore",
+          "ledger",
+              "a log of what just happened, not a fact of the Campaign; starts empty on load");
 
   private static final Map<String, String> VILLAGE_MAPPED =
-      Map.of(
-          "food", "CampaignSnapshot.villageFood",
-          "villagersCount", "CampaignSnapshot.villagers");
+      Map.ofEntries(
+          Map.entry("food", "CampaignSnapshot.villageFood"),
+          Map.entry("villagersCount", "CampaignSnapshot.villagers"),
+          Map.entry("breakers", "TradesSnapshot.breakers"),
+          Map.entry("scribes", "TradesSnapshot.scribes"),
+          Map.entry("settling", "TradesSnapshot.settlingTillers"),
+          Map.entry("knowledge", "TradesSnapshot.knowledge"),
+          Map.entry("quarryHeap", "TradesSnapshot.quarryHeap"),
+          Map.entry("emergencyTilling", "TradesSnapshot.emergencyTilling"),
+          Map.entry("villagersLost", "TradesSnapshot.villagersLost"),
+          Map.entry("reservesLost", "TradesSnapshot.reservesLost"));
 
   private static final Map<String, String> VILLAGE_TRANSIENT =
       Map.of(
           "villagerFoodProduction", "game balance, copied from config on creation",
-          "unitFoodConsumption", "game balance, copied from config on creation");
+          "unitFoodConsumption", "game balance, copied from config on creation",
+          "trades", "game balance, copied from config on creation");
 
   private static final Map<String, String> TOWER_MAPPED =
       Map.of(
@@ -153,6 +164,7 @@ class FieldAccountingTest {
             "CampaignSnapshot", CampaignSnapshot.class,
             "ExpeditionSnapshot", ExpeditionSnapshot.class,
             "TowerSnapshot", TowerSnapshot.class,
+            "TradesSnapshot", TradesSnapshot.class,
             "UnitSnapshot", UnitSnapshot.class);
     mapped
         .values()

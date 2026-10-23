@@ -20,6 +20,7 @@ import io.github.diogohmcruz.towerdungeon.domain.models.upgrade.UpgradeType;
  * @param upgrades purchased upgrade levels
  * @param shortcutsOpened shortcuts ever opened (a ratchet: a rebalance never closes one)
  * @param tower null until the first Departure
+ * @param trades the Villager pool's assignments, stores and The Count; null in older saves
  */
 public record CampaignSnapshot(
     double credit,
@@ -35,7 +36,8 @@ public record CampaignSnapshot(
     GameOutcome outcome,
     RunSummary lastExpeditionSummary,
     double villageFood,
-    int villagers) {
+    int villagers,
+    TradesSnapshot trades) {
 
   /** The same record with the reserves cleared, for comparing everything but who is in them. */
   public CampaignSnapshot withoutReserves() {
@@ -53,6 +55,7 @@ public record CampaignSnapshot(
         outcome,
         lastExpeditionSummary,
         villageFood,
-        villagers);
+        villagers,
+        trades);
   }
 }

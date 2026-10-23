@@ -9,6 +9,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Predicate;
@@ -34,6 +35,7 @@ import io.github.diogohmcruz.towerdungeon.domain.models.snapshot.GameSnapshot;
 import io.github.diogohmcruz.towerdungeon.domain.models.snapshot.PartSnapshot;
 import io.github.diogohmcruz.towerdungeon.domain.models.snapshot.PhobiaSnapshot;
 import io.github.diogohmcruz.towerdungeon.domain.models.snapshot.TowerSnapshot;
+import io.github.diogohmcruz.towerdungeon.domain.models.snapshot.TradesSnapshot;
 import io.github.diogohmcruz.towerdungeon.domain.models.snapshot.UnitSnapshot;
 import io.github.diogohmcruz.towerdungeon.domain.models.snapshot.WaveSnapshot;
 import io.github.diogohmcruz.towerdungeon.domain.models.upgrade.UpgradeOffer;
@@ -86,6 +88,14 @@ public class GameState {
   /** Shortcuts ever opened; a ratchet, so a rebalance of the thresholds never closes one. */
   @JsonIgnore private Set<ShortcutType> openedShortcuts = EnumSet.noneOf(ShortcutType.class);
 
+  /** The Ledger: the Village's plain record of what happened, newest last. Not persisted. */
+  private List<LedgerLine> ledger = new ArrayList<>();
+
+  /** One line of the Ledger; {@code loss} lines are written to be read as losses. */
+  public record LedgerLine(String text, boolean loss) {}
+
+  private static final int LEDGER_LIMIT = 50;
+
   @JsonIgnore @ToString.Exclude @EqualsAndHashCode.Exclude
   private FoodDistributionStrategy foodDistributionStrategy =
       new RoundRobinFoodDistributionStrategy();
@@ -110,7 +120,7 @@ public class GameState {
     this.config = config;
     this.credit = config.getStart().getCredit();
     this.maxSupplies = config.getSupply().getBaseMax();
-    this.village = new Village(config.getVillage());
+    this.village = new Village(config.getVillage(), config.getTrades());
   }
 
   /**
@@ -198,11 +208,13 @@ public class GameState {
    * home unit is wounded; null while the Fields cover Upkeep.
    */
   public Integer getPantryHoldSeconds() {
-    var recoveryCeiling =
-        getHomePartyWounds() > 0
-            ? config.getHealing().getHpPerTick() * config.getHealing().getCostPerHp()
-            : 0d;
-    return village.secondsUntilStarvation(getHomeUnitCount(), recoveryCeiling);
+    return village.secondsUntilStarvation(getHomeUnitCount(), recoveryCeiling());
+  }
+
+  private double recoveryCeiling() {
+    return getHomePartyWounds() > 0
+        ? config.getHealing().getHpPerTick() * config.getHealing().getCostPerHp()
+        : 0d;
   }
 
   /** Total missing health across the units resting at home (the ones the village feeds/heals). */
@@ -471,24 +483,187 @@ public class GameState {
   }
 
   public void triggerLifecycle() {
+    triggerLifecycle(ThreadLocalRandom.current());
+  }
+
+  /** One tick of the village: Emergency Tilling, production and Upkeep, Starvation, Recovery. */
+  public void triggerLifecycle(RandomGenerator random) {
     if (checkGameOver()) {
       return;
     }
     var allUnits = units.values().stream().flatMap(List::stream).toList();
-    var isStarving = village.triggerLifecycle(allUnits.size());
+    var tilling = village.emergencyTilling(allUnits.size());
+    if (tilling.started()) {
+      writeLedger(
+          "Emergency Tilling. Pantry below "
+              + (long) config.getTrades().getEmergencyTillingBelow()
+              + ". "
+              + (tilling.moved() == null
+                  ? "No one could be moved."
+                  : tilling.moved().plural() + " moved to the Fields."),
+          false);
+    }
+    var isStarving = village.triggerLifecycle(allUnits.size(), highestFloor);
     if (isStarving) {
-      village.starve();
+      var lostTrade = village.starve(random);
+      Unit lostReserve = null;
       if (!allUnits.isEmpty()) {
-        var randomIndex = ThreadLocalRandom.current().nextInt(allUnits.size());
-        var unitToRemove = allUnits.get(randomIndex);
-        units.get(unitToRemove.getStats()).remove(unitToRemove);
-        log.warn("Village is starving! Unit {} starved!", unitToRemove);
+        lostReserve = allUnits.get(random.nextInt(allUnits.size()));
+        units.get(lostReserve.getStats()).remove(lostReserve);
+        village.recordReserveLost();
+        log.warn("Village is starving! Unit {} starved!", lostReserve);
       }
+      writeStarvation(lostTrade, lostReserve);
     }
     healHomePartyWithFood();
     recoverHomeSanity();
     rechargeHomeCasters();
   }
+
+  private void writeStarvation(Optional<Trade> lostTrade, Unit lostReserve) {
+    if (lostTrade.isEmpty() && lostReserve == null) {
+      return;
+    }
+    var line = new StringBuilder("Starvation.");
+    lostTrade.ifPresent(trade -> line.append(" 1 ").append(trade.noun()).append(" lost."));
+    if (lostReserve != null) {
+      line.append(" ")
+          .append(lostReserve.getName())
+          .append(", ")
+          .append(typeName(lostReserve.getStats()))
+          .append(", lost.");
+    }
+    writeLedger(line.toString(), true);
+  }
+
+  private static String typeName(UnitStats stats) {
+    var name = stats.name().replace('_', ' ').toLowerCase();
+    return Character.toUpperCase(name.charAt(0)) + name.substring(1);
+  }
+
+  private void writeLedger(String text, boolean loss) {
+    ledger.add(new LedgerLine(text, loss));
+    while (ledger.size() > LEDGER_LIMIT) {
+      ledger.removeFirst();
+    }
+  }
+
+  /**
+   * Moves one Villager between the Fields and {@code trade} ({@code delta} of +1 or -1). Returns
+   * why it was refused, or empty when it was done.
+   */
+  public Optional<String> assignTrade(Trade trade, int delta) {
+    if (delta == 0 || gameOutcome != GameOutcome.PLAYING) {
+      return Optional.of("Nothing moved.");
+    }
+    return village.assign(trade, delta);
+  }
+
+  /**
+   * Carries the Quarry Heap down with a Party that came home: up to the configured Materials for
+   * each Floor cleared in the Expedition just summed up, into the Vault. A Wipe never calls this.
+   */
+  public void deliverQuarryHeap() {
+    var cleared = lastRunSummary == null ? 0 : lastRunSummary.floorsCleared();
+    var delivered = village.deliverHeap(cleared);
+    if (delivered > 0) {
+      resources.merge(ResourceType.MATERIALS, delivered, Double::sum);
+    }
+  }
+
+  /** Quarry output per tick, before it reaches the Heap. */
+  public double getQuarryRate() {
+    return village.materialsPerTick(highestFloor);
+  }
+
+  /** Scribe output per tick. */
+  public double getStudyRate() {
+    return village.knowledgePerTick(highestFloor);
+  }
+
+  /** Yield of the Quarry and the Study over the base, from the Floors the Village knows. */
+  public double getYieldBonus() {
+    return village.yieldMultiplier(highestFloor) - 1;
+  }
+
+  public double getStockroomCap() {
+    return village.stockroomCap(highestFloor);
+  }
+
+  public double getQuarryHeapCap() {
+    return village.heapCap(highestFloor);
+  }
+
+  public double getHeapDeliveryPerFloor() {
+    return config.getTrades().getHeapDeliveryPerFloorCleared();
+  }
+
+  /** What each Trade holds, its Posts and any Settling, for the assignment rows. */
+  public List<TradeView> getTradeViews() {
+    return Arrays.stream(Trade.values())
+        .map(
+            trade ->
+                new TradeView(
+                    trade.name(),
+                    trade.plural(),
+                    trade.workplace(),
+                    village.hands(trade),
+                    village.posts(trade),
+                    village.settlingHands(trade),
+                    village.settlingSeconds(trade)))
+        .toList();
+  }
+
+  /** The margin after one more or one fewer hand in each non-Fields Trade. */
+  public List<TradePreview> getTradePreviews() {
+    var ceiling = recoveryCeiling();
+    var previews = new ArrayList<TradePreview>();
+    for (var trade : Trade.values()) {
+      if (trade == Trade.TILLER) {
+        continue;
+      }
+      for (var delta : new int[] {1, -1}) {
+        var p = village.preview(trade, delta, getHomeUnitCount(), ceiling);
+        previews.add(
+            new TradePreview(
+                trade.name(),
+                delta,
+                p.fields(),
+                p.upkeep(),
+                p.fieldsCoverUpkeep(),
+                p.pantryHoldSeconds(),
+                p.blocked()));
+      }
+    }
+    return previews;
+  }
+
+  /** The Count: what the Campaign has lost to Starvation. */
+  public TheCount getTheCount() {
+    return new TheCount(village.getVillagersLost(), village.getReservesLost());
+  }
+
+  /** A Trade as the assignment row shows it; {@code posts} is null for the Fields. */
+  public record TradeView(
+      String trade,
+      String plural,
+      String workplace,
+      int hands,
+      Integer posts,
+      int settling,
+      int settlingSeconds) {}
+
+  /** The margin after a move of {@code delta} hands; {@code blocked} is why it cannot be made. */
+  public record TradePreview(
+      String trade,
+      int delta,
+      double fields,
+      double upkeep,
+      boolean fieldsCoverUpkeep,
+      Integer pantryHoldSeconds,
+      String blocked) {}
+
+  public record TheCount(int villagers, int reserves) {}
 
   /**
    * Refills the mana of casters standing by at home, a little each tick. This is the fast, safe
@@ -914,7 +1089,18 @@ public class GameState {
             gameOutcome,
             lastRunSummary,
             village.getFood(),
-            village.getVillagersCount());
+            village.getVillagersCount(),
+            new TradesSnapshot(
+                village.getBreakers(),
+                village.getScribes(),
+                List.copyOf(village.getSettling().get(Trade.TILLER)),
+                List.copyOf(village.getSettling().get(Trade.BREAKER)),
+                List.copyOf(village.getSettling().get(Trade.SCRIBE)),
+                village.getKnowledge(),
+                village.getQuarryHeap(),
+                village.isEmergencyTilling(),
+                village.getVillagersLost(),
+                village.getReservesLost()));
     return new GameSnapshot(campaign, expeditionActive ? expeditionSnapshot() : null);
   }
 
@@ -1068,6 +1254,21 @@ public class GameState {
     state.gameOutcome = c.outcome();
     state.lastRunSummary = c.lastExpeditionSummary();
     state.village.restore(c.villageFood(), c.villagers());
+    var t = c.trades();
+    if (t != null) {
+      state.village.restoreTrades(
+          t.breakers(),
+          t.scribes(),
+          Map.of(
+              Trade.TILLER, t.settlingTillers(),
+              Trade.BREAKER, t.settlingBreakers(),
+              Trade.SCRIBE, t.settlingScribes()),
+          t.knowledge(),
+          t.quarryHeap(),
+          t.emergencyTilling(),
+          t.villagersLost(),
+          t.reservesLost());
+    }
     state.recomputeUnlockedUnits();
 
     var e = snapshot.expedition();

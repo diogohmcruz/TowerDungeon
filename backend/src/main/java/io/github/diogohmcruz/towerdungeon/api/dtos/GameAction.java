@@ -9,5 +9,6 @@ public enum GameAction {
   INVADE,
   EXTRACT,
   REINFORCE,
-  UPGRADE
+  UPGRADE,
+  ASSIGN_TRADE
 }

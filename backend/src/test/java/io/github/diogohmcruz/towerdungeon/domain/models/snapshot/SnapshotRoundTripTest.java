@@ -189,7 +189,8 @@ class SnapshotRoundTripTest {
                 snapshot.campaign().outcome(),
                 snapshot.campaign().lastExpeditionSummary(),
                 snapshot.campaign().villageFood(),
-                snapshot.campaign().villagers()),
+                snapshot.campaign().villagers(),
+                snapshot.campaign().trades()),
             null);
 
     var restored = GameState.restore(stripped, config, random, plan);

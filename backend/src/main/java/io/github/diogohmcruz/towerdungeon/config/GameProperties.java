@@ -42,6 +42,7 @@ public class GameProperties {
   private final Supply supply = new Supply();
   private final Healing healing = new Healing();
   private final Village village = new Village();
+  private final Trades trades = new Trades();
   private final Architecture architecture = new Architecture();
   private final Prestige prestige = new Prestige();
   private final Persistence persistence = new Persistence();
@@ -466,6 +467,45 @@ public class GameProperties {
     private int startingVillagers = 20;
     private double villagerFoodProduction = 0.5;
     private double unitFoodConsumption = 1.0;
+  }
+
+  /** The Villager pool's Trades, their yields, Posts, guards and the Stockroom and Quarry Heap. */
+  @Data
+  public static class Trades {
+    /** Materials one Breaker cuts per tick, before the Highest Floor yield. */
+    private double breakerMaterialsPerTick = 0.25;
+
+    /** Knowledge one Scribe writes per tick, before the Highest Floor yield. */
+    private double scribeKnowledgePerTick = 0.05;
+
+    /** Yield of the Quarry and the Study grows by this share per Highest Floor. */
+    private double yieldPerHighestFloor = 0.02;
+
+    /** Posts a workplace other than the Fields starts with. */
+    private int startingPosts = 10;
+
+    /** Tillers who must stay at the Fields: an assignment limit, not a safeguard. */
+    private int tillerMinimum = 5;
+
+    /** Ticks a moved Villager is Settling, and cannot be moved again. */
+    private int settlingTicks = 10;
+
+    /** Emergency Tilling starts when the Pantry is below this and Upkeep exceeds the Fields. */
+    private double emergencyTillingBelow = 20.0;
+
+    /** Emergency Tilling ends once the Pantry is above this. */
+    private double emergencyTillingAbove = 60.0;
+
+    /** Stockroom capacity of each good is this plus {@code stockroomPerFloor} per Highest Floor. */
+    private double stockroomBase = 60.0;
+
+    private double stockroomPerFloor = 4.0;
+
+    /** Quarry Heap capacity per Highest Floor. */
+    private double heapPerFloor = 10.0;
+
+    /** Materials of the Heap an Extraction delivers per Floor cleared in that Expedition. */
+    private double heapDeliveryPerFloorCleared = 5.0;
   }
 
   /** Floor Architectures: the seeded plan, and the switch for their gameplay effects. */
