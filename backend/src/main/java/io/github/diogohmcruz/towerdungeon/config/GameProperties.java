@@ -19,6 +19,7 @@ public class GameProperties {
   private final Tower tower = new Tower();
   private final Boss boss = new Boss();
   private final Enemies enemies = new Enemies();
+  private final Recruit recruit = new Recruit();
   private final Magic magic = new Magic();
   private final Reinforcements reinforcements = new Reinforcements();
   private final Supply supply = new Supply();
@@ -127,6 +128,16 @@ public class GameProperties {
 
     /** Floor is never emptier than this (keeps at least a token defender). */
     private double minBudget = 1.0;
+  }
+
+  /** How freshly recruited units differ from their type's baseline. */
+  @Data
+  public static class Recruit {
+    /**
+     * Each recruit rolls its health and damage independently and uniformly within this fraction
+     * either side of the type's baseline, e.g. 0.30 = 70% to 130%.
+     */
+    private double strengthSpread = 0.30;
   }
 
   /** Expedition food-carrying capacity. */

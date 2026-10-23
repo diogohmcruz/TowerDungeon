@@ -60,6 +60,8 @@ game:
     min-budget: 1.0
   supply:
     base-max: 100.0
+  recruit:
+    strength-spread: 0.30
   magic:
     max-mana: 5.0
     cost-per-cast: 1.0

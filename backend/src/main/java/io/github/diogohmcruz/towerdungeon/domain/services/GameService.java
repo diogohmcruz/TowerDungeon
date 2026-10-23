@@ -95,7 +95,7 @@ public class GameService {
           var cost = buyActionDTO.unitStats().getCost();
           while (gameState.getSpendableCredit() > cost && quantity > 0) {
             gameState.spendCredit(cost);
-            var unit = gameState.recruit(buyActionDTO.unitStats());
+            var unit = gameState.recruit(buyActionDTO.unitStats(), random);
             newUnits.add(unit);
             quantity--;
           }

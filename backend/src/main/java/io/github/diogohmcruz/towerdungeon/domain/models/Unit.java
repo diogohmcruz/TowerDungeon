@@ -1,5 +1,7 @@
 package io.github.diogohmcruz.towerdungeon.domain.models;
 
+import java.util.random.RandomGenerator;
+
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -13,11 +15,52 @@ public class Unit extends BaseUnit {
 
   private double currentMana = 0.0;
 
+  /** This unit's health relative to its type's baseline (1.0 = average); rolled at recruit. */
+  private double healthFactor = 1.0;
+
+  /** This unit's damage relative to its type's baseline (1.0 = average); rolled at recruit. */
+  private double damageFactor = 1.0;
+
+  /**
+   * When set, recruiting never rolls this unit: it keeps whatever factors its creator preset
+   * (default 1.0). Used for scripted units such as the Founders.
+   */
+  private boolean fixedStrengths = false;
+
   public Unit(UnitStats stats) {
     super();
     this.stats = stats;
     this.setMaxHealth(stats.getHealth());
     this.setCurrentHealth(stats.getHealth());
+  }
+
+  /**
+   * Sets the health factor and resets maximum and current health to the type's health scaled by it.
+   * Meant for a freshly created unit, not one already wounded.
+   */
+  public void setHealthFactor(double healthFactor) {
+    this.healthFactor = healthFactor;
+    var scaled = stats.getHealth() * healthFactor;
+    this.setMaxHealth(scaled);
+    this.setCurrentHealth(scaled);
+  }
+
+  /** Damage of one strike before milestone multipliers: the type's damage scaled by the roll. */
+  public double getDamage() {
+    return stats.getDamage() * damageFactor;
+  }
+
+  /**
+   * Rolls health and damage factors independently and uniformly in {@code [1 - spread, 1 +
+   * spread]}, health first. Does nothing for units with {@link #fixedStrengths} or a non-positive
+   * spread.
+   */
+  public void rollStrengths(RandomGenerator random, double spread) {
+    if (fixedStrengths || spread <= 0) {
+      return;
+    }
+    setHealthFactor(random.nextDouble(1 - spread, 1 + spread));
+    this.damageFactor = random.nextDouble(1 - spread, 1 + spread);
   }
 
   /** Whether this unit casts magic (offensive spells or heals) and therefore draws on mana. */
@@ -63,6 +106,6 @@ public class Unit extends BaseUnit {
   public String toString() {
     return String.format(
         "%s[%s][%.1f/%.1f]",
-        this.getName(), this.stats.name(), this.getCurrentHealth(), this.getStats().getHealth());
+        this.getName(), this.stats.name(), this.getCurrentHealth(), this.getMaxHealth());
   }
 }

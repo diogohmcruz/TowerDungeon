@@ -25,10 +25,17 @@ class PartyCombatTest {
 
   private final GameProperties config = new GameProperties();
   private final GameState state = new GameState(config);
+  private final RandomGenerator random = new SplittableRandom(7);
+
+  {
+    config.getRecruit().setStrengthSpread(0);
+  }
+
   private final PartyCombat combat = new PartyCombat(new SplittableRandom(7));
 
   private Unit recruited(UnitStats stats) {
-    return state.recruit(stats);
+    // These tests pin exact numbers from type stats, so recruits here are unrolled (factor 1.0).
+    return state.recruit(stats, random);
   }
 
   private static Unit wounded(Unit unit, double missing) {

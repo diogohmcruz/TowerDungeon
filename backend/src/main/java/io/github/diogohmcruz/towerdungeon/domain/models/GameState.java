@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Predicate;
+import java.util.random.RandomGenerator;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
@@ -191,9 +192,8 @@ public class GameState {
   public double getHomePartyWounds() {
     double total = 0d;
     for (var entry : units.entrySet()) {
-      var maxHealth = entry.getKey().getHealth();
       for (Unit unit : entry.getValue()) {
-        var missing = maxHealth - unit.getCurrentHealth();
+        var missing = unit.getMaxHealth() - unit.getCurrentHealth();
         if (missing > 0) {
           total += missing;
         }
@@ -485,10 +485,11 @@ public class GameState {
 
   /**
    * Raises a fresh unit at the village. Casters march out with a full mana reserve (drawn from
-   * config); other units carry none.
+   * config); other units carry none. Health and damage strengths are rolled with {@code random}.
    */
-  public Unit recruit(UnitStats unitStats) {
+  public Unit recruit(UnitStats unitStats, RandomGenerator random) {
     var unit = new Unit(unitStats);
+    unit.rollStrengths(random, config.getRecruit().getStrengthSpread());
     if (unit.isCaster()) {
       unit.chargeToFull(config.getMagic().getMaxMana());
     }

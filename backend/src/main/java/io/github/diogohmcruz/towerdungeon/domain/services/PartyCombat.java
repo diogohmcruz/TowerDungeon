@@ -61,7 +61,7 @@ public class PartyCombat {
                 return;
               }
               var target = candidates.get(random.nextInt(candidates.size()));
-              target.receiveAttack(healer.getStats().getDamage(), AttackType.HEAL);
+              target.receiveAttack(healer.getDamage(), AttackType.HEAL);
               healer.spendMana(manaCost);
             });
 
@@ -86,7 +86,7 @@ public class PartyCombat {
               var targetEnemy = targets.get(random.nextInt(targets.size()));
               var wasAlive = !targetEnemy.isDead();
               targetEnemy.receiveAttack(
-                  currentUnit.getStats().getDamage() * damageMultiplier,
+                  currentUnit.getDamage() * damageMultiplier,
                   currentUnit.getStats().getAttackType());
               if (currentUnit.isCaster()) {
                 currentUnit.spendMana(manaCost);

@@ -57,9 +57,9 @@ class FoundersFirstReachTest {
     var founders =
         List.of(
             yuva(),
-            state.recruit(UnitStats.WARRIOR),
-            state.recruit(UnitStats.WARRIOR),
-            state.recruit(UnitStats.ARCHER));
+            state.recruit(UnitStats.WARRIOR, random),
+            state.recruit(UnitStats.WARRIOR, random),
+            state.recruit(UnitStats.ARCHER, random));
     for (var unit : founders) {
       state.getUnitsOnTower().computeIfAbsent(unit.getStats(), _ -> new ArrayList<>()).add(unit);
     }

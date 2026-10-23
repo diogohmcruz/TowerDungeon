@@ -23,7 +23,7 @@ public class RoundRobinFoodDistributionStrategy implements FoodDistributionStrat
     for (var offset = 0; offset < count; offset++) {
       var index = (cursor + offset) % count;
       var unit = homeUnits.get(index);
-      var missing = unit.getStats().getHealth() - unit.getCurrentHealth();
+      var missing = unit.getMaxHealth() - unit.getCurrentHealth();
       if (missing <= 0) {
         continue;
       }
