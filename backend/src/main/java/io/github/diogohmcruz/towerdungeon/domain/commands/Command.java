@@ -105,6 +105,14 @@ public sealed interface Command {
     }
   }
 
+  /** Buy the next level of the Thought-Binding Ring with Trust. */
+  record BuyRing() implements Command {
+    @Override
+    public String kind() {
+      return "BUY_RING";
+    }
+  }
+
   /** Raise the Posts of a Trade for Materials from the Vault. */
   record BuyPosts(Trade trade) implements Command {
     @Override

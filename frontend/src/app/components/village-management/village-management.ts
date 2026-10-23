@@ -51,6 +51,8 @@ export class VillageManagement {
     Math.round(this.gameState().yieldBonus * 100),
   );
   readonly tomes = computed(() => this.gameState().tomeViews);
+  readonly ring = computed(() => this.gameState().ring);
+  readonly trustHeld = computed(() => this.gameState().trustHeld);
   readonly postUpgrades = computed(() => this.gameState().postUpgrades);
   readonly theCount = computed(() => this.gameState().theCount);
   readonly tally = computed(() => this.gameState().tally);
@@ -105,6 +107,10 @@ export class VillageManagement {
 
   onClickBuyTome(tome: TomeId) {
     this.ws.sendAction(GameAction.BUY_TOME, { tome });
+  }
+
+  onClickBuyRing() {
+    this.ws.sendAction(GameAction.BUY_RING);
   }
 
   onClickBuyPosts(trade: TradeId) {

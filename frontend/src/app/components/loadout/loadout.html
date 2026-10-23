@@ -55,6 +55,8 @@
       lastsFullySalted() }} s if fully salted. } }
     </p>
 
+    <p class="loadout-line trust">Trust held: {{ preview().trustHeld }}.</p>
+
     <p class="loadout-line hold" [class.short]="pantryHoldsShort()">
       Setting out takes {{ preview().suppliesTaken | number: '1.0-0' }} Food.
       @if (preview().pantryHoldSeconds === null) { Fields cover Upkeep. } @else

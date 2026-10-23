@@ -19,6 +19,7 @@ describe('Loadout', () => {
     saltUseful: 10,
     saltHeld: 4,
     saltPansOpen: true,
+    trustHeld: 12,
     ...over,
   });
 
@@ -61,6 +62,13 @@ describe('Loadout', () => {
     expect(text()).toContain('Taking 100 Supplies');
     expect(text()).toContain('Setting out takes 100 Food.');
     expect(text()).toContain('Fields cover Upkeep.');
+  });
+
+  it('states the Trust held', () => {
+    load({ trustHeld: 12 });
+    open();
+
+    expect(text()).toContain('Trust held: 12.');
   });
 
   it('states how long the Pantry would hold when Reserves stay home', () => {

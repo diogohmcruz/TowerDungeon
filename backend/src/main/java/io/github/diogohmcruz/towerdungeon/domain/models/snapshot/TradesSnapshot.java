@@ -21,6 +21,8 @@ import io.github.diogohmcruz.towerdungeon.domain.models.Trade;
  * @param salters Villagers in the Salt Pans
  * @param settlingSalters ticks left for each Salter still Settling; null in older saves
  * @param salt Salt in the Stockroom
+ * @param trust Trust held; earned on Extraction only
+ * @param ringLevel levels of the Thought-Binding Ring bought
  */
 public record TradesSnapshot(
     int breakers,
@@ -37,4 +39,6 @@ public record TradesSnapshot(
     Map<Trade, Integer> postLevels,
     int salters,
     List<Integer> settlingSalters,
-    double salt) {}
+    double salt,
+    double trust,
+    int ringLevel) {}

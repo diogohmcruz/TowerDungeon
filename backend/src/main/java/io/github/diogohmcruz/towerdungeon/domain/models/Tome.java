@@ -6,7 +6,8 @@ package io.github.diogohmcruz.towerdungeon.domain.models;
  */
 public enum Tome {
   TILLERS_RECORD("Tillers' Record", "Fields output"),
-  SEAM_CHARTS("Seam Charts", "Breaker output");
+  SEAM_CHARTS("Seam Charts", "Breaker output"),
+  SURVIVORS_NOTES("Survivors' Notes", "Wave Carrying Capacity");
 
   private final String title;
   private final String effect;

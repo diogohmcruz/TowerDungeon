@@ -376,6 +376,7 @@ public class GameService {
           Command.Extract _,
           Command.Resume _,
           Command.BuyTome _,
+          Command.BuyRing _,
           Command.BuyPosts _,
           Command.SendReinforcements _ ->
           false;
@@ -399,6 +400,7 @@ public class GameService {
             case Command.Extract _ -> extract(gameState, playerId);
             case Command.AssignTrade trade -> assignTrade(slot, gameState, playerId, trade);
             case Command.BuyTome tome -> buyTome(slot, gameState, playerId, tome);
+            case Command.BuyRing _ -> buyRing(slot, gameState, playerId);
             case Command.BuyPosts posts -> buyPosts(slot, gameState, playerId, posts);
             case Command.Resume _ -> resume(slot, playerId);
             case Command.SendReinforcements wave ->
@@ -546,6 +548,16 @@ public class GameService {
     }
     slot.emit("TOME_BOUGHT", Map.of("tome", command.tome().name()));
     return CommandResult.applied("The Tome was bought.");
+  }
+
+  private CommandResult buyRing(PlayerSlot slot, GameState gameState, String playerId) {
+    var refused = gameState.buyRing();
+    log.info("Player[{}] Ring -> {}", playerId, refused.orElse("bought"));
+    if (refused.isPresent()) {
+      return CommandResult.rejected(Reason.PURCHASE_REFUSED, refused.get());
+    }
+    slot.emit("RING_BOUGHT", Map.of("level", gameState.getVillage().getRingLevel()));
+    return CommandResult.applied("The Ring was strengthened.");
   }
 
   private CommandResult buyPosts(

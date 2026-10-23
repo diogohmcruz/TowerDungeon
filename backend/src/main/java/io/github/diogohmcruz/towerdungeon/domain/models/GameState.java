@@ -149,6 +149,7 @@ public class GameState {
     this.village = new Village(config.getVillage(), config.getTrades());
     this.tally = new CampaignTally(village.getVillagersCount());
     this.village.setSaltRules(config.getSalt());
+    this.village.setTrustRules(config.getTrust());
   }
 
   /**
@@ -486,7 +487,11 @@ public class GameState {
         waveUnits.entrySet().stream()
             .mapToDouble(entry -> entry.getKey().getSupplyBonus() * entry.getValue().size())
             .sum();
-    var capacity = config.getSupply().getBaseMax() + getSupplyCapacityBonus() + porterBonus;
+    var capacity =
+        config.getSupply().getBaseMax()
+            + getSupplyCapacityBonus()
+            + porterBonus
+            + village.waveCapacityBonus();
     waveUnits.values().stream().flatMap(List::stream).forEach(Unit::forgetFearFloor);
     var food = village.takeFood(capacity);
     reinforcements.add(new Reinforcement(waveUnits, food, capacity));
@@ -508,7 +513,7 @@ public class GameState {
     var partyFloor = tower == null ? 0 : tower.getCurrentFloor();
     var drainPerUnit = config.getLoop().getSupplyDrainPerUnit();
     var starvationDamage = config.getLoop().getStarvationDamage();
-    var climb = config.getReinforcements().getClimbFloorsPerTick();
+    var climb = config.getReinforcements().getClimbFloorsPerTick() + village.waveSpeedBonus();
     var iterator = reinforcements.iterator();
     while (iterator.hasNext()) {
       var wave = iterator.next();
@@ -756,6 +761,34 @@ public class GameState {
     return village.buyTome(tome, highestFloor);
   }
 
+  /** Buys the next level of the Ring with Trust. Returns why not, or empty when bought. */
+  public Optional<String> buyRing() {
+    if (gameOutcome != GameOutcome.PLAYING) {
+      return Optional.of("Nothing bought.");
+    }
+    return village.buyRing();
+  }
+
+  /** Trust held, whole, as the Village panel and the Loadout state it. */
+  public int getTrustHeld() {
+    return (int) Math.floor(village.getTrust());
+  }
+
+  /** The Thought-Binding Ring as the Village panel lists it. */
+  public RingView getRing() {
+    var rules = config.getTrust();
+    return new RingView(
+        village.getRingLevel(),
+        rules.getRingMaxLevel(),
+        village.ringCost(),
+        village.ringMaxed(),
+        village.getRingLevel() * rules.getWaveSpeedPerLevel(),
+        rules.getWaveSpeedPerLevel(),
+        (int) (village.getRingLevel() * rules.getWaveCapacityPerLevel()),
+        (int) rules.getWaveCapacityPerLevel(),
+        village.ringBlocked().orElse(null));
+  }
+
   /** Raises the Posts of {@code trade} for Materials from the Vault. Returns why not, or empty. */
   public Optional<String> buyPosts(Trade trade) {
     if (gameOutcome != GameOutcome.PLAYING) {
@@ -783,7 +816,12 @@ public class GameState {
                     tome.name(),
                     tome.title(),
                     tome.effect(),
-                    (int) Math.round(config.getTrades().getTomeBonusPerLevel() * 100),
+                    tome == Tome.SURVIVORS_NOTES
+                        ? 0
+                        : (int) Math.round(config.getTrades().getTomeBonusPerLevel() * 100),
+                    tome == Tome.SURVIVORS_NOTES
+                        ? (int) config.getTrust().getSurvivorsNotesCapacityPerLevel()
+                        : 0,
                     village.tomeLevel(tome),
                     village.tomeCost(tome),
                     village.tomeGate(tome, highestFloor) != null,
@@ -838,7 +876,8 @@ public class GameState {
         perSalt,
         (int) Math.ceil(taken / perSalt),
         (int) Math.floor(village.getSalt()),
-        isSaltPansOpen());
+        isSaltPansOpen(),
+        getTrustHeld());
   }
 
   /** The Loadout's lines about Supplies. Each later line joins it as one more component. */
@@ -854,7 +893,8 @@ public class GameState {
       double suppliesPerSalt,
       int saltUseful,
       int saltHeld,
-      boolean saltPansOpen) {}
+      boolean saltPansOpen,
+      int trustHeld) {}
 
   /** The Count: what the Campaign has lost to Starvation. */
   public TheCount getTheCount() {
@@ -889,9 +929,25 @@ public class GameState {
       String title,
       String effect,
       int bonusPercent,
+      int bonusFlat,
       int level,
       long cost,
       boolean gated,
+      String blocked) {}
+
+  /**
+   * The Thought-Binding Ring: its level, what the next level costs in Trust and what each level
+   * adds to a Wave. {@code blocked} says why the next level cannot be bought, or is null.
+   */
+  public record RingView(
+      int level,
+      int maxLevel,
+      long cost,
+      boolean maxed,
+      double speedBonus,
+      double speedPerLevel,
+      int capacityBonus,
+      int capacityPerLevel,
       String blocked) {}
 
   /** The next Post upgrade of a workplace and what it costs in Materials. */
@@ -1121,6 +1177,7 @@ public class GameState {
             List.copyOf(runFallen));
     if (!RunSummary.WIPED.equals(outcome)) {
       tally.addFloorsCleared(floorsCleared);
+      village.earnTrust(floorsCleared, survivors, survivors + runUnitsLost);
     }
   }
 
@@ -1496,7 +1553,9 @@ public class GameState {
                 new EnumMap<>(village.getPostLevels()),
                 village.getSalters(),
                 List.copyOf(village.getSettling().get(Trade.SALTER)),
-                village.getSalt()),
+                village.getSalt(),
+                village.getTrust(),
+                village.getRingLevel()),
             List.copyOf(artifactsTaken),
             tally.toSnapshot(),
             villageTier.getLevel(),
@@ -1681,6 +1740,7 @@ public class GameState {
           t.reservesLost());
       state.village.restoreUpgrades(t.tomes(), t.postLevels());
       state.village.restoreSalt(t.salters(), t.salt(), t.settlingSalters());
+      state.village.restoreTrust(t.trust(), t.ringLevel());
     }
     state.tally = new CampaignTally(c.villagers());
     if (c.tally() != null) {

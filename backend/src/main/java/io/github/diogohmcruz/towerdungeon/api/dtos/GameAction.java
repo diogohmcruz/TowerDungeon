@@ -13,5 +13,6 @@ public enum GameAction {
   UPGRADE,
   ASSIGN_TRADE,
   BUY_TOME,
-  BUY_POSTS
+  BUY_POSTS,
+  BUY_RING
 }

@@ -48,6 +48,7 @@ public class GameProperties {
   private final Trades trades = new Trades();
   private final Tiers tiers = new Tiers();
   private final Salt salt = new Salt();
+  private final Trust trust = new Trust();
   private final Architecture architecture = new Architecture();
   private final Prestige prestige = new Prestige();
   private final Persistence persistence = new Persistence();
@@ -756,6 +757,31 @@ public class GameProperties {
      * Drain per Unit per tick of fully salted Supplies, against {@code loop.supplyDrainPerUnit}.
      */
     private double saltedDrainPerUnit = 1.25;
+  }
+
+  /**
+   * Trust, earned on Extraction, and the Thought-Binding Ring it buys. The Ring is a Village
+   * mechanic, not an Artifact.
+   */
+  @Data
+  public static class Trust {
+    /** Levels the Ring can reach; the sink ends here. */
+    private int ringMaxLevel = 5;
+
+    /** Trust the first Ring level costs. */
+    private double ringBaseCost = 10.0;
+
+    /** Each further Ring level costs this many times the one before, rounded up. */
+    private double ringCostGrowth = 1.5;
+
+    /** Floors per tick a Ring level adds to a Reinforcement Wave's climb. */
+    private double waveSpeedPerLevel = 0.25;
+
+    /** Carrying Capacity a Ring level adds to every Wave. */
+    private double waveCapacityPerLevel = 5.0;
+
+    /** Carrying Capacity a level of Survivors' Notes adds to every Wave, and to nothing else. */
+    private double survivorsNotesCapacityPerLevel = 10.0;
   }
 
   /** Floor Architectures: the seeded plan, and the switch for their gameplay effects. */

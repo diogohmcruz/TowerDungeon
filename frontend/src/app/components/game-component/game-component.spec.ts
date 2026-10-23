@@ -84,6 +84,7 @@ describe('GameComponent', () => {
         saltHeld: 2,
         saltUseful: 10,
         saltPansOpen: true,
+        trustHeld: 0,
       },
     });
     component.saltToUse.set(5);

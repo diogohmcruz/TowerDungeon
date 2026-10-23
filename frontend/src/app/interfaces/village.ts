@@ -36,7 +36,7 @@ export interface TradePreview {
   blocked: string | null;
 }
 
-export type TomeId = 'TILLERS_RECORD' | 'SEAM_CHARTS';
+export type TomeId = 'TILLERS_RECORD' | 'SEAM_CHARTS' | 'SURVIVORS_NOTES';
 
 /** A Tome bought with Knowledge. */
 export interface TomeView {
@@ -46,11 +46,30 @@ export interface TomeView {
   effect: string;
   /** Percent of the base each level adds. */
   bonusPercent: number;
+  /** Flat amount each level adds, when it is not a percent (Survivors' Notes). */
+  bonusFlat: number;
   level: number;
   /** Knowledge the next level costs. */
   cost: number;
   /** The Stockroom cannot hold the cost of the next level. */
   gated: boolean;
+  /** Why the next level cannot be bought now; null when it can. */
+  blocked: string | null;
+}
+
+/** The Thought-Binding Ring, bought with Trust. */
+export interface RingView {
+  level: number;
+  maxLevel: number;
+  /** Trust the next level costs. */
+  cost: number;
+  maxed: boolean;
+  /** Floors per second the Ring adds to a Wave's climb now, and per level. */
+  speedBonus: number;
+  speedPerLevel: number;
+  /** Carrying Capacity the Ring adds to every Wave now, and per level. */
+  capacityBonus: number;
+  capacityPerLevel: number;
   /** Why the next level cannot be bought now; null when it can. */
   blocked: string | null;
 }
@@ -106,4 +125,6 @@ export interface LoadoutPreview {
   saltUseful: number;
   saltHeld: number;
   saltPansOpen: boolean;
+  /** Trust held, whole. */
+  trustHeld: number;
 }

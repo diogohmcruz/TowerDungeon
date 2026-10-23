@@ -13,4 +13,5 @@ export enum GameAction {
   ASSIGN_TRADE = 'ASSIGN_TRADE',
   BUY_TOME = 'BUY_TOME',
   BUY_POSTS = 'BUY_POSTS',
+  BUY_RING = 'BUY_RING',
 }

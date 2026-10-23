@@ -71,6 +71,14 @@ public class Village {
   @Setter(AccessLevel.NONE)
   private double salt;
 
+  /** Trust held. It is earned on Extraction, never sold, and spent only on the Ring. */
+  @Setter(AccessLevel.NONE)
+  private double trust;
+
+  /** Levels bought of the Thought-Binding Ring. */
+  @Setter(AccessLevel.NONE)
+  private int ringLevel;
+
   /** The Count: Villagers lost to Starvation this Campaign. */
   @Setter(AccessLevel.NONE)
   private int villagersLost;
@@ -83,6 +91,7 @@ public class Village {
   @JsonIgnore private double unitFoodConsumption;
   @JsonIgnore private GameProperties.Trades trades;
   @JsonIgnore private GameProperties.Salt saltRules = new GameProperties.Salt();
+  @JsonIgnore private GameProperties.Trust trustRules = new GameProperties.Trust();
 
   /** What Emergency Tilling did this tick. {@code moved} is null when no one could be moved. */
   public record EmergencyTillingResult(boolean active, boolean started, Trade moved) {}
@@ -170,6 +179,72 @@ public class Village {
   /** Restores the Salt Pans' hands and the Stockroom's Salt, leaving any Settling as it is. */
   public void restoreSalt(int salters, double salt) {
     restoreSalt(salters, salt, settling.get(Trade.SALTER));
+  }
+
+  /** Restores the Trust held and the Ring's level, which cannot pass its cap. */
+  public void restoreTrust(double trust, int ringLevel) {
+    this.trust = Math.max(0, trust);
+    this.ringLevel = Math.max(0, Math.min(ringLevel, trustRules.getRingMaxLevel()));
+  }
+
+  /**
+   * Earns Trust for an Extraction: one per Floor cleared, scaled by the share of the Party that
+   * came home, so each death lowers it. Returns what was earned.
+   */
+  public double earnTrust(int floorsCleared, int survivors, int partySize) {
+    if (floorsCleared <= 0 || survivors <= 0 || partySize <= 0) {
+      return 0d;
+    }
+    var earned = floorsCleared * (double) Math.min(survivors, partySize) / partySize;
+    trust += earned;
+    return earned;
+  }
+
+  /** Trust the next Ring level costs, whole and rounded up. */
+  public long ringCost() {
+    return (long)
+        Math.ceil(
+            trustRules.getRingBaseCost() * Math.pow(trustRules.getRingCostGrowth(), ringLevel)
+                - 1e-9);
+  }
+
+  public boolean ringMaxed() {
+    return ringLevel >= trustRules.getRingMaxLevel();
+  }
+
+  /** Why the next Ring level cannot be bought now, or empty. */
+  public Optional<String> ringBlocked() {
+    if (ringMaxed()) {
+      return Optional.of("The Ring holds all it can.");
+    }
+    var cost = ringCost();
+    if (trust < cost) {
+      return Optional.of(
+          "Ring " + (ringLevel + 1) + " costs " + cost + ". Trust " + (long) trust + ".");
+    }
+    return Optional.empty();
+  }
+
+  /** Spends Trust on the next Ring level. Returns why not, or empty when bought. */
+  public Optional<String> buyRing() {
+    var blocked = ringBlocked();
+    if (blocked.isPresent()) {
+      return blocked;
+    }
+    trust -= ringCost();
+    ringLevel++;
+    return Optional.empty();
+  }
+
+  /** Floors per tick the Ring adds to a Wave's climb. */
+  public double waveSpeedBonus() {
+    return ringLevel * trustRules.getWaveSpeedPerLevel();
+  }
+
+  /** Carrying Capacity the Ring and Survivors' Notes add to every Wave, and to nothing else. */
+  public double waveCapacityBonus() {
+    return ringLevel * trustRules.getWaveCapacityPerLevel()
+        + tomeLevel(Tome.SURVIVORS_NOTES) * trustRules.getSurvivorsNotesCapacityPerLevel();
   }
 
   private void clampTrades() {

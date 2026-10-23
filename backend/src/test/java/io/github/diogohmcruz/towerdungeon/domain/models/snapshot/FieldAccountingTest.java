@@ -80,14 +80,17 @@ class FieldAccountingTest {
           Map.entry("tomes", "TradesSnapshot.tomes"),
           Map.entry("postLevels", "TradesSnapshot.postLevels"),
           Map.entry("salters", "TradesSnapshot.salters"),
-          Map.entry("salt", "TradesSnapshot.salt"));
+          Map.entry("salt", "TradesSnapshot.salt"),
+          Map.entry("trust", "TradesSnapshot.trust"),
+          Map.entry("ringLevel", "TradesSnapshot.ringLevel"));
 
   private static final Map<String, String> VILLAGE_TRANSIENT =
       Map.of(
           "villagerFoodProduction", "game balance, copied from config on creation",
           "unitFoodConsumption", "game balance, copied from config on creation",
           "trades", "game balance, copied from config on creation",
-          "saltRules", "game balance, copied from config on creation");
+          "saltRules", "game balance, copied from config on creation",
+          "trustRules", "game balance, copied from config on creation");
 
   private static final Map<String, String> TOWER_MAPPED =
       Map.of(

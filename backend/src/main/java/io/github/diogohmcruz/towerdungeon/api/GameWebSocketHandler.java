@@ -179,6 +179,7 @@ public class GameWebSocketHandler implements WebSocketHandler {
         var tome = payload(message, new TypeReference<GameActionDTO<BuyTomeActionDTO>>() {});
         yield new Command.BuyTome(tome == null ? null : tome.tome());
       }
+      case BUY_RING -> new Command.BuyRing();
       case BUY_POSTS -> {
         var posts = payload(message, new TypeReference<GameActionDTO<BuyPostsActionDTO>>() {});
         yield new Command.BuyPosts(posts == null ? null : posts.trade());

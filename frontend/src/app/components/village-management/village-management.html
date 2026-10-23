@@ -165,8 +165,9 @@
     <div class="tome-row" [class.gated]="view.gated">
       <span class="tome-name">{{ view.title }}</span>
       <span class="tome-level"
-        >Level {{ view.level }}: {{ view.effect }} +{{ view.level *
-        view.bonusPercent }}%</span
+        >Level {{ view.level }}: {{ view.effect }} +{{ view.bonusFlat > 0 ?
+        view.level * view.bonusFlat : (view.level * view.bonusPercent) + '%'
+        }}</span
       >
       <button
         class="btn btn-ghost"
@@ -184,6 +185,32 @@
       }
     </div>
     }
+  </div>
+
+  <div class="ring">
+    <h4 class="tomes-title">Thought-Binding Ring</h4>
+    <div class="tome-row">
+      <span class="tome-name">Trust held {{ this.trustHeld() }}</span>
+      <span class="tome-level"
+        >Level {{ this.ring().level }} of {{ this.ring().maxLevel }}: Waves
+        climb +{{ this.ring().speedBonus | number: '1.0-2' }} Floor/s, carry +{{
+        this.ring().capacityBonus }}</span
+      >
+      <button
+        class="btn btn-ghost"
+        type="button"
+        aria-label="Strengthen the Ring"
+        [disabled]="!!this.ring().blocked"
+        (click)="this.onClickBuyRing()"
+      >
+        @if (this.ring().maxed) { Full } @else { Bind ({{ this.ring().cost |
+        number: '1.0-0' }} Trust) }
+      </button>
+      @if (this.ring().blocked) {
+      <span class="tome-note">{{ this.ring().blocked }}</span>
+      }
+    </div>
+    <p class="tome-note">The Ring holds while its wearers live.</p>
   </div>
 
   <div class="posts">

@@ -198,6 +198,7 @@ describe('VillageManagement', () => {
       title: "Tillers' Record",
       effect: 'Fields output',
       bonusPercent: 25,
+      bonusFlat: 0,
       level: 1,
       cost: 90,
       gated: true,
@@ -208,8 +209,20 @@ describe('VillageManagement', () => {
       title: 'Seam Charts',
       effect: 'Breaker output',
       bonusPercent: 25,
+      bonusFlat: 0,
       level: 0,
       cost: 60,
+      gated: false,
+      blocked: null,
+    },
+    {
+      tome: 'SURVIVORS_NOTES',
+      title: "Survivors' Notes",
+      effect: 'Wave Carrying Capacity',
+      bonusPercent: 0,
+      bonusFlat: 10,
+      level: 2,
+      cost: 135,
       gated: false,
       blocked: null,
     },
@@ -252,6 +265,48 @@ describe('VillageManagement', () => {
     ) as HTMLButtonElement;
     expect(gated.disabled).toBeTrue();
     expect(open.disabled).toBeFalse();
+  });
+
+  it("shows Survivors' Notes as a flat Carrying Capacity bonus", () => {
+    load({ tomeViews });
+
+    expect(text()).toContain('Level 2: Wave Carrying Capacity +20');
+  });
+
+  it('shows Trust and the Ring, and sends the purchase', () => {
+    load({
+      trustHeld: 12,
+      ring: {
+        level: 2,
+        maxLevel: 5,
+        cost: 23,
+        maxed: false,
+        speedBonus: 0.5,
+        speedPerLevel: 0.25,
+        capacityBonus: 10,
+        capacityPerLevel: 5,
+        blocked: 'Ring 3 costs 23. Trust 12.',
+      },
+    });
+
+    expect(text()).toContain('Trust held 12');
+    expect(text()).toContain('Level 2 of 5');
+    expect(text()).toContain('Ring 3 costs 23. Trust 12.');
+    const bind = fixture.nativeElement.querySelector(
+      '[aria-label="Strengthen the Ring"]',
+    ) as HTMLButtonElement;
+    expect(bind.disabled).toBeTrue();
+
+    load({
+      trustHeld: 30,
+      ring: { ...stateService.state().ring, blocked: null, cost: 23 },
+    });
+    (
+      fixture.nativeElement.querySelector(
+        '[aria-label="Strengthen the Ring"]',
+      ) as HTMLButtonElement
+    ).click();
+    expect(sendAction).toHaveBeenCalledWith(GameAction.BUY_RING);
   });
 
   it('sends the Tome purchase', () => {

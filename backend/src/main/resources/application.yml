@@ -191,6 +191,13 @@ game:
     per-salter-per-tick: 0.15
     supplies-per-salt: 10.0
     salted-drain-per-unit: 1.25
+  trust:
+    ring-max-level: 5
+    ring-base-cost: 10.0
+    ring-cost-growth: 1.5
+    wave-speed-per-level: 0.25
+    wave-capacity-per-level: 5.0
+    survivors-notes-capacity-per-level: 10.0
   architecture:
     enabled: false
     seed: 362108372306

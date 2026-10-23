@@ -6,6 +6,7 @@ import {
   PostUpgradeView,
   Tally,
   LoadoutPreview,
+  RingView,
   TheCount,
   TomeView,
   TradePreview,
@@ -144,6 +145,9 @@ export interface GameState {
   /** What the Village Tier has opened so far, comma-separated. */
   villageTierOpens: string;
   tomeViews: TomeView[];
+  /** Trust held, whole; earned on Extraction. */
+  trustHeld: number;
+  ring: RingView;
   postUpgrades: PostUpgradeView[];
   ledger: LedgerLine[];
   session?: SessionMeta;
