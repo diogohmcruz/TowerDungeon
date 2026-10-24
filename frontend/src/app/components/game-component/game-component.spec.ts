@@ -5,6 +5,7 @@ import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { ZoomService } from '../../services/zoom.service';
 import { StageService } from '../../services/stage.service';
 import { GameComponent } from './game-component';
+import { cardLayerWidth } from '../../three/stage-view';
 import { GameAction } from '../../interfaces/game-action.enum';
 import { GameStateService } from '../../services/game-state.service';
 import { GameWebSocketService } from '../../services/game-web-socket.service';
@@ -38,7 +39,7 @@ describe('GameComponent', () => {
 
   describe('the full-screen stage', () => {
     const host = () => fixture.nativeElement as HTMLElement;
-    const column = () => host().querySelector('.menu-column') as HTMLElement;
+    const column = () => host().querySelector('.card-layer') as HTMLElement;
     const hidden = () => getComputedStyle(column()).display === 'none';
     const press = (key: string, init: KeyboardEventInit = {}) =>
       document.dispatchEvent(new KeyboardEvent('keydown', { key, ...init }));
@@ -49,12 +50,60 @@ describe('GameComponent', () => {
     });
     afterEach(() => TestBed.inject(StageService).showMenus());
 
-    it('keeps the scene as a fixed full-screen backdrop and the column at its width', () => {
+    it('keeps the scene as a fixed full-screen backdrop and the card layer over its left', () => {
       const tower = getComputedStyle(host().querySelector('app-tower')!);
       expect(tower.position).toBe('fixed');
       expect(tower.zIndex).toBe('0');
-      expect(column().getBoundingClientRect().width).toBe(440);
-      expect(getComputedStyle(column()).marginLeft).toBe('24px');
+      expect(column().getBoundingClientRect().width).toBe(
+        cardLayerWidth(1400, false),
+      );
+      expect(column().getBoundingClientRect().width).toBeGreaterThan(440);
+      expect(getComputedStyle(column()).paddingLeft).toBe('24px');
+    });
+
+    it('flows the cards in a grid of several columns, none reaching into the Tower lane', () => {
+      const columns = getComputedStyle(column()).gridTemplateColumns.split(' ');
+      expect(columns.length).toBeGreaterThanOrEqual(2);
+      const cards = Array.from(
+        host().querySelectorAll<HTMLElement>('.glass-card'),
+      );
+      expect(cards.length).toBeGreaterThan(3);
+      const edge = column().getBoundingClientRect().left + cardLayerWidth(1400, false);
+      for (const card of cards) {
+        expect(card.getBoundingClientRect().right).toBeLessThanOrEqual(edge + 0.5);
+      }
+    });
+
+    it('lets the pointer through the layer and the gaps between cards, but not the cards', () => {
+      expect(getComputedStyle(host()).pointerEvents).toBe('none');
+      expect(getComputedStyle(column()).pointerEvents).toBe('none');
+      const cards = Array.from(
+        host().querySelectorAll<HTMLElement>('.glass-card'),
+      );
+      for (const card of cards) {
+        expect(getComputedStyle(card).pointerEvents).toBe('auto');
+      }
+      // A point in the gap between two cards of one row reaches whatever lies behind.
+      const [a, b] = cards
+        .map((card) => card.getBoundingClientRect())
+        .filter((r, _, all) => Math.abs(r.top - all[0].top) < 1)
+        .slice(0, 2);
+      if (a && b && b.left > a.right) {
+        const x = (a.right + b.left) / 2;
+        const y = a.top + Math.min(a.height, 20) / 2;
+        const hit = document.elementFromPoint(x, y);
+        expect(hit?.closest('.glass-card')).toBeNull();
+      }
+    });
+
+    it('paints a card as glass over a dither scrim, with no blur and nothing between cards', () => {
+      const card = host().querySelector('.glass-card') as HTMLElement;
+      const style = getComputedStyle(card);
+      expect(style.backgroundImage).toContain('conic-gradient');
+      expect(style.backdropFilter).toBe('none');
+      expect(getComputedStyle(column()).backgroundImage).toBe('none');
+      expect(getComputedStyle(host()).backgroundImage).toBe('none');
+      expect(getComputedStyle(host().querySelector('.scrim')!).display).toBe('none');
     });
 
     it('hides and restores the menus with the H key', () => {
@@ -62,7 +111,6 @@ describe('GameComponent', () => {
       press('h');
       fixture.detectChanges();
       expect(hidden()).toBeTrue();
-      expect(getComputedStyle(host().querySelector('.scrim')!).display).toBe('none');
       press('H');
       fixture.detectChanges();
       expect(hidden()).toBeFalse();
@@ -128,11 +176,11 @@ describe('GameComponent', () => {
       expect(hidden()).toBeFalse();
     });
 
-    it('makes the panels translucent over the dither scrim, with no blur', () => {
-      const column_ = getComputedStyle(column());
-      expect(column_.getPropertyValue('--panel')).toContain('calc(0.88 * 100%)');
+    it('makes the cards about 88% opaque', () => {
+      expect(getComputedStyle(host()).getPropertyValue('--panel-glass')).toContain(
+        'calc(0.88 * 100%)',
+      );
       expect(getComputedStyle(host()).getPropertyValue('--panel-opacity')).toBe('0.88');
-      expect(getComputedStyle(host().querySelector('.scrim')!).backdropFilter).toBe('none');
     });
 
     it('takes the full width over a dimmed backdrop on a narrow screen', () => {
@@ -140,14 +188,19 @@ describe('GameComponent', () => {
       stage.setViewport({ width: 900, height: 700 });
       fixture.detectChanges();
       expect(host().classList).toContain('narrow');
-      expect(column().style.width).toBe('');
-      expect(getComputedStyle(column()).marginLeft).toBe('0px');
       expect(column().getBoundingClientRect().width).toBe(
         host().getBoundingClientRect().width,
       );
       const scrim = getComputedStyle(host().querySelector('.scrim')!);
+      expect(scrim.display).toBe('block');
       expect(scrim.width).toBe(`${host().getBoundingClientRect().width}px`);
       expect(scrim.backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
+      // The cards sit on the dim alone, and the launch controls move to the bar.
+      const card = getComputedStyle(host().querySelector('.glass-card')!);
+      expect(card.backgroundImage).not.toContain('conic-gradient');
+      const bar = getComputedStyle(host().querySelector('.launch-bar')!);
+      expect(bar.display).toBe('flex');
+      expect(bar.position).toBe('fixed');
       stage.setViewport({ width: 1400, height: 800 });
       fixture.detectChanges();
       expect(host().classList).not.toContain('narrow');
@@ -464,12 +517,12 @@ describe('GameComponent', () => {
       window.scrollTo(0, 0);
     });
 
-    it('fills the viewport and stays put while the menu column scrolls over it', () => {
+    it('fills the viewport and stays put while the card layer scrolls over it', () => {
       const host: HTMLElement = fixture.nativeElement;
       document.body.appendChild(host);
       document.body.style.margin = '0';
-      // Make the menu column far taller than the viewport.
-      const wrapper = host.querySelector('.menu-column') as HTMLElement;
+      // Make the card layer far taller than the viewport.
+      const wrapper = host.querySelector('.card-layer') as HTMLElement;
       const filler = document.createElement('div');
       filler.style.height = `${window.innerHeight * 3}px`;
       wrapper.appendChild(filler);

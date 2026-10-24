@@ -1,12 +1,9 @@
 :host {
-  display: block;
-  margin: 10px 0;
+  display: contents;
 }
 
 .toll {
-  background: var(--panel);
-  border: 1px solid var(--rule);
-  padding: 8px 12px;
+  padding: 10px 14px;
 
   h3 {
     font-family: var(--font-pixel);

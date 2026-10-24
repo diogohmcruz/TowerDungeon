@@ -198,3 +198,26 @@ button:disabled {
     scroll-behavior: auto !important;
   }
 }
+
+/* A card of the management layer (the Village's interim home for every panel): glass over a
+   dither scrim, painted by the layer (`--glass-bg`, game-component). Inside, panels paint
+   nothing of their own, so the glass is the only translucent layer the text sits on. */
+.glass-card {
+  --panel: transparent;
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 10px 14px;
+  background: var(--glass-bg);
+  border: 1px solid var(--rule);
+  pointer-events: auto;
+}
+
+.glass-card.wide {
+  grid-column: span 2;
+}
+
+@media (max-width: 700px) {
+  .glass-card.wide {
+    grid-column: auto;
+  }
+}

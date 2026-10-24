@@ -1,3 +1,4 @@
+<!-- Narrow screens dim the whole scene behind the cards; wide ones give each card its own dither. -->
 <div class="scrim" aria-hidden="true" [class.menus-hidden]="stage.menusHidden()"></div>
 <button
   type="button"
@@ -28,7 +29,7 @@
   }}
 </button>
 }
-<article class="flex-wrapper menu-column" [class.menus-hidden]="stage.menusHidden()">
+<article class="card-layer" [class.menus-hidden]="stage.menusHidden()">
   <app-expedition-hud
     [tower]="gameState().tower"
     [active]="gameState().expeditionActive"
@@ -41,7 +42,7 @@
   />
   @if (gameOver()) {
   <section
-    class="campaign-banner"
+    class="campaign-banner glass-card wide"
     [class.victory]="gameWon()"
     [class.defeat]="gameLost() || gameLeft()"
   >
@@ -67,7 +68,7 @@
     }
   </section>
   } @if (session()?.held && !zoom.holding()) {
-  <section class="held-party">
+  <section class="held-party glass-card">
     <p>The Party has not moved.</p>
     <button class="btn" (click)="resume()">Resume</button>
   </section>
@@ -83,27 +84,27 @@
     (begin)="beginGeneration()"
   />
   } @else {
-  <hr />
-
   <app-village-management />
-  <hr />
 
   @if (gameState().forecast; as forecast) {
   <app-toll-bar [forecast]="forecast" (leave)="exodus()" />
   }
 
-  <section class="hire-list">
-    @for (unit of units(); track unit[0]) {
-    <app-unit-card
-      [type]="unit[0]"
-      [stats]="mapStringToUnit(unit[0])"
-      [count]="reserveCount(unit[0])"
-      (buy)="sendBuyAction($event)"
-    />
-    }
+  <section class="hire glass-card wide">
+    <h3>Units to hire</h3>
+    <div class="hire-list">
+      @for (unit of units(); track unit[0]) {
+      <app-unit-card
+        [type]="unit[0]"
+        [stats]="mapStringToUnit(unit[0])"
+        [count]="reserveCount(unit[0])"
+        (buy)="sendBuyAction($event)"
+      />
+      }
+    </div>
   </section>
-  <hr />
 
+  <section class="expedition-card glass-card">
   <section class="expedition-start">
     <h3>Start Floor</h3>
     <label class="start-option">
@@ -139,22 +140,27 @@
     [(panacea)]="panaceaChosen"
   />
 
-  <button
-    (click)="this.sendInvadeAction()"
-    [disabled]="!launch.setOut().usable"
-  >
-    Set out
-  </button>
-  <button (click)="this.extract()" [disabled]="!launch.extractControl().usable">
-    Extract
-  </button>
-  <button
-    (click)="this.sendReinforcements()"
-    [disabled]="!launch.wave().usable"
-    title="Send every Reserve up after the Party. They carry supplies from the Pantry and climb from the Base. If their supplies run out before they catch up, climbers are lost."
-  >
-    Send Reinforcement Wave
-  </button>
+  <div class="launch-buttons">
+    <button
+      (click)="this.sendInvadeAction()"
+      [disabled]="!launch.setOut().usable"
+    >
+      Set out
+    </button>
+    <button
+      (click)="this.extract()"
+      [disabled]="!launch.extractControl().usable"
+    >
+      Extract
+    </button>
+    <button
+      (click)="this.sendReinforcements()"
+      [disabled]="!launch.wave().usable"
+      title="Send every Reserve up after the Party. They carry supplies from the Pantry and climb from the Base. If their supplies run out before they catch up, climbers are lost."
+    >
+      Send Reinforcement Wave
+    </button>
+  </div>
 
   @if (gameState().expeditionActive) {
   <section class="run-hud">
@@ -184,16 +190,19 @@
       to the Pantry.
     </p>
   </section>
-  } @if (!gameState().expeditionActive && gameState().lastRunSummary) {
-  <app-run-summary-card [summary]="gameState().lastRunSummary!" />
   } @if (gameState().homePartyWounds > 0) {
   <p class="home-heal">
     Recovery: {{ gameState().homePartyWounds | number: '1.0-0' }} hp to heal,
     about {{ gameState().foodHealRate | number: '1.0-0' }} hp/s from the Pantry.
   </p>
   }
+  </section>
 
-  <section class="upgrade-panel">
+  @if (!gameState().expeditionActive && gameState().lastRunSummary) {
+  <app-run-summary-card [summary]="gameState().lastRunSummary!" />
+  }
+
+  <section class="upgrade-panel glass-card wide">
     <h3>Upgrades</h3>
     <div class="upgrade-list">
       @for (up of gameState().availableUpgrades; track up.id) {
@@ -206,7 +215,7 @@
     </div>
   </section>
 
-  <section class="milestone-panel">
+  <section class="milestone-panel glass-card wide">
     <h3>
       Milestones
       <span class="progress-note">
@@ -221,7 +230,7 @@
     </div>
   </section>
 
-  <section class="shortcut-panel">
+  <section class="shortcut-panel glass-card wide">
     <h3>
       Shortcuts
       <span class="progress-note">
@@ -240,15 +249,16 @@
     </div>
   </section>
 
-  <hr />
-
-  <app-army
-    [army]="gameState().units"
-    [atHome]="!gameOver()"
-    [sporesHeld]="sporesHeld()"
-    (remedy)="giveRemedy($event)"
-    (reattach)="reattachPart($event)"
-  />
+  <section class="army-panel glass-card wide">
+    <h3>Army</h3>
+    <app-army
+      [army]="gameState().units"
+      [atHome]="!gameOver()"
+      [sporesHeld]="sporesHeld()"
+      (remedy)="giveRemedy($event)"
+      (reattach)="reattachPart($event)"
+    />
+  </section>
   }
 </article>
 

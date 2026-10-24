@@ -20,7 +20,7 @@ describe('Tower', () => {
     expect(component).toBeTruthy();
   });
 
-  it('no longer carries the Expedition HUD, which lives in the menu column', () => {
+  it('no longer carries the Expedition HUD, which lives in the card layer', () => {
     fixture.componentRef.setInput('active', true);
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;

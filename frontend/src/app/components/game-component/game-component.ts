@@ -10,13 +10,15 @@ import { LaunchService } from '../../services/launch.service';
 import { StageService } from '../../services/stage.service';
 import { ZoomService } from '../../services/zoom.service';
 import {
-  MENU_MARGIN,
-  MENU_WIDTH,
+  CARD_GAP,
+  CARD_MARGIN,
+  CARD_MIN_WIDTH,
+  cardLayerWidth,
   NARROW_DIM,
   PANEL_OPACITY,
   SCRIM_DITHER,
-  SCRIM_FADE,
   SCRIM_TONE,
+  TOP_BAR,
 } from '../../three/stage-view';
 import { GameStateService } from '../../services/game-state.service';
 import { GameWebSocketService } from '../../services/game-web-socket.service';
@@ -63,13 +65,15 @@ import { ListView } from '../list-view/list-view';
   styleUrls: ['./game-component.scss'],
   host: {
     '[class.narrow]': 'stage.narrow()',
-    '[style.--menu-width.px]': 'MENU_WIDTH',
-    '[style.--menu-margin.px]': 'MENU_MARGIN',
+    '[style.--card-layer-width.px]': 'layerWidth()',
+    '[style.--card-margin.px]': 'CARD_MARGIN',
+    '[style.--card-gap.px]': 'CARD_GAP',
+    '[style.--card-min.px]': 'CARD_MIN_WIDTH',
+    '[style.--top-bar.px]': 'TOP_BAR',
     '[style.--panel-opacity]': 'PANEL_OPACITY',
     '[style.--scrim-tone]': 'SCRIM_TONE',
     '[style.--scrim-dither]': 'SCRIM_DITHER',
     '[style.--scrim-dim]': 'NARROW_DIM',
-    '[style.--scrim-fade.px]': 'SCRIM_FADE',
     '[style.--dither-cell.px]': 'stage.scale()',
     '(document:keydown)': 'onKey($event)',
   },
@@ -77,13 +81,18 @@ import { ListView } from '../list-view/list-view';
 export class GameComponent implements OnDestroy {
   protected readonly stage = inject(StageService);
   protected readonly zoom = inject(ZoomService);
-  protected readonly MENU_WIDTH = MENU_WIDTH;
-  protected readonly MENU_MARGIN = MENU_MARGIN;
+  protected readonly CARD_MARGIN = CARD_MARGIN;
+  protected readonly CARD_GAP = CARD_GAP;
+  protected readonly CARD_MIN_WIDTH = CARD_MIN_WIDTH;
+  protected readonly TOP_BAR = TOP_BAR;
+  /** How far right the cards reach: past it lies the Tower's lane, clear of cards. */
+  protected readonly layerWidth = computed(() =>
+    cardLayerWidth(this.stage.viewport().width, this.stage.narrow()),
+  );
   protected readonly PANEL_OPACITY = PANEL_OPACITY;
   protected readonly SCRIM_TONE = SCRIM_TONE;
   protected readonly SCRIM_DITHER = SCRIM_DITHER;
   protected readonly NARROW_DIM = NARROW_DIM;
-  protected readonly SCRIM_FADE = SCRIM_FADE;
 
   ngOnDestroy(): void {
     // Leaving the page releases a closeup's hold.

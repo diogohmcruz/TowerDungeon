@@ -1,53 +1,23 @@
 :host {
   /* The scene (app-tower) is a fixed, full-screen backdrop. This host holds only
-     the menu column, which scrolls over it; the rest of the screen is the picture
-     and takes the pointer. The numbers come from three/stage-view.ts. */
+     the card layer, a grid of translucent cards in front of it. The space between
+     the cards takes no pointer, so the scene stays visible and clickable there.
+     The numbers come from three/stage-view.ts. */
   display: block;
   position: relative;
   min-height: 100vh;
   pointer-events: none;
-  /* Panels are this opaque over the scrim (a test holds the contrast at 7:1). */
+  /* Cards are this opaque over their own scrim (a test holds the contrast at 7:1). */
   --panel-glass: color-mix(
     in srgb,
     var(--panel) calc(var(--panel-opacity) * 100%),
     transparent
   );
-  --void-glass: color-mix(
-    in srgb,
-    var(--void) calc(var(--panel-opacity) * 100%),
-    transparent
-  );
-}
-
-.menu-column {
-  position: relative;
-  z-index: 2;
-  width: var(--menu-width);
-  min-height: 100vh;
-  margin: 0 0 0 var(--menu-margin);
-  padding: 12px;
-  pointer-events: auto;
-  background: var(--void-glass);
-  /* Everything in the column that paints the panel colour paints it translucent. */
-  --panel: var(--panel-glass);
-
-  &.menus-hidden {
-    display: none;
-  }
-}
-
-/* An ordered-dither scrim (no blur) darkens the scene behind the column: a flat
-   tone, a 50% checker of the virtual pixel's size, and a sparser band beyond it. */
-.scrim {
-  position: fixed;
-  z-index: 1;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  width: calc(var(--menu-margin) * 2 + var(--menu-width));
-  pointer-events: none;
-  image-rendering: pixelated;
-  background:
+  /* What a card paints, top to bottom: its glass, then an ordered-dither scrim (no blur):
+     a 50% checker of the virtual pixel's size over a flat tone, so the scene shows through
+     darkened and the text keeps 7:1. Nothing is painted between cards. */
+  --glass-bg:
+    linear-gradient(var(--panel-glass), var(--panel-glass)),
     conic-gradient(
         color-mix(in srgb, var(--void) calc(var(--scrim-dither) * 100%), transparent) 0 25%,
         transparent 0 50%,
@@ -56,24 +26,52 @@
       )
       0 0 / calc(var(--dither-cell) * 2) calc(var(--dither-cell) * 2),
     color-mix(in srgb, var(--void) calc(var(--scrim-tone) * 100%), transparent);
+}
 
-  &::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 100%;
-    width: var(--scrim-fade);
-    background: conic-gradient(
-        color-mix(in srgb, var(--void) calc(var(--scrim-dither) * 100%), transparent) 0 25%,
-        transparent 0
-      )
-      0 0 / calc(var(--dither-cell) * 2) calc(var(--dither-cell) * 2);
+/* A grid across the width left of the Tower's lane: the lane keeps the bell and the
+   recall lamp clear of cards. Child components render their cards straight into it. */
+.card-layer {
+  position: relative;
+  z-index: 2;
+  box-sizing: border-box;
+  width: var(--card-layer-width);
+  min-height: 100vh;
+  padding: var(--top-bar) 0 24px var(--card-margin);
+  pointer-events: none;
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(min(var(--card-min), 100%), 1fr)
+  );
+  gap: var(--card-gap);
+  align-items: start;
+  align-content: start;
+  grid-auto-flow: dense;
+
+  > app-expedition-hud,
+  > app-village-management,
+  > app-toll-bar,
+  > app-succession-screen {
+    display: contents;
+  }
+
+  > app-run-summary-card {
+    display: block;
+    grid-column: span 2;
+    margin: 0;
+    pointer-events: auto;
+    --panel: transparent;
+    --card-bg: var(--glass-bg);
   }
 
   &.menus-hidden {
     display: none;
   }
+}
+
+/* The narrow layout's dim: the whole scene, flat. Wide screens have none. */
+.scrim {
+  display: none;
 }
 
 .menus-toggle {
@@ -100,38 +98,42 @@
   right: 340px;
 }
 
-/* The launch controls on narrow screens, where the picture is dimmed behind the menus. */
+/* The launch controls on narrow screens, where the picture is dimmed behind the cards. */
 .launch-bar {
   display: none;
 }
 
-/* Below about 1100 px the menus take the full width over a dimmed backdrop. */
+/* Below about 1100 px the cards take the full width over a dimmed backdrop. */
 :host(.narrow) {
-  .menu-column {
+  /* The dim does the darkening; a card is its glass alone. */
+  --glass-bg: linear-gradient(var(--panel-glass), var(--panel-glass));
+
+  .card-layer {
     width: 100%;
-    margin: 0;
-    padding-bottom: 96px;
-    background: transparent;
+    padding: var(--top-bar) var(--card-margin) 96px;
   }
 
   .scrim {
-    width: 100%;
+    display: block;
+    position: fixed;
+    z-index: 1;
+    inset: 0;
+    pointer-events: none;
     background: color-mix(in srgb, var(--void) calc(var(--scrim-dim) * 100%), transparent);
 
-    &::after {
+    &.menus-hidden {
       display: none;
     }
   }
 
   .launch-bar {
-    display: block;
+    display: flex;
     position: fixed;
     z-index: 3;
     left: 0;
     right: 0;
     bottom: 0;
     pointer-events: auto;
-    display: flex;
     flex-wrap: wrap;
     gap: 8px;
     padding: 8px 12px;
@@ -158,8 +160,7 @@
   justify-content: space-between;
   gap: 12px;
   padding: 10px 14px;
-  margin: 0 0 10px;
-  border: 1px solid var(--ember);
+  border-color: var(--ember);
 
   p {
     margin: 0;
@@ -168,11 +169,21 @@
   }
 }
 
+.hire,
+.army-panel {
+  h3 {
+    font-family: var(--font-pixel);
+    font-size: 12px;
+    color: var(--bone);
+    margin: 0 0 8px;
+    text-transform: uppercase;
+  }
+}
+
 .hire-list {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin: 6px 0;
 
   app-unit-card {
     flex: 1 1 140px;
@@ -181,10 +192,15 @@
   }
 }
 
+.launch-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0;
+}
+
 .campaign-banner {
   padding: 14px 18px;
-  margin: 0 0 10px;
-  border: 1px solid var(--rule);
   text-align: center;
 
   h2 {
@@ -270,7 +286,6 @@
 }
 
 .upgrade-panel {
-  margin: 10px 0;
 
   h3 {
     font-family: var(--font-pixel);
@@ -293,7 +308,6 @@
 }
 
 .milestone-panel {
-  margin: 10px 0;
 
   h3 {
     font-family: var(--font-pixel);
@@ -326,7 +340,6 @@
 }
 
 .expedition-start {
-  margin: 10px 0;
 
   h3 {
     font-family: var(--font-pixel);
@@ -351,7 +364,6 @@
 }
 
 .shortcut-panel {
-  margin: 10px 0;
 
   h3 {
     font-family: var(--font-pixel);

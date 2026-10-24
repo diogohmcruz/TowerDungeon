@@ -1,4 +1,4 @@
-<section class="village-panel">
+<section class="village-panel glass-card wide">
   <header class="village-header">
     <h3>Stock</h3>
     @if (yearLine(); as line) {
@@ -198,6 +198,39 @@
     </p>
   </div>
 
+  <div class="village-actions">
+    <button class="btn btn-primary" (click)="this.onClickBuyVillager()">
+      Take in Villager
+    </button>
+    <button class="btn btn-ghost" (click)="this.onClickSellFood()">
+      Sell Food
+    </button>
+    <button
+      class="btn btn-ghost"
+      [disabled]="this.materials() <= 0"
+      (click)="this.onClickSellMaterials()"
+    >
+      Sell Materials
+    </button>
+    <button
+      class="btn btn-ghost"
+      [disabled]="this.relics() <= 0"
+      (click)="this.onClickSellRelics()"
+    >
+      Sell Relics
+    </button>
+    <button
+      class="btn btn-ghost"
+      [disabled]="this.gameState().village.salt < 1"
+      title="Surplus Salt sells for 2 Credits each: a loss against Farming, a way to empty a full Stockroom."
+      (click)="this.onClickSellSalt()"
+    >
+      Sell Salt
+    </button>
+  </div>
+</section>
+
+<section class="village-panel glass-card">
   <div class="tomes">
     <h4 class="tomes-title">Tomes</h4>
     @for (view of this.tomes(); track view.tome) {
@@ -301,34 +334,4 @@
   </ul>
   }
 
-  <div class="village-actions">
-    <button class="btn btn-primary" (click)="this.onClickBuyVillager()">
-      Take in Villager
-    </button>
-    <button class="btn btn-ghost" (click)="this.onClickSellFood()">
-      Sell Food
-    </button>
-    <button
-      class="btn btn-ghost"
-      [disabled]="this.materials() <= 0"
-      (click)="this.onClickSellMaterials()"
-    >
-      Sell Materials
-    </button>
-    <button
-      class="btn btn-ghost"
-      [disabled]="this.relics() <= 0"
-      (click)="this.onClickSellRelics()"
-    >
-      Sell Relics
-    </button>
-    <button
-      class="btn btn-ghost"
-      [disabled]="this.gameState().village.salt < 1"
-      title="Surplus Salt sells for 2 Credits each: a loss against Farming, a way to empty a full Stockroom."
-      (click)="this.onClickSellSalt()"
-    >
-      Sell Salt
-    </button>
-  </div>
 </section>

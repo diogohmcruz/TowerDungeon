@@ -11,7 +11,7 @@ import { ZoomService } from '../../services/zoom.service';
 
 /**
  * The Expedition HUD (architecture doc 5.5): the Floor, the carried loot, Supplies, the
- * Party and the enemies, sticky at the top of the menu column. Absent outside an Expedition.
+ * Party and the enemies, a card of the management layer. Absent outside an Expedition.
  */
 @Component({
   selector: 'app-expedition-hud',
