@@ -27,15 +27,15 @@ The passage from a campaign that has ended (by victory, defeat, or exodus) to th
 _Avoid_: Reset, new game
 
 **Generation**:
-One campaign in a lineage: the first campaign is generation 1, and each prestige begins the next. Planned.
+One campaign in a lineage: the first campaign is generation 1, and each prestige begins the next.
 _Avoid_: Run, cycle, loop, new game plus
 
 **Toll**:
-What a campaign's tally is worth in legacy when it ends. Planned.
+What a campaign's tally is worth in legacy when it ends.
 _Avoid_: Prestige bar, score, XP
 
 **Legacy**:
-The currency a campaign leaves behind when it ends, spent on the roll. Planned.
+The currency a campaign leaves behind when it ends, spent on the roll.
 _Avoid_: Prestige points, soul, essence
 
 **Roll**:
@@ -47,19 +47,19 @@ A single permanent benefit on the roll, with a stable id. Muster Roll (resend th
 _Avoid_: Blessing, perk, talent
 
 **Succession**:
-The moment between two generations when the toll is settled, the roll is spent, and the next generation's choices are made. Planned.
+The moment between two generations when the toll is settled, the roll is spent, and the next generation's choices are made.
 _Avoid_: Prestige screen, new game screen
 
 **Chronicle**:
-The permanent record of every ended campaign: its generation, outcome, toll, and the names of the fallen. Planned.
+The permanent record of every ended campaign: its generation, outcome, toll, and the names of the fallen.
 _Avoid_: History, save log
 
 **Race record**:
-One plain line per Race in a player's real Campaign, shown in its own section of the Chronicle screen: the date, the Highest Floor, the place among the Contenders, the time and the Units fallen. The Chronicle's entry covers ended campaigns only, so this is a separate section; it gives no Legacy, no Toll and no effect on play. Planned.
+One plain line per Race in a player's real Campaign, shown in its own section of the Chronicle screen: the date, the Highest Floor, the place among the Contenders, the time and the Units fallen. The Chronicle's entry covers ended campaigns only, so this is a separate section; it gives no Legacy, no Toll and no effect on play.
 _Avoid_: Score, rating, rank
 
 **Order of Arrival** and **Cost**:
-The two columns of a Race result, always side by side and never added: who reached the Finish Floor first (the rest by Highest Floor, then earlier arrival), and what the climb spent (Expeditions, Wipes, Units lost, Loot banked at sell prices). Equal times are tied, and Cost never breaks a tie. Planned.
+The two columns of a Race result, always side by side and never added: who reached the Finish Floor first (the rest by Highest Floor, then earlier arrival), and what the climb spent (Expeditions, Wipes, Units lost, Loot banked at sell prices). Equal times are tied, and Cost never breaks a tie.
 _Avoid_: Score, rank, rating
 
 ### The tower
@@ -97,11 +97,11 @@ Ten consecutive floors closed by a guardian floor. Planned.
 _Avoid_: Zone, region, chapter, band
 
 **Door**:
-The sealed way above the floor beneath the summit; until the roll holds the inheritance that opens it, the summit cannot be reached. Planned.
+The sealed way above the floor beneath the summit; until the roll holds the inheritance that opens it, the summit cannot be reached.
 _Avoid_: Gate, barrier, final lock
 
 **Tower Memory**:
-The hardening of the tower with each generation: garrisons and guardians return stronger after earlier campaigns. Planned.
+The hardening of the tower with each generation: garrisons and guardians return stronger after earlier campaigns.
 _Avoid_: Scaling, difficulty creep, new game plus
 
 **Mutation**:
@@ -171,7 +171,7 @@ What a party takes when it sets out: its supplies and the consumables chosen in 
 _Avoid_: Kit, pack list, inventory
 
 **Ledger**:
-The village's plain record of what happened: each expedition summary is one entry, and losses are written down as plainly as gains. Planned.
+The village's plain record of what happened: each expedition summary is one entry, and losses are written down as plainly as gains.
 _Avoid_: Log, journal, history
 
 **Expedition Summary**:
@@ -213,7 +213,7 @@ Buying a new unit of an unlocked type with credits; the new unit joins the reser
 _Avoid_: Buy, hire, raise, enlist
 
 **Founder**:
-One of the four units a campaign begins with, already in the reserves: the conscript Yuva (a Warrior, five times as strong in the first generation only), two more Warriors, and an Archer. Founders are ordinary units under every rule except that Yuva is not rolled and has no phobias; the word marks where they came from. Planned.
+One of the four units a campaign begins with, already in the reserves: the conscript Yuva (a Warrior, five times as strong in the first generation only), two more Warriors, and an Archer. Founders are ordinary units under every rule except that Yuva is not rolled and has no phobias; the word marks where they came from.
 _Avoid_: Starter, initial unit, starting party
 
 **Reserves**:
@@ -396,63 +396,63 @@ The village's permanent store of banked credits, materials, and relics, which on
 _Avoid_: Treasury, wallet, resources, bank, stockpile
 
 **Trade**:
-The work a villager does in the village: tilling the fields (which grows food), cutting stone in the quarry, or copying in the scribe's study; later salting and tending spores. Every villager works one trade. Planned.
+The work a villager does in the village: tilling the fields (which grows food), cutting stone in the quarry, or copying in the scribe's study; later salting and tending spores. Every villager works one trade.
 _Avoid_: Role, job, worker class
 
 **Port**:
-The village's landing on the shore. Its footing and a short pier appear once the campaign has completed 12 expeditions, and it is finished by spending Materials and Credits from the Vault. It is where the Boat docks. Planned.
+The village's landing on the shore. Its footing and a short pier appear once the campaign has completed 12 expeditions, and it is finished by spending Materials and Credits from the Vault. It is where the Boat docks.
 _Avoid_: Harbour, dock, quay
 
 **Boat**:
-The vessel that docks at the finished Port a fixed time after the Port is finished, bringing the Arrivals. Once docked it stays, and sails Voyages. Planned.
+The vessel that docks at the finished Port a fixed time after the Port is finished, bringing the Arrivals. Once docked it stays, and sails Voyages.
 _Avoid_: Ship, ferry, caravan
 
 **Arrivals**:
-The named group that steps off the Boat into the reserves: Iscale (a Draco Metamorph), his silent assistant (a Porter), the pyromancer (a Mage) and the battle maiden (a Tank). Like the Founders they are ordinary units under every rule, and the word marks where they came from. Any unit type they carry that was not yet recruitable becomes recruitable from then on. Planned.
+The named group that steps off the Boat into the reserves: Iscale (a Draco Metamorph), his silent assistant (a Porter), the pyromancer (a Mage) and the battle maiden (a Tank). Like the Founders they are ordinary units under every rule, and the word marks where they came from. Any unit type they carry that was not yet recruitable becomes recruitable from then on.
 _Avoid_: Newcomers, reinforcements (reserved for reinforcement waves)
 
 **Voyage**:
-One round trip of the Boat, lasting one Quarter in real time. Relics loaded at departure come back as Salt or Spores at a fixed rate, unless the sea takes the cargo. The chance of loss is taken once, at departure, from the Year, so the player chooses when to sail. Planned.
+One round trip of the Boat, lasting one Quarter in real time. Relics loaded at departure come back as Salt or Spores at a fixed rate, unless the sea takes the cargo. The chance of loss is taken once, at departure, from the Year, so the player chooses when to sail.
 _Avoid_: Trade route, trip, run (reserved for an expedition)
 
 **Year**:
-The village's cycle of weather: four Quarters in a fixed length, counted only in connected lifecycle ticks, beginning in Spring at the start of each generation and saved with the campaign. Trials have none. Planned.
+The village's cycle of weather: four Quarters in a fixed length, counted only in connected lifecycle ticks, beginning in Spring at the start of each generation and saved with the campaign. Trials have none.
 _Avoid_: Calendar, cycle, day
 
 **Quarter**:
-One of the four equal parts of the Year: Spring, Summer, Autumn and Winter. Spring eases the drains on Sanity, Summer eases the drain on Supplies, Autumn raises what the Fields yield, and Winter raises Attrition. The danger at sea rises and falls across the Year as a wave, lowest in mid-Summer and highest in mid-Winter. No Quarter lowers Food or adds to Starvation. Planned.
+One of the four equal parts of the Year: Spring, Summer, Autumn and Winter. Spring eases the drains on Sanity, Summer eases the drain on Supplies, Autumn raises what the Fields yield, and Winter raises Attrition. The danger at sea rises and falls across the Year as a wave, lowest in mid-Summer and highest in mid-Winter. No Quarter lowers Food or adds to Starvation.
 _Avoid_: Season (reserved for the long Trial race), month, weather
 
 **Strongbox**:
-At Village Tier IV, the building that shows and sells credits alone, after the vault is split. At lower tiers the vault annex shows credits, materials and relics together. Planned.
+At Village Tier IV, the building that shows and sells credits alone, after the vault is split. At lower tiers the vault annex shows credits, materials and relics together.
 _Avoid_: Bank, treasury, wallet
 
 **Reliquary**:
-At Village Tier IV, the building that shows and sells relics alone, after the vault is split. Planned.
+At Village Tier IV, the building that shows and sells relics alone, after the vault is split.
 _Avoid_: Shrine, relic store
 
 **Wall of Names**:
-At Village Tier IV, the building that lists the fallen units, so the scribe's study keeps only the ledger. Planned.
+At Village Tier IV, the building that lists the fallen units, so the scribe's study keeps only the ledger.
 _Avoid_: Memorial, graveyard
 
 **Stone of Count**:
-At Village Tier IV, the stone that shows the toll forecast and offers the exodus, so the reference pillar keeps only the highest floor and the milestones. Its words are "The Tower keeps count." Planned.
+At Village Tier IV, the stone that shows the toll forecast and offers the exodus, so the reference pillar keeps only the highest floor and the milestones. Its words are "The Tower keeps count."
 _Avoid_: Scoreboard, tally board
 
 **Stockroom**:
-The village's store of goods its own villagers make (salt, dragon spores, knowledge). Unlike the vault, trades fill it and extraction does not. Planned.
+The village's store of goods its own villagers make (salt, dragon spores, knowledge). Unlike the vault, trades fill it and extraction does not.
 _Avoid_: Storehouse, warehouse, inventory
 
 **Quarry Heap**:
-Materials the quarry has cut but not yet delivered; extraction delivers them to the vault, and a wipe delivers none. Planned.
+Materials the quarry has cut but not yet delivered; extraction delivers them to the vault, and a wipe delivers none.
 _Avoid_: Stockpile, quarry stock
 
 **Knowledge**:
-What scribes produce in the scribe's study, kept in the stockroom and spent on lasting improvements to the village's trades. Planned.
+What scribes produce in the scribe's study, kept in the stockroom and spent on lasting improvements to the village's trades.
 _Avoid_: Lore, research, XP
 
 **Salt**:
-A village-made good that slows supplies drain when carried as treated supplies, and that dissolves a chymus insect's mucus as a counter packed for the fight. Planned.
+A village-made good that slows supplies drain when carried as treated supplies, and that dissolves a chymus insect's mucus as a counter packed for the fight.
 _Avoid_: Preservative, rock salt
 
 **Dragon Spores**:
@@ -478,9 +478,9 @@ A free, one-time reward granted automatically when the campaign reaches a highes
 _Avoid_: Achievement, campaign milestone, story event
 
 **Tally**:
-The never-spent counters of a campaign's deeds (food grown, loot banked, highest floor, guardians slain); they raise the village tier and fill the toll. Planned.
+The never-spent counters of a campaign's deeds (food grown, loot banked, highest floor, guardians slain); they raise the village tier and fill the toll.
 _Avoid_: Lifetime ledger, stats, score
 
 **Village Tier**:
-The village's progression level, from I to IV, raised by its tally; it opens trades and buildings. Always written in full, because tier on its own is avoided. Planned.
+The village's progression level, from I to IV, raised by its tally; it opens trades and buildings. Always written in full, because tier on its own is avoided.
 _Avoid_: Tier (on its own), standing, settlement tier, level
