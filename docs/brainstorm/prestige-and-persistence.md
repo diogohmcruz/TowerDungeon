@@ -288,7 +288,7 @@ Everything the Village does is counted in the **Campaign Ledger**. Counters only
 Highest Floor is recorded on arrival (`recordFloorReached`), so a Wipe still pays Ascent for Floors reached. That is deliberate: the Wipe already costs all the Loot, and pushing to die higher is a real gamble.
 
 ```
-S  = sum over 5 counters of  M_i * sqrt(c_i / p_i)  +  0.4 * max(0, min(HighestFloor,99) - B)  +  1.5 * G
+S  = sum over 5 counters of  M_i * sqrt(c_i / p_i)  +  2.0 * max(0, min(HighestFloor,99) - B)  +  1.5 * G
 T  = S * (1 + 0.05 * min(L, 8))  +  Residue
 NG = max(0, G - G_best)                       // "New Ground": Guardians beyond the lifetime best
 P  = floor(T / 9) + NG + Offering             // Legacy gained
@@ -305,9 +305,9 @@ Residue_next = T mod 9                        // the remainder is never lost
 | Materials banked | 6 | 17,000 |
 | Credits banked | 3 | 6,800 |
 | Relics banked | 4 | 320 |
-| Expeditions completed | 3 | 17 |
+| Expeditions completed | 22 | 17 |
 
-The Ascent weight is 0.4 per Floor (39.6 at most) and Guardians 1.5 each (15 at most). **The par values are fitted to a modelled first Campaign and must be refitted after the first real playtest.** The Materials and Credits pars are consistent with the real loot: 17 Expeditions banking 17,000 Materials and 6,800 Credits is about 1,000 Materials and 400 Credits each, which is what clearing roughly Floors 1 to 20 (or 15 to 30) pays (Floors 1 to 20 is 1,350 Materials and 420 Credits by the loot formulas). The Relic par of 320 has no such check: Relics come only from surplus items, so it must be refitted once real surplus rates are known.
+The Ascent weight is 2.0 per Floor (198 at most) and Guardians 1.5 each (15 at most). The Ascent and Expeditions weights were refitted to the pacing table of 3.12 (#117, `docs/research/toll-and-roll-fit.md`); the figures of the sanity checks and of 3.10 below were worked out before that refit and are the old model. **The par values are fitted to a modelled Campaign and must be refitted after the first real playtest.** The Materials and Credits pars are consistent with the real loot: 17 Expeditions banking 17,000 Materials and 6,800 Credits is about 1,000 Materials and 400 Credits each, which is what clearing roughly Floors 1 to 20 (or 15 to 30) pays (Floors 1 to 20 is 1,350 Materials and 420 Credits by the loot formulas). The Relic par of 320 has no such check: Relics come only from surplus items, so it must be refitted once real surplus rates are known.
 
 Sanity checks:
 
@@ -549,7 +549,7 @@ game:
     points-divisor: 9.0
     min-points-to-exodus: 3
     defeat-pity: { points: 1, min-qualifying-expeditions: 3 }
-    ascent-marks-per-floor: 0.4
+    ascent-marks-per-floor: 2.0
     guardian-marks: 1.5
     qualifying-expedition-floors: 3
     door-floor: 99
@@ -560,7 +560,7 @@ game:
       materials-banked: { marks: 6.0, par: 17000 }
       credits-banked:   { marks: 3.0, par: 6800 }
       relics-banked:    { marks: 4.0, par: 320 }
-      expeditions:      { marks: 3.0, par: 17 }
+      expeditions:      { marks: 22.0, par: 17 }
     course-gates: { 2: 5, 3: 12, 4: 21 }
     roll: { cost-scale: 1.0 }        # the one knob for retuning every Inheritance cost
     dowry: { credits: 80, materials: 40, relics: 3 }
@@ -590,9 +590,9 @@ The climb is slow and the Tower stays unknown. Each Generation reaches a little 
 | 4 | 16 | 6 |
 | 5 | 21 | 8 |
 | 6 | 27 | 10 |
-| 7 to 12 | steady growth to Floor 99 | 10 to 14 |
+| 7 to 12 | steady growth to Floor 99 | 10 to 29 (the Roll is spent by Generation 9) |
 
-The table is now data: `backend/src/test/resources/balance/pacing-table.json` holds Generations 1 to 12 (Highest Floor, Legacy, the Roll bought at the start, and a reference plan with a rationale per row), and `PacingTableTest` checks it is complete, monotonic, buys the Roll legally and is paid for by its own Generation's Expeditions at the config loot and sell prices. Generations 7 to 12 read 34, 42, 52, 64, 78 and 100 Floors with 10, 10, 11, 12, 13 and 14 Legacy; Blood of the Door is bought at the start of Generation 6 and the 55 Legacy of the v1 Roll are spent by Generation 9.
+The table is now data: `backend/src/test/resources/balance/pacing-table.json` holds Generations 1 to 12 (Highest Floor, Legacy, the Roll bought at the start, and a reference plan with a rationale per row), and `PacingTableTest` checks it is complete, monotonic, buys the Roll legally and is paid for by its own Generation's Expeditions at the config loot and sell prices. Generations 7 to 12 read 34, 42, 52, 64, 78 and 100 Floors with 10, 13, 15, 18, 21 and 29 Legacy (the Toll cannot pay the flat 10 to 14 of the first draft past Generation 7: see `docs/research/toll-and-roll-fit.md`); Blood of the Door is bought at the start of Generation 6 and the 55 Legacy of the v1 Roll are spent by Generation 9.
 
 These figures are placeholders until the scaling pass measures them, but their shape is the target: the first Generation reaches Floor 5 to 7, Blood of the Door (6 Legacy, behind the gate of 12 Legacy spent) is bought in about Generation 6 or 7, the whole Roll (64 Legacy) by about Generation 9, and the summit falls in about Generation 12. The Toll's `par` values and the Roll's prices are refit so each row's Legacy comes out of the Toll and Exodus stays reachable (forecast of at least 3 Legacy) in Generation 1.
 

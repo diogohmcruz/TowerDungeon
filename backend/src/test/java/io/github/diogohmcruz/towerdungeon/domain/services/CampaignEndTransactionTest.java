@@ -335,7 +335,21 @@ class CampaignEndTransactionTest {
   }
 
   @Test
-  void aDefeatPaysThePityFloorWithThreeExpeditions() {
+  void aDefeatWithThreeExpeditionsPaysTheirOwnFirstLegacyWithoutNeedingThePity() {
+    spent();
+    state().setExpeditionsCompleted(3);
+
+    service.gameLoop();
+
+    // 22 * sqrt(3 / 17) = 9.2 Marks is already one Legacy: the pity floor has nothing to add.
+    assertThat(state().getPending().legacy()).isEqualTo(1);
+    assertThat(state().getPending().pity()).isFalse();
+    assertThat(service.playerMeta(PLAYER).legacy()).isEqualTo(1);
+  }
+
+  @Test
+  void aDefeatPaysThePityFloorWithThreeExpeditionsWhenTheTollFallsShort() {
+    state().getConfig().getPrestige().getCounters().getExpeditions().setMarks(3.0);
     spent();
     state().setExpeditionsCompleted(3);
 

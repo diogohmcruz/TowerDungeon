@@ -292,7 +292,7 @@
     {
       "generation": 8,
       "highestFloor": 42,
-      "legacy": 10,
+      "legacy": 13,
       "rationale": "Hard-Won Habits pre-grants the Milestones, so Relic Lore and the Captain come free from the first Expedition. Floor 42 is past the Floor 40 Chymus Insect.",
       "rollBuysAtStart": [
         "HARD_WON_HABITS"
@@ -344,7 +344,7 @@
     {
       "generation": 9,
       "highestFloor": 52,
-      "legacy": 11,
+      "legacy": 15,
       "rationale": "Open Breach and Offering Stone held: the whole v1 Roll (55 Legacy) is spent by the start of this Generation. Floor 52 is past the Floor 50 Stone Golem.",
       "rollBuysAtStart": [
         "THE_OPEN_BREACH",
@@ -399,7 +399,7 @@
     {
       "generation": 10,
       "highestFloor": 64,
-      "legacy": 12,
+      "legacy": 18,
       "rationale": "Floor 64 is past the Floor 60 Necromancer. Both repeatable Upgrades near their last levels; Rogues are 30% of the Party.",
       "rollBuysAtStart": [],
       "plan": {
@@ -451,7 +451,7 @@
     {
       "generation": 11,
       "highestFloor": 78,
-      "legacy": 13,
+      "legacy": 21,
       "rationale": "Floor 78 stops short of the Floor 80 Dragon, the hardest fight, which this Generation sets up for the next.",
       "rollBuysAtStart": [],
       "plan": {
@@ -503,7 +503,7 @@
     {
       "generation": 12,
       "highestFloor": 100,
-      "legacy": 14,
+      "legacy": 29,
       "rationale": "The summit: Floor 99 through the Door, then the Floor 100 Guardian. A Party near the 80 Units that 3.11's sizing rule asks of a 20,000 hp Dragon.",
       "rollBuysAtStart": [],
       "plan": {
