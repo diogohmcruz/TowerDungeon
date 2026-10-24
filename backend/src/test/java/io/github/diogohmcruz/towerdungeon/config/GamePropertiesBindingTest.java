@@ -59,4 +59,28 @@ class GamePropertiesBindingTest {
     assertThat(shipped.getVillageCharter()).isEqualTo(defaults.getVillageCharter());
     assertThat(shipped.getHeir()).isEqualTo(defaults.getHeir());
   }
+
+  @Test
+  void theShippedCurvesOfFloorsSixToOneHundredMatchTheDefaults() throws IOException {
+    var shipped = bound();
+    var defaults = new GameProperties();
+
+    assertThat(shipped.getEnemies().getBudgetCurve())
+        .isEqualTo(defaults.getEnemies().getBudgetCurve())
+        .containsKeys(50, 59, 60, 80, 100);
+    assertThat(shipped.getEnemies().getTierMinCurve())
+        .isEqualTo(defaults.getEnemies().getTierMinCurve());
+    assertThat(shipped.getEnemies().getTierMaxCurve())
+        .isEqualTo(defaults.getEnemies().getTierMaxCurve());
+    assertThat(shipped.getEnemies().getSurgeMultiplierUpper())
+        .isEqualTo(defaults.getEnemies().getSurgeMultiplierUpper());
+    assertThat(shipped.getEnemies().getCurveFromFloor())
+        .isEqualTo(defaults.getEnemies().getCurveFromFloor())
+        .isEqualTo(6);
+    assertThat(shipped.getBoss().getHealthCurve()).isEqualTo(defaults.getBoss().getHealthCurve());
+    assertThat(shipped.getLoop().getSupplyDrainCurve())
+        .isEqualTo(defaults.getLoop().getSupplyDrainCurve());
+    assertThat(shipped.getSupply().getCarryMultiplier())
+        .isEqualTo(defaults.getSupply().getCarryMultiplier());
+  }
 }

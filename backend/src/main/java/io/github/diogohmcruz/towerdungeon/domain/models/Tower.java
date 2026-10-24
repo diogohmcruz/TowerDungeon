@@ -8,6 +8,7 @@ import java.util.Set;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
+import io.github.diogohmcruz.towerdungeon.config.FloorCurve;
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
 import io.github.diogohmcruz.towerdungeon.domain.models.architecture.ArchitecturePlan;
 import io.github.diogohmcruz.towerdungeon.domain.random.FloorStreams;
@@ -179,7 +180,9 @@ public class Tower {
     if (towerFloor.isBoss()) {
       towerFloor.populateBoss(bossConfig, enemiesConfig, streams);
     } else {
-      towerFloor.populateEnemies(enemyBudget(floor, streams), streams, enemiesConfig);
+      var window = tierWindow(floor, towerFloor.getDifficulty());
+      towerFloor.populateEnemies(
+          enemyBudget(floor, streams), streams, enemiesConfig, window[0], window[1]);
       towerFloor.addRisen(floorMemory.risenOn(floor), streams, enemiesConfig);
     }
     return towerFloor;
@@ -192,18 +195,46 @@ public class Tower {
    */
   public double easedBaseBudget(int floor) {
     var e = enemiesConfig;
-    var budget =
-        e.getBaseBudget()
-            + floor * e.getBudgetPerFloor()
-            + (double) floor * floor * e.getQuadraticPerFloor();
-    budget *= gentleMultiplier(floor);
+    double budget;
+    if (e.curveGoverns(floor)) {
+      budget = FloorCurve.at(e.getBudgetCurve(), floor);
+    } else {
+      budget =
+          e.getBaseBudget()
+              + floor * e.getBudgetPerFloor()
+              + (double) floor * floor * e.getQuadraticPerFloor();
+      budget *= gentleMultiplier(floor);
+    }
     if (e.getSurgeInterval() > 0 && floor % e.getSurgeInterval() == 0) {
-      budget *= e.getSurgeMultiplier();
+      budget *= e.curveGoverns(floor) ? e.getSurgeMultiplierUpper() : e.getSurgeMultiplier();
     }
     budget *= easingFactor(easingStepsFor(floor));
     budget *= Math.pow(1 + e.getStepBudgetPerBoss(), stepUpsFor(floor));
     budget *= e.getMemoryBudget();
     return budget;
+  }
+
+  /**
+   * The enemy tiers a regular floor draws its garrison from, as {@code [lowest, highest + 1)}: the
+   * floor's difficulty from the first tier on Floors 1 to 5, and the window of the tier curves from
+   * {@code curve-from-floor} on. Every slain Guardian above thins both ends by the Easing's tiers,
+   * as it thins the difficulty.
+   */
+  private int[] tierWindow(int floor, int difficulty) {
+    var e = enemiesConfig;
+    if (!e.curveGoverns(floor)
+        || (e.getTierMaxCurve().isEmpty() && e.getTierMinCurve().isEmpty())) {
+      return new int[] {0, difficulty};
+    }
+    var eased = e.getEaseDifficultyPerBoss() * e.getEaseMultiplier() * easingStepsFor(floor);
+    var tiers = EnemyStats.values().length;
+    var highest =
+        e.getTierMaxCurve().isEmpty()
+            ? difficulty
+            : (int) Math.clamp(FloorCurve.at(e.getTierMaxCurve(), floor) - eased, 1, tiers);
+    var lowest =
+        (int) Math.clamp(FloorCurve.at(e.getTierMinCurve(), floor) - eased, 0, highest - 1);
+    return new int[] {lowest, highest};
   }
 
   /**

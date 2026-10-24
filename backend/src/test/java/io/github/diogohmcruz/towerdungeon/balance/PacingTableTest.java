@@ -153,8 +153,10 @@ class PacingTableTest {
       var plan = row.plan();
       var expected =
           props.getSupply().getBaseMax()
-              + 60 * plan.count(UnitStats.PORTER)
-              + 25 * plan.level(UpgradeType.SUPPLY_LINES)
+              + props.getSupply().getCarryMultiplier()
+                  * (UnitStats.PORTER.getSupplyBonus() * plan.count(UnitStats.PORTER)
+                      + UpgradeType.SUPPLY_LINES.getCapacityPerLevel()
+                          * plan.level(UpgradeType.SUPPLY_LINES))
               + table.assumptions().relicLoreCapacity()
               + (plan.inheritances().contains(InheritanceType.HEAVIER_PACKS)
                   ? props.getPrestige().getRoll().getHeavierPacks().getCapacity()

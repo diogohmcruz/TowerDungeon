@@ -8,6 +8,7 @@ import java.util.stream.IntStream;
 
 import org.junit.jupiter.api.Test;
 
+import io.github.diogohmcruz.towerdungeon.config.FloorCurve;
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
 import io.github.diogohmcruz.towerdungeon.domain.models.architecture.Architecture;
 import io.github.diogohmcruz.towerdungeon.domain.models.architecture.ArchitecturePlan;
@@ -185,8 +186,14 @@ class TowerTest {
     }
   }
 
+  /** The formula that sets Floors 1 to 5 as measured. */
   private static double undiscountedBudget(int floor) {
     return 3.0 + 0.8 * floor + 0.04 * floor * floor;
+  }
+
+  /** The curve that sets Floors 6 to 100: no discount, the anchors read between. */
+  private static double curvedBudget(int floor) {
+    return FloorCurve.at(new GameProperties().getEnemies().getBudgetCurve(), floor);
   }
 
   @Test
@@ -197,14 +204,14 @@ class TowerTest {
     tower.moveToNextFloor();
 
     var floorOne = (int) Math.ceil(undiscountedBudget(1) * 0.5);
-    var floorNine = (int) Math.ceil(undiscountedBudget(9) * (0.5 + 0.5 * 8 / 9) * 1.0);
     assertThat(slimesOnFloor(tower, 1)).isEqualTo(floorOne);
     assertThat(floorOne).isLessThan((int) Math.ceil(undiscountedBudget(1)));
     // Floor 5 is a surge floor: the discount applies before the surge multiplier.
     assertThat(slimesOnFloor(tower, 5))
         .isEqualTo((int) Math.ceil(undiscountedBudget(5) * (0.5 + 0.5 * 4 / 9) * 1.5));
-    assertThat(slimesOnFloor(tower, 9)).isEqualTo(floorNine);
-    assertThat(slimesOnFloor(tower, 11)).isEqualTo((int) Math.ceil(undiscountedBudget(11)));
+    // From Floor 6 the curve sets the budget outright, with no first-reach discount left to fade.
+    assertThat(slimesOnFloor(tower, 9)).isEqualTo((int) Math.ceil(curvedBudget(9)));
+    assertThat(slimesOnFloor(tower, 11)).isEqualTo((int) Math.ceil(curvedBudget(11)));
   }
 
   @Test
@@ -219,7 +226,7 @@ class TowerTest {
     twoSteps.markBossCleared(10);
     twoSteps.startNewRunAt(11);
 
-    var base = undiscountedBudget(11);
+    var base = curvedBudget(11);
     assertThat(slimesOnFloor(plain, 11)).isEqualTo((int) Math.ceil(base));
     assertThat(slimesOnFloor(oneStep, 11)).isEqualTo((int) Math.ceil(base * 1.15));
     assertThat(slimesOnFloor(twoSteps, 11)).isEqualTo((int) Math.ceil(base * 1.15 * 1.15));
@@ -231,7 +238,7 @@ class TowerTest {
     tower.markBossCleared(20);
     tower.startNewRunAt(11);
 
-    assertThat(slimesOnFloor(tower, 11)).isEqualTo((int) Math.ceil(undiscountedBudget(11) * 0.75));
+    assertThat(slimesOnFloor(tower, 11)).isEqualTo((int) Math.ceil(curvedBudget(11) * 0.75));
   }
 
   @Test

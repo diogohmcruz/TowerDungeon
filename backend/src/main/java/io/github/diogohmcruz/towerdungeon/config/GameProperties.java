@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 
 import org.springframework.beans.BeanUtils;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -30,6 +31,15 @@ import lombok.NoArgsConstructor;
 @Data
 @ConfigurationProperties(prefix = "game")
 public class GameProperties {
+  /** A curve's anchors from Floor and value pairs, in Floor order. */
+  static Map<Integer, Double> curve(Object... pairs) {
+    var anchors = new TreeMap<Integer, Double>();
+    for (var i = 0; i < pairs.length; i += 2) {
+      anchors.put(((Number) pairs[i]).intValue(), ((Number) pairs[i + 1]).doubleValue());
+    }
+    return anchors;
+  }
+
   private final Start start = new Start();
   private final Loop loop = new Loop();
   private final Reward reward = new Reward();
@@ -309,6 +319,20 @@ public class GameProperties {
     private long invasionTickMs = 10;
     private double supplyDrainPerUnit = 1.5;
     private double starvationDamage = 5.0;
+
+    /**
+     * What the Supplies drain per Unit is multiplied by on a Floor: anchors by Floor, read by
+     * {@link FloorCurve}. Empty, or a Floor above 5 with no anchor below it, is 1. The Floors 1 to
+     * 5 stay at 1, as measured; deeper Floors are fought in fewer, heavier ticks, so the Party eats
+     * less per tick there.
+     */
+    private Map<Integer, Double> supplyDrainCurve =
+        curve(5, 1.0, 10, 0.7, 20, 0.6, 30, 0.5, 50, 0.33, 80, 0.17, 100, 0.13);
+
+    /** The drain multiplier of {@code floor} (1 when the curve has no say). */
+    public double supplyDrainAt(int floor) {
+      return supplyDrainCurve.isEmpty() ? 1d : FloorCurve.at(supplyDrainCurve, floor);
+    }
   }
 
   /** Credit and loot granted for clearing floors, and vault sell prices back in the village. */
@@ -337,6 +361,28 @@ public class GameProperties {
     private double healthBaseMultiplier = 3.0;
     private double healthMultiplierPerFloor = 0.05;
     private double damageMultiplier = 1.25;
+
+    /**
+     * A Guardian's total health by Floor, before Tower Memory, as anchors read by {@link
+     * FloorCurve}. When empty a Guardian has its archetype's health times {@code
+     * healthBaseMultiplier + healthMultiplierPerFloor x Floor}. The archetype still sets its
+     * weaknesses, its damage and its Body Parts; only the total is the curve's.
+     */
+    private Map<Integer, Double> healthCurve =
+        curve(
+            10, 575.0, 20, 825.0, 30, 1225.0, 40, 970.0, 50, 590.0, 60, 1455.0, 70, 7025.0, 80,
+            2150.0, 90, 2140.0, 100, 2100.0);
+
+    /**
+     * What the archetype's own health is multiplied by on {@code floor}, before Tower Memory.
+     *
+     * @param archetypeHealth the health of the Guardian's archetype
+     */
+    public double healthMultiplierAt(int floor, double archetypeHealth) {
+      return healthCurve.isEmpty()
+          ? healthBaseMultiplier + healthMultiplierPerFloor * floor
+          : FloorCurve.at(healthCurve, floor) / archetypeHealth;
+    }
 
     /**
      * Tower Memory: a Guardian's total health is multiplied by this last, before it is divided
@@ -388,6 +434,45 @@ public class GameProperties {
 
     /** Random swing applied to the budget, e.g. 0.25 = ±25%. */
     private double variance = 0.25;
+
+    /**
+     * The first Floor the curves below govern. Floors under it keep the formula above, as measured
+     * (Floors 1 to 5); from it on the garrison budget, the tier window and the surge come from the
+     * curves, when a curve has anchors.
+     */
+    private int curveFromFloor = 6;
+
+    /**
+     * The garrison budget by Floor from {@link #curveFromFloor}, as anchors read by {@link
+     * FloorCurve}, replacing {@code baseBudget + budgetPerFloor x floor + quadraticPerFloor x
+     * floor^2}. Easing, step-ups, Tower Memory and the surge still apply on top.
+     */
+    private Map<Integer, Double> budgetCurve =
+        curve(
+            5, 6.5, 10, 9.2, 20, 17.8, 30, 24.8, 40, 30.0, 50, 38.0, 59, 45.1, 60, 46.0, 70, 52.0,
+            80, 58.0, 90, 60.0, 100, 65.0);
+
+    /**
+     * The cheapest enemy tier a regular Floor's garrison draws from (0 is a Slime), by Floor from
+     * {@link #curveFromFloor}. Empty means every tier from the first, as on Floors 1 to 5.
+     */
+    private Map<Integer, Double> tierMinCurve =
+        curve(6, 0.0, 30, 0.0, 40, 1.0, 50, 2.0, 60, 3.0, 100, 3.0);
+
+    /**
+     * The dearest tier (exclusive) a regular Floor draws from, by Floor from {@link
+     * #curveFromFloor}. Empty means the Floor's difficulty, as on Floors 1 to 5.
+     */
+    private Map<Integer, Double> tierMaxCurve =
+        curve(6, 1.5, 20, 2.8, 30, 3.7, 40, 4.6, 50, 5.0, 100, 5.0);
+
+    /** The surge multiplier on surge Floors from {@link #curveFromFloor}. */
+    private double surgeMultiplierUpper = 1.15;
+
+    /** Whether the garrison budget of {@code floor} comes from the curve. */
+    public boolean curveGoverns(int floor) {
+      return !budgetCurve.isEmpty() && floor >= curveFromFloor;
+    }
 
     /** Every Nth floor is a denser "surge" floor (0 disables surges). */
     private int surgeInterval = 5;
@@ -804,6 +889,12 @@ public class GameProperties {
   @Data
   public static class Supply {
     private double baseMax = 100.0;
+
+    /**
+     * What the Porters and Supply Lines carry is multiplied by this (the base and the Milestones
+     * are not). Raised so a Party can carry what the Floors beyond the fifth cost it.
+     */
+    private double carryMultiplier = 3.0;
   }
 
   /**
