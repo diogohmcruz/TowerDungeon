@@ -1,7 +1,17 @@
 import * as THREE from 'three';
 
 import { FigureInstance } from './figure-layout';
-import { figureId, figureRect, parseFigureId, pickFigure } from './figure-pick';
+import { SHOTS, ShotName } from '../camera-shots';
+import { applyStageView } from '../stage-view';
+import {
+  figureId,
+  figureRect,
+  hitRect,
+  parseFigureId,
+  PICK_MARGIN,
+  PICK_MIN_SIZE,
+  pickFigure,
+} from './figure-pick';
 
 const W = 800;
 const H = 600;
@@ -48,9 +58,9 @@ describe('figure picking', () => {
     expect(pickFigure(cam, marks, W / 2, H / 2, W, H)).toBeNull();
   });
 
-  it('picks the front-most of two overlapping figures', () => {
+  it('picks the front-most of two figures that overlap exactly', () => {
     const cam = camera();
-    const marks = [figure('unit-1', 0, 0), figure('enemy-2', 0.1, 1)];
+    const marks = [figure('unit-1', 0, 0), figure('enemy-2', 0, 1)];
     expect(pickFigure(cam, marks, W / 2, H / 2, W, H)?.id).toBe('enemy-2');
   });
 
@@ -63,5 +73,112 @@ describe('figure picking', () => {
     cam.updateMatrixWorld();
     const after = figureRect(cam, f, W, H);
     expect(after.left).not.toBeCloseTo(before.left, 1);
+  });
+
+  describe('the hit area on the real stage', () => {
+    const SCREEN_W = 1440;
+    const SCREEN_H = 900;
+
+    /** The camera of a Shot as the scene frames it: the Tower region view offset and the spread. */
+    function shotCamera(name: ShotName): THREE.PerspectiveCamera {
+      const shot = SHOTS[name];
+      const cam = new THREE.PerspectiveCamera(shot.fov, 1, 0.1, 200);
+      cam.position.set(0, shot.camUp, shot.distance);
+      cam.lookAt(0, shot.lookUp, 0);
+      applyStageView(cam, SCREEN_W, SCREEN_H, false, shot.spread);
+      cam.updateProjectionMatrix();
+      cam.updateMatrixWorld();
+      return cam;
+    }
+
+    /** Party figures of the size the layout gives them, standing at the Shot's look-at height. */
+    function party(name: ShotName): FigureInstance[] {
+      const y = SHOTS[name].lookUp;
+      return [-0.6, -0.3, 0, 0.3, 0.6].map((x, i) => ({
+        id: `unit-${i + 1}`,
+        cell: 0,
+        x,
+        y,
+        z: 0,
+        w: 0.22,
+        h: 0.3,
+        role: 0,
+      }));
+    }
+
+    for (const shot of ['battle', 'closeup'] as ShotName[]) {
+      for (const scale of [2, 3, 4]) {
+        it(`picks a click anywhere on a figure as the ${shot} draws it at pixel scale ${scale}`, () => {
+          const cam = shotCamera(shot);
+          const sprites = party(shot);
+          // The canvas rasterises on a grid of `scale` CSS px: the drawn figure fills whole cells,
+          // so it reaches up to one cell past the projected rectangle on every side.
+          const down = (v: number) => Math.floor(v / scale) * scale;
+          const up = (v: number) => Math.ceil(v / scale) * scale;
+          for (const f of sprites) {
+            const r = figureRect(cam, f, SCREEN_W, SCREEN_H);
+            const xs = [
+              down(r.left) + 0.5,
+              (r.left + r.right) / 2,
+              up(r.right) - 0.5,
+            ];
+            const ys = [
+              down(r.top) + 0.5,
+              (r.top + r.bottom) / 2,
+              up(r.bottom) - 0.5,
+            ];
+            for (const x of xs) {
+              for (const y of ys) {
+                const hit = pickFigure(cam, [f], x, y, SCREEN_W, SCREEN_H, {
+                  margin: PICK_MARGIN + scale,
+                });
+                expect(hit?.id).toBe(f.id);
+              }
+            }
+          }
+        });
+      }
+    }
+
+    it('gives a battle figure, which is smaller than a fingertip, a hit area of its own', () => {
+      const cam = shotCamera('battle');
+      const f = party('battle')[2];
+      const r = figureRect(cam, f, SCREEN_W, SCREEN_H);
+      expect(r.right - r.left).toBeLessThan(PICK_MIN_SIZE);
+      const hit = hitRect(r);
+      expect(hit.right - hit.left).toBeGreaterThanOrEqual(PICK_MIN_SIZE);
+      expect(hit.bottom - hit.top).toBeGreaterThanOrEqual(PICK_MIN_SIZE);
+      // The middle of the drawn bounds stays the middle of the hit area.
+      expect((hit.left + hit.right) / 2).toBeCloseTo((r.left + r.right) / 2, 6);
+    });
+
+    it('still reads a click well clear of every figure as empty space', () => {
+      const cam = shotCamera('battle');
+      expect(
+        pickFigure(cam, party('battle'), 40, 40, SCREEN_W, SCREEN_H),
+      ).toBeNull();
+    });
+
+    it('gives a click between two close figures to the nearer one, whatever their depth', () => {
+      const cam = shotCamera('battle');
+      const a = party('battle')[2];
+      // The other figure is in front, but the click is on a's side of the gap between them.
+      const front: FigureInstance = {
+        ...a,
+        id: 'enemy-9',
+        z: 2,
+        x: a.x + 0.05,
+      };
+      const ra = figureRect(cam, a, SCREEN_W, SCREEN_H);
+      const rf = figureRect(cam, front, SCREEN_W, SCREEN_H);
+      const x = (ra.left + ra.right) / 2 + 0.5;
+      const y = (ra.top + ra.bottom) / 2;
+      expect(Math.abs(x - (ra.left + ra.right) / 2)).toBeLessThan(
+        Math.abs(x - (rf.left + rf.right) / 2),
+      );
+      expect(pickFigure(cam, [front, a], x, y, SCREEN_W, SCREEN_H)?.id).toBe(
+        a.id,
+      );
+    });
   });
 });

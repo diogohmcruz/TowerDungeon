@@ -51,6 +51,7 @@ import {
   figureId,
   figureRect,
   parseFigureId,
+  PICK_MARGIN,
   pickFigure,
   UnitFocus,
 } from '../../three/figures/figure-pick';
@@ -166,9 +167,27 @@ export function isEmptySpaceClick(
   );
 }
 
-/** A press that moves farther than this, or lasts longer, is a drag or a hold, not a click. */
+/** A press that moves farther than this, or lasts longer, is a drag or a hold, not a click on empty space. */
 const CLICK_SLOP_PX = 5;
 const CLICK_MAX_MS = 500;
+/** A press that began on a unit is allowed more: a finger rolls, and a player aiming at a small figure takes a moment. */
+const UNIT_CLICK_SLOP_PX = 12;
+const UNIT_CLICK_MAX_MS = 1500;
+
+/** A press that began on a unit and lifted close to where it began, within the longer limit. */
+export function isUnitClick(
+  press: { x: number; y: number; at: number; unit: UnitFocus | null } | null,
+  click: { clientX: number; clientY: number; timeStamp: number },
+  onLaunchControl: boolean,
+): boolean {
+  return (
+    !!press?.unit &&
+    !onLaunchControl &&
+    Math.hypot(click.clientX - press.x, click.clientY - press.y) <=
+      UNIT_CLICK_SLOP_PX &&
+    click.timeStamp - press.at <= UNIT_CLICK_MAX_MS
+  );
+}
 
 /** World Y of the walkable surface of floor `n` (figures stand here, before the lift). */
 function floorSurfaceY(n: number): number {
@@ -715,7 +734,9 @@ export class TowerSceneGraph {
         event.stopPropagation();
         const subject = this.launchSubjectAt(event.instanceId);
         this.selection.hover(subject);
-        this.store.snapshot.gl.domElement.style.cursor = subject ? 'pointer' : '';
+        this.store.snapshot.gl.domElement.style.cursor = subject
+          ? 'pointer'
+          : '';
       },
       pointerout: () => {
         this.selection.hover(null);
@@ -1107,19 +1128,36 @@ export class TowerSceneGraph {
       nudge(-e.deltaY * 0.01);
     };
     // A press that barely moves and soon lifts is a click on empty space: the closeup toggle.
-    let press: { x: number; y: number; at: number } | null = null;
+    // The unit under the pointer is taken at the press: that is what the player aimed at, and the
+    // camera or the figures may have moved a little by the time the button lifts.
+    let press: {
+      x: number;
+      y: number;
+      at: number;
+      unit: UnitFocus | null;
+    } | null = null;
     const onPointerDown = (e: PointerEvent) => {
       this.pointerDown = true;
       this.lastPointerY = e.clientY;
-      press = e.button === 0 ? { x: e.clientX, y: e.clientY, at: e.timeStamp } : null;
+      press =
+        e.button === 0
+          ? {
+              x: e.clientX,
+              y: e.clientY,
+              at: e.timeStamp,
+              unit: this.figureAt(e),
+            }
+          : null;
     };
     const onClick = (e: MouseEvent) => {
       const p = press;
       press = null;
       const onLaunch = !!p && p.at === this.launchPressAt;
       this.launchPressAt = -1;
-      if (isEmptySpaceClick(p, e, onLaunch)) {
-        // A sprite opens its unit view; anything else, specks included, is empty space.
+      // A sprite opens its unit view; anything else, specks included, is empty space.
+      if (isUnitClick(p, e, onLaunch)) {
+        this.zoom.focusUnit(p!.unit!);
+      } else if (isEmptySpaceClick(p, e, onLaunch)) {
         const hit = this.figureAt(e);
         if (hit) {
           this.zoom.focusUnit(hit);
@@ -1243,6 +1281,8 @@ export class TowerSceneGraph {
       e.clientY - box.top,
       el.clientWidth,
       el.clientHeight,
+      // The canvas snaps the figure to its own coarser grid: one virtual pixel more on each side.
+      { margin: PICK_MARGIN + this.stage.scale() },
     );
     return hit ? parseFigureId(hit.id) : null;
   }
