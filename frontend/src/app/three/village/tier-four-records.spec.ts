@@ -148,7 +148,7 @@ describe('the Wall of Names and the Stone of Count', () => {
       expect(a.usable).toBeTrue();
       expect(a.confirm?.confirmLabel).toBe('Leave');
       const send = jasmine.createSpy('send');
-      STONE_OF_COUNT.actions[0].run({ send }, state);
+      STONE_OF_COUNT.actions[0].run({ send, launch: () => undefined }, state);
       expect(send).toHaveBeenCalledOnceWith(GameAction.EXODUS, null);
     });
 

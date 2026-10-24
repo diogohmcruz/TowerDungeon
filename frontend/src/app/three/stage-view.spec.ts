@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-import { applyStageView, cardLayerWidth, towerRegion } from './stage-view';
+import { applyStageView, towerRegion } from './stage-view';
 
 describe('stage view', () => {
   it('keeps the Tower region where the #75 panel put the scene', () => {
@@ -76,22 +76,5 @@ describe('stage view', () => {
     applyStageView(camera, 1600, 900, false, 1);
     camera.updateMatrixWorld();
     expect(new THREE.Vector3().project(camera).x).toBeCloseTo(0, 5);
-  });
-});
-
-describe('cardLayerWidth', () => {
-  for (const width of [1280, 1920, 2560]) {
-    it(`reaches past the old 440 px column and keeps the Tower's lane clear at ${width} px`, () => {
-      const layer = cardLayerWidth(width, false);
-      const region = towerRegion(width, false);
-      expect(layer).toBeGreaterThan(440 + 24);
-      // The lane: nearly all the Tower region is free of cards.
-      expect(layer).toBeLessThanOrEqual(region.left + region.width * 0.15);
-      expect(width - layer).toBeGreaterThanOrEqual(region.width * 0.85);
-    });
-  }
-
-  it('takes the whole width on a narrow screen', () => {
-    expect(cardLayerWidth(900, true)).toBe(900);
   });
 });

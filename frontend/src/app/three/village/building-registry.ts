@@ -16,11 +16,13 @@
  */
 import type { GameAction } from '../../interfaces/game-action.enum';
 import type { GameState } from '../../interfaces/game-state';
-import type { Availability } from '../launch/launch-controls';
+import type { Availability, LaunchCommand } from '../launch/launch-controls';
 
 /** What an action may do: send the same commands the panel's buttons send. */
 export interface BuildingCommands {
   send(action: GameAction, payload?: unknown): void;
+  /** The launch controls (the bell, the lamp): Set out with the Loadout chosen, a Wave, Extract. */
+  launch(command: LaunchCommand): void;
 }
 
 /** One number a building shows: the exact figure, its rate and what spending leaves. */

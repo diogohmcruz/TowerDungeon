@@ -12,12 +12,15 @@ export interface LoadoutChoiceSource {
   choice(): LoadoutChoice;
   /** The Floor the next Expedition begins on; 0 is the Base. */
   startFloor(): number;
+  /** Chooses the Floor the next Expedition begins on; false when it is refused (an Expedition is out). */
+  setStartFloor(floor: number): boolean;
   set(patch: Partial<LoadoutChoice>): void;
 }
 
 const NONE: LoadoutChoiceSource = {
   choice: () => ({ salt: 0, pack: 0, bearer: '', panacea: false, overreach: false }),
   startFloor: () => 0,
+  setStartFloor: () => false,
   set: () => undefined,
 };
 

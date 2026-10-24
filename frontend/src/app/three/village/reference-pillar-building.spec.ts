@@ -170,7 +170,7 @@ describe('the reference pillar', () => {
         cancelLabel: 'Stay',
       });
       const send = jasmine.createSpy('send');
-      EXODUS_ACTION.run({ send }, state);
+      EXODUS_ACTION.run({ send, launch: () => undefined }, state);
       expect(send).toHaveBeenCalledOnceWith(GameAction.EXODUS, null);
     });
   });

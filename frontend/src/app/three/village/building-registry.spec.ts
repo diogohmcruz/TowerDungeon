@@ -75,7 +75,7 @@ describe('building registry', () => {
   it('runs the same command the panel sends', () => {
     const send = jasmine.createSpy('send');
     load({ village: { ...state.village, food: 10 } });
-    SILO.actions[0].run({ send } as BuildingCommands, state);
+    SILO.actions[0].run({ send, launch: () => undefined }, state);
     expect(send).toHaveBeenCalledOnceWith(GameAction.SELL_FOOD);
   });
 

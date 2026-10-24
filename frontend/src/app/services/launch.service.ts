@@ -62,6 +62,7 @@ export class LaunchService {
         overreach: this.overreachChosen(),
       }),
       startFloor: () => this.startFloor(),
+      setStartFloor: (floor) => this.chooseStartFloor(floor),
       set: (patch) => {
         if (patch.salt !== undefined) this.saltToUse.set(patch.salt);
         if (patch.pack !== undefined) this.packSalt.set(patch.pack);
@@ -125,6 +126,11 @@ export class LaunchService {
 
   sendExtract(): void {
     this.ws.sendAction(GameAction.EXTRACT, null);
+  }
+
+  /** The Party has not moved (a Held Party): let it go on. The one route for the top bar and the list view. */
+  resume(): void {
+    this.ws.sendAction(GameAction.RESUME, null);
   }
 
   sendWave(): void {

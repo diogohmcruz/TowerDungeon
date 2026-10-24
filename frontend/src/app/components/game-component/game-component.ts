@@ -1,90 +1,44 @@
-import {
-  Component,
-  computed,
-  effect,
-  inject,
-  OnDestroy,
-  signal,
-  Signal,
-} from '@angular/core';
+import { Component, effect, inject, OnDestroy, Signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { GameStateService } from '../../services/game-state.service';
 import { LaunchService } from '../../services/launch.service';
 import { StageService } from '../../services/stage.service';
-import { ZoomService } from '../../services/zoom.service';
-import {
-  CARD_GAP,
-  CARD_MARGIN,
-  CARD_MIN_WIDTH,
-  cardLayerWidth,
-  NARROW_DIM,
-  PANEL_OPACITY,
-  SCRIM_DITHER,
-  SCRIM_TONE,
-  TOP_BAR,
-} from '../../three/stage-view';
-import { GameStateService } from '../../services/game-state.service';
-import { GameWebSocketService } from '../../services/game-web-socket.service';
-import { DecimalPipe } from '@angular/common';
-import { GameAction } from '../../interfaces/game-action.enum';
-import { Unit, UnitStats } from '../../interfaces/unit.enum';
-import { Army } from '../army/army';
-import { TowerDisplay } from '../tower/tower-display.component';
-import { toSignal } from '@angular/core/rxjs-interop';
 import { UnitStatsService } from '../../services/unit-stats.service';
-import { VillageManagement } from '../village-management/village-management';
-import { ShortcutCard } from '../shortcut-card/shortcut-card';
-import { Reinforcement } from '../../interfaces/game-state';
+import { ZoomService } from '../../services/zoom.service';
+import { Unit, UnitStats } from '../../interfaces/unit.enum';
+import { TowerDisplay } from '../tower/tower-display.component';
 import { ListView } from '../list-view/list-view';
 
+/**
+ * The game page: the full-screen scene, the top bar's own buttons (hide, closeup,
+ * Resume for a Held Party), the narrow screen's launch bar and the list view. The
+ * card layer is gone (3.0.0): every number is a gauge on a building and every action
+ * a click on one, and the list view is the one DOM route to them all.
+ */
 @Component({
   selector: 'app-game-component',
   standalone: true,
-  imports: [
-    DecimalPipe,
-    Army,
-    TowerDisplay,
-    VillageManagement,
-    ShortcutCard,
-    ListView,
-  ],
+  imports: [TowerDisplay, ListView],
   templateUrl: './game-component.html',
   styleUrls: ['./game-component.scss'],
   host: {
     '[class.narrow]': 'stage.narrow()',
-    '[style.--card-layer-width.px]': 'layerWidth()',
-    '[style.--card-margin.px]': 'CARD_MARGIN',
-    '[style.--card-gap.px]': 'CARD_GAP',
-    '[style.--card-min.px]': 'CARD_MIN_WIDTH',
-    '[style.--top-bar.px]': 'TOP_BAR',
-    '[style.--panel-opacity]': 'PANEL_OPACITY',
-    '[style.--scrim-tone]': 'SCRIM_TONE',
-    '[style.--scrim-dither]': 'SCRIM_DITHER',
-    '[style.--scrim-dim]': 'NARROW_DIM',
-    '[style.--dither-cell.px]': 'stage.scale()',
     '(document:keydown)': 'onKey($event)',
   },
 })
 export class GameComponent implements OnDestroy {
   protected readonly stage = inject(StageService);
   protected readonly zoom = inject(ZoomService);
-  protected readonly CARD_MARGIN = CARD_MARGIN;
-  protected readonly CARD_GAP = CARD_GAP;
-  protected readonly CARD_MIN_WIDTH = CARD_MIN_WIDTH;
-  protected readonly TOP_BAR = TOP_BAR;
-  /** How far right the cards reach: past it lies the Tower's lane, clear of cards. */
-  protected readonly layerWidth = computed(() =>
-    cardLayerWidth(this.stage.viewport().width, this.stage.narrow()),
-  );
-  protected readonly PANEL_OPACITY = PANEL_OPACITY;
-  protected readonly SCRIM_TONE = SCRIM_TONE;
-  protected readonly SCRIM_DITHER = SCRIM_DITHER;
-  protected readonly NARROW_DIM = NARROW_DIM;
 
   ngOnDestroy(): void {
     // Leaving the page releases a closeup's hold.
     this.zoom.release();
   }
 
-  /** H hides and restores the menus; Escape steps the zoom back (not while typing, and not with a modifier). */
+  /**
+   * H hides and restores the menus (the list view, the popovers and the narrow
+   * launch bar); Escape steps the zoom back. Not while typing, and not with a modifier.
+   */
   protected onKey(event: KeyboardEvent): void {
     const key = event.key.toLowerCase();
     if (
@@ -118,46 +72,11 @@ export class GameComponent implements OnDestroy {
   readonly gameState = this.stateService.state;
   /** The session facts the socket strips from the state: a Held Party, the Succession. */
   readonly session = this.stateService.session;
+  private readonly unitStatsService = inject(UnitStatsService);
 
-  /** The Campaign has ended and waits for the Succession. */
-  readonly offer = computed(() => this.gameState().phase === 'OFFER');
-  /** The Roll and the choices the server sent for the Succession. */
-  readonly succession = computed(
-    () =>
-      this.stateService.session()?.succession ??
-      this.gameState().session?.succession ??
-      null,
-  );
-  private ws = inject(GameWebSocketService);
-  private unitStatsService = inject(UnitStatsService);
-
-  /** The launch commands and what the Loadout has chosen; shared with the scene's bell, lamp and doorways. */
+  /** The launch commands; shared with the scene's bell, lamp and doorways and the Gate's actions. */
   protected readonly launch = inject(LaunchService);
 
-  /** Floor the next expedition begins on: 0 = base of the tower, otherwise an open shortcut. */
-  readonly selectedStartFloor = this.launch.startFloor;
-
-  /** What the Loadout (chosen at the Gate) has chosen, which Set out carries. */
-  readonly saltToUse = this.launch.saltToUse;
-  readonly packSalt = this.launch.packSalt;
-  readonly packBearer = this.launch.packBearer;
-  readonly panaceaChosen = this.launch.panaceaChosen;
-
-  /** Whole Dragon Spores in the Stockroom. */
-  readonly sporesHeld = computed(() =>
-    Math.floor(this.gameState().village.spores),
-  );
-
-  readonly openShortcuts = computed(() =>
-    (this.gameState().shortcuts ?? []).filter((s) => s.unlocked),
-  );
-
-  readonly gameWon = computed(() => this.gameState().gameOutcome === 'VICTORY');
-  readonly gameLost = computed(() => this.gameState().gameOutcome === 'DEFEAT');
-  readonly gameLeft = computed(() => this.gameState().gameOutcome === 'EXODUS');
-  readonly gameOver = computed(
-    () => this.gameWon() || this.gameLost() || this.gameLeft(),
-  );
   unitStats: Signal<Map<Unit, UnitStats>> = toSignal(
     this.unitStatsService.getUnitStats(),
     { initialValue: new Map<Unit, UnitStats>() },
@@ -171,40 +90,5 @@ export class GameComponent implements OnDestroy {
         this.stateService.setCatalog(Object.fromEntries(stats));
       }
     });
-  }
-
-  sendInvadeAction() {
-    this.launch.sendInvade();
-  }
-
-  giveRemedy(unitId: number) {
-    this.ws.sendAction(GameAction.REMEDY, { unitId });
-  }
-
-  reattachPart(event: { unitId: number; part: string }) {
-    this.ws.sendAction(GameAction.REATTACH, event);
-  }
-
-  selectStartFloor(floor: number) {
-    this.selectedStartFloor.set(floor);
-  }
-
-  resume() {
-    this.ws.sendAction(GameAction.RESUME, null);
-  }
-
-  extract() {
-    this.launch.sendExtract();
-  }
-
-  sendReinforcements() {
-    this.launch.sendWave();
-  }
-
-  waveSize(wave: Reinforcement): number {
-    return Object.values(wave.units ?? {}).reduce(
-      (total, members) => total + (members?.length ?? 0),
-      0,
-    );
   }
 }

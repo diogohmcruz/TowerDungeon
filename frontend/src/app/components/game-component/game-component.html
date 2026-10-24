@@ -1,5 +1,4 @@
-<!-- Narrow screens dim the whole scene behind the cards; wide ones give each card its own dither. -->
-<div class="scrim" aria-hidden="true" [class.menus-hidden]="stage.menusHidden()"></div>
+<!-- The top bar's own buttons. H hides the menus (the list view, the popovers, the narrow bar); these stay. -->
 <button
   type="button"
   class="menus-toggle"
@@ -29,166 +28,17 @@
   }}
 </button>
 }
-<article class="card-layer" [class.menus-hidden]="stage.menusHidden()">
-  @if (gameOver()) {
-  <section
-    class="campaign-banner glass-card wide"
-    [class.victory]="gameWon()"
-    [class.defeat]="gameLost() || gameLeft()"
-  >
-    @if (gameWon()) {
-    <h2>The Heirs</h2>
-    <p>
-      The Dragon is down. The Tower did not fall. It only listened. Your
-      survivors' children will climb it again, because someone must.
-    </p>
-    } @else if (gameLeft()) {
-    <h2>The Flight</h2>
-    <p>The Village leaves in the night. The Tower keeps whoever stayed.</p>
-    } @else {
-    <h2>The Second Company</h2>
-    <p>
-      No one is left to ring the bell. In spring a second company finds the
-      graves and the Ledger and reads the names aloud.
-    </p>
-    } @if (gameState().pending; as report) {
-    <p class="campaign-toll">
-      Toll {{ report.toll.toll | number: '1.1-1' }}. Legacy {{ report.legacy }}.
-    </p>
-    }
-  </section>
-  } @if (session()?.held && !zoom.holding()) {
-  <section class="held-party glass-card">
-    <p>The Party has not moved.</p>
-    <button class="btn" (click)="resume()">Resume</button>
-  </section>
-  }
-  <!-- The Succession is the popover at the Tower's foot (and in the list view); while it waits, the cards below rest. -->
-  @if (!(offer() && succession())) {
-  <app-village-management />
+<!-- A Held Party waits for the player. The same Resume is in the list view. -->
+@if (session()?.held && !zoom.holding()) {
+<p class="held-party" role="status">
+  The Party has not moved.
+  <button type="button" class="btn" (click)="launch.resume()">Resume</button>
+</p>
+}
 
-
-  <section class="expedition-card glass-card">
-  <section class="expedition-start">
-    <h3>Start Floor</h3>
-    <label class="start-option">
-      <input
-        type="radio"
-        name="startFloor"
-        [checked]="selectedStartFloor() === 0"
-        (change)="selectStartFloor(0)"
-        [disabled]="gameState().expeditionActive"
-      />
-      Base. Start at Floor 1
-    </label>
-    @for (sc of openShortcuts(); track sc.id) {
-    <label class="start-option">
-      <input
-        type="radio"
-        name="startFloor"
-        [checked]="selectedStartFloor() === sc.floor"
-        (change)="selectStartFloor(sc.floor)"
-        [disabled]="gameState().expeditionActive"
-      />
-      {{ sc.name }}. Start at Floor {{ sc.floor }}
-    </label>
-    }
-  </section>
-
-  <!-- The Loadout is chosen at the Gate in the picture (and in the list view). -->
-  <div class="launch-buttons">
-    <button
-      (click)="this.sendInvadeAction()"
-      [disabled]="!launch.setOut().usable"
-    >
-      Set out
-    </button>
-    <button
-      (click)="this.extract()"
-      [disabled]="!launch.extractControl().usable"
-    >
-      Extract
-    </button>
-    <button
-      (click)="this.sendReinforcements()"
-      [disabled]="!launch.wave().usable"
-      title="Send every Reserve up after the Party. They carry supplies from the Pantry and climb from the Base. If their supplies run out before they catch up, climbers are lost."
-    >
-      Send Reinforcement Wave
-    </button>
-  </div>
-
-  @if (gameState().expeditionActive) {
-  <section class="run-hud">
-    <p class="heal-hint">
-      Supplies are drawn from the Pantry. Extraction returns what is left.
-      Wounded Reserves then Recover, paid for from the Pantry.
-    </p>
-    @if (gameState().reinforcements.length > 0) {
-    <div class="reinforcements">
-      <h4>Reinforcement Waves climbing</h4>
-      @for (wave of gameState().reinforcements; track $index) {
-      <p class="reinforcement-line">
-        Wave of <b>{{ waveSize(wave) }}</b>, Floor
-        <b>{{ wave.currentFloor | number: '1.0-0' }}</b>
-        / {{ gameState().tower?.currentFloor ?? 0 }}, carrying
-        <b>{{ wave.supplies | number: '1.0-0' }} supplies</b>
-      </p>
-      }
-    </div>
-    }
-  </section>
-  } @else if (gameState().lastFoodReturned > 0) {
-  <section class="run-hud">
-    <p class="heal-summary">
-      Extraction returned
-      <b>{{ gameState().lastFoodReturned | number: '1.0-0' }} Food</b>
-      to the Pantry.
-    </p>
-  </section>
-  } @if (gameState().homePartyWounds > 0) {
-  <p class="home-heal">
-    Recovery: {{ gameState().homePartyWounds | number: '1.0-0' }} hp to heal,
-    about {{ gameState().foodHealRate | number: '1.0-0' }} hp/s from the Pantry.
-  </p>
-  }
-  </section>
-
-  <section class="shortcut-panel glass-card wide">
-    <h3>
-      Shortcuts
-      <span class="progress-note">
-        {{ gameState().enemiesDefeated }} enemies slain · {{
-        gameState().expeditionsCompleted }} Expeditions
-      </span>
-    </h3>
-    <p class="shortcut-hint">
-      Shortcuts open as the Campaign slays enemies and completes Expeditions.
-      Choose an open Shortcut under Start Floor before setting out.
-    </p>
-    <div class="shortcut-list">
-      @for (sc of gameState().shortcuts; track sc.id) {
-      <app-shortcut-card [shortcut]="sc" />
-      }
-    </div>
-  </section>
-
-  <section class="army-panel glass-card wide">
-    <h3>Army</h3>
-    <app-army
-      [army]="gameState().units"
-      [atHome]="!gameOver()"
-      [sporesHeld]="sporesHeld()"
-      (remedy)="giveRemedy($event)"
-      (reattach)="reattachPart($event)"
-    />
-  </section>
-  }
-</article>
-
-<!-- Narrow screens cannot show the picture behind the menus, so the bell and the lamp
-     are repeated here as plain buttons: the same commands, the same refusals. -->
-<div class="launch-bar">
+<!-- Narrow screens have no clear lane for the bell and the lamp, so they are repeated
+     here as plain buttons: the same commands, the same refusals. -->
+<div class="launch-bar" [class.menus-hidden]="stage.menusHidden()">
   @if (launch.refusal(); as refusal) {
   <p class="launch-line" role="status">{{ refusal.text }}</p>
   }

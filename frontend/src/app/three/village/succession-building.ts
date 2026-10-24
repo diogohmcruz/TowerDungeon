@@ -57,6 +57,23 @@ const GROUP_TITLES: Record<string, string> = {
   HEIR: 'The Heir. The unit type the next Generation starts with.',
 };
 
+/** What the ending says, in the game's plain words; it never congratulates. */
+const ENDING_WORDS: Record<string, string> = {
+  VICTORY:
+    "The Dragon is down. The Tower did not fall. It only listened. Your survivors' children will climb it again, because someone must.",
+  EXODUS: 'The Village leaves in the night. The Tower keeps whoever stayed.',
+  DEFEAT:
+    'No one is left to ring the bell. In spring a second company finds the graves and the Ledger and reads the names aloud.',
+};
+
+/** The ending of the Campaign as a heading and a line; null while it is still played. */
+export function endingOf(state: GameState): { heading: string; text: string } | null {
+  const outcome = state.gameOutcome;
+  return ENDING_WORDS[outcome]
+    ? { heading: outcomeName(outcome), text: ENDING_WORDS[outcome] }
+    : null;
+}
+
 export function outcomeName(outcome: string): string {
   return OUTCOMES[outcome] ?? outcome;
 }
@@ -345,6 +362,18 @@ export const SUCCESSION = defineBuilding({
   title: 'The Succession',
   wide: true,
   visible: (s: GameState) => successionOf(s) !== null,
+  // How the Campaign ended, in words, above the Toll it left.
+  sections: [
+    {
+      id: 'ending',
+      heading: (s: GameState) => endingOf(s)?.heading ?? null,
+      lines: (s: GameState) => {
+        const ending = endingOf(s);
+        return ending ? [{ text: ending.text, loss: false }] : [];
+      },
+      empty: '',
+    },
+  ],
   gauges: [
     {
       id: 'generation',
