@@ -900,12 +900,21 @@ function ring(out: Volume[], level: number, max: number): void {
   box(out, 'ring-hit', 'village', x, bottom, z, size + 0.16, 0.12 + size + 0.06, 0.3, VILLAGE_TONE.dark, 0);
 }
 
+/**
+ * Alpha of the Tower's body at a segment: the first stretch fades gently, then the body thins
+ * quickly, so by the top of the Village view it is a sparse dither and the crown seen from afar
+ * (#139, in the landscape) stands against the sky with its broken top clear.
+ */
+export function towerBodyAlpha(i: number): number {
+  return i < 3 ? 1 - i * 0.075 : Math.max(0.06, 0.78 - 0.22 * (i - 3));
+}
+
 function tower(out: Volume[]): void {
   // The Base slab floats above a black gap and the Tower rises behind the Village
   // into dither: dissolving alpha, not fog, so the top fades into ink.
   box(out, 'base-slab', 'tower', 0, BASE_GAP, -1.7, 4.8, 1.25, 3.0, VILLAGE_TONE.tower + 0.1);
   for (let i = 0; i < TOWER_SEGMENTS; i++) {
-    const alpha = Math.max(0.06, 1 - i * 0.075);
+    const alpha = towerBodyAlpha(i);
     box(out, `tower-${i}`, 'tower', 0, TOWER_FOOT + i * TOWER_SEGMENT, -1.7, 4.4, TOWER_SEGMENT, 2.8, VILLAGE_TONE.tower, alpha);
   }
 }

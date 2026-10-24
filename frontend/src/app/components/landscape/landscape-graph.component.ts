@@ -91,6 +91,8 @@ export class LandscapeGraph {
   fogDensity = input(0.01);
   /** How far toward the camera the plain reaches (the Tower's camera is closer than the Village's). */
   nearZ = input(PLAIN_NEAR);
+  /** Whether the Tower seen from afar ends in its crown here (the Village view; the Tower scene draws the Tower itself). */
+  crown = input(true);
   /**
    * Seconds to draw the drift at, when the host owns the clock (the Village's
    * 4 Hz tick). Null: the landscape advances its own clock, unless motion is reduced.
@@ -117,7 +119,7 @@ export class LandscapeGraph {
   private readonly meshRef =
     viewChild<ElementRef<THREE.InstancedMesh>>('landscape');
   private readonly volumes = computed<LandscapeVolume[]>(() =>
-    planLandscape(this.quarter(), this.nearZ()),
+    planLandscape(this.quarter(), this.nearZ(), this.crown()),
   );
   private readonly matrix = new THREE.Matrix4();
   private readonly position = new THREE.Vector3();
