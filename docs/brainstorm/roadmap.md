@@ -159,3 +159,15 @@ The scaling pass of 3.11 was stuck: the scripted bots never climb past Floor 5, 
 | Shortcut Floors | Unchanged by the pacing target |
 | Done | A test: about 70% on normal Floors and 50% on Guardian Floors for each Generation's reference plan, up to that Generation's Floor |
 
+## 10. Added later: 3.2.0 (the Village as a place)
+
+After 3.1.0 the Tower and its landscape read well but the Village is still a shelf of props. 3.2.0 gives it a sea to the screen's edge, a road to the Tower's door, framing, landmarks from the owner's references (Yuva's house, the fortress and its aqueduct arches) and zones with a light pass. See `architecture-and-visual-identity.md` section 5.7.
+
+| Decision | Ruling |
+|---|---|
+| The sea | Reaches the right edge with a curved shore and a horizon; scenery, outside the Village bounds. Supersedes "the Port's sea sits at the right edge" of section 7 |
+| The fortress | Background landmark only, not a building the player uses |
+| Yuva's house | Scenery at the left edge, not a clickable building |
+| The road | Winds, with low walls, ending at the stair |
+| Order | Sea, then road, then framing, then landmarks, then zones and light; each step reworks `village-layout.ts`, so they run one after another |
+

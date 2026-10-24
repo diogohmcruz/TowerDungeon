@@ -442,6 +442,16 @@ A control that cannot be used is dark and unlit, with a dashed outline and a cap
 
 **Migration order.** Step by step, each step one issue, shipping something playable: the full-width card layer; the popover and hover framework; hiring at the Fort; assigning Villagers at the Annexes; the gauges and selling for Tiers I to III; the Tier IV Strongbox and Reliquary; Upgrades, Tomes, Posts and the Ring; the Loadout at the Gate; the Ledger and the Run summary; the reference pillar; Succession; the Tier IV Wall of Names and Stone of Count; the Expedition objects; and finally removing the card layer and keeping the list view.
 
+### 5.7 The Village as a place (3.2.0)
+
+The 3.0.0 to 3.1.0 work made the Tower and its landscape. The Village itself still reads as a shelf: every building on one line, the same scale and tone, evenly spaced, with the Port a dark box and a flat band of void below. 3.2.0 makes it a place, using the owner's references (the manga's road to the Tower, Yuva's house, the fortress at the Tower's base with its aqueduct arches, the boat on black water). The manga is inspiration, not canon.
+
+- **The sea reaches the right edge of the screen.** Black water with short light dashes, a curved shore and a horizon line; the Boat is drawn larger. The sea is scenery and does not count towards the Village bounds, so the closeup frame still fits the built Village.
+- **A winding paved road** with low walls leads from the front corner to the stair, so the Base door is where the road ends. Buildings stand on terraces along it.
+- **Framing**: black foliage masses at the frame edges, and a cliff face with ground fog under the Village in place of the flat dark band.
+- **Landmarks**: Yuva's house (a tall narrow stone house with a stepped outer stair and a steep roof) at the left edge as scenery; the fortress on a crag beside the Tower's base, with pointed black roofs, joined to the land by aqueduct arches over the sea, as background only. Repeating arches are the world's signature shape.
+- **Zones and light**: fields and food on the left, the Fort and military near the Tower's base, the harbour and trade on the right; walls light, roofs black, a few lit windows at night.
+
 ## 6. How Tower Wizard's technique and Nihei's architecture reconcile
 
 The reconciliation is tabulated in 5.1. As rules for any new art:
