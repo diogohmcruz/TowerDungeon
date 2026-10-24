@@ -82,6 +82,10 @@ export const VOLUME_SUBJECTS: ReadonlyArray<{
   { prefix: 'carried-credits', kind: 'expedition', id: 'CREDITS' },
   { prefix: 'carried-materials', kind: 'expedition', id: 'MATERIALS' },
   { prefix: 'carried-relics', kind: 'expedition', id: 'RELICS' },
+  // From Village Tier IV the Vault is two buildings and the Materials sit at the Quarry's Heap.
+  { prefix: 'strongbox', kind: 'building', id: 'STRONGBOX' },
+  { prefix: 'reliquary', kind: 'building', id: 'RELIQUARY' },
+  { prefix: 'stack-', kind: 'building', id: 'HEAP' },
 ];
 
 const TRADES: readonly TradeId[] = [

@@ -9,7 +9,7 @@ import type { PortState } from '../../interfaces/game-state';
 import type { Quarter } from '../../interfaces/game-state';
 import type { TradeId } from '../../interfaces/village';
 import { bellObject, gateObject } from '../launch/launch-objects';
-import { barGauge, notchGauge, slitGauge } from './gauge-kit';
+import { barGauge, GAUGE_MIN, notchGauge, slitGauge } from './gauge-kit';
 import { EMPTY_PILLAR, referencePillar, type PillarInput } from './reference-pillar';
 import {
   BASE_DOOR_ID,
@@ -189,6 +189,11 @@ export const ANNEX_X = {
   quarry: [0.0, 1.1],
   study: [1.25, 1.85],
   vault: [2.0, 3.2],
+  /** At Village Tier IV the Vault splits into these two, within its own span. */
+  strongbox: [2.0, 2.55],
+  reliquary: [2.65, 3.2],
+  /** The Quarry's Heap building, where the Materials wait from Tier IV, behind the Quarry. */
+  stack: [0.2, 0.95],
   pans: [0.0, 1.1],
   /** The Spore Cellar lies at the Fort's foot, where its Sporewardens work. */
   cellar: [-3.1, -2.0],
@@ -520,6 +525,94 @@ function vault(out: Volume[], materials: number, relics: number, credits: number
   });
   // The near-miss pad around the block and its roof crates.
   box(out, 'vault-hit', 'village', x, 0, 0.35, w + 0.1, 1.2, 0.8, VILLAGE_TONE.dark, 0);
+}
+
+/** The Village Tier at which the Vault splits (IV). */
+export const SPLIT_TIER = 4;
+
+/** A locked building is a hairline rectangle on the ground, no label (as the Pans'). */
+function footing(out: Volume[], id: string, range: readonly [number, number], z: number, d: number): void {
+  const [x0, x1] = range;
+  const tone = VILLAGE_TONE.footing + 0.3;
+  box(out, `${id}-footing-n`, 'village', mid(range), 0, z - d / 2, x1 - x0, 0.012, 0.012, tone);
+  box(out, `${id}-footing-s`, 'village', mid(range), 0, z + d / 2, x1 - x0, 0.012, 0.012, tone);
+  box(out, `${id}-footing-w`, 'village', x0, 0, z, 0.012, 0.012, d, tone);
+  box(out, `${id}-footing-e`, 'village', x1, 0, z, 0.012, 0.012, d, tone);
+  // A pad so the thin lines can be pointed at.
+  box(out, `${id}-hit`, 'village', mid(range), 0, z, x1 - x0 + 0.1, 0.1, d + 0.1, VILLAGE_TONE.dark, 0);
+}
+
+/** One of the two blocks the Vault splits into: a stone block, one door slab. Returns its centre x. */
+function vaultBlock(out: Volume[], id: string, range: readonly [number, number]): number {
+  const x = mid(range);
+  const w = span(range);
+  box(out, id, 'village', x, 0, 0.35, w, 0.9, 0.8, VILLAGE_TONE.stone);
+  box(out, `${id}-corbel`, 'village', x, 0.9, 0.35, w - 0.1, 0.08, 0.7, VILLAGE_TONE.stone);
+  box(out, `${id}-door`, 'village', x, 0, 0.76, 0.2, 0.5, 0.02, VILLAGE_TONE.dark);
+  return x;
+}
+
+/**
+ * Village Tier IV: the Strongbox (Credits, a bar across its head), the Reliquary
+ * (Relics, a row of notches) and the Quarry's Heap building (Materials, stacked
+ * crates and a bar). Below Tier IV the three stand as footings: the Strongbox and
+ * Reliquary in front of the Vault, the Heap building behind the Quarry.
+ */
+function splitVault(
+  out: Volume[],
+  tier: number,
+  materials: number,
+  relics: number,
+  credits: number,
+): void {
+  if (tier < SPLIT_TIER) {
+    footing(out, 'strongbox', ANNEX_X.strongbox, 1.45, 0.4);
+    footing(out, 'reliquary', ANNEX_X.reliquary, 1.45, 0.4);
+    footing(out, 'stack', ANNEX_X.stack, -0.55, 0.4);
+    return;
+  }
+  const sx = vaultBlock(out, 'strongbox', ANNEX_X.strongbox);
+  barGauge(out, 'strongbox-credits', {
+    x: sx,
+    bottom: 0.76,
+    z: 0.76,
+    length: 0.4,
+    fill: creditsFill(credits),
+  });
+  box(out, 'strongbox-hit', 'village', sx, 0, 0.35, span(ANNEX_X.strongbox) + 0.05, 1.0, 0.8, VILLAGE_TONE.dark, 0);
+
+  const rx = vaultBlock(out, 'reliquary', ANNEX_X.reliquary);
+  // Five notches are wider than this block, so they stand in two rows: three, then two above.
+  const litRelics = litRelicNotches(relics);
+  notchGauge(out, 'reliquary-relics', { x: rx, bottom: 0.76, z: 0.76, count: 3, lit: Math.min(3, litRelics) });
+  notchGauge(out, 'reliquary-relics-more', {
+    x: rx,
+    bottom: 0.76 + 2 * GAUGE_MIN,
+    z: 0.76,
+    count: RELIC_NOTCHES - 3,
+    lit: Math.max(0, litRelics - 3),
+  });
+  box(out, 'reliquary-hit', 'village', rx, 0, 0.35, span(ANNEX_X.reliquary) + 0.05, 1.0, 0.8, VILLAGE_TONE.dark, 0);
+
+  // The Quarry's Heap building: the Materials the Vault held, as crates stacked in two rows
+  // on a low plinth, and a bar on the ground before them.
+  const px = mid(ANNEX_X.stack);
+  const [s0] = ANNEX_X.stack;
+  box(out, 'stack-plinth', 'village', px, 0, -0.55, span(ANNEX_X.stack), 0.08, 0.4, VILLAGE_TONE.stone);
+  const crates = vaultCrates(materials, 0);
+  for (let i = 0; i < crates; i++) {
+    const row = i < 6 ? 0 : 1;
+    const col = row === 0 ? i : i - 6;
+    box(out, `stack-crate-${i}`, 'village', s0 + 0.1 + col * 0.11, 0.08 + row * 0.1, -0.55, 0.09, 0.1, 0.12, VILLAGE_TONE.timber);
+  }
+  barGauge(out, 'stack-scale', {
+    x: px,
+    bottom: 0,
+    z: -0.3,
+    length: 0.6,
+    fill: crates / 12,
+  });
+  box(out, 'stack-hit', 'village', px, 0, -0.45, span(ANNEX_X.stack) + 0.1, 0.4, 0.6, VILLAGE_TONE.dark, 0);
 }
 
 function pans(out: Volume[], open: boolean, salt: number): void {
@@ -1045,7 +1138,10 @@ export function buildVillage(input: VillageInput): Volume[] {
   fields(out, quarter);
   quarry(out, input.quarryHeap, input.quarryHeapCap);
   study(out, input.hands.SCRIBE, input.posts.SCRIBE);
-  vault(out, input.materials, input.relics, input.credits ?? 0);
+  if (input.villageTierLevel < SPLIT_TIER) {
+    vault(out, input.materials, input.relics, input.credits ?? 0);
+  }
+  splitVault(out, input.villageTierLevel, input.materials, input.relics, input.credits ?? 0);
   pans(out, input.saltPansOpen, input.salt);
   if (input.sporeCellarOpen) cellar(out, input.spores ?? 0);
   port(out, input.port ?? 'HIDDEN', input.boatDocked ?? false, input.seaRisk);

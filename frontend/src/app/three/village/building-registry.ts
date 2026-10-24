@@ -110,6 +110,11 @@ export interface BuildingDefinition {
   title: string;
   /** False hides the building (a gate not yet open). Absent means always shown. */
   visible?(state: GameState): boolean;
+  /**
+   * When the building is not yet open, what opens it, in words (a Village Tier
+   * not reached). The picture draws a footing and its hover caption says this.
+   */
+  lock?(state: GameState): string | null;
   gauges: readonly GaugeSpec[];
   /** Rows of words besides the gauges; absent when there are none. */
   lines?(state: GameState): readonly LineSpec[];

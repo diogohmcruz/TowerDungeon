@@ -273,7 +273,10 @@ const recall: CaptionBuilder = (_subject, state) => {
  */
 const building: CaptionBuilder = (subject, state) => {
   const def = buildingDefinition(subject.id, BUILDINGS);
-  if (!def || !isVisible(def, state)) return null;
+  if (!def) return null;
+  const lock = def.lock?.(state) ?? null;
+  if (lock) return { name: def.title, status: 'Closed.', makes: '', lock };
+  if (!isVisible(def, state)) return null;
   const view = buildingView(def, state);
   const shown = view.gauges.filter((g) => g.caption);
   const leaves = shown.map((g) => g.leaves).filter((t): t is string => !!t);

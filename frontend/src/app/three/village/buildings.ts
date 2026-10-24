@@ -17,6 +17,7 @@ import { sellSaltAction } from './salt-sale';
 import { UPGRADE_BUILDINGS } from './upgrade-buildings';
 import {
   creditsFill,
+  SPLIT_TIER,
   litRelicNotches,
   RELIC_NOTCHES,
   siloFill,
@@ -156,6 +157,8 @@ function sellAvailability(held: number, empty: string) {
 export const VAULT = defineBuilding({
   id: 'VAULT',
   title: 'The Vault Annex',
+  // At Tier IV it is the Strongbox and the Reliquary, and the Materials are at the Quarry's Heap.
+  visible: tierBelow(SPLIT_TIER),
   gauges: [
     {
       id: 'credits',
@@ -220,11 +223,109 @@ export const VAULT = defineBuilding({
   ],
 });
 
+/** The words for a Tier IV building not yet open; null once the Village stands at Tier IV. */
+function splitLock(what: string) {
+  return (s: GameState): string | null =>
+    s.villageTierLevel >= SPLIT_TIER
+      ? null
+      : `${what} opens at Village Tier IV, when the Vault splits. ` +
+        `The Village stands at Tier ${s.villageTierLevel}, ${s.villageTierName}.`;
+}
+
+/**
+ * The Strongbox (Village Tier IV): Credits only. A sale makes Credits, so it has
+ * no sale of its own: it shows the figure and sells nothing.
+ */
+export const STRONGBOX = defineBuilding({
+  id: 'STRONGBOX',
+  title: 'The Strongbox',
+  visible: (s: GameState) => s.villageTierLevel >= SPLIT_TIER,
+  lock: splitLock('The Strongbox'),
+  gauges: [
+    {
+      id: 'credits',
+      label: 'Credits',
+      value: (s: GameState) => s.credit,
+      fill: (s: GameState) => creditsFill(s.credit),
+      leaves: () => 'Credits are what a sale makes. The Strongbox sells nothing.',
+    },
+  ],
+  actions: [],
+});
+
+/** The Reliquary (Village Tier IV): Relics only, and the sale of them. */
+export const RELIQUARY = defineBuilding({
+  id: 'RELIQUARY',
+  title: 'The Reliquary',
+  visible: (s: GameState) => s.villageTierLevel >= SPLIT_TIER,
+  lock: splitLock('The Reliquary'),
+  gauges: [
+    {
+      id: 'relics',
+      label: 'Relics',
+      value: (s: GameState) => s.resources.RELICS,
+      fill: (s: GameState) => litRelicNotches(s.resources.RELICS) / RELIC_NOTCHES,
+      leaves: (s: GameState) =>
+        s.resources.RELICS > 0
+          ? 'Selling Relics sells all of them and leaves none in the Reliquary.'
+          : null,
+    },
+  ],
+  actions: [
+    {
+      id: 'sell-relics',
+      label: 'Sell Relics',
+      availability: (s: GameState) =>
+        sellAvailability(s.resources.RELICS, 'The Reliquary holds no Relics. Nothing is sold.'),
+      run: (commands) => commands.send(GameAction.SELL_RELICS),
+    },
+  ],
+});
+
+/**
+ * The Quarry's Heap building (Village Tier IV): the Materials the Vault held,
+ * and their sale. (The Quarry Annex itself shows the Materials still in the
+ * Heap, not yet carried down.)
+ */
+export const QUARRY_HEAP = defineBuilding({
+  id: 'HEAP',
+  title: "The Quarry's Heap",
+  visible: (s: GameState) => s.villageTierLevel >= SPLIT_TIER,
+  lock: splitLock("The Quarry's Heap building"),
+  gauges: [
+    {
+      id: 'materials',
+      label: 'Materials',
+      value: (s: GameState) => s.resources.MATERIALS,
+      fill: (s: GameState) => vaultCrates(s.resources.MATERIALS, 0) / 12,
+      leaves: (s: GameState) =>
+        s.resources.MATERIALS > 0
+          ? "Selling Materials sells all of them and leaves none at the Quarry's Heap."
+          : null,
+    },
+  ],
+  actions: [
+    {
+      id: 'sell-materials',
+      label: 'Sell Materials',
+      availability: (s: GameState) =>
+        sellAvailability(
+          s.resources.MATERIALS,
+          "The Quarry's Heap holds no Materials. Nothing is sold.",
+        ),
+      run: (commands) => commands.send(GameAction.SELL_MATERIALS),
+    },
+  ],
+});
+
 /** Every registered building, in the order the list view shows them. */
 export const BUILDINGS: readonly BuildingDefinition[] = [
   SILO,
   VAULT,
+  STRONGBOX,
+  RELIQUARY,
   ...ANNEXES,
+  QUARRY_HEAP,
   GATE,
   FORT,
   REFERENCE_PILLAR,
