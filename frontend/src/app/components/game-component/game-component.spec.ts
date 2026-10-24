@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 
+import { ZoomService } from '../../services/zoom.service';
 import { StageService } from '../../services/stage.service';
 import { GameComponent } from './game-component';
 import { GameAction } from '../../interfaces/game-action.enum';
@@ -153,24 +154,52 @@ describe('GameComponent', () => {
     });
   });
 
-  it('offers Resume only while the Party is Held', () => {
-    const host: HTMLElement = fixture.nativeElement;
-    expect(host.querySelector('.held-party')).toBeNull();
-
-    stateService.update({
-      session: {
-        resumed: true,
-        savedAt: null,
-        schema: 1,
-        notices: [],
-        held: true,
-      },
+  describe('Resume for a Held Party', () => {
+    const host = () => fixture.nativeElement as HTMLElement;
+    const session = (held: boolean) => ({
+      resumed: true,
+      savedAt: null,
+      schema: 1,
+      notices: [],
+      held,
     });
-    fixture.detectChanges();
 
-    expect(host.querySelector('.held-party')?.textContent).toContain(
-      'The Party has not moved.',
-    );
+    it('offers Resume only while the Party is Held, from the session the socket keeps apart', () => {
+      expect(host().querySelector('.held-party')).toBeNull();
+
+      stateService.setSession(session(true));
+      fixture.detectChanges();
+      expect(host().querySelector('.held-party')?.textContent).toContain(
+        'The Party has not moved.',
+      );
+
+      (host().querySelector('.held-party button') as HTMLButtonElement).click();
+      expect(sendAction).toHaveBeenCalledWith(GameAction.RESUME, null);
+
+      stateService.setSession(session(false));
+      fixture.detectChanges();
+      expect(host().querySelector('.held-party')).toBeNull();
+    });
+
+    it('does not offer Resume for the hold a zoom took, nor flash it as the zoom lets go', () => {
+      const zoom = TestBed.inject(ZoomService);
+      stateService.update({ expeditionActive: true });
+      zoom.toggleCloseup();
+      stateService.setSession(session(true));
+      fixture.detectChanges();
+      expect(host().querySelector('.held-party')).toBeNull();
+
+      zoom.back();
+      fixture.detectChanges();
+      expect(host().querySelector('.held-party')).toBeNull();
+
+      stateService.setSession(session(false));
+      fixture.detectChanges();
+      expect(host().querySelector('.held-party')).toBeNull();
+      stateService.setSession(session(true));
+      fixture.detectChanges();
+      expect(host().querySelector('.held-party')).not.toBeNull();
+    });
   });
 
   describe('the Toll and the endings', () => {

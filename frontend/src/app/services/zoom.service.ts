@@ -46,9 +46,22 @@ export class ZoomService {
 
   /** Whether this service sent the `HOLD`, so only it sends the matching `RESUME`. */
   private ownsHold = false;
+  private readonly _holding = signal(false);
+  /**
+   * True from the zoom's `HOLD` until the server reports the Party moving again, so the Resume
+   * button of a Held Party never shows for a hold the zoom took, nor flashes as it lets go.
+   */
+  readonly holding = this._holding.asReadonly();
   private menusWereHidden = false;
 
   constructor() {
+    // The server has confirmed the Party moves again (or the Expedition is over): the hold is gone.
+    effect(() => {
+      const held = this.stateService.session()?.held === true;
+      if (!held && this._level() === 'battle') {
+        this._holding.set(false);
+      }
+    });
     // An Expedition ending releases the hold: the Tower scene is gone, and so is the Party.
     effect(() => {
       if (
@@ -166,6 +179,7 @@ export class ZoomService {
     if (!this.stateService.session()?.held) {
       this.ws.sendAction(GameAction.HOLD, null);
       this.ownsHold = true;
+      this._holding.set(true);
     }
     this._level.set('closeup');
     return true;

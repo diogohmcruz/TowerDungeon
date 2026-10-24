@@ -120,6 +120,8 @@ export class GameComponent implements OnDestroy {
 
   private readonly stateService = inject(GameStateService);
   readonly gameState = this.stateService.state;
+  /** The session facts the socket strips from the state: a Held Party, the Succession. */
+  readonly session = this.stateService.session;
 
   /** The Campaign has ended and waits for the Succession. */
   readonly offer = computed(() => this.gameState().phase === 'OFFER');
