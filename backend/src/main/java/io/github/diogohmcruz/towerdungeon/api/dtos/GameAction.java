@@ -18,6 +18,7 @@ public enum GameAction {
   BUY_POSTS,
   BUY_RING,
   BUILD_PORT,
+  SEND_VOYAGE,
   REMEDY,
   REATTACH,
   EXODUS,

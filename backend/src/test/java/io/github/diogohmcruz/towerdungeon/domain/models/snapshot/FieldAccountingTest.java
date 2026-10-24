@@ -45,6 +45,7 @@ class FieldAccountingTest {
           Map.entry("arrivalsCame", "CampaignSnapshot.arrivalsCame"),
           Map.entry("yearNumber", "CampaignSnapshot.year"),
           Map.entry("tickInYear", "CampaignSnapshot.yearTick"),
+          Map.entry("sailing", "CampaignSnapshot.voyage"),
           Map.entry("village", "CampaignSnapshot.villageFood"),
           Map.entry("resources", "CampaignSnapshot.vault"),
           Map.entry("carriedLoot", "ExpeditionSnapshot.carriedLoot"),
@@ -91,7 +92,11 @@ class FieldAccountingTest {
 
   private static final Map<String, String> GAME_STATE_TRANSIENT =
       merged(
-          GAME_STATE_ROLL_DERIVED,
+          merged(
+              GAME_STATE_ROLL_DERIVED,
+              Map.of(
+                  "voyageEnded",
+                  "told to the player once on the tick the Voyage ends; never saved")),
           Map.of(
               "healthBonus",
                   "derived from the Epitaphs in the player's meta, re-applied on restore; a Unit's"

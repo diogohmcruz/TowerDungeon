@@ -8,6 +8,7 @@ import io.github.diogohmcruz.towerdungeon.domain.models.Fallen;
 import io.github.diogohmcruz.towerdungeon.domain.models.GameOutcome;
 import io.github.diogohmcruz.towerdungeon.domain.models.ResourceType;
 import io.github.diogohmcruz.towerdungeon.domain.models.RunSummary;
+import io.github.diogohmcruz.towerdungeon.domain.models.Voyage;
 import io.github.diogohmcruz.towerdungeon.domain.models.milestone.MilestoneType;
 import io.github.diogohmcruz.towerdungeon.domain.models.shortcut.ShortcutType;
 import io.github.diogohmcruz.towerdungeon.domain.models.upgrade.UpgradeType;
@@ -40,6 +41,7 @@ import io.github.diogohmcruz.towerdungeon.domain.prestige.SuccessionReport;
  * @param year the Year the Campaign is in, from 1; absent in older saves, which read as Year 1
  * @param yearTick connected lifecycle ticks gone in the Year; absent in older saves, which read as
  *     the first tick, in Spring
+ * @param voyage the Voyage under way; null when the Boat is in port, and in older saves
  */
 public record CampaignSnapshot(
     double credit,
@@ -68,7 +70,8 @@ public record CampaignSnapshot(
     Integer boatTicks,
     Boolean arrivalsCame,
     int year,
-    int yearTick) {
+    int yearTick,
+    Voyage voyage) {
 
   /** A save from before Artifacts has none taken, and before the Wall of Names no names on it. */
   public CampaignSnapshot {
@@ -115,6 +118,7 @@ public record CampaignSnapshot(
         boatTicks,
         arrivalsCame,
         1,
-        0);
+        0,
+        voyage);
   }
 }

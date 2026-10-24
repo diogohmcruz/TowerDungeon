@@ -176,7 +176,8 @@ class SnapshotRoundTripTest {
                 null,
                 null,
                 0,
-                0),
+                0,
+                null),
             null);
 
     var restored = GameState.restore(older, config, new RandomSource(5), plan);
@@ -276,7 +277,8 @@ class SnapshotRoundTripTest {
                 snapshot.campaign().boatTicks(),
                 snapshot.campaign().arrivalsCame(),
                 snapshot.campaign().year(),
-                snapshot.campaign().yearTick()),
+                snapshot.campaign().yearTick(),
+                snapshot.campaign().voyage()),
             null);
 
     var restored = GameState.restore(stripped, config, new RandomSource(5), plan);

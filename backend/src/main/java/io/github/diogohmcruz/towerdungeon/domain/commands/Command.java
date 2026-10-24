@@ -6,6 +6,7 @@ import io.github.diogohmcruz.towerdungeon.domain.models.BodyPart;
 import io.github.diogohmcruz.towerdungeon.domain.models.Tome;
 import io.github.diogohmcruz.towerdungeon.domain.models.Trade;
 import io.github.diogohmcruz.towerdungeon.domain.models.UnitStats;
+import io.github.diogohmcruz.towerdungeon.domain.models.VoyageGoods;
 
 /**
  * Something a player (or an agent acting for one) asks the game to do. These are domain records, so
@@ -221,6 +222,19 @@ public sealed interface Command {
     @Override
     public String kind() {
       return "BUILD_PORT";
+    }
+  }
+
+  /**
+   * Send the docked Boat on a Voyage with Relics from the Vault, in whole lots, to return Salt or
+   * Spores after a Quarter of connected ticks. Refused when the Boat is not docked or already at
+   * sea, when the load is not a whole lot, over the cap, or the Vault does not hold it. What comes
+   * back goes into the Stockroom by itself; there is nothing to collect.
+   */
+  record SendVoyage(Integer relics, VoyageGoods goods) implements Command {
+    @Override
+    public String kind() {
+      return "SEND_VOYAGE";
     }
   }
 

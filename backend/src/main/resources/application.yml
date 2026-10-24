@@ -270,6 +270,17 @@ game:
   boat:
     # Placeholder: lifecycle ticks from the Port being finished to the Boat docking.
     dock-ticks: 600
+  voyage:
+    # Placeholders for the scaling pass: a Voyage takes one Quarter of connected ticks; cargo goes
+    # in lots of Relics, each lot returning Salt or Spores; the chance the sea takes the cargo is
+    # the Year's sea risk scaled by Relics sent over the reference, capped.
+    ticks: 150
+    relics-per-lot: 5
+    salt-per-lot: 10
+    spores-per-lot: 3
+    max-relics: 50
+    risk-reference-relics: 10
+    risk-cap: 0.20
   architecture:
     enabled: false
     seed: 362108372306

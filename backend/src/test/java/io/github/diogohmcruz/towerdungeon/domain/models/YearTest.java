@@ -208,7 +208,8 @@ class YearTest {
             c.boatTicks(),
             c.arrivalsCame(),
             0,
-            0);
+            0,
+            c.voyage());
     var loaded =
         GameState.restore(
             new io.github.diogohmcruz.towerdungeon.domain.models.snapshot.GameSnapshot(

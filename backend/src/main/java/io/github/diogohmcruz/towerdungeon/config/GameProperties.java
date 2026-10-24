@@ -64,6 +64,7 @@ public class GameProperties {
   private final Spores spores = new Spores();
   private final Port port = new Port();
   private final Boat boat = new Boat();
+  private final Voyage voyage = new Voyage();
   private final Architecture architecture = new Architecture();
   private final Prestige prestige = new Prestige();
   private final Persistence persistence = new Persistence();
@@ -1187,6 +1188,38 @@ public class GameProperties {
                 new Founder("The Silent Assistant", UnitStats.PORTER, 1.0, false),
                 new Founder("The Pyromancer", UnitStats.MAGE, 1.0, false),
                 new Founder("The Battle Maiden", UnitStats.TANK, 1.0, false)));
+  }
+
+  /**
+   * Voyages: the docked Boat sails with Relics and, a Quarter of connected ticks later, returns
+   * Salt or Spores at a fixed rate, unless the sea takes the cargo. Every number here is a
+   * placeholder for the scaling pass.
+   */
+  @Data
+  public static class Voyage {
+    /** Connected lifecycle ticks a Voyage takes: one Quarter. */
+    private int ticks = 150;
+
+    /** Relics in one lot of cargo; cargo is sent in whole lots. */
+    private int relicsPerLot = 5;
+
+    /** Salt one lot of Relics returns. */
+    private int saltPerLot = 10;
+
+    /** Spores one lot of Relics returns. */
+    private int sporesPerLot = 3;
+
+    /** The most Relics one Voyage may carry. */
+    private int maxRelics = 50;
+
+    /**
+     * The cargo whose value leaves the sea risk as it is: the chance the sea takes the cargo is the
+     * Year's sea risk times (Relics sent / this), up to the cap.
+     */
+    private int riskReferenceRelics = 10;
+
+    /** The most the chance the sea takes the cargo can ever be, as a share. */
+    private double riskCap = 0.20;
   }
 
   /** Floor Architectures: the seeded plan, and the switch for their gameplay effects. */

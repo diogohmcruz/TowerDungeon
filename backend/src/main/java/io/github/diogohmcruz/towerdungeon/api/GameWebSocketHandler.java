@@ -27,6 +27,7 @@ import io.github.diogohmcruz.towerdungeon.api.dtos.ReattachActionDTO;
 import io.github.diogohmcruz.towerdungeon.api.dtos.ReinforceActionDTO;
 import io.github.diogohmcruz.towerdungeon.api.dtos.RemedyActionDTO;
 import io.github.diogohmcruz.towerdungeon.api.dtos.SaveLoadoutActionDTO;
+import io.github.diogohmcruz.towerdungeon.api.dtos.SendVoyageActionDTO;
 import io.github.diogohmcruz.towerdungeon.api.dtos.SuccessionActionDTO;
 import io.github.diogohmcruz.towerdungeon.api.dtos.UpgradeActionDTO;
 import io.github.diogohmcruz.towerdungeon.domain.commands.Command;
@@ -279,6 +280,11 @@ public class GameWebSocketHandler implements WebSocketHandler {
       }
       case BUY_RING -> new Command.BuyRing();
       case BUILD_PORT -> new Command.BuildPort();
+      case SEND_VOYAGE -> {
+        var voyage = payload(message, new TypeReference<GameActionDTO<SendVoyageActionDTO>>() {});
+        yield new Command.SendVoyage(
+            voyage == null ? null : voyage.relics(), voyage == null ? null : voyage.goods());
+      }
       case BUY_POSTS -> {
         var posts = payload(message, new TypeReference<GameActionDTO<BuyPostsActionDTO>>() {});
         yield new Command.BuyPosts(posts == null ? null : posts.trade());
