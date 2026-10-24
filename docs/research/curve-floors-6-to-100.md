@@ -233,6 +233,11 @@ mvn test -Dtest=PacingCalibrate -Dpacing.calibrate=guardian -Dpacing.runs=150
 mvn test -Dtest=PacingSlack -Dpacing.slack=1
 ```
 
+The pacing bars run in the default build as `PacingAcceptanceTest` (#118; bars in
+`balance/pacing-acceptance.properties`: a normal Floor won 70% of the time, a Surge 60%, a Guardian
+50%, the first Guardian past the target at most 35%; about 3 s). The full sweep, 300 runs a Floor:
+`mvn test -Dtest=PacingAcceptanceTest -Dpacing.acceptance=full` (about 15 s).
+
 `pacing.gens` limits the Generations (`1-5`, `3,7`), `pacing.seed` changes the seed. One Floor, one
 plan, from the command line: `docs/research/floor-duel-harness.md`. A sweep of all twelve takes
 about 20 minutes on a laptop at 150 runs.
