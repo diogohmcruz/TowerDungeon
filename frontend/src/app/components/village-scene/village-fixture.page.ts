@@ -9,6 +9,7 @@ import type { Member } from '../../interfaces/member';
 import type { UnitStats } from '../../interfaces/unit.enum';
 import type { SessionMeta } from '../../interfaces/game-frame';
 import type { SuccessionNode } from '../../interfaces/succession';
+import { loadCargo } from '../../three/village/voyage-building';
 import { PopoverService } from '../../services/popover.service';
 import { GameStateService } from '../../services/game-state.service';
 import { BuildingPopover } from '../building-popover/building-popover';
@@ -39,7 +40,8 @@ const FIXTURE_LEDGER = [
   { text: 'The Floor 10 Guardian was slain. The stair eases.', loss: false },
   { text: 'Wipe. They stay on the Floor.', loss: true },
   { text: 'The Study gained a Post.', loss: false },
-  { text: 'The Voyage was lost to the Quarter of Autumn.', loss: true },
+  { text: 'The Boat sails with 10 Relics, for Salt.', loss: false },
+  { text: 'The sea took the cargo of the Voyage sailed in Autumn. The Boat comes home empty.', loss: true },
 ];
 
 function fixtureSummary(wiped: boolean): RunSummary {
@@ -228,6 +230,20 @@ export class VillageFixturePage {
       const popover = inject(PopoverService);
       setTimeout(() => popover.openFor({ kind: 'building', id: open }), 1500);
     }
+    // `?port=footing|built`, `&boat=docked|due`, `&voyage=sailing|home` (at sea; on the way home),
+    // `&load=2` (lots in the cargo), `&goods=spores`, `&held=1` (time held).
+    const portState = portParam();
+    const voyageMode = query.get('voyage');
+    const seaNow = Number(query.get('risk') ?? 0.01);
+    const boatState =
+      query.get('boat') === 'docked' || voyageMode ? 'DOCKED' : query.get('boat') === 'due' ? 'DUE' : 'NOT_BUILT';
+    if (query.has('load')) {
+      loadCargo(Number(query.get('load')), query.get('goods') === 'spores' ? 'SPORES' : 'SALT');
+    }
+    if (query.has('held')) {
+      game.setSession({ resumed: false, savedAt: null, schema: 1, notices: [], held: true });
+    }
+    const sailing = voyageMode === 'sailing' || voyageMode === 'home';
     // `?offer=1` shows the Campaign ended and waiting in OFFER: the Roll stone and the Succession popover.
     const waiting = new URLSearchParams(location.search).has('offer');
     if (waiting) {
@@ -244,7 +260,7 @@ export class VillageFixturePage {
         salt: 40,
         spores: tierParam() >= 3 ? 7 : 0,
       },
-      resources: { ...game.state().resources, MATERIALS: 300, RELICS: 3 },
+      resources: { ...game.state().resources, MATERIALS: 300, RELICS: query.has('relics') ? Number(query.get('relics')) : 23 },
       quarryHeapCap: 40,
       saltRate: 0.3,
       sporeRate: 0.1,
@@ -329,6 +345,35 @@ export class VillageFixturePage {
       ],
       trustHeld: 30,
       ring: { level: 2, maxLevel: 5, cost: 23, maxed: false, speedBonus: 0.5, speedPerLevel: 0.25, capacityBonus: 10, capacityPerLevel: 5, blocked: null },
+      // The Port, the Boat and the Voyage; the sea and the Quarter as the Village draws them.
+      port: {
+        state: portState,
+        footingExpeditions: 12,
+        expeditionsCompleted: 14,
+        materialsCost: 600,
+        creditsCost: 300,
+      },
+      boat: { state: boatState, dockTicks: 600, ticksToDock: boatState === 'DUE' ? 300 : 0 },
+      quarter: quarterParam() ?? 'AUTUMN',
+      nextQuarter: 'WINTER',
+      seaRisk: seaNow,
+      nextSeaRisk: 0.12,
+      voyage: {
+        state: sailing ? 'SAILING' : boatState === 'DOCKED' ? 'READY' : 'UNAVAILABLE',
+        relics: sailing ? 10 : null,
+        goods: sailing ? 'SALT' : null,
+        ticksLeft: sailing ? (voyageMode === 'home' ? 50 : 120) : 0,
+        ticksTotal: 150,
+        riskTaken: sailing ? seaNow * 1 : null,
+        seaRisk: seaNow,
+        nextSeaRisk: 0.12,
+        relicsPerLot: 5,
+        saltPerLot: 10,
+        sporesPerLot: 3,
+        maxRelics: 50,
+        riskReferenceRelics: 10,
+        riskCap: 0.2,
+      },
       // The Trades, so the Annexes and the Silo have something to offer.
       foodUpkeep: 8,
       pantryHoldSeconds: 99,
@@ -423,7 +468,8 @@ export class VillageFixturePage {
           new URLSearchParams(location.search).get('risk') ?? 0.01,
         ),
         boatDocked:
-          new URLSearchParams(location.search).get('boat') === 'docked',
+          new URLSearchParams(location.search).get('boat') === 'docked' ||
+          new URLSearchParams(location.search).has('voyage'),
         // `?bell=dark` draws the bell unlit; `?start=10` chooses the Shortcut at Floor 10.
         bellUsable: new URLSearchParams(location.search).get('bell') !== 'dark',
         startFloor: Number(new URLSearchParams(location.search).get('start') ?? 0),

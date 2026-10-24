@@ -12,6 +12,7 @@ import { FORT } from './fort-building';
 import { SUCCESSION } from './succession-building';
 import { ANNEXES } from './annex-buildings';
 import { RING } from './ring-building';
+import { PORT } from './voyage-building';
 import { STONE_OF_COUNT, WALL_OF_NAMES } from './tier-four-records';
 import { REFERENCE_PILLAR } from './reference-pillar-building';
 import { sellSaltAction } from './salt-sale';
@@ -334,6 +335,7 @@ export const BUILDINGS: readonly BuildingDefinition[] = [
   WALL_OF_NAMES,
   SUCCESSION,
   RING,
+  PORT,
   ...UPGRADE_BUILDINGS,
 ];
 

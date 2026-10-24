@@ -16,7 +16,6 @@ export type SubjectKind =
   | 'annex'
   | 'villagers'
   | 'upgrade'
-  | 'port'
   | 'shortcut'
   | 'bell'
   | 'recall'
@@ -66,7 +65,8 @@ export const VOLUME_SUBJECTS: ReadonlyArray<{
   { prefix: 'pan-', kind: 'annex', id: 'SALTER' },
   // The Spore Cellar is the Sporewardens' Annex, drawn from Village Tier III.
   { prefix: 'cellar', kind: 'annex', id: 'SPOREWARDEN' },
-  { prefix: 'port-', kind: 'port', id: PORT_SUBJECT },
+  // The Port is a registered building (`voyage-building.ts`): its pier, footing and the Boat's hull.
+  { prefix: 'port-', kind: 'building', id: PORT_SUBJECT },
   // Registered buildings (`buildings.ts`): the popover framework's subjects.
   { prefix: 'silo', kind: 'building', id: 'SILO' },
   { prefix: 'gate-', kind: 'building', id: 'GATE' },
@@ -120,7 +120,7 @@ export function subjectOfVolume(volumeId: string): VillageSubject | null {
     if (id === BELL_SUBJECT) return { kind: 'bell', id };
     if (id === RECALL_SUBJECT) return { kind: 'recall', id };
     if (id === BASE_DOOR_SUBJECT) return { kind: 'base-door', id };
-    return { kind: id === PORT_SUBJECT ? 'port' : 'annex', id };
+    return { kind: 'annex', id };
   }
   if (volumeId.startsWith(BELL_ID)) return { kind: 'bell', id: BELL_SUBJECT };
   if (volumeId.startsWith(RECALL_ID)) {
@@ -164,7 +164,6 @@ const GAP = 0.1;
 const OUTLINED_KINDS: readonly SubjectKind[] = [
   'annex',
   'villagers',
-  'port',
   'shortcut',
   'bell',
   'recall',

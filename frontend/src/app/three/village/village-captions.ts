@@ -18,6 +18,8 @@ import { lockOf } from './trade-locks';
 import { expeditionCaption } from '../expedition/expedition-objects';
 import { buildingView, gaugeView, isVisible } from './building-registry';
 import type { SubjectKind, VillageSubject } from './village-subjects';
+import { PORT_SUBJECT } from './village-subjects';
+import { percent, ticksInWords } from './voyage-building';
 
 export interface VillageCaption {
   name: string;
@@ -140,20 +142,25 @@ const upgrade: CaptionBuilder = (subject, state) => {
   };
 };
 
-/** Time left in plain words; one lifecycle tick is one second. */
-function inWords(ticks: number): string {
-  if (ticks < 60) return 'less than a minute';
-  const minutes = Math.ceil(ticks / 60);
-  return minutes === 1 ? 'about a minute' : `about ${minutes} minutes`;
-}
-
 function boatStatus(state: GameState): string {
   const boat = state.boat;
+  const voyage = state.voyage;
+  if (voyage?.state === 'SAILING') {
+    return `Finished. The Boat is away. It returns in ${ticksInWords(voyage.ticksLeft)}.`;
+  }
   if (boat?.state === 'DOCKED') return 'Finished. A Boat lies at the pier.';
   if (boat?.state === 'DUE') {
-    return `Finished. The Boat is due, in ${inWords(boat.ticksToDock)}.`;
+    return `Finished. The Boat is due, in ${ticksInWords(boat.ticksToDock)}.`;
   }
   return 'Finished. The pier stands over the dark water.';
+}
+
+/** The danger at sea, now and next Quarter, when the frame states it (the Year does not run in a Trial). */
+function seaWords(state: GameState): { rates?: string } {
+  const now = state.voyage?.seaRisk ?? state.seaRisk;
+  const next = state.voyage?.nextSeaRisk ?? state.nextSeaRisk;
+  if (now == null || next == null) return {};
+  return { rates: `Danger at sea ${percent(now)}, ${percent(next)} next Quarter` };
 }
 
 /**
@@ -169,6 +176,7 @@ const port: CaptionBuilder = (_subject, state) => {
       status: boatStatus(state),
       makes: '',
       lock: null,
+      ...seaWords(state),
     };
   }
   return {
@@ -273,7 +281,8 @@ const recall: CaptionBuilder = (_subject, state) => {
  * figure and its rate, and say what spending would leave. The same text
  * everywhere a figure is read, so the scene, the popover and the list agree.
  */
-const building: CaptionBuilder = (subject, state) => {
+const building: CaptionBuilder = (subject, state, context) => {
+  if (subject.id === PORT_SUBJECT) return port(subject, state, context);
   const def = buildingDefinition(subject.id, BUILDINGS);
   if (!def) return null;
   const lock = def.lock?.(state) ?? null;
@@ -303,7 +312,6 @@ export const CAPTION_BUILDERS: Partial<Record<SubjectKind, CaptionBuilder>> = {
   annex,
   villagers,
   upgrade,
-  port,
   shortcut,
   bell,
   recall,

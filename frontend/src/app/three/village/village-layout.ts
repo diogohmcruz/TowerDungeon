@@ -979,6 +979,9 @@ function port(out: Volume[], state: PortState, boatDocked: boolean, seaRisk: num
     const px = PIER_X0 + 0.1 + (i * (length - 0.2)) / Math.max(1, piles - 1);
     box(out, `port-pier-pile-${i}`, 'port', px, -0.2, PIER_Z, 0.05, PIER_DECK + 0.2, 0.05, tone);
   }
+  // The near-miss pad over the pier and the water beside it, where the Boat lies.
+  const hitX1 = state === 'BUILT' ? SHORE_X1 - 0.3 : PIER_X0 + 0.9;
+  box(out, 'port-hit', 'port', (PIER_X0 - 0.05 + hitX1) / 2, 0, PIER_Z + 0.3, hitX1 - PIER_X0 + 0.05, 0.4, 1.2, VILLAGE_TONE.dark, 0);
   if (state !== 'BUILT') return;
   box(out, 'port-pier-bollard', 'port', PIER_X0 + length - 0.1, PIER_DECK + 0.05, PIER_Z, 0.06, 0.1, 0.06, VILLAGE_TONE.stone);
   if (!boatDocked) return;

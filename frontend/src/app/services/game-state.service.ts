@@ -142,15 +142,13 @@ export class GameStateService {
   readonly session: Signal<SessionMeta | null> = this._session.asReadonly();
 
   /**
-   * The state with the Succession's Roll and choices beside it, while the Campaign
-   * waits in OFFER (the frame's session facts are kept apart from the state). What
+   * The state with the session's facts beside it (held time, the Succession's Roll and
+   * choices while the Campaign waits in OFFER; the frame keeps them apart from the state). What
    * the buildings, the popover, the hover caption and the list view read.
    */
   readonly registryState: Signal<GameState> = computed(() => {
-    const succession = this._session()?.succession;
-    return succession
-      ? { ...this._state(), session: this._session() as SessionMeta }
-      : this._state();
+    const session = this._session();
+    return session ? { ...this._state(), session } : this._state();
   });
 
   private catalog: Record<string, UnitStats> | undefined;
