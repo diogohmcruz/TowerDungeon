@@ -211,4 +211,98 @@ describe('CharacterCard', () => {
     fixture.detectChanges();
     expect(el.querySelector('.spore-doses')).toBeNull();
   });
+
+  describe('detailed (the unit view)', () => {
+    const detailedRender = (overrides: Partial<Member>): HTMLElement => {
+      fixture.componentRef.setInput('detailed', true);
+      return render({
+        stats: {
+          type: 'ARCHER',
+          health: 100,
+          damage: 10,
+        } as unknown as UnitStats,
+        accuracy: 12.5,
+        evasion: 5,
+        affinity: 'BOW',
+        ...overrides,
+      });
+    };
+    const row = (el: HTMLElement, sel: string) =>
+      Array.from(el.querySelector(sel)?.children ?? [])
+        .map((c) => c.textContent?.replace(/\s+/g, ' ').trim())
+        .filter(Boolean)
+        .join(' ');
+
+    it('opens expanded with type, accuracy, evasion and affinity', () => {
+      const el = detailedRender({ parts: parts() });
+
+      expect(el.querySelector('.detail')).not.toBeNull();
+      expect(el.querySelector('.trait-type')?.textContent?.trim()).toBe('Archer');
+      expect(el.querySelector('.trait-accuracy')?.textContent?.trim()).toBe('12.5');
+      expect(el.querySelector('.trait-evasion')?.textContent?.trim()).toBe('5');
+      expect(el.querySelector('.trait-affinity')?.textContent?.trim()).toBe('Bow');
+    });
+
+    it('does not collapse when the name is pressed', () => {
+      const el = detailedRender({ parts: parts() });
+      (el.querySelector('.toggle') as HTMLButtonElement).click();
+      fixture.detectChanges();
+
+      expect(el.querySelector('.detail')).not.toBeNull();
+    });
+
+    it('spells out every part as whole, wounded or lost, in words', () => {
+      const el = detailedRender({
+        parts: parts({
+          HEAD: { currentHealth: 4 },
+          LEFT_ARM: { lost: true, currentHealth: 0 },
+        }),
+      });
+
+      expect(row(el, '[data-part="TORSO"]')).toBe('Torso whole 10 / 10');
+      expect(row(el, '[data-part="HEAD"]')).toBe('Head wounded 4 / 10');
+      expect(row(el, '[data-part="LEFT_ARM"]')).toBe('Left arm lost, maimed');
+      expect(el.querySelector('.maimed')?.textContent).toContain('Maimed');
+    });
+
+    it('is not Maimed with every part attached', () => {
+      const el = detailedRender({ parts: parts() });
+
+      expect(el.querySelector('.maimed')).toBeNull();
+    });
+
+    it('lists every slot: the item with stats and effect, empty slots as empty', () => {
+      const el = detailedRender({
+        parts: parts(),
+        gear: {
+          slots: {
+            TRINKET_1: {
+              id: 't1',
+              name: 'Pale Ring',
+              tier: 'TALISMAN',
+              category: 'TRINKET',
+              stats: { ACCURACY: 2 },
+              effectId: 'keen',
+            },
+          },
+        },
+      });
+
+      expect(el.querySelectorAll('.item-row').length).toBe(8);
+      const ring = row(el, '[data-slot="TRINKET_1"]');
+      expect(ring).toContain('Talisman Pale Ring');
+      expect(ring).toContain('Accuracy 2');
+      expect(ring).toContain('Sharpens the wearer');
+      expect(row(el, '[data-slot="HEAD"]')).toBe('Head Empty');
+    });
+
+    it('says an item on a lost part is gone', () => {
+      const el = detailedRender({
+        parts: parts({ RIGHT_ARM: { lost: true, currentHealth: 0 } }),
+      });
+
+      expect(row(el, '[data-slot="RIGHT_ARM"]')).toContain('Lost with the part');
+      expect(row(el, '[data-slot="LEFT_ARM"]')).toBe('Left arm Empty');
+    });
+  });
 });

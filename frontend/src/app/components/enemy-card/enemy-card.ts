@@ -43,5 +43,28 @@ export class EnemyCard {
         : `${PART_LABELS[part.kind]}: ${Math.round(part.currentHealth)} / ${Math.round(part.maxHealth)}`,
     }));
   });
+  /** The unit view's form: every body part in words, and the Salted and Guardian states. */
+  detailed = input(false);
+  /** Every part with its health and a state in words; one born without a part says none. */
+  partRows = computed(() =>
+    (this.enemy().parts ?? []).map((part) => {
+      const state = part.lost
+        ? part.maxHealth > 0
+          ? 'lost'
+          : 'none'
+        : part.currentHealth < part.maxHealth - 1e-9
+          ? 'wounded'
+          : 'whole';
+      return {
+        kind: part.kind,
+        label: PART_LABELS[part.kind],
+        state,
+        health: part.lost
+          ? ''
+          : `${Math.round(part.currentHealth)} / ${Math.round(part.maxHealth)}`,
+      };
+    }),
+  );
+  isSalted = computed(() => this.enemy().salted === true);
   isBoss = computed(() => this.enemy().boss === true);
 }

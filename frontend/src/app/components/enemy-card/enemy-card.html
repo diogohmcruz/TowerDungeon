@@ -9,7 +9,7 @@
   <div class="hp-bar">
     <div class="hp-fill" [style.width.%]="healthPct()"></div>
   </div>
-  @if (partBars().length) {
+  @if (partBars().length && !detailed()) {
     <div class="part-bars">
       @for (bar of partBars(); track bar.kind) {
         <div class="part-bar" [class.lost]="bar.lost" [title]="bar.title">
@@ -22,5 +22,17 @@
     @if (isBoss()) { <span class="tag boss-tag">GUARDIAN</span> }
     <span class="tag">{{ enemy().stats.attackType }}</span>
     <span class="tag">⚔ {{ enemy().stats.damage | number: '1.0-1' }}</span>
+    @if (isSalted()) { <span class="tag salted-tag">SALTED</span> }
   </div>
+  @if (detailed()) {
+    <ul class="part-list" aria-label="Body parts">
+      @for (row of partRows(); track row.kind) {
+        <li class="part-row" [attr.data-part]="row.kind" [attr.data-state]="row.state">
+          <span class="row-name">{{ row.label }}</span>
+          <span class="row-state">{{ row.state }}</span>
+          <span class="row-health">{{ row.health }}</span>
+        </li>
+      }
+    </ul>
+  }
 </app-card>

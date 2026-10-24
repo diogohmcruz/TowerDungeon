@@ -742,8 +742,9 @@ public class Unit extends BaseUnit implements Aimable {
   /**
    * How well this unit lands hits on the parts it aims at, in percentage points off the miss
    * chance: its base, the sanity modifier, the worn items' Accuracy and the Keen Talismans.
+   *
+   * <p>Sent to the human UI so the unit view can show it; the MCP views project their own rows.
    */
-  @JsonIgnore
   public double getAccuracy() {
     return stats.baseAccuracy()
         + getSanityAccuracyModifier()
@@ -752,7 +753,6 @@ public class Unit extends BaseUnit implements Aimable {
   }
 
   /** How well this unit avoids hits, in percentage points on the attacker's miss chance. */
-  @JsonIgnore
   public double getEvasion() {
     return stats.baseEvasion()
         + gear.total(ItemStat.EVASION)

@@ -3,7 +3,7 @@
     <button
       type="button"
       class="toggle"
-      [attr.aria-expanded]="expanded()"
+      [attr.aria-expanded]="open()"
       (click)="toggle()"
     >
       {{ member().name }}
@@ -26,7 +26,7 @@
   >
     <div class="mana-fill" [style.width.%]="manaPct()"></div>
   </div>
-  } @if (expanded()) {
+  } @if (open()) {
   <div class="detail">
     @if (maxSanity() > 0) {
     <div
@@ -44,6 +44,18 @@
       >Health <b>{{ maxHealth() | number: '1.0-1' }}</b> &middot; Damage
       <b>{{ damage() | number: '1.0-1' }}</b></span
     >
+    @if (detailed()) {
+    <dl class="traits">
+      <dt>Type</dt>
+      <dd class="trait-type">{{ typeName() }}</dd>
+      <dt>Accuracy</dt>
+      <dd class="trait-accuracy">{{ member().accuracy | number: '1.0-1' }}</dd>
+      <dt>Evasion</dt>
+      <dd class="trait-evasion">{{ member().evasion | number: '1.0-1' }}</dd>
+      <dt>Affinity</dt>
+      <dd class="trait-affinity">{{ affinityText() }}</dd>
+    </dl>
+    }
     <div class="phobias">
       <span class="phobias-label">Phobias</span>
       @if (phobias().length === 0) {
@@ -103,6 +115,43 @@
       }
     </div>
     }
+    @if (detailed()) {
+    <section class="sheet" aria-label="Body parts">
+      <h4 class="sheet-title">
+        Body parts @if (maimed()) {<span class="maimed">Maimed</span>}
+      </h4>
+      <ul class="sheet-list parts-list">
+        @for (row of partRows(); track row.kind) {
+        <li class="part-row" [attr.data-part]="row.kind" [attr.data-state]="row.state">
+          <span class="row-name">{{ row.label }}</span>
+          <span class="row-state">{{ row.state === 'lost' && maimed() && row.kind !== 'HEAD' && row.kind !== 'TORSO' ? 'lost, maimed' : row.state }}</span>
+          <span class="row-health">{{ row.health }}</span>
+        </li>
+        }
+      </ul>
+    </section>
+    <section class="sheet" aria-label="Items">
+      <h4 class="sheet-title">Items</h4>
+      <ul class="sheet-list items-list">
+        @for (row of itemRows(); track row.name) {
+        <li class="item-row" [attr.data-slot]="row.name" [class.item-row--empty]="!row.item">
+          <span class="row-name">{{ row.label }}</span>
+          @if (row.item) {
+          <span class="item-name"
+            ><span class="item-tier">{{ tierName(row.item) }}</span> {{ row.item.name }}</span
+          >
+          <span class="item-stats">{{ row.stats }}</span>
+          @if (row.effect) {<span class="item-effect">{{ row.effect }}</span>}
+          } @else if (row.partLost) {
+          <span class="item-gone">Lost with the part, gone</span>
+          } @else {
+          <span class="item-empty">Empty</span>
+          }
+        </li>
+        }
+      </ul>
+    </section>
+    } @else {
     <p class="readout" aria-live="polite">{{ detail() }}</p>
     <div class="slots">
       @for (slot of slots(); track slot.name) {
@@ -128,6 +177,7 @@
       </div>
       }
     </div>
+    }
   </div>
   }
 </app-card>

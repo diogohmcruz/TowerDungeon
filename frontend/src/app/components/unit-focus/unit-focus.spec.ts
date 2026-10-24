@@ -22,6 +22,9 @@ describe('UnitFocusCard', () => {
       } as unknown as UnitStats,
       currentHealth: 7,
       maxHealth: 10,
+      parts: (['TORSO', 'HEAD', 'LEFT_ARM', 'RIGHT_ARM', 'LEFT_LEG', 'RIGHT_LEG'] as const).map(
+        (kind) => ({ kind, currentHealth: 2, maxHealth: 2, lost: false }),
+      ),
     }) as Member;
 
   const party = { WARRIOR: [member(3, 'Maren')] } as unknown as Squad;
@@ -88,6 +91,19 @@ describe('UnitFocusCard', () => {
     zoom.setAnchor({ left: 100, top: 100, right: 160, bottom: 220 });
     fixture.detectChanges();
     expect(parseFloat(card.style.left)).toBe(160 + 16);
+  });
+
+  it('opens the card in full and scrolls inside it when it is taller than the screen', () => {
+    TestBed.inject(StageService).setViewport({ width: 440, height: 300 });
+    zoom.focusUnit({ kind: 'unit', id: 3 });
+    fixture.detectChanges();
+    const card = el().querySelector('.unit-focus') as HTMLElement;
+    expect(card.querySelector('.parts-list')).not.toBeNull();
+    expect(card.querySelector('.items-list')).not.toBeNull();
+    const maxHeight = parseFloat(card.style.maxHeight);
+    expect(getComputedStyle(card).overflowY).toBe('auto');
+    expect(card.offsetHeight).toBeLessThanOrEqual(maxHeight || 300);
+    expect(card.scrollHeight).toBeGreaterThan(card.clientHeight);
   });
 
   it('goes away when the view steps back', () => {
