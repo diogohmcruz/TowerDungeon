@@ -252,6 +252,8 @@ export interface GameState {
   ring: RingView;
   postUpgrades: PostUpgradeView[];
   ledger: LedgerLine[];
+  /** The Wall of Names: every Unit that fell on the Tower or starved at home, oldest first. */
+  wallOfNames?: Fallen[];
   session?: SessionMeta;
   /** The Trial this Campaign is; absent for a real Campaign. */
   trial?: TrialRun | null;

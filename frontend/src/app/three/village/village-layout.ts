@@ -10,6 +10,7 @@ import type { Quarter } from '../../interfaces/game-state';
 import type { TradeId } from '../../interfaces/village';
 import { bellObject, gateObject } from '../launch/launch-objects';
 import { barGauge, GAUGE_MIN, notchGauge, slitGauge } from './gauge-kit';
+import { RECORDS_TIER, stoneOfCount, wallOfNames } from './tier-four-records';
 import { EMPTY_PILLAR, referencePillar, type PillarInput } from './reference-pillar';
 import {
   BASE_DOOR_ID,
@@ -149,6 +150,8 @@ export interface VillageInput {
   selected?: string | null;
   /** The Start Floor chosen: 0 is the Base door, otherwise an open Shortcut's Floor. Wears the bone outline. */
   startFloor?: number;
+  /** Units on the Wall of Names (Village Tier IV), for the names carved on it. */
+  fallenCount?: number;
   /** What the reference pillar is carved with: the Highest Floor, the Milestones and the Toll. */
   pillar?: PillarInput;
   /** The gate bell can be rung (set out); false draws it dark with a dashed outline. Default true. */
@@ -1134,7 +1137,14 @@ export function buildVillage(input: VillageInput): Volume[] {
   fort(out, input.reserves, input.wounded ?? 0);
   silo(out, input.food);
   stair(out, input.villageTierLevel, input.still ? 0 : input.flicker);
-  referencePillar(out, input.pillar ?? EMPTY_PILLAR);
+  const pillar = input.pillar ?? EMPTY_PILLAR;
+  // At Tier IV the Toll bar moves to a Stone of Count and the Fallen to a Wall of Names.
+  const records = input.villageTierLevel >= RECORDS_TIER;
+  referencePillar(out, pillar, !records);
+  if (records) {
+    stoneOfCount(out, pillar.tollShare);
+    wallOfNames(out, input.fallenCount ?? 0);
+  }
   fields(out, quarter);
   quarry(out, input.quarryHeap, input.quarryHeapCap);
   study(out, input.hands.SCRIBE, input.posts.SCRIBE);
