@@ -130,9 +130,32 @@ A batch grouped in the "2.2.0" milestone: the scene becomes a fixed full-screen 
 
 | Decision | Ruling |
 |---|---|
-| "Every action stays in the panel" | Launching is the one exception. Buying, assigning and the Loadout stay in the panel, and every in-scene action keeps a panel button and keyboard route |
+| Where actions live | Launching moved into the scene in 2.2.0; every other action follows in 3.0.0 (section 8), and every in-scene action keeps a route in the list view |
 | Stopping time on a zoom | It reuses the Held Party: a new `HOLD` action, released by `RESUME`. A Trial's clock stops with it, so a hold costs no race time. Agents have no zoom, so the MCP surface gains no tool |
 | Translucent panels against verified contrast | 88% opacity plus a dither scrim, and a test that fails below 7:1 on the worst-case backdrop |
 | The Port's sea sits at the right edge | The Tower keeps its position on the right, so the sea stays where it is |
 | Full-screen pixel cost | The pixel scale is chosen automatically for about 250k virtual pixels |
+
+## 8. Added later: 3.0.0 (the in-world interface)
+
+The 2.2.0 menu column turned out to be a small, poor interface. 3.0.0 replaces it step by step with the in-world interface of `architecture-and-visual-identity.md` section 5.6: first a full-width translucent card layer in front of the full-screen scene, then every action as a click on the building it concerns and every number as a gauge on a building (exact figure on hover), with the gauges following the Village Tier, and finally the card layer removed and only a DOM list view kept for the keyboard and screen readers. Voyages (#84, #85) move into this milestone and are built in the world from the start (the Voyage is a popover at the Port).
+
+| Decision | Ruling |
+|---|---|
+| No number strip | Every number is a gauge on a building; exact figures on hover |
+| Gauges and the Village Tier | Low tiers show several values on one building; higher tiers specialise, one value per building (Strongbox, Reliquary, Wall of Names and Stone of Count at Tier IV) |
+| Accessibility | A list view (`L`, automatic for a screen reader) carries every action, and the card layer exists only until each action has moved |
+| Menus that stay | A small top bar (Settings, the Campaign Key, Races, hide) and the Campaign Key gate screen |
+
+## 9. Added later: the pacing target and the split scaling pass
+
+The scaling pass of 3.11 was stuck: the scripted bots never climb past Floor 5, so telemetry cannot size Floors 6 to 100. It is now a set of issues built on a floor duel harness (the real combat code run against any Floor for any Party plan) and a pacing target of about 12 Generations, the first reaching Floor 5 to 7 (`prestige-and-persistence.md` section 3.12).
+
+| Decision | Ruling |
+|---|---|
+| How to size the upper Tower | A floor duel harness with reference plans per Generation, not smarter bots and not hand-tuning |
+| First Guardian | Stays at Floor 10, so Generation 1 meets none; the Tower stays unknown |
+| Easing | 25% of the garrison per Guardian and one tier lower, never below half the base garrison, capped at 60%; forgotten each Generation |
+| Shortcut Floors | Follow the Highest Floor of the previous Generation |
+| Done | A test: about 70% on normal Floors and 50% on Guardian Floors for each Generation's reference plan, up to that Generation's Floor |
 

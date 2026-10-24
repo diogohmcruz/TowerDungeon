@@ -332,7 +332,7 @@ Cut from the Tower Wizard feel: bounce, pulse, sparkle drift, coloured swarms, r
 
 **Villagers [Package B §R26].** One grey ash silhouette for every Villager. The Trade is shown by what is carried (a basket, a stone, a scroll) and by the lane walked, never by hue. One `Points` or instanced sprite per two Villagers, capped at 40, moving one pixel every four frames in sparse single-file lanes, no bobbing. The count is a roll-call, not a growth display. Load colours follow section 2: bone for Salt, lichen for Spores, the dull Quarry brown for stone. `prefers-reduced-motion` freezes dots and snaps the camera.
 
-**Selection.** A `VillageSelectionService` holds `hovered` and `selected` as signals. DOM Trade and Upgrade rows and 3D Annexes, Villagers and Shortcut marks read and write the same state, so hovering a row thickens its Annex and the reverse. Hovering shows a short caption (its name, whether it works, what it makes); clicking focuses and scrolls to its row. Buying and every other action stay in the panel, never in the scene (launching is the one exception, section 5.5), and every hover and click has a keyboard and list equivalent. Hovering a locked footing (an Annex or the Port) states its real unlock condition in words; Shortcuts stay hidden until open. No scale-up, glow or pulse. Only line weight changes.
+**Selection.** A `VillageSelectionService` holds `hovered` and `selected` as signals. DOM Trade and Upgrade rows and 3D Annexes, Villagers and Shortcut marks read and write the same state, so hovering a row thickens its Annex and the reverse. Hovering shows a short caption (its name, whether it works, what it makes); clicking focuses and scrolls to its row. Every action is a click on the object it concerns (section 5.6), and every hover and click has a keyboard and list equivalent. Hovering a locked footing (an Annex or the Port) states its real unlock condition in words; Shortcuts stay hidden until open. No scale-up, glow or pulse. Only line weight changes.
 
 **Events (aligned to [Package B §8.5]; no fanfare).** Sound is Package B's policy, not new: off for the first session, loss only, every sound has a Ledger line.
 
@@ -383,11 +383,11 @@ The backend still sends `maxFloor` (it is visible in the network payload, so thi
 
 ### 5.5 The full-screen scene, launching from the picture, and zoom
 
-**Layout.** The canvas is one fixed, full-screen backdrop and the management column scrolls over it. The Tower stays at the position it has today, on the right. The column keeps its width (about 440 px), gets a 24 px margin on its left, and its panels are about 88% opaque with an ordered-dither scrim (no blur) darkening the scene behind the column. A test samples the worst-case backdrop (Winter) and fails if text contrast falls below 7:1. A key and a button hide the menus entirely. Below about 1100 px the menus take the full width over a dimmed backdrop and the launch controls move to a bottom bar. The pixel scale is chosen automatically to keep the virtual pixels near the 250k budget measured in the ink spike (3 on a large screen), with figures drawn in virtual pixels, so they grow bigger rather than sharper; the quality setting can still override it.
+**Layout.** The canvas is one fixed, full-screen backdrop. The Tower stays at the position it has today, on the right. The management layer is a full-width, translucent card layer in front of the scene (section 5.6): its cards are about 88% opaque with an ordered-dither scrim (no blur) behind them, and the space between cards is fully transparent and click-through, so the scene stays visible and clickable. A test samples the worst-case backdrop (Winter) and fails if text contrast falls below 7:1. A key and a button hide the layer entirely. Below about 1100 px the cards take the full width over a dimmed backdrop and the launch controls move to a bottom bar. The pixel scale is chosen automatically to keep the virtual pixels near the 250k budget measured in the ink spike (3 on a large screen), with figures drawn in virtual pixels, so they grow bigger rather than sharper; the quality setting can still override it.
 
 **The ambient left.** Behind the menus lies an open plain, far ridge silhouettes, a few distant ruined towers (invented; the manga is inspiration, not canon) and the Quarter's weather. It has minor moving parts (drifting haze, weather marks) that freeze under `prefers-reduced-motion`. It carries no gameplay information, not even marks for the fallen. Cairns for the dead would be a later idea.
 
-**Launching from the picture.** This is a narrow exception to the rule that every action stays in the panel: only launching moves into the scene. The controls are objects built from the box kit and picked with the raycaster, in the Tower's own style.
+**Launching from the picture.** Launching is the first interaction to move into the scene, and every other action follows it (section 5.6). The controls are objects built from the box kit and picked with the raycaster, in the Tower's own style.
 
 | Action | Object | Notes |
 |---|---|---|
@@ -396,13 +396,51 @@ The backend still sends `maxFloor` (it is visible in the network payload, so thi
 | Extract | A recall lamp on a post beside the Party's current Floor | Lighting it calls the Party home |
 | Start Floor | The Base door and each open Shortcut's doorway (the marks from section 5.2) | The chosen one gets the bone outline; the Base door is the default |
 
-A control that cannot be used is dark and unlit, with a dashed outline and a caption saying why, so state is never carried by colour alone. Hovering the bell shows a plain caption (Party size, Start Floor, Supplies carried and what the Pantry holds after leaving). Refusals (an Expedition already out, a Held Party, the Pantry guard) appear as one line beside the control and in the Ledger. Every action keeps its button and keyboard route in the panel (the radios, Set out, Extract and Send Wave), so nothing is only reachable by pointer. Buying, assigning and the Loadout stay in the panel.
+A control that cannot be used is dark and unlit, with a dashed outline and a caption saying why, so state is never carried by colour alone. Hovering the bell shows a plain caption (Party size, Start Floor, Supplies carried and what the Pantry holds after leaving). Refusals (an Expedition already out, a Held Party, the Pantry guard) appear as one line beside the control and in the Ledger. Every action keeps its button and keyboard route in the panel (the radios, Set out, Extract and Send Wave), so nothing is only reachable by pointer. Buying, assigning and the Loadout follow the same pattern (section 5.6).
 
 **The Set out transition.** The Village scene and the Tower scene stay two scenes, joined by a short dither dissolve with the 1.6 s camera rise from the Events table. Under reduced motion it is a cut. Merging them into one continuous scene is a larger scene-graph change and can come later.
 
-**The Expedition HUD.** The Floor header, loot, Supplies, Party and enemy cards move to the top of the management column, sticky and translucent, so the scene is unobstructed apart from the launch controls.
+**The Expedition HUD.** The Floor header, loot, Supplies, Party and enemy cards become objects in the scene (section 5.6: a Supplies gauge post, crates at the Party's feet, the numeral on the Floor strip, hover on the groups), so the scene is unobstructed apart from the launch controls.
 
 **Zoom and time.** A click on empty space in the Tower scene toggles `closeup`. A click on a unit (a figure drawn as a sprite; specks beyond the 24-sprite cap do nothing) zooms to that unit, shows its details in a floating card beside it (the character card for the Party and Reserves, the enemy card for enemies), and outlines its figure in bone. A second click on the same unit, or on empty space, steps back: unit to closeup to the normal `battle` view. The `overview` shot stays its own toggle. Both zoom states fill the whole screen, hiding the menus as the hide key does, and **stop time**: the client sends a `HOLD` action and the Party and the Village clock (including the Year, a Voyage and the dock delay) stand still exactly as in a Held Party (prestige doc 2.6), until `RESUME` when the player steps back to the normal view. While Held the allowed actions are the same as there: `RESUME`, `EXTRACT` and Village purchases, and `REINFORCE` is refused. Nothing can die or end while time is stopped, so a unit view never has to close on a death. The army list in the panel is the keyboard equivalent: choosing a unit there opens the same view, and a button in the HUD toggles the closeup.
+
+### 5.6 The in-world interface
+
+**Principle.** Everything the player can do is a click on the object it concerns, and every number is a gauge on a building with the exact figure on hover. No number lives in a separate strip or menu. Only these stay ordinary menus: a small top bar (Settings, the Campaign Key, Races and the hide toggle) and the Campaign Key gate screen.
+
+**Popovers and hover.** Clicking a building opens one translucent card beside it that offers only that building's actions; clicking elsewhere or Escape closes it, only one is open at a time, and it stays on screen at any size. Hovering shows a caption with the exact figure, its rate and what spending would leave. The Quarter's weather, the Year and the sea risk follow the same rule. Objects are picked with the raycaster through `injectObjectEvents`, and the scene keeps the 5 px and 500 ms click limits and the near-miss rules the closeup uses.
+
+**Gauges follow the Village Tier.** The lower the tier, the more values one building shows; the higher the tier, the more each building specialises and shows one. A building's popover offers only the actions for what it shows, so a sale always happens where the number is.
+
+| Tier | What each building shows |
+|---|---|
+| I | The Silo: Food. The Vault Annex: Credits, Materials and Relics (three gauges, all three sell actions). The Quarry: its Heap. The Fort: the Reserves and hiring |
+| II | The Salt Pans open and Salt moves there; the Vault no longer shows or sells Salt |
+| III | The Spore Cellar opens and Spores move there |
+| IV | The Vault splits. A Strongbox shows Credits only; a Reliquary shows Relics only; Materials move to the Quarry's Heap building |
+
+**Where the other things live.**
+
+| Thing | Object | At Tier IV |
+|---|---|---|
+| Hiring Units | The Fort | unchanged |
+| Assigning Villagers, buying Villagers | The Annexes (Fields, Quarry, Study, Pans, Cellar) and the Silo | unchanged |
+| Upgrades | The module each Upgrade adds to the Village (the roof, the fence, the watchtower, the spears) | unchanged |
+| Tomes | The Scribe's Study | unchanged |
+| Posts | The Annex whose Trade they serve | unchanged |
+| The Thought-Binding Ring | The Fort's stair | unchanged |
+| The Loadout | The Gate, beside the bell | unchanged |
+| The Ledger | The Scribe's Study | The Study keeps the Ledger and a Wall of Names takes the fallen Units |
+| The Run summary | The Gate, opened automatically after an Extraction or a Wipe, dismissible | unchanged |
+| Highest Floor, Milestones, the Toll forecast and Exodus | The reference pillar | The pillar keeps the Highest Floor and the Milestones and a Stone of Count takes the Toll and Exodus ("The Tower keeps count.") |
+| Succession | The Tower's foot, opened automatically when the Campaign ends | unchanged |
+| A Voyage and the Boat | The Port | unchanged |
+
+**During an Expedition.** Supplies is a gauge post beside the recall lamp, loot carried is crates at the Party's feet, the Floor is the numeral on the Floor strip, and hovering the Party formation or an enemy group shows the exact numbers. Clicking a unit still opens its card (5.5).
+
+**The list view.** Every in-world action also exists as a DOM list, hidden by default, opened with the `L` key and shown automatically for a screen reader. It is the end state of the interim card layer: while a panel's action has not moved into the scene, its card in the full-width layer is the only route, and when it moves the card is deleted from the layer and kept only in the list view.
+
+**Migration order.** Step by step, each step one issue, shipping something playable: the full-width card layer; the popover and hover framework; hiring at the Fort; assigning Villagers at the Annexes; the gauges and selling for Tiers I to III; the Tier IV Strongbox and Reliquary; Upgrades, Tomes, Posts and the Ring; the Loadout at the Gate; the Ledger and the Run summary; the reference pillar; Succession; the Tier IV Wall of Names and Stone of Count; the Expedition objects; and finally removing the card layer and keeping the list view.
 
 ## 6. How Tower Wizard's technique and Nihei's architecture reconcile
 
