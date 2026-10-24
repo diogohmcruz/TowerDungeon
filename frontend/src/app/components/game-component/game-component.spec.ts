@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 
+import { StageService } from '../../services/stage.service';
 import { GameComponent } from './game-component';
 import { GameAction } from '../../interfaces/game-action.enum';
 import { GameStateService } from '../../services/game-state.service';
@@ -32,6 +33,88 @@ describe('GameComponent', () => {
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  describe('the full-screen stage', () => {
+    const host = () => fixture.nativeElement as HTMLElement;
+    const column = () => host().querySelector('.menu-column') as HTMLElement;
+    const hidden = () => getComputedStyle(column()).display === 'none';
+    const press = (key: string, init: KeyboardEventInit = {}) =>
+      document.dispatchEvent(new KeyboardEvent('keydown', { key, ...init }));
+
+    beforeEach(() => {
+      TestBed.inject(StageService).setViewport({ width: 1400, height: 800 });
+      fixture.detectChanges();
+    });
+    afterEach(() => TestBed.inject(StageService).showMenus());
+
+    it('keeps the scene as a fixed full-screen backdrop and the column at its width', () => {
+      const tower = getComputedStyle(host().querySelector('app-tower')!);
+      expect(tower.position).toBe('fixed');
+      expect(tower.zIndex).toBe('0');
+      expect(column().getBoundingClientRect().width).toBe(440);
+      expect(getComputedStyle(column()).marginLeft).toBe('24px');
+    });
+
+    it('hides and restores the menus with the H key', () => {
+      expect(hidden()).toBeFalse();
+      press('h');
+      fixture.detectChanges();
+      expect(hidden()).toBeTrue();
+      expect(getComputedStyle(host().querySelector('.scrim')!).display).toBe('none');
+      press('H');
+      fixture.detectChanges();
+      expect(hidden()).toBeFalse();
+    });
+
+    it('hides and restores the menus with the button, which stays reachable', () => {
+      const button = host().querySelector('.menus-toggle') as HTMLButtonElement;
+      button.click();
+      fixture.detectChanges();
+      expect(hidden()).toBeTrue();
+      expect(button.getAttribute('aria-pressed')).toBe('true');
+      expect(button.textContent).toContain('Show menus');
+      button.click();
+      fixture.detectChanges();
+      expect(hidden()).toBeFalse();
+      expect(button.textContent).toContain('Hide menus');
+    });
+
+    it('ignores H while typing and with a modifier', () => {
+      press('h', { ctrlKey: true });
+      press('h', { metaKey: true });
+      const input = document.createElement('input');
+      document.body.appendChild(input);
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'h', bubbles: true }));
+      input.remove();
+      fixture.detectChanges();
+      expect(hidden()).toBeFalse();
+    });
+
+    it('makes the panels translucent over the dither scrim, with no blur', () => {
+      const column_ = getComputedStyle(column());
+      expect(column_.getPropertyValue('--panel')).toContain('calc(0.88 * 100%)');
+      expect(getComputedStyle(host()).getPropertyValue('--panel-opacity')).toBe('0.88');
+      expect(getComputedStyle(host().querySelector('.scrim')!).backdropFilter).toBe('none');
+    });
+
+    it('takes the full width over a dimmed backdrop on a narrow screen', () => {
+      const stage = TestBed.inject(StageService);
+      stage.setViewport({ width: 900, height: 700 });
+      fixture.detectChanges();
+      expect(host().classList).toContain('narrow');
+      expect(column().style.width).toBe('');
+      expect(getComputedStyle(column()).marginLeft).toBe('0px');
+      expect(column().getBoundingClientRect().width).toBe(
+        host().getBoundingClientRect().width,
+      );
+      const scrim = getComputedStyle(host().querySelector('.scrim')!);
+      expect(scrim.width).toBe(`${host().getBoundingClientRect().width}px`);
+      expect(scrim.backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
+      stage.setViewport({ width: 1400, height: 800 });
+      fixture.detectChanges();
+      expect(host().classList).not.toContain('narrow');
+    });
   });
 
   it('offers Resume only while the Party is Held', () => {
@@ -311,34 +394,39 @@ describe('GameComponent', () => {
     });
   });
 
-  describe('Tower panel height', () => {
+  describe('Scene backdrop', () => {
     afterEach(() => {
       window.scrollTo(0, 0);
     });
 
-    it('is exactly one viewport tall and stays put while the controls scroll', () => {
+    it('fills the viewport and stays put while the menu column scrolls over it', () => {
       const host: HTMLElement = fixture.nativeElement;
       document.body.appendChild(host);
       document.body.style.margin = '0';
-      // Make the controls column far taller than the viewport.
-      const wrapper = host.querySelector('.flex-wrapper') as HTMLElement;
+      // Make the menu column far taller than the viewport.
+      const wrapper = host.querySelector('.menu-column') as HTMLElement;
       const filler = document.createElement('div');
       filler.style.height = `${window.innerHeight * 3}px`;
       wrapper.appendChild(filler);
 
       const tower = host.querySelector('.tower') as HTMLElement;
-      expect(getComputedStyle(tower).position).toBe('sticky');
-      expect(tower.getBoundingClientRect().height).toBe(window.innerHeight);
+      expect(getComputedStyle(tower).position).toBe('fixed');
+      const before = tower.getBoundingClientRect();
+      expect(before.top).toBe(0);
+      expect(before.left).toBe(0);
+      expect(before.height).toBe(window.innerHeight);
+      expect(before.width).toBe(document.documentElement.clientWidth);
 
-      // The host must grow with the controls, or sticky has no room to travel.
+      // The page grows with the column, and the column scrolls over the scene.
       expect(host.getBoundingClientRect().height).toBeGreaterThan(
         window.innerHeight * 2,
       );
-
+      const columnTop = wrapper.getBoundingClientRect().top;
       window.scrollTo(0, window.innerHeight);
       const after = tower.getBoundingClientRect();
       expect(after.top).toBe(0);
       expect(after.height).toBe(window.innerHeight);
+      expect(wrapper.getBoundingClientRect().top).toBeLessThan(columnTop);
 
       host.remove();
     });

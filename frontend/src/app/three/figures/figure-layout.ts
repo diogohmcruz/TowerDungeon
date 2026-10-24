@@ -98,8 +98,13 @@ export interface FigureInput {
   surfaceY: number;
   /** World Y of a floor's walkable surface (waves climb the front of the tower). */
   floorSurfaceY: (floor: number) => number;
-  /** Canvas width over height. */
+  /** Width over height of the region the fight is framed in. */
   viewAspect: number;
+  /**
+   * How much larger than drawn for pixel scale 2 the figures are, so a coarser
+   * scale grows them instead of blurring them. Default 1.
+   */
+  figureBoost?: number;
   /** Highest floor a Wave column is drawn on (the floor the fight is drawn on). */
   anchorFloor: number;
 }
@@ -128,6 +133,7 @@ function layoutGroup(
   surfaceY: number,
   scale: number,
   diagSign: number,
+  boost: number,
 ): Placed[] {
   const n = members.length;
   const cols = gridCols(n);
@@ -141,7 +147,8 @@ function layoutGroup(
     const itemsInRow = r === rows - 1 ? n - r * cols : cols;
     const rowWidth = (itemsInRow - 1) * colStep;
     const diag = diagSign * (r - (rows - 1) / 2) * rowStepX;
-    const h = FIGURE_SCALE * scale * (member.guardian ? GUARDIAN_SCALE : 1);
+    const h =
+      FIGURE_SCALE * scale * boost * (member.guardian ? GUARDIAN_SCALE : 1);
     return {
       member,
       kind,
@@ -205,6 +212,7 @@ function pickSprites(
  */
 export function planFigures(input: FigureInput): FigurePlan {
   const { party, enemies, surfaceY } = input;
+  const boost = input.figureBoost ?? 1;
 
   const partyCols = gridCols(party.length || 1);
   const enemyCols = gridCols(enemies.length || 1);
@@ -231,6 +239,7 @@ export function planFigures(input: FigureInput): FigurePlan {
     surfaceY,
     fit,
     1,
+    boost,
   );
   const left = Math.min(...placedParty.map((p) => p.x - p.w / 2));
   if (placedParty.length && left < PARTY_CLEAR_X) {
@@ -244,6 +253,7 @@ export function planFigures(input: FigureInput): FigurePlan {
     surfaceY,
     fit,
     -1,
+    boost,
   );
 
   const drawn = pickSprites(placedParty, placedEnemies);

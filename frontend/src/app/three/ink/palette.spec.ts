@@ -9,7 +9,6 @@ import {
   RAMPS,
   toSrgbHex,
 } from './palette';
-import { readPixelScale } from './pixel-scale';
 
 describe('ink palette', () => {
   it('round-trips LEGACY_INK and Guardian crimson through colour management', () => {
@@ -68,15 +67,5 @@ describe('ink uniforms', () => {
     expect(u.uRamp.value[0]).toBe(slot0);
     expect(u.uRamp.value.map(toSrgbHex)).toEqual([...RAMPS.day]);
     expect(u.uFogDensity.value).not.toBe(nightFog);
-  });
-});
-
-describe('pixel scale', () => {
-  it('defaults to 2 and accepts only 1, 2 or 3 as an override', () => {
-    expect(readPixelScale('')).toBe(2);
-    expect(readPixelScale('?pixelScale=1')).toBe(1);
-    expect(readPixelScale('?pixelScale=3')).toBe(3);
-    expect(readPixelScale('?pixelScale=4')).toBe(2);
-    expect(readPixelScale('?pixelScale=abc')).toBe(2);
   });
 });

@@ -86,6 +86,9 @@ import {
   stripY,
 } from '../../three/floor-strip/floor-strip-plan';
 import '../../three/catalogue';
+import { figureBoost } from '../../three/ink/pixel-scale';
+import { applyStageView, towerRegion } from '../../three/stage-view';
+import { StageService } from '../../services/stage.service';
 
 /** Instances of the box mesh: the foundation and the backdrop wall. */
 const BOX_CAPACITY = 4;
@@ -421,6 +424,7 @@ export class TowerSceneGraph {
       surfaceY: floorSurfaceY(anchor) + SURFACE_LIFT,
       floorSurfaceY,
       viewAspect: this.viewAspect(),
+      figureBoost: figureBoost(this.stage.scale()),
       anchorFloor: anchor,
     });
   });
@@ -451,6 +455,7 @@ export class TowerSceneGraph {
   private lastPointerY = 0;
 
   private readonly store = injectStore();
+  private readonly stage = inject(StageService);
 
   constructor() {
     const host = document.documentElement;
@@ -536,6 +541,15 @@ export class TowerSceneGraph {
       camera.position.lerp(this.camPos, damp);
       this.lookAtSmooth.lerp(this.camTarget, damp);
       camera.lookAt(this.lookAtSmooth);
+
+      // The canvas fills the screen; the Tower is framed where the old panel was.
+      const el = this.store.snapshot.gl.domElement;
+      applyStageView(
+        camera as THREE.PerspectiveCamera,
+        el.clientWidth,
+        el.clientHeight,
+        this.stage.narrow(),
+      );
     });
   }
 
@@ -739,7 +753,8 @@ export class TowerSceneGraph {
     const updateAspect = (el: HTMLElement) => {
       const w = el.clientWidth || 1;
       const h = el.clientHeight || 1;
-      this.viewAspect.set(w / h);
+      // Formations fit the Tower's region, not the whole screen.
+      this.viewAspect.set(towerRegion(w, this.stage.narrow()).width / h);
     };
     const stop = effect(() => {
       const el = this.store.gl()?.domElement as HTMLElement | undefined;

@@ -1,4 +1,14 @@
 import { Component, computed, inject, signal, Signal } from '@angular/core';
+import { StageService } from '../../services/stage.service';
+import {
+  MENU_MARGIN,
+  MENU_WIDTH,
+  NARROW_DIM,
+  PANEL_OPACITY,
+  SCRIM_DITHER,
+  SCRIM_FADE,
+  SCRIM_TONE,
+} from '../../three/stage-view';
 import { GameStateService } from '../../services/game-state.service';
 import { GameWebSocketService } from '../../services/game-web-socket.service';
 import { DecimalPipe } from '@angular/common';
@@ -38,8 +48,51 @@ import { SuccessionScreen } from '../succession-screen/succession-screen';
   ],
   templateUrl: './game-component.html',
   styleUrls: ['./game-component.scss'],
+  host: {
+    '[class.narrow]': 'stage.narrow()',
+    '[style.--menu-width.px]': 'MENU_WIDTH',
+    '[style.--menu-margin.px]': 'MENU_MARGIN',
+    '[style.--panel-opacity]': 'PANEL_OPACITY',
+    '[style.--scrim-tone]': 'SCRIM_TONE',
+    '[style.--scrim-dither]': 'SCRIM_DITHER',
+    '[style.--scrim-dim]': 'NARROW_DIM',
+    '[style.--scrim-fade.px]': 'SCRIM_FADE',
+    '[style.--dither-cell.px]': 'stage.scale()',
+    '(document:keydown)': 'onKey($event)',
+  },
 })
 export class GameComponent {
+  protected readonly stage = inject(StageService);
+  protected readonly MENU_WIDTH = MENU_WIDTH;
+  protected readonly MENU_MARGIN = MENU_MARGIN;
+  protected readonly PANEL_OPACITY = PANEL_OPACITY;
+  protected readonly SCRIM_TONE = SCRIM_TONE;
+  protected readonly SCRIM_DITHER = SCRIM_DITHER;
+  protected readonly NARROW_DIM = NARROW_DIM;
+  protected readonly SCRIM_FADE = SCRIM_FADE;
+
+  /** H hides and restores the menus (not while typing, and not with a modifier). */
+  protected onKey(event: KeyboardEvent): void {
+    if (
+      event.key.toLowerCase() !== 'h' ||
+      event.ctrlKey ||
+      event.metaKey ||
+      event.altKey ||
+      event.defaultPrevented
+    ) {
+      return;
+    }
+    const target = event.target as HTMLElement | null;
+    if (
+      target &&
+      (target.isContentEditable ||
+        ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
+    ) {
+      return;
+    }
+    this.stage.toggleMenus();
+  }
+
   private readonly stateService = inject(GameStateService);
   readonly gameState = this.stateService.state;
 

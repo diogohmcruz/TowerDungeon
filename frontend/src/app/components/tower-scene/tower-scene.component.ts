@@ -2,11 +2,12 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  inject,
   input,
   isDevMode,
 } from '@angular/core';
 import { NgtCanvas } from 'angular-three/dom';
-import type { NgtCameraParameters, NgtDpr } from 'angular-three';
+import type { NgtCameraParameters } from 'angular-three';
 
 import { Tower } from '../../interfaces/tower';
 import { Squad, Reinforcement } from '../../interfaces/game-state';
@@ -15,7 +16,7 @@ import {
   InkFixture,
   readFixtureParams,
 } from '../../three/ink/ink-fixture';
-import { INK_DPR } from '../../three/ink/pixel-scale';
+import { StageService } from '../../services/stage.service';
 import { TowerSceneGraph } from './tower-scene-graph.component';
 
 @Component({
@@ -25,7 +26,7 @@ import { TowerSceneGraph } from './tower-scene-graph.component';
   template: `
     <ngt-canvas
       [camera]="camera"
-      [dpr]="dpr"
+      [dpr]="stage.dpr()"
       [flat]="true"
       [gl]="{ antialias: false }"
     >
@@ -44,7 +45,7 @@ import { TowerSceneGraph } from './tower-scene-graph.component';
       width: 100%;
       height: 100%;
     }
-    /* The canvas draws at 1 / PIXEL_SCALE of its CSS size; keep the pixels hard. */
+    /* The canvas draws at 1 / pixel scale of its CSS size; keep the pixels hard. */
     :host ::ng-deep canvas {
       image-rendering: pixelated;
     }
@@ -74,5 +75,5 @@ export class TowerScene {
     near: 0.1,
     far: 200,
   };
-  protected readonly dpr: NgtDpr = INK_DPR;
+  protected readonly stage = inject(StageService);
 }

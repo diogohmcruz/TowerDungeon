@@ -32,8 +32,6 @@ function quarterParam(): VillageInput['quarter'] {
       inset: 0;
       z-index: 10;
       display: block;
-      width: 440px;
-      height: 900px;
     }
   `,
 })

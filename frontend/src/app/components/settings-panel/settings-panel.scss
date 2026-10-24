@@ -56,3 +56,21 @@
   background: var(--void);
   border: 1px solid var(--muted);
 }
+
+.quality-head {
+  margin-top: 14px;
+}
+
+.quality-row {
+  align-items: center;
+  justify-content: space-between;
+  color: var(--text);
+}
+
+.quality-field {
+  min-width: 8em;
+  padding: 4px 8px;
+  color: var(--bone);
+  background: var(--void);
+  border: 1px solid var(--muted);
+}

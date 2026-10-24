@@ -1,27 +1,133 @@
 :host {
-  /* Grows with the controls column. A fixed or inherited height here would
-     cap the sticky containing block at one viewport and the Tower would
-     scroll away with the page. */
-  display: flex;
-  align-items: flex-start;
+  /* The scene (app-tower) is a fixed, full-screen backdrop. This host holds only
+     the menu column, which scrolls over it; the rest of the screen is the picture
+     and takes the pointer. The numbers come from three/stage-view.ts. */
+  display: block;
+  position: relative;
   min-height: 100vh;
+  pointer-events: none;
+  /* Panels are this opaque over the scrim (a test holds the contrast at 7:1). */
+  --panel-glass: color-mix(
+    in srgb,
+    var(--panel) calc(var(--panel-opacity) * 100%),
+    transparent
+  );
+  --void-glass: color-mix(
+    in srgb,
+    var(--void) calc(var(--panel-opacity) * 100%),
+    transparent
+  );
 }
 
-.flex-wrapper {
-  flex: 1 1 auto;
-  min-width: 0;
+.menu-column {
+  position: relative;
+  z-index: 2;
+  width: var(--menu-width);
+  min-height: 100vh;
+  margin: 0 0 0 var(--menu-margin);
+  padding: 12px;
+  pointer-events: auto;
+  background: var(--void-glass);
+  /* Everything in the column that paints the panel colour paints it translucent. */
+  --panel: var(--panel-glass);
+
+  &.menus-hidden {
+    display: none;
+  }
 }
 
-/* The Tower panel is exactly one viewport tall and stays put while the
-   controls scroll beside it. dvh follows mobile browser chrome. */
-.tower {
-  flex: 0 0 46vw;
-  min-width: 440px;
-  height: 100vh;
-  height: 100dvh;
-  position: sticky;
+/* An ordered-dither scrim (no blur) darkens the scene behind the column: a flat
+   tone, a 50% checker of the virtual pixel's size, and a sparser band beyond it. */
+.scrim {
+  position: fixed;
+  z-index: 1;
   top: 0;
-  align-self: flex-start;
+  bottom: 0;
+  left: 0;
+  width: calc(var(--menu-margin) * 2 + var(--menu-width));
+  pointer-events: none;
+  image-rendering: pixelated;
+  background:
+    conic-gradient(
+        color-mix(in srgb, var(--void) calc(var(--scrim-dither) * 100%), transparent) 0 25%,
+        transparent 0 50%,
+        color-mix(in srgb, var(--void) calc(var(--scrim-dither) * 100%), transparent) 0 75%,
+        transparent 0
+      )
+      0 0 / calc(var(--dither-cell) * 2) calc(var(--dither-cell) * 2),
+    color-mix(in srgb, var(--void) calc(var(--scrim-tone) * 100%), transparent);
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 100%;
+    width: var(--scrim-fade);
+    background: conic-gradient(
+        color-mix(in srgb, var(--void) calc(var(--scrim-dither) * 100%), transparent) 0 25%,
+        transparent 0
+      )
+      0 0 / calc(var(--dither-cell) * 2) calc(var(--dither-cell) * 2);
+  }
+
+  &.menus-hidden {
+    display: none;
+  }
+}
+
+.menus-toggle {
+  position: fixed;
+  top: 12px;
+  right: 224px;
+  z-index: 1000;
+  padding: 4px 10px;
+  font-family: var(--font-pixel);
+  font-size: 12px;
+  color: var(--bone);
+  background: var(--panel);
+  border: 1px solid var(--muted);
+  cursor: pointer;
+  pointer-events: auto;
+
+  &:hover {
+    border-color: var(--bone);
+  }
+}
+
+/* Slot for the launch controls on narrow screens (they move into the picture in a later
+   issue); it takes no room until something is put in it. */
+.launch-bar {
+  display: none;
+}
+
+/* Below about 1100 px the menus take the full width over a dimmed backdrop. */
+:host(.narrow) {
+  .menu-column {
+    width: 100%;
+    margin: 0;
+    padding-bottom: 24px;
+    background: transparent;
+  }
+
+  .scrim {
+    width: 100%;
+    background: color-mix(in srgb, var(--void) calc(var(--scrim-dim) * 100%), transparent);
+
+    &::after {
+      display: none;
+    }
+  }
+
+  .launch-bar {
+    display: block;
+    position: fixed;
+    z-index: 3;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: auto;
+  }
 }
 
 .held-party {

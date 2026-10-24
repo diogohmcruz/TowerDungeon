@@ -204,10 +204,18 @@
 
 .tome-row {
   display: grid;
-  grid-template-columns: 9rem 15rem auto 1fr;
+  /* The menu column is 440 px: the name and the level share a line, the button and
+     its note sit under the level. */
+  grid-template-columns: 8rem minmax(0, 1fr);
   align-items: center;
-  gap: 8px;
+  gap: 4px 8px;
   padding: 3px 0;
+
+  .btn,
+  .tome-note {
+    grid-column: 2;
+    justify-self: start;
+  }
 
   .tome-name {
     color: var(--bone);

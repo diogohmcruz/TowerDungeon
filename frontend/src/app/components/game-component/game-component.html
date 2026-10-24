@@ -1,4 +1,16 @@
-<article class="flex-wrapper">
+<div class="scrim" aria-hidden="true" [class.menus-hidden]="stage.menusHidden()"></div>
+<button
+  type="button"
+  class="menus-toggle"
+  (click)="stage.toggleMenus()"
+  [attr.aria-pressed]="stage.menusHidden()"
+  aria-keyshortcuts="H"
+  [attr.aria-label]="stage.menusHidden() ? 'Show menus (H)' : 'Hide menus (H)'"
+  [title]="stage.menusHidden() ? 'Show menus (H)' : 'Hide menus (H)'"
+>
+  {{ stage.menusHidden() ? 'Show menus' : 'Hide menus' }}
+</button>
+<article class="flex-wrapper menu-column" [class.menus-hidden]="stage.menusHidden()">
   @if (gameOver()) {
   <section
     class="campaign-banner"
@@ -211,6 +223,10 @@
   />
   }
 </article>
+
+<!-- Narrow screens move the launch controls (Set out, Extract, Send Wave) to this bar; it is
+     empty until launching moves into the picture. -->
+<div class="launch-bar" aria-hidden="true"></div>
 
 <app-tower
   class="tower"

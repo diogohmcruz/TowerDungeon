@@ -29,6 +29,8 @@ import {
   Volume,
 } from '../../three/village/village-layout';
 import { subjectOfVolume } from '../../three/village/village-subjects';
+import { applyStageView } from '../../three/stage-view';
+import { StageService } from '../../services/stage.service';
 import { fitVillageCamera } from '../../three/village/village-camera';
 import '../../three/catalogue';
 
@@ -82,6 +84,7 @@ export class VillageSceneGraph {
 
   private readonly store = injectStore();
   private readonly selection = inject(VillageSelectionService);
+  private readonly stage = inject(StageService);
   private readonly dark = signal(this.readTheme());
 
   protected readonly theme = computed<InkTheme>(() =>
@@ -106,7 +109,6 @@ export class VillageSceneGraph {
   private readonly position = new THREE.Vector3();
   private readonly scale = new THREE.Vector3();
   private readonly identity = new THREE.Quaternion();
-  private lastAspect = 0;
 
   constructor() {
     const observer = new MutationObserver(() =>
@@ -153,10 +155,13 @@ export class VillageSceneGraph {
     });
 
     // A fixed vantage: only the framing follows the canvas aspect.
+    // The canvas fills the screen; the Village is framed in the Tower's region of it.
     injectBeforeRender(({ camera }) => {
       const cam = camera as THREE.PerspectiveCamera;
-      if (cam.aspect !== this.lastAspect) {
-        this.lastAspect = cam.aspect;
+      const el = this.store.snapshot.gl.domElement;
+      const w = el.clientWidth;
+      const h = el.clientHeight;
+      if (applyStageView(cam, w, h, this.stage.narrow())) {
         fitVillageCamera(cam);
       }
     });

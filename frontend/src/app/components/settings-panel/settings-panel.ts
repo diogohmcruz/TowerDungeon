@@ -1,7 +1,9 @@
 import { Component, inject, signal } from '@angular/core';
 import { CampaignKeyService } from '../../services/campaign-key.service';
+import { StageService } from '../../services/stage.service';
+import { parseQuality, PIXEL_SCALES } from '../../three/ink/pixel-scale';
 
-/** Settings: shows the Campaign Key so the player can copy it. */
+/** Settings: the Campaign Key to copy, and the picture quality (the pixel size). */
 @Component({
   selector: 'app-settings-panel',
   standalone: true,
@@ -10,8 +12,14 @@ import { CampaignKeyService } from '../../services/campaign-key.service';
 })
 export class SettingsPanel {
   protected readonly key = inject(CampaignKeyService).key;
+  protected readonly stage = inject(StageService);
+  protected readonly options = PIXEL_SCALES;
   protected readonly open = signal(false);
   protected readonly copied = signal(false);
+
+  protected chooseQuality(value: string): void {
+    this.stage.setQuality(parseQuality(value));
+  }
 
   protected toggle(): void {
     this.open.update((v) => !v);

@@ -8,13 +8,14 @@ import {
   signal,
 } from '@angular/core';
 import { NgtCanvas } from 'angular-three/dom';
-import type { NgtCameraParameters, NgtDpr } from 'angular-three';
+import type { NgtCameraParameters } from 'angular-three';
 
 import { VillageSelectionService } from '../../services/village-selection.service';
 import { captionFor, captionText } from '../../three/village/village-captions';
 import { GameStateService } from '../../services/game-state.service';
-import { INK_DPR } from '../../three/ink/pixel-scale';
+import { StageService } from '../../services/stage.service';
 import { VillageInput } from '../../three/village/village-layout';
+import { towerRegion } from '../../three/stage-view';
 import { VILLAGE_FOV } from '../../three/village/village-camera';
 import { VillageSceneGraph } from './village-scene-graph.component';
 
@@ -33,7 +34,7 @@ const STEP_MS = 250;
   template: `
     <ngt-canvas
       [camera]="camera"
-      [dpr]="dpr"
+      [dpr]="stage.dpr()"
       [flat]="true"
       [gl]="{ antialias: false }"
       frameloop="demand"
@@ -41,7 +42,14 @@ const STEP_MS = 250;
       <app-village-scene-graph *canvasContent [village]="shown()" />
     </ngt-canvas>
     @if (caption(); as text) {
-      <p class="village-caption" [class.locked]="locked()">{{ text }}</p>
+      <p
+        class="village-caption"
+        [class.locked]="locked()"
+        [style.left.px]="region().left + 8"
+        [style.width.px]="region().width - 16"
+      >
+        {{ text }}
+      </p>
     }
   `,
   styles: `
@@ -53,8 +61,6 @@ const STEP_MS = 250;
     }
     .village-caption {
       position: absolute;
-      left: 8px;
-      right: 8px;
       bottom: 8px;
       margin: 0;
       padding: 4px 8px;
@@ -88,7 +94,12 @@ export class VillageScene {
     near: 0.5,
     far: 200,
   };
-  protected readonly dpr: NgtDpr = INK_DPR;
+  protected readonly stage = inject(StageService);
+  /** Where the Village is framed: the caption sits inside it, clear of the menus. */
+  protected readonly region = computed(() => {
+    const { width } = this.stage.viewport();
+    return towerRegion(width, this.stage.narrow());
+  });
 
   /** The caption of what is hovered, or else what is selected. */
   private readonly subject = computed(

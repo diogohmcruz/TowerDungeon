@@ -1,28 +1,42 @@
 :host {
-  display: flex;
-  flex-direction: row;
-  align-items: stretch;
-  gap: 12px;
-  /* Height comes from the parent (the sticky .tower panel). */
-  min-height: 0;
+  /* The scene is one fixed, full-screen backdrop; the menu column scrolls over
+     it (architecture doc 5.5). The Tower stays where the #75 panel put it. */
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  display: block;
+  overflow: hidden;
 }
 
 .tower-scene-host {
-  flex: 1 1 auto;
-  align-self: stretch;
-  min-width: 0;
-  height: 100%;
+  position: absolute;
+  inset: 0;
   overflow: hidden;
   background: var(--sky);
 }
 
 .enemies {
+  /* Until the Expedition HUD moves into the menu column, the enemy list sits
+     where it always did: left of the Tower, over the scene. */
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  bottom: 0;
+  left: calc(100% - max(46vw, 440px));
   display: block;
-  flex: 0 0 auto;
   width: 230px;
-  max-height: 100%;
   overflow-y: auto;
-  padding-right: 4px;
+  padding: 0 4px 0 0;
+  /* The canvas under the empty part still pans; only what is drawn takes the pointer. */
+  pointer-events: none;
+
+  > * {
+    pointer-events: auto;
+  }
+
+  @media (max-width: 1099px) {
+    left: 0;
+  }
 
   .exp-block {
     margin: 0 0 12px;

@@ -5,7 +5,7 @@
   [attr.aria-expanded]="open()"
   aria-controls="settings-body"
 >
-  Key
+  Settings
 </button>
 @if (open()) {
 <section id="settings-body" class="settings-body">
@@ -28,5 +28,29 @@
   @if (copied()) {
   <p class="settings-note" role="status">Copied.</p>
   }
+  <h3 class="quality-head">Picture quality</h3>
+  <p class="settings-note">
+    Auto picks the pixel size from the screen, aiming at about 250 thousand
+    pixels. A smaller size is finer and costs more.
+  </p>
+  <label class="settings-row quality-row">
+    <span>Pixel size</span>
+    <select
+      class="quality-field"
+      [value]="stage.quality()"
+      (change)="chooseQuality($any($event.target).value)"
+    >
+      <option value="auto">Auto ({{ stage.scale() }})</option>
+      @for (option of options; track option) {
+      <option [value]="option" [selected]="stage.quality() === option">
+        {{ option }}
+      </option>
+      }
+    </select>
+  </label>
+  <p class="settings-note">
+    Now drawing at {{ stage.scale() }} screen
+    {{ stage.scale() === 1 ? 'pixel' : 'pixels' }} to a pixel.
+  </p>
 </section>
 }
