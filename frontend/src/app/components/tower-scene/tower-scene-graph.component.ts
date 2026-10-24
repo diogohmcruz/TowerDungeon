@@ -1488,17 +1488,27 @@ export class TowerSceneGraph {
     return [e.clientX - box.left, e.clientY - box.top];
   }
 
+  /** The group a figure belongs to: the Party for a unit, its enemy group for an enemy. */
+  private subjectOfFigure(id: string): VillageSubject | null {
+    if (id.startsWith('unit-')) {
+      return PARTY;
+    }
+    const focus = parseFigureId(id);
+    if (focus?.kind !== 'enemy') {
+      return null;
+    }
+    const enemy = this.tower()
+      ?.floors?.[this.currentFloor()]?.enemies?.find((e) => e.id === focus.id);
+    return enemy ? groupSubject(groupKey(enemy)) : null;
+  }
+
   /** Where the Party and each enemy group are on the canvas now, specks included. */
   private groupRects() {
     const el = this.store.snapshot.gl.domElement;
     const plan = this.figurePlan();
-    const typeOf = new Map<string, VillageSubject>();
-    for (const e of this.tower()?.floors?.[this.currentFloor()]?.enemies ?? []) {
-      typeOf.set(`enemy-${e.id}`, groupSubject(groupKey(e)));
-    }
     const figures = [...plan.marks.slice(0, plan.figureCount), ...plan.specks]
       .map((f) => ({
-        subject: f.id.startsWith('unit-') ? PARTY : typeOf.get(f.id),
+        subject: this.subjectOfFigure(f.id),
         rect: figureRect(
           this.store.snapshot.camera,
           f,
