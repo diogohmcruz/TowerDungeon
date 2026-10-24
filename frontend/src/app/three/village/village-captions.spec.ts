@@ -57,9 +57,10 @@ describe('village captions', () => {
 
     const c = captionFor({ kind: 'annex', id: 'BREAKER' }, state)!;
 
-    expect(captionText(c)).toBe(
-      'Quarry. Working: 3 Breakers of 10 Posts. Materials into the Heap, +0.40/s.',
+    expect(captionText(c)).toContain(
+      'Quarry. Working: 3 Breakers of 10 Posts. Materials in the Heap held 0. Materials into the Heap, +0.40/s.',
     );
+    expect(captionText(c)).toContain('Carried down on Extraction');
   });
 
   it('says an Annex with no hands is idle and makes nothing', () => {

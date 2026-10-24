@@ -26,6 +26,8 @@ export interface BuildingCommands {
 /** One number a building shows: the exact figure, its rate and what spending leaves. */
 export interface GaugeSpec {
   id: string;
+  /** False hides this gauge (a good that has moved to another building). Absent means shown. */
+  visible?(state: GameState): boolean;
   /** The name of the good, as the game calls it ("Food"). */
   label: string;
   /** The exact figure. */
@@ -219,7 +221,9 @@ export function buildingView(def: BuildingDefinition, state: GameState): Buildin
   return {
     id: def.id,
     title: def.title,
-    gauges: def.gauges.map((g) => gaugeView(g, state)),
+    gauges: def.gauges
+      .filter((g) => (g.visible ? g.visible(state) : true))
+      .map((g) => gaugeView(g, state)),
     lines: lineViews(def.lines?.(state) ?? []),
     actions: actionSpecs(def, state)
       .filter((a) => (a.visible ? a.visible(state) : true))

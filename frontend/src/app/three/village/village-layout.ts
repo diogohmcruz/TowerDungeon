@@ -9,7 +9,7 @@ import type { PortState } from '../../interfaces/game-state';
 import type { Quarter } from '../../interfaces/game-state';
 import type { TradeId } from '../../interfaces/village';
 import { bellObject, gateObject } from '../launch/launch-objects';
-import { barGauge, slitGauge } from './gauge-kit';
+import { barGauge, notchGauge, slitGauge } from './gauge-kit';
 import { EMPTY_PILLAR, referencePillar, type PillarInput } from './reference-pillar';
 import {
   BASE_DOOR_ID,
@@ -108,9 +108,13 @@ export interface VillageInput {
   posts: Partial<Record<TradeId, number | null>>;
   quarryHeap: number;
   quarryHeapCap: number;
-  /** Materials and Relics in the Vault. */
+  /** Materials and Relics in the Vault, and the Credits banked (the Vault Annex's bar). */
   materials: number;
   relics: number;
+  credits?: number;
+  /** The Spore Cellar is open (Village Tier III) and the Spores it holds, for its slit. */
+  sporeCellarOpen?: boolean;
+  spores?: number;
   villageTierLevel: number;
   /** Levels owned per Upgrade id (the catalogue's `UpgradeType` names); absent means none. */
   upgrades: Record<string, number>;
@@ -181,6 +185,8 @@ export const ANNEX_X = {
   study: [1.25, 1.85],
   vault: [2.0, 3.2],
   pans: [0.0, 1.1],
+  /** The Spore Cellar lies at the Fort's foot, where its Sporewardens work. */
+  cellar: [-3.1, -2.0],
 } as const;
 
 /** The Annex each Trade works at; the Fields are the Tillers'. */
@@ -242,6 +248,29 @@ export function vaultCrates(materials: number, relics: number): number {
     12,
     Math.floor(Math.log2(1 + Math.max(0, materials) + 5 * Math.max(0, relics))),
   );
+}
+
+/** Fill of the Vault Annex's Credits bar, 0..1: `min(1, log10(1 + credits) / 4)`. */
+export function creditsFill(credits: number): number {
+  return Math.min(1, Math.log10(1 + Math.max(0, credits)) / 4);
+}
+
+/** Notches on the Vault Annex for Relics: one lit per Relic held, of this many. */
+export const RELIC_NOTCHES = 5;
+export function litRelicNotches(relics: number): number {
+  return Math.min(RELIC_NOTCHES, Math.max(0, Math.floor(relics)));
+}
+
+/** Crust of the Salt Pans and slit of the Spore Cellar, 0..1: `min(1, log10(1 + stock) / 3)`. */
+export function stockFill(stock: number): number {
+  return Math.min(1, Math.log10(1 + Math.max(0, stock)) / 3);
+}
+
+/** Notches on the Salt Pans: lit in proportion to the crust, at least one when there is Salt. */
+export const SALT_NOTCHES = 5;
+export function litSaltNotches(salt: number): number {
+  if (salt <= 0) return 0;
+  return Math.max(1, Math.round(SALT_NOTCHES * stockFill(salt)));
 }
 
 /** Heap blocks equal Heap fill, 0..12. */
@@ -414,6 +443,17 @@ function quarry(out: Volume[], heap: number, heapCap: number): void {
     const col = row === 0 ? i : row === 1 ? i - 6 + 0.5 : i - 10 + 1;
     box(out, `heap-${i}`, 'village', x0 + 0.1 + col * 0.09, row * 0.07, 0.8, 0.08, 0.07, 0.08, VILLAGE_TONE.heap);
   }
+  // The Heap's scale: a bar on the ground before the blocks, filled as the Heap is (twelve blocks
+  // read as a share; the bar gives the same share in one line, empty or full).
+  barGauge(out, 'heap-scale', {
+    x: x0 + 0.1 + 0.225,
+    bottom: 0,
+    z: 0.95,
+    length: 0.6,
+    fill: heapCap > 0 ? heap / heapCap : 0,
+  });
+  // The near-miss pad, as the silo's: the blocks are small, so a click near them lands on the Heap.
+  box(out, 'heap-hit', 'village', x0 + 0.325, 0, 0.88, 0.8, 0.4, 0.3, VILLAGE_TONE.dark, 0);
 }
 
 function study(out: Volume[], hands: number, posts: number | null | undefined): void {
@@ -443,7 +483,7 @@ function study(out: Volume[], hands: number, posts: number | null | undefined): 
   }
 }
 
-function vault(out: Volume[], materials: number, relics: number): void {
+function vault(out: Volume[], materials: number, relics: number, credits: number): void {
   const x = mid(ANNEX_X.vault);
   const w = span(ANNEX_X.vault);
   // A squat monolithic block corbelled off the Base: one door slab, no windows.
@@ -457,6 +497,24 @@ function vault(out: Volume[], materials: number, relics: number): void {
     const col = row === 0 ? i : i - 6;
     box(out, `crate-${i}`, 'village', x - 0.4 + col * 0.15, 0.98 + row * 0.1, 0.35, 0.12, 0.1, 0.12, VILLAGE_TONE.timber);
   }
+  // Credits have no form of their own: a bar across the wall's head. Relics are few: a row of
+  // notches above the door, one lit for each. Materials are the crates, so they need no more.
+  barGauge(out, 'vault-credits', {
+    x,
+    bottom: 0.76,
+    z: 0.76,
+    length: 0.9,
+    fill: creditsFill(credits),
+  });
+  notchGauge(out, 'vault-relics', {
+    x,
+    bottom: 0.58,
+    z: 0.76,
+    count: RELIC_NOTCHES,
+    lit: litRelicNotches(relics),
+  });
+  // The near-miss pad around the block and its roof crates.
+  box(out, 'vault-hit', 'village', x, 0, 0.35, w + 0.1, 1.2, 0.8, VILLAGE_TONE.dark, 0);
 }
 
 function pans(out: Volume[], open: boolean, salt: number): void {
@@ -473,7 +531,7 @@ function pans(out: Volume[], open: boolean, salt: number): void {
     return;
   }
   // Three raised bunded basins, 0.12 high; a pale crust fills with stock.
-  const crust = Math.min(1, Math.log10(1 + Math.max(0, salt)) / 3);
+  const crust = stockFill(salt);
   for (let i = 0; i < 3; i++) {
     const x = x0 + 0.17 + i * 0.38;
     box(out, `pan-${i}`, 'village', x, 0, 2.05, 0.34, 0.12, 0.4, VILLAGE_TONE.stone);
@@ -482,6 +540,42 @@ function pans(out: Volume[], open: boolean, salt: number): void {
       box(out, `pan-crust-${i}`, 'village', x, 0.1, 2.05, 0.26, 0.02 * crust + 0.002, 0.32, VILLAGE_TONE.salt);
     }
   }
+  // The crust is thin, so the Pans add a scale: a row of notches before them, lit with the crust.
+  notchGauge(out, 'pan-scale', {
+    x: mid(ANNEX_X.pans),
+    bottom: 0,
+    z: 2.4,
+    count: SALT_NOTCHES,
+    lit: litSaltNotches(salt),
+  });
+  // The near-miss pad around the basins and their scale.
+  box(out, 'pan-hit', 'village', mid(ANNEX_X.pans), 0, 2.2, x1 - x0 + 0.1, 0.3, 0.7, VILLAGE_TONE.dark, 0);
+}
+
+/**
+ * The Spore Cellar (Village Tier III): sunk below ground, a stair into a low
+ * flat-roofed clad box with a stepped ceiling, and one slit that lights with the Spores.
+ */
+function cellar(out: Volume[], spores: number): void {
+  const x = mid(ANNEX_X.cellar);
+  const w = span(ANNEX_X.cellar);
+  const z = 2.0;
+  box(out, 'cellar', 'village', x, 0, z, w, 0.3, 0.5, VILLAGE_TONE.timber);
+  // A corbelled ceiling: two narrower courses, never a curve.
+  box(out, 'cellar-corbel-0', 'village', x, 0.3, z, w - 0.2, 0.05, 0.4, VILLAGE_TONE.timber);
+  box(out, 'cellar-corbel-1', 'village', x, 0.35, z, w - 0.5, 0.05, 0.3, VILLAGE_TONE.timber);
+  // The stair down: three dark treads in front, each lower than the last.
+  for (let i = 0; i < 3; i++) {
+    box(out, `cellar-stair-${i}`, 'village', x - 0.3 + i * 0.1, 0, z + 0.3 + i * 0.05, 0.1, 0.2 - i * 0.05, 0.05, VILLAGE_TONE.dark);
+  }
+  slitGauge(out, 'cellar', {
+    x: x + 0.25,
+    bottom: 0.05,
+    z: z + 0.26,
+    height: 0.2,
+    fill: stockFill(spores),
+  });
+  box(out, 'cellar-hit', 'village', x, 0, z + 0.1, w + 0.1, 0.5, 0.8, VILLAGE_TONE.dark, 0);
 }
 
 /**
@@ -863,8 +957,9 @@ export function buildVillage(input: VillageInput): Volume[] {
   fields(out, quarter);
   quarry(out, input.quarryHeap, input.quarryHeapCap);
   study(out, input.hands.SCRIBE, input.posts.SCRIBE);
-  vault(out, input.materials, input.relics);
+  vault(out, input.materials, input.relics, input.credits ?? 0);
   pans(out, input.saltPansOpen, input.salt);
+  if (input.sporeCellarOpen) cellar(out, input.spores ?? 0);
   port(out, input.port ?? 'HIDDEN', input.boatDocked ?? false, input.seaRisk);
   shortcutMarks(out, input.shortcuts);
   baseDoor(out);

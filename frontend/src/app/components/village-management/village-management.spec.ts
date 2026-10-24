@@ -113,6 +113,14 @@ describe('VillageManagement', () => {
     expect(text()).not.toContain('Take in Villager');
   });
 
+  it('leaves the sales to the buildings: no sell button on the card layer', () => {
+    load();
+    const labels = Array.from(
+      fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLElement>,
+    ).map((b) => b.textContent?.trim());
+    expect(labels.filter((l) => l?.startsWith('Sell'))).toEqual([]);
+  });
+
   it('carries The Count and the stores', () => {
     load({
       stockroomCap: 108,
@@ -124,8 +132,7 @@ describe('VillageManagement', () => {
       'Lost to Starvation: 3 Villagers, 2 Reserves (this Campaign)',
     );
     expect(text()).toContain('of 108');
-    expect(text()).toContain('of 120');
-    expect(text()).toContain('5 per Floor cleared');
+    expect(text()).not.toContain('per Floor cleared');
   });
 
   it('shows the Village Tier and the Tally', () => {

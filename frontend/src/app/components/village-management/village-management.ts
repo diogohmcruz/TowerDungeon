@@ -123,8 +123,6 @@ export class VillageManagement {
     return seconds !== null && seconds < 60;
   });
   readonly homeUnits = computed(() => this.gameState().homeUnitCount);
-  readonly materials = computed(() => this.gameState().resources.MATERIALS);
-  readonly relics = computed(() => this.gameState().resources.RELICS);
 
   readonly tomes = computed(() => this.gameState().tomeViews);
   readonly ring = computed(() => this.gameState().ring);
@@ -144,21 +142,5 @@ export class VillageManagement {
 
   onClickBuyPosts(trade: TradeId) {
     this.ws.sendAction(GameAction.BUY_POSTS, { trade });
-  }
-
-  onClickSellFood() {
-    this.ws.sendAction(GameAction.SELL_FOOD);
-  }
-
-  onClickSellMaterials() {
-    this.ws.sendAction(GameAction.SELL_MATERIALS);
-  }
-
-  onClickSellSalt() {
-    this.ws.sendAction(GameAction.SELL_SALT);
-  }
-
-  onClickSellRelics() {
-    this.ws.sendAction(GameAction.SELL_RELICS);
   }
 }

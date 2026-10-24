@@ -61,6 +61,12 @@ function fixtureCatalog(): Record<string, UnitStats> {
   );
 }
 
+/** `?tier=1|2|3|4` sets the Village Tier (default 2). */
+function tierParam(): number {
+  const v = Number(new URLSearchParams(location.search).get('tier') ?? 2);
+  return Number.isFinite(v) ? Math.min(4, Math.max(1, Math.round(v))) : 2;
+}
+
 @Component({
   selector: 'app-village-fixture',
   imports: [VillageScene, BuildingPopover, ListView],
@@ -114,7 +120,21 @@ export class VillageFixturePage {
       setTimeout(() => popover.openFor({ kind: 'building', id: open }), 1500);
     }
     game.update({
-      village: { ...game.state().village, food, villagersCount: 20, productionRate: 7.5 },
+      village: {
+        ...game.state().village,
+        food,
+        villagersCount: 20,
+        productionRate: 7.5,
+        quarryHeap: 24,
+        salt: 40,
+        spores: tierParam() >= 3 ? 7 : 0,
+      },
+      resources: { ...game.state().resources, MATERIALS: 300, RELICS: 3 },
+      quarryHeapCap: 40,
+      saltRate: 0.3,
+      sporeRate: 0.1,
+      stockroomCap: 500,
+      heapDeliveryPerFloor: 4,
       netFoodPerSecond: 1.2,
       // The Gate's popover reads the Loadout: a Party of six with Salt, Reserves to carry the Pack.
       loadout: {
@@ -152,8 +172,8 @@ export class VillageFixturePage {
       pantryHoldSeconds: 99,
       quarryRate: 0.75,
       yieldBonus: 0.24,
-      villageTierLevel: 2,
-      villageTierName: 'Sheltered',
+      villageTierLevel: tierParam(),
+      villageTierName: ['', 'Huddled', 'Sheltered', 'Fortified', 'Established'][tierParam()],
       tradeViews: [
         { trade: 'TILLER', plural: 'Tillers', workplace: 'Fields', hands: 16, posts: null, settling: 0, settlingSeconds: 0 },
         { trade: 'BREAKER', plural: 'Breakers', workplace: 'Quarry', hands: 3, posts: 10, settling: 1, settlingSeconds: 7 },
@@ -198,7 +218,10 @@ export class VillageFixturePage {
         quarryHeapCap: 40,
         materials: 300,
         relics: 3,
-        villageTierLevel: 2,
+        credits: Number(new URLSearchParams(location.search).get('credit') ?? 40),
+        villageTierLevel: tierParam(),
+        sporeCellarOpen: tierParam() >= 3,
+        spores: tierParam() >= 3 ? 7 : 0,
         pillar: {
           highestFloor: 37,
           milestonesEarned: 2,
@@ -211,7 +234,7 @@ export class VillageFixturePage {
           SUPPLY_LINES: 3,
           SHARPENED_ARMS: 2,
         },
-        saltPansOpen: true,
+        saltPansOpen: tierParam() >= 2,
         salt: 40,
         shortcuts: [
           { id: 'a', floor: 3 },

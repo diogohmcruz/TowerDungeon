@@ -11,7 +11,15 @@ import { GATE } from './gate-building';
 import { FORT } from './fort-building';
 import { ANNEXES } from './annex-buildings';
 import { REFERENCE_PILLAR } from './reference-pillar-building';
-import { siloFill } from './village-layout';
+import { sellSaltAction } from './salt-sale';
+import {
+  creditsFill,
+  litRelicNotches,
+  RELIC_NOTCHES,
+  siloFill,
+  stockFill,
+  vaultCrates,
+} from './village-layout';
 
 /** What Selling Food leaves in the Pantry: it sells while more than one Food is held. */
 export function foodAfterSale(food: number): number {
@@ -123,8 +131,101 @@ export const SILO = defineBuilding({
   ],
 });
 
+/** The Village Tier the Salt Pans open at (II), and the Spore Cellar (III). */
+export const PANS_TIER = 2;
+export const CELLAR_TIER = 3;
+
+const tierBelow = (level: number) => (s: GameState) => s.villageTierLevel < level;
+
+function sellAvailability(held: number, empty: string) {
+  return held > 0 ? { usable: true, reason: null } : { usable: false, reason: empty };
+}
+
+/**
+ * The Vault Annex. At Village Tier I it shows what the Vault holds, Credits,
+ * Materials and Relics, and sells Materials and Relics (Credits are what a sale
+ * makes, so they have no sale of their own). Salt and Spores are shown here only
+ * while held and only below the tier that gives them a building: from Tier II
+ * Salt is at the Salt Pans (an Annex, `annex-buildings.ts`), from Tier III
+ * Spores at the Spore Cellar. At Tier IV the Vault splits into the Strongbox
+ * and the Reliquary: split `gauges` and `actions` there.
+ */
+export const VAULT = defineBuilding({
+  id: 'VAULT',
+  title: 'The Vault Annex',
+  gauges: [
+    {
+      id: 'credits',
+      label: 'Credits',
+      value: (s: GameState) => s.credit,
+      fill: (s: GameState) => creditsFill(s.credit),
+    },
+    {
+      id: 'materials',
+      label: 'Materials',
+      value: (s: GameState) => s.resources.MATERIALS,
+      fill: (s: GameState) => vaultCrates(s.resources.MATERIALS, 0) / 12,
+      leaves: (s: GameState) =>
+        s.resources.MATERIALS > 0
+          ? 'Selling Materials sells all of them and leaves none in the Vault.'
+          : null,
+    },
+    {
+      id: 'relics',
+      label: 'Relics',
+      value: (s: GameState) => s.resources.RELICS,
+      fill: (s: GameState) => litRelicNotches(s.resources.RELICS) / RELIC_NOTCHES,
+      leaves: (s: GameState) =>
+        s.resources.RELICS > 0
+          ? 'Selling Relics sells all of them and leaves none in the Vault.'
+          : null,
+    },
+    // Salt lived here before the Pans; Spores before the Cellar.
+    {
+      id: 'salt',
+      visible: (s: GameState) => tierBelow(PANS_TIER)(s) && s.village.salt > 0,
+      label: 'Salt',
+      value: (s: GameState) => s.village.salt,
+      fill: (s: GameState) => stockFill(s.village.salt),
+      leaves: (s: GameState) =>
+        `Selling Salt sells every whole Salt and leaves ${(s.village.salt % 1).toFixed(2)}.`,
+    },
+    {
+      id: 'spores',
+      visible: (s: GameState) => tierBelow(CELLAR_TIER)(s) && s.village.spores > 0,
+      label: 'Dragon Spores',
+      value: (s: GameState) => s.village.spores,
+      fill: (s: GameState) => stockFill(s.village.spores),
+    },
+  ],
+  actions: [
+    {
+      id: 'sell-materials',
+      label: 'Sell Materials',
+      availability: (s: GameState) =>
+        sellAvailability(s.resources.MATERIALS, 'The Vault holds no Materials. Nothing is sold.'),
+      run: (commands) => commands.send(GameAction.SELL_MATERIALS),
+    },
+    {
+      id: 'sell-relics',
+      label: 'Sell Relics',
+      availability: (s: GameState) =>
+        sellAvailability(s.resources.RELICS, 'The Vault holds no Relics. Nothing is sold.'),
+      run: (commands) => commands.send(GameAction.SELL_RELICS),
+    },
+    sellSaltAction((s) => tierBelow(PANS_TIER)(s) && s.village.salt > 0),
+  ],
+});
+
 /** Every registered building, in the order the list view shows them. */
-export const BUILDINGS: readonly BuildingDefinition[] = [SILO, ...ANNEXES, GATE, FORT, REFERENCE_PILLAR];
+export const BUILDINGS: readonly BuildingDefinition[] = [
+  SILO,
+  VAULT,
+  ...ANNEXES,
+  GATE,
+  FORT,
+  REFERENCE_PILLAR,
+];
 
 export function buildingDefinition(
   id: string,

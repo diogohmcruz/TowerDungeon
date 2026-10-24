@@ -15,7 +15,7 @@ import {
 import { buildingDefinition, BUILDINGS } from './buildings';
 import { marginBody, previewOf } from './annex-buildings';
 import { lockOf } from './trade-locks';
-import { buildingView, isVisible } from './building-registry';
+import { buildingView, gaugeView, isVisible } from './building-registry';
 import type { SubjectKind, VillageSubject } from './village-subjects';
 
 export interface VillageCaption {
@@ -86,12 +86,20 @@ const annex: CaptionBuilder = (subject, state) => {
     view.hands > 0
       ? `Working: ${view.hands} ${view.plural}${posts}.`
       : 'Idle: no hands.';
+  // The good the Trade makes, held now: the exact figure and what selling or carrying it leaves.
+  const def = buildingDefinition(subject.id);
+  const held = ['BREAKER', 'SALTER', 'SPOREWARDEN'].includes(subject.id)
+    ? def?.gauges.find((g) => g.id === 'output')
+    : undefined;
+  const stored = held ? gaugeView(held, state) : null;
+  const margin = marginLine(state, subject.id as TradeId).leaves;
+  const leaves = [stored?.leaves, margin].filter((t): t is string => !!t).join(' ');
   return {
     name: view.workplace,
-    status: works,
+    status: stored ? `${works} ${stored.label} held ${stored.figure}.` : works,
     makes: view.hands > 0 ? makesOf(state, subject.id) : '',
     lock: null,
-    ...marginLine(state, subject.id as TradeId),
+    ...(leaves ? { leaves } : {}),
   };
 };
 
