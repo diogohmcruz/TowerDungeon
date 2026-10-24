@@ -134,13 +134,13 @@ describe('the Annexes and the Silo as buildings', () => {
     game.update({ villageTierLevel: 1, villageTierName: 'Hamlet' });
     const ids = buildingViews(BUILDINGS, game.state()).map((b) => b.id);
     expect(ids).not.toContain('SALTER');
-    expect(captionText(captionFor({ kind: 'annex', id: 'SALTER' }, game.state(), { startFloor: 0 })!)).toContain(
+    expect(captionText(captionFor({ kind: 'annex', id: 'SALTER' }, game.state(), { startFloor: 0, held: false })!)).toContain(
       'Village Tier II',
     );
   });
 
   it('puts the margin a hand would leave in the hover caption', () => {
-    const caption = captionFor({ kind: 'annex', id: 'BREAKER' }, game.state(), { startFloor: 0 })!;
+    const caption = captionFor({ kind: 'annex', id: 'BREAKER' }, game.state(), { startFloor: 0, held: false })!;
     expect(captionText(caption)).toContain('With one more here: Fields +7.5. Upkeep -8.0.');
   });
 

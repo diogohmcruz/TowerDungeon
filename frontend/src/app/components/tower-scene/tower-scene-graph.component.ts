@@ -689,7 +689,7 @@ export class TowerSceneGraph {
     if (o) return { bell: o.bell, recall: o.recall };
     const state = this.game();
     return {
-      bell: bellAvailability(state).usable,
+      bell: bellAvailability(state, this.launch.held()).usable,
       recall: extractAvailability(state).usable,
     };
   });

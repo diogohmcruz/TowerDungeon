@@ -4,6 +4,9 @@ import { GameAction } from '../interfaces/game-action.enum';
 import { GameStateService } from './game-state.service';
 import { GameWebSocketService } from './game-web-socket.service';
 import { LaunchService } from './launch.service';
+import { ZoomService } from './zoom.service';
+import { actionSpecs } from '../three/village/building-registry';
+import { GATE } from '../three/village/gate-building';
 import {
   isEmptySpaceClick,
   isUnitClick,
@@ -52,28 +55,53 @@ describe('launching from the picture', () => {
   });
 
   describe('availability', () => {
+    const held = (value: boolean) =>
+      states.setSession({
+        resumed: true,
+        savedAt: null,
+        schema: 1,
+        notices: [],
+        held: value,
+      });
+
     it('rings Set out only while no Expedition is out, as the panel button does', () => {
-      expect(bellAvailability(state()).usable).toBeTrue();
+      expect(bellAvailability(state(), launch.held()).usable).toBeTrue();
       states.update({ expeditionActive: true });
-      expect(bellAvailability(state())).toEqual(waveAvailability(state()));
+      expect(bellAvailability(state(), launch.held())).toEqual(
+        waveAvailability(state(), launch.held()),
+      );
     });
 
-    it('refuses a Wave with no Reserves, or while the Party is Held, with words', () => {
+    it('refuses a Wave with no Reserves with words', () => {
       states.update({ expeditionActive: true, homeUnitCount: 0 });
-      expect(waveAvailability(state()).reason).toContain('No Reserves');
-      states.update({
-        expeditionActive: true,
-        homeUnitCount: 3,
-        session: {
-          resumed: true,
-          savedAt: null,
-          schema: 1,
-          notices: [],
-          held: true,
-        },
-      });
-      expect(waveAvailability(state()).reason).toContain('has not moved');
-      expect(extractAvailability(state()).usable).toBeTrue();
+      expect(waveAvailability(state(), launch.held()).reason).toContain('No Reserves');
+    });
+
+    it('refuses a Wave while the session says the Party is Held, and Extract still works', () => {
+      states.update({ expeditionActive: true, homeUnitCount: 3 });
+      expect(launch.wave().usable).toBeTrue();
+      held(true);
+      expect(launch.held()).toBeTrue();
+      expect(launch.wave().reason).toContain('has not moved');
+      expect(launch.bell().usable).toBeFalse();
+      expect(launch.extractControl().usable).toBeTrue();
+      held(false);
+      expect(launch.wave().usable).toBeTrue();
+    });
+
+    it('refuses a Wave while the zoom holds the Party, though the session says it moves', () => {
+      states.update({ expeditionActive: true, homeUnitCount: 3 });
+      held(false);
+      TestBed.inject(ZoomService).toggleCloseup();
+      expect(launch.held()).toBeTrue();
+      expect(launch.wave().reason).toContain('has not moved');
+    });
+
+    it('lets the Gate building refuse a Wave while Held, in the same words', () => {
+      states.update({ expeditionActive: true, homeUnitCount: 3 });
+      held(true);
+      const wave = actionSpecs(GATE, state()).find((a) => a.id === 'wave')!;
+      expect(wave.availability(state()).reason).toContain('has not moved');
     });
 
     it('refuses Extract with no Expedition out', () => {
@@ -211,7 +239,7 @@ describe('launching from the picture', () => {
   describe('captions', () => {
     it('names Party size, Start Floor, Supplies carried and what the Pantry holds', () => {
       const text = captionText(
-        captionFor({ kind: 'bell', id: 'BELL' }, state(), { startFloor: 10 })!,
+        captionFor({ kind: 'bell', id: 'BELL' }, state(), { startFloor: 10, held: false })!,
       );
       expect(text).toContain('Party');
       expect(text).toContain('Start Floor 10');
@@ -231,12 +259,13 @@ describe('launching from the picture', () => {
     it('marks the chosen Start Floor on the Base door and on a doorway', () => {
       const base = captionFor({ kind: 'base-door', id: 'BASE' }, state(), {
         startFloor: 0,
+        held: false,
       })!;
       expect(base.status).toContain('Chosen');
       const door = captionFor(
         { kind: 'shortcut', id: 'NARROW_STAIR' },
         state(),
-        { startFloor: 10 },
+        { startFloor: 10, held: false },
       )!;
       expect(door.makes).toContain('Chosen');
     });

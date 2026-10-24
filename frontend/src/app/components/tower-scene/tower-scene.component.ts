@@ -167,6 +167,7 @@ export class TowerScene {
   private readonly captionOf = computed(() =>
     captionFor(this.selection.hovered(), this.game(), {
       startFloor: this.launch.startFloor(),
+      held: this.launch.held(),
     }),
   );
   protected readonly caption = computed(() => {

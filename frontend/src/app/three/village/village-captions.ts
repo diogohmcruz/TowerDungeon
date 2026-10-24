@@ -36,6 +36,8 @@ export interface VillageCaption {
 /** What the captions need besides the frame: the Start Floor the panel and the picture share. */
 export interface CaptionContext {
   startFloor: number;
+  /** Whether the Party is Held, by the server or by the zoom. */
+  held: boolean;
 }
 
 type CaptionBuilder = (
@@ -223,7 +225,7 @@ const whole = (n: number) => Math.floor(n).toLocaleString('en-US');
  * dark and the caption says why.
  */
 const bell: CaptionBuilder = (_subject, state, context) => {
-  const can = bellAvailability(state);
+  const can = bellAvailability(state, context.held);
   if (bellCommand(state) === 'wave') {
     return {
       name: 'The bell',
@@ -312,7 +314,7 @@ export const CAPTION_BUILDERS: Partial<Record<SubjectKind, CaptionBuilder>> = {
 export function captionFor(
   subject: VillageSubject | null,
   state: GameState,
-  context: CaptionContext = { startFloor: 0 },
+  context: CaptionContext = { startFloor: 0, held: false },
 ): VillageCaption | null {
   if (!subject) return null;
   return CAPTION_BUILDERS[subject.kind]?.(subject, state, context) ?? null;

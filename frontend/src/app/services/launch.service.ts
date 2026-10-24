@@ -12,6 +12,7 @@ import { bindLoadoutChoices } from '../three/launch/loadout-choices';
 import type { VillageSubject } from '../three/village/village-subjects';
 import { GameStateService } from './game-state.service';
 import { GameWebSocketService } from './game-web-socket.service';
+import { ZoomService } from './zoom.service';
 
 /** A refusal stays on screen this long, in milliseconds. */
 export const REFUSAL_MS = 6000;
@@ -31,7 +32,9 @@ export interface Refusal {
  */
 @Injectable({ providedIn: 'root' })
 export class LaunchService {
-  private readonly state = inject(GameStateService).state;
+  private readonly stateService = inject(GameStateService);
+  private readonly state = this.stateService.state;
+  private readonly zoom = inject(ZoomService);
   private readonly ws = inject(GameWebSocketService);
 
   /** Floor the next expedition begins on: 0 = base of the tower, otherwise an open shortcut. */
@@ -45,6 +48,14 @@ export class LaunchService {
   readonly panaceaChosen = signal(false);
   /** Whether the Loadout has set the Expedition to Overreach (only sent while the Roll holds it). */
   readonly overreachChosen = signal(false);
+
+  /**
+   * Whether the Party is Held: the server says so in the session (the state does not carry
+   * it), and a hold the zoom took counts too. A Wave is refused while time is stopped.
+   */
+  readonly held = computed(
+    () => this.stateService.session()?.held === true || this.zoom.holding(),
+  );
 
   private readonly _refusal = signal<Refusal | null>(null);
   /** The latest refusal, as one line; clears by itself. */
@@ -62,6 +73,7 @@ export class LaunchService {
         overreach: this.overreachChosen(),
       }),
       startFloor: () => this.startFloor(),
+      held: () => this.held(),
       setStartFloor: (floor) => this.chooseStartFloor(floor),
       set: (patch) => {
         if (patch.salt !== undefined) this.saltToUse.set(patch.salt);
@@ -79,10 +91,10 @@ export class LaunchService {
     return r ? { text: r.text, loss: false } : null;
   });
 
-  readonly setOut = computed(() => availabilityOf('set-out', this.state()));
-  readonly wave = computed(() => availabilityOf('wave', this.state()));
+  readonly setOut = computed(() => availabilityOf('set-out', this.state(), this.held()));
+  readonly wave = computed(() => availabilityOf('wave', this.state(), this.held()));
   readonly extractControl = computed(() =>
-    availabilityOf('extract', this.state()),
+    availabilityOf('extract', this.state(), this.held()),
   );
   /** The bell's command and whether it can be rung now. */
   readonly bell = computed<Availability & { command: 'set-out' | 'wave' }>(() => {

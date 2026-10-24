@@ -344,7 +344,7 @@ describe('the Succession at the Tower foot', () => {
 
   it('is read on hover as the Generation and the Legacy left, not the whole card', () => {
     offer();
-    const text = captionText(captionFor({ kind: 'building', id: SUCCESSION_ID }, game.registryState(), { startFloor: 0 })!);
+    const text = captionText(captionFor({ kind: 'building', id: SUCCESSION_ID }, game.registryState(), { startFloor: 0, held: false })!);
     expect(text).toContain('Generation 1 has ended');
     expect(text).toContain('Legacy to spend 5');
     expect(text).not.toContain('Guardians');
