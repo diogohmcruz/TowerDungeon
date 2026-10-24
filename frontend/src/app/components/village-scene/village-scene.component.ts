@@ -162,6 +162,7 @@ export class VillageScene {
       spores: s.village.spores,
       villageTierLevel: s.villageTierLevel,
       pillar: pillarInput(s),
+      fallenCount: (s.wallOfNames ?? []).length,
       upgrades,
       ringLevel: s.ring?.level ?? 0,
       ringMax: s.ring?.maxLevel ?? 0,

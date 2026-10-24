@@ -147,10 +147,14 @@ export const EXODUS_ACTION: ActionSpec = {
   run: (commands) => commands.send(GameAction.EXODUS, null),
 };
 
+/** From this Village Tier the Toll and Exodus stand on the Stone of Count, not the pillar. */
+export const STONE_TIER = 4;
+const tollOnPillar = (s: GameState) => s.villageTierLevel < STONE_TIER;
+
 export const REFERENCE_PILLAR = defineBuilding({
   id: PILLAR_ID,
   title: 'The reference pillar',
-  gauges: [HIGHEST_FLOOR_GAUGE, MILESTONES_GAUGE, TOLL_GAUGE],
-  lines: (s) => [...MILESTONE_LINES(s), ...TOLL_LINES(s)],
-  actions: [EXODUS_ACTION],
+  gauges: [HIGHEST_FLOOR_GAUGE, MILESTONES_GAUGE, { ...TOLL_GAUGE, visible: tollOnPillar }],
+  lines: (s) => [...MILESTONE_LINES(s), ...(tollOnPillar(s) ? TOLL_LINES(s) : [])],
+  actions: [{ ...EXODUS_ACTION, visible: tollOnPillar }],
 });

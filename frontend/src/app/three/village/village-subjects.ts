@@ -73,6 +73,8 @@ export const VOLUME_SUBJECTS: ReadonlyArray<{
   { prefix: 'fort-', kind: 'building', id: 'FORT' },
   { prefix: 'reserve-', kind: 'building', id: 'FORT' },
   { prefix: 'pillar', kind: 'building', id: 'PILLAR' },
+  { prefix: 'count-', kind: 'building', id: 'STONE_OF_COUNT' },
+  { prefix: 'names-', kind: 'building', id: 'WALL_OF_NAMES' },
   { prefix: 'vault', kind: 'building', id: 'VAULT' },
   { prefix: 'crate-', kind: 'building', id: 'VAULT' },
   { prefix: 'roll-', kind: 'building', id: 'SUCCESSION' },

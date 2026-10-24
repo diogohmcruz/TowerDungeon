@@ -64,6 +64,19 @@ function fixtureSummary(wiped: boolean): RunSummary {
   };
 }
 
+/** `?fallen=N` names N Units on the Wall of Names (default 5); the last starved at home. */
+function fixtureFallen(): NonNullable<GameState['wallOfNames']> {
+  const n = Number(new URLSearchParams(location.search).get('fallen') ?? 5);
+  const roster = [
+    ['Aldric', 'WARRIOR'], ['Brisa', 'ARCHER'], ['Tomas', 'ARCHER'], ['Brann', 'TANK'],
+    ['Ilse', 'HEALER'], ['Corwin', 'WARRIOR'], ['Maren', 'PORTER'],
+  ];
+  return Array.from({ length: Number.isFinite(n) ? Math.max(0, n) : 0 }, (_, i) => {
+    const [name, type] = roster[i % roster.length];
+    return { name, type, floor: i === n - 1 ? 0 : 3 + i * 2 };
+  });
+}
+
 function fixtureReserves(): GameState['units'] {
   const member = (id: number, hurt: boolean) =>
     ({
@@ -320,6 +333,7 @@ export class VillageFixturePage {
         canExodus: exodusOpen,
       },
       // `?ledger=1` writes a Ledger (read at the Study); `?summary=wiped|extracted` a Summary (read at the Gate).
+      wallOfNames: fixtureFallen(),
       ...(query.has('ledger') ? { ledger: FIXTURE_LEDGER } : {}),
       ...(query.has('summary')
         ? { lastRunSummary: fixtureSummary(query.get('summary') === 'wiped') }
@@ -361,6 +375,7 @@ export class VillageFixturePage {
           SUPPLY_LINES: 3,
           SHARPENED_ARMS: 0,
         },
+        fallenCount: Number(new URLSearchParams(location.search).get('fallen') ?? 5),
         ringLevel: 2,
         ringMax: 5,
         saltPansOpen: tierParam() >= 2,
