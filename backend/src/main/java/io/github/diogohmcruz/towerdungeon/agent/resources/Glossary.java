@@ -29,6 +29,12 @@ public final class Glossary {
 
   private static final String SKIPPED_SECTION = "Bodies, gear and mind";
 
+  /**
+   * Terms whose definition names a particular unit, which an agent must not read: the unit names of a
+   * Campaign are hidden from it, and the Founders are named in their entry.
+   */
+  private static final Set<String> HIDDEN_TERMS = Set.of("Founder");
+
   private final List<Entry> entries;
 
   public Glossary(String source) {
@@ -49,7 +55,9 @@ public final class Glossary {
     var out = new StringBuilder("# Tower Dungeon glossary\n\nShipped terms only.\n");
     String section = null;
     for (var entry : entries) {
-      if (entry.planned() || entry.section().equals(SKIPPED_SECTION)) {
+      if (entry.planned()
+          || entry.section().equals(SKIPPED_SECTION)
+          || HIDDEN_TERMS.contains(entry.term())) {
         continue;
       }
       if (!entry.section().equals(section)) {
