@@ -1,23 +1,11 @@
 :host {
-  display: block;
-  /* Sticky at the top of the menu column: the Expedition stays in view while
-     the menus scroll under it. */
-  position: sticky;
-  top: 0;
-  z-index: 5;
+  display: contents;
 }
 
 .expedition-hud {
   max-height: 55vh;
   overflow-y: auto;
-  margin: 0 0 12px;
-  padding: 8px 10px;
-  /* Translucent, but denser than the column's panels: menus scroll beneath this one, so a
-     lighter glass would let their text ghost through the HUD's. Denser than a panel only
-     raises the contrast the stage-contrast test already holds at 7:1. */
-  background: color-mix(in srgb, var(--void) 94%, transparent);
-  border: 1px solid var(--rule);
-  border-bottom: 2px solid var(--muted);
+  padding: 10px 14px;
   color: var(--bone);
   .exp-block {
     margin: 0 0 12px;

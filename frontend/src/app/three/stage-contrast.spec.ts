@@ -6,7 +6,7 @@ import {
 } from './stage-view';
 
 /**
- * Text on a translucent panel must stay readable over the worst-case backdrop.
+ * Text on a translucent card must stay readable over the worst-case backdrop.
  * Winter is the worst case: its snow is the palest tone the Village draws
  * (`VILLAGE_TONE.salt`, 0.95), the top of the ink ramp, and the dither can put
  * any ramp colour behind a pixel. So every ramp slot of the theme is tried as
@@ -39,7 +39,7 @@ function contrast(a: Rgb, b: Rgb): number {
   return (hi + 0.05) / (lo + 0.05);
 }
 
-describe('menu column contrast over the Winter backdrop', () => {
+describe('card layer contrast over the Winter backdrop', () => {
   const root = document.documentElement;
   const saved = root.dataset['theme'];
   afterEach(() => {
@@ -66,22 +66,16 @@ describe('menu column contrast over the Winter backdrop', () => {
         for (const [slot, hex] of ramp.entries()) {
           const backdrop = parse(hex);
           const scrimmed = over(void_, SCRIM_TONE, backdrop);
-          const column = over(void_, PANEL_OPACITY, scrimmed);
-          out.push({ name: `column over slot ${slot}`, ground: column });
-          // A panel sits on the column; the weaker single layer is held too.
+          // A card: the panel glass straight over the scrim, nothing else under the text.
           out.push({
-            name: `panel straight over the scrim, slot ${slot}`,
+            name: `card over the scrim, slot ${slot}`,
             ground: over(panel, PANEL_OPACITY, scrimmed),
-          });
-          out.push({
-            name: `panel over the column, slot ${slot}`,
-            ground: over(panel, PANEL_OPACITY, column),
           });
           // The narrow layout: the whole backdrop dimmed, no ground of its own.
           const dimmed = over(void_, NARROW_DIM, backdrop);
           out.push({ name: `narrow dim over slot ${slot}`, ground: dimmed });
           out.push({
-            name: `narrow panel over slot ${slot}`,
+            name: `narrow card over slot ${slot}`,
             ground: over(panel, PANEL_OPACITY, dimmed),
           });
         }

@@ -2,26 +2,27 @@ import * as THREE from 'three';
 
 /**
  * The full-screen stage (architecture doc 5.5). The scene's canvas fills the
- * viewport, the menu column scrolls over its left, and the Tower stays where
+ * viewport, the card layer lies over it, and the Tower stays where
  * the #75 panel put it: on the right.
  */
 
-/** Width of the management column, and the margin left of it. */
-export const MENU_WIDTH = 440;
-export const MENU_MARGIN = 24;
+/** The card layer's margin from the left edge, the gap between cards, and the top bar it clears. */
+export const CARD_MARGIN = 24;
+export const CARD_GAP = 12;
+export const TOP_BAR = 52;
+/** The narrowest a card is drawn, so the grid fits as many columns as the width allows. */
+export const CARD_MIN_WIDTH = 300;
 /** Below this viewport width the menus take the full width over a dimmed backdrop. */
 export const NARROW_BELOW = 1100;
 
-/** Panels in the column are this opaque, over the dither scrim. */
+/** Cards are this opaque, over their own dither scrim. */
 export const PANEL_OPACITY = 0.88;
 /** How much of the scene the scrim's flat tone takes away; the dither adds to it. */
 export const SCRIM_TONE = 0.7;
 /** The dither's own strength: this opaque on half the cells (a 50% ordered dither). */
 export const SCRIM_DITHER = 0.6;
-/** The narrow layout dims the whole backdrop, flatly, and the column paints no ground of its own. */
+/** The narrow layout dims the whole backdrop, flatly, and the cards sit on it with no scrim of their own. */
 export const NARROW_DIM = 0.97;
-/** The scrim fades out over this width beyond the column, in a sparser dither. */
-export const SCRIM_FADE = 64;
 
 /** The #75 Tower panel: 46vw, never under 440 px, of which the enemy list took the left. */
 const TOWER_SHARE = 0.46;
@@ -47,6 +48,22 @@ export function towerRegion(
   // A zoomed Shot widens the region toward the whole screen: 1 centres the Tower on it.
   const t = Math.min(1, spread);
   return { left: left * (1 - t), width: width + (canvasWidth - width) * t };
+}
+
+/** The cards stop this fraction of the Tower region in from its left edge; the rest is the Tower's lane. */
+const LANE_INSET = 0.1;
+
+/**
+ * How far right (CSS px from the left edge) the cards may reach. Past it lies the
+ * Tower's lane, kept clear so no card hides the bell or the recall lamp. Narrow
+ * screens have no lane: the cards take the full width and the bar below carries the controls.
+ */
+export function cardLayerWidth(canvasWidth: number, narrow: boolean): number {
+  if (narrow) {
+    return canvasWidth;
+  }
+  const region = towerRegion(canvasWidth, false);
+  return Math.round(region.left + region.width * LANE_INSET);
 }
 
 /**

@@ -1,6 +1,9 @@
+:host {
+  display: contents;
+}
+
 .village-panel {
-  background: var(--panel);
-  border: 1px solid var(--rule);
+  /* The card's own glass and border come from .glass-card (styles.css). */
   padding: 12px 14px 14px;
 }
 
@@ -125,7 +128,7 @@
 
 .trade-row {
   display: grid;
-  grid-template-columns: 9rem 11rem auto 1fr;
+  grid-template-columns: 7rem 10rem auto 1fr;
   align-items: center;
   gap: 8px;
   padding: 3px 0;
@@ -204,8 +207,7 @@
 
 .tome-row {
   display: grid;
-  /* The menu column is 440 px: the name and the level share a line, the button and
-     its note sit under the level. */
+  /* The name and the level share a line, the button and its note sit under the level. */
   grid-template-columns: 8rem minmax(0, 1fr);
   align-items: center;
   gap: 4px 8px;
