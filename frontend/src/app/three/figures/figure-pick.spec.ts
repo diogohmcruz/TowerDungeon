@@ -37,7 +37,32 @@ describe('figure picking', () => {
     expect(parseFigureId('enemy-12')).toEqual({ kind: 'enemy', id: 12 });
     expect(parseFigureId('wave-0')).toBeNull();
     expect(parseFigureId('wave-0-n1')).toBeNull();
+    expect(parseFigureId('unit-')).toBeNull();
+    expect(parseFigureId('enemy--')).toBeNull();
     expect(figureId({ kind: 'enemy', id: 12 })).toBe('enemy-12');
+  });
+
+  // The server draws a member's id from the whole int range, hash codes included, so about half of
+  // all members have a negative one ("enemy--1549096401"). Those must be hovered and clicked too (#131).
+  it('names a member whose id is negative, which half of the server ids are', () => {
+    expect(parseFigureId('unit--859253032')).toEqual({ kind: 'unit', id: -859253032 });
+    expect(parseFigureId('enemy--1549096401')).toEqual({ kind: 'enemy', id: -1549096401 });
+    expect(figureId({ kind: 'enemy', id: -70482493 })).toBe('enemy--70482493');
+    expect(parseFigureId(figureId({ kind: 'unit', id: -7 }))).toEqual({ kind: 'unit', id: -7 });
+  });
+
+  it('picks and hovers a lone Warrior and a lone Slime whose ids are negative (a 1 and 1 battle, #131)', () => {
+    const sprites = [figure('unit--859253032', -1.5), figure('enemy--1549096401', 1.5)];
+    const at = (f: FigureInstance) => {
+      const r = figureRect(camera(), f, W, H);
+      return [(r.left + r.right) / 2, (r.top + r.bottom) / 2];
+    };
+    for (const f of sprites) {
+      const [x, y] = at(f);
+      expect(pickFigure(camera(), sprites, x, y, W, H)?.id).toBe(f.id);
+      expect(pickSprite(camera(), sprites, x, y, W, H, 3)?.id).toBe(f.id);
+      expect(pickSpriteSteady(camera(), sprites, x, y, W, H, 3, null)?.id).toBe(f.id);
+    }
   });
 
   it('puts a figure at the centre of the screen on the camera axis', () => {
