@@ -364,8 +364,9 @@ public class GameState {
   private double computeSupplyCapacity() {
     var supplyBonus =
         unitsOnTower.entrySet().stream()
-            .mapToDouble(entry -> entry.getKey().getSupplyBonus() * entry.getValue().size())
-            .sum();
+                .mapToDouble(entry -> entry.getKey().getSupplyBonus() * entry.getValue().size())
+                .sum()
+            * config.getSupply().getCarryMultiplier();
     var pack = saltBearerId == null ? 0d : config.getSalt().getPackCapacity();
     var panaceaLoad =
         panacea != null && panacea.isArmed() ? config.getSpores().getPanaceaCapacity() : 0d;
@@ -620,7 +621,8 @@ public class GameState {
         (plain - share * (plain - config.getSalt().getSaltedDrainPerUnit())) * drainMultiplier();
     var before = supplies;
     var saltedBefore = saltedSupplies;
-    drainSupplies(units * perUnit);
+    var depth = tower == null ? 1d : config.getLoop().supplyDrainAt(tower.getCurrentFloor());
+    drainSupplies(units * perUnit * depth);
     meter.suppliesDrained(before - supplies);
     this.saltedSupplies = Math.max(0d, saltedBefore - (before - supplies) * share);
   }
@@ -881,8 +883,9 @@ public class GameState {
     }
     var porterBonus =
         waveUnits.entrySet().stream()
-            .mapToDouble(entry -> entry.getKey().getSupplyBonus() * entry.getValue().size())
-            .sum();
+                .mapToDouble(entry -> entry.getKey().getSupplyBonus() * entry.getValue().size())
+                .sum()
+            * config.getSupply().getCarryMultiplier();
     var capacity =
         config.getSupply().getBaseMax()
             + getSupplyCapacityBonus()
@@ -913,7 +916,10 @@ public class GameState {
     var iterator = reinforcements.iterator();
     while (iterator.hasNext()) {
       var wave = iterator.next();
-      wave.drainSupplies(wave.size() * drainPerUnit);
+      wave.drainSupplies(
+          wave.size()
+              * drainPerUnit
+              * config.getLoop().supplyDrainAt((int) wave.getCurrentFloor()));
       if (!wave.hasSupplies()) {
         starveWave(wave, starvationDamage);
       }
@@ -1437,8 +1443,9 @@ public class GameState {
     var partySize = (int) units.values().stream().flatMap(List::stream).count();
     var porterBonus =
         units.entrySet().stream()
-            .mapToDouble(entry -> entry.getKey().getSupplyBonus() * entry.getValue().size())
-            .sum();
+                .mapToDouble(entry -> entry.getKey().getSupplyBonus() * entry.getValue().size())
+                .sum()
+            * config.getSupply().getCarryMultiplier();
     var capacity = config.getSupply().getBaseMax() + getSupplyCapacityBonus() + porterBonus;
     var taken = Math.min(village.getFood(), capacity);
     var spores = config.getSpores();
@@ -1864,7 +1871,9 @@ public class GameState {
   /** Extra carrying capacity granted by the SUPPLY_LINES upgrade and any capacity milestones. */
   public double getSupplyCapacityBonus() {
     var upgradeBonus =
-        upgradeLevel(UpgradeType.SUPPLY_LINES) * UpgradeType.SUPPLY_LINES.getCapacityPerLevel();
+        upgradeLevel(UpgradeType.SUPPLY_LINES)
+            * UpgradeType.SUPPLY_LINES.getCapacityPerLevel()
+            * config.getSupply().getCarryMultiplier();
     var milestoneBonus =
         achievedMilestones.stream().mapToDouble(MilestoneType::getCapacityBonus).sum();
     return upgradeBonus + milestoneBonus;

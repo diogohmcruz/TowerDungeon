@@ -29,9 +29,23 @@ public class TowerFloor {
    */
   public void populateEnemies(
       double budget, FloorStreams streams, GameProperties.Enemies enemiesConfig) {
+    populateEnemies(budget, streams, enemiesConfig, 0, difficulty);
+  }
+
+  /**
+   * As {@link #populateEnemies(double, FloorStreams, GameProperties.Enemies)}, drawing the tiers
+   * from {@code lowest} up to, not including, {@code highest}: a deep floor holds no Slimes.
+   */
+  public void populateEnemies(
+      double budget,
+      FloorStreams streams,
+      GameProperties.Enemies enemiesConfig,
+      int lowest,
+      int highest) {
     double remaining = budget;
     while (remaining > 0) {
-      var randomEnemyStatsIndex = Math.floor(streams.generation().nextDouble(difficulty));
+      var randomEnemyStatsIndex =
+          lowest + Math.floor(streams.generation().nextDouble(highest - lowest));
       Enemy enemy =
           new Enemy(EnemyStats.values()[(int) randomEnemyStatsIndex], streams, enemiesConfig);
       enemies.add(enemy);
@@ -52,8 +66,7 @@ public class TowerFloor {
     int archetypeIndex = Math.min(difficulty, values.length - 1);
     var bossStats = values[archetypeIndex];
     double healthMultiplier =
-        (bossConfig.getHealthBaseMultiplier() + bossConfig.getHealthMultiplierPerFloor() * id)
-            * memoryHealth(bossConfig);
+        bossConfig.healthMultiplierAt(id, bossStats.getHealth()) * memoryHealth(bossConfig);
     enemies.add(
         new Enemy(
             bossStats,

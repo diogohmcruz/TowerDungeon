@@ -205,7 +205,7 @@ class SaltTest {
 
     var loadout = state.getLoadout();
 
-    var porter = UnitStats.PORTER.getSupplyBonus();
+    var porter = UnitStats.PORTER.getSupplyBonus() * config.getSupply().getCarryMultiplier();
     assertThat(loadout.carryingCapacity()).isEqualTo(cap(state) + porter);
     assertThat(loadout.suppliesTaken()).isEqualTo(140.0);
     assertThat(loadout.pantryAfter()).isZero();

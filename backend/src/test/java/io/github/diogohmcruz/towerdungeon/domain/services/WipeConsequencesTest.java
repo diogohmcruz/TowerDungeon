@@ -164,29 +164,29 @@ class WipeConsequencesTest {
 
   @Test
   void theCapIsThreeOnAnOrdinaryDeepFloor() {
-    climbTo(9);
+    climbTo(12);
     lose(party(12));
 
     state.raiseRisenOnWipe();
 
-    assertThat(risenOn(9)).hasSize(3);
+    assertThat(risenOn(12)).hasSize(3);
   }
 
   @Test
   void easingShrinksTheCap() {
-    tower.markBossCleared(10);
-    climbTo(8);
+    tower.markBossCleared(20);
+    climbTo(12);
     lose(party(12));
 
     state.raiseRisenOnWipe();
 
-    // Floor 8 would hold three unthinned; a quarter less garrison leaves room for two.
-    assertThat(risenOn(8)).hasSize(2);
+    // Floor 12 would hold three unthinned; a quarter less garrison leaves room for two.
+    assertThat(risenOn(12)).hasSize(2);
   }
 
   @Test
   void repeatedWipesOnTheSameFloorDoNotCompound() {
-    climbTo(9);
+    climbTo(12);
     lose(party(12));
     state.raiseRisenOnWipe();
     state.startRun();
@@ -194,7 +194,7 @@ class WipeConsequencesTest {
 
     state.raiseRisenOnWipe();
 
-    assertThat(risenOn(9)).hasSize(3);
+    assertThat(risenOn(12)).hasSize(3);
   }
 
   @Test

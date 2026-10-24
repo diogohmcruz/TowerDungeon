@@ -9,21 +9,21 @@
       "generation": 1,
       "highestFloor": 6,
       "legacy": 3,
-      "rationale": "Founders plus ten recruits, four of them Porters; Supply Lines 1 only, since the Materials of a Floor 1 to 5 climb buy little else. Reaches Floor 6, past the Floor 5 Surge, with no Guardian met.",
+      "rationale": "Founders plus thirteen recruits, five of them Porters; Supply Lines 1 only, since the Materials of a Floor 1 to 5 climb buy little else. Seventeen Units hold the Floor 5 Surge and reach Floor 6 on the Porters' 1,100 Supplies, with no Guardian met.",
       "rollBuysAtStart": [],
       "plan": {
         "startFloor": 1,
         "units": {
-          "WARRIOR": 6,
-          "ARCHER": 4,
-          "PORTER": 4
+          "WARRIOR": 7,
+          "ARCHER": 5,
+          "PORTER": 5
         },
         "upgrades": {
           "SUPPLY_LINES": 1
         },
         "dowry": null,
-        "supplies": 390,
-        "carryingCapacity": 390,
+        "supplies": 1100.0,
+        "carryingCapacity": 1100.0,
         "towerMemoryStep": 0,
         "inheritances": [],
         "easing": [],
@@ -34,7 +34,7 @@
       "generation": 2,
       "highestFloor": 9,
       "legacy": 4,
-      "rationale": "Healer unlocked (40 Materials) to keep the larger Party alive; Seed Grain and Hardy Stock held. The Shortcut sits at Floor 6, so the Campaign works Floors 6 to 9 only.",
+      "rationale": "Healers unlocked (40 Materials) to keep the larger Party alive; Seed Grain and Hardy Stock held. Without Generation 1's stronger Yuva the Party needs 24 Units and Sharpened Arms 3 to hold Floors 6 to 9 once Tower Memory step 1 has thickened them.",
       "rollBuysAtStart": [
         "SEED_GRAIN",
         "HARDY_STOCK"
@@ -42,19 +42,19 @@
       "plan": {
         "startFloor": 6,
         "units": {
-          "WARRIOR": 6,
-          "ARCHER": 5,
-          "HEALER": 1,
-          "PORTER": 4
+          "WARRIOR": 10,
+          "ARCHER": 7,
+          "HEALER": 2,
+          "PORTER": 5
         },
         "upgrades": {
           "UNLOCK_HEALER": 1,
           "SUPPLY_LINES": 2,
-          "SHARPENED_ARMS": 1
+          "SHARPENED_ARMS": 3
         },
         "dowry": null,
-        "supplies": 415,
-        "carryingCapacity": 415,
+        "supplies": 1175.0,
+        "carryingCapacity": 1175.0,
         "towerMemoryStep": 1,
         "inheritances": [
           "SEED_GRAIN",
@@ -68,7 +68,7 @@
       "generation": 3,
       "highestFloor": 12,
       "legacy": 5,
-      "rationale": "Tank unlocked (85 Materials); Whetstone Habit adds 5% damage. Tower Memory step 2 starts to bite on garrisons.",
+      "rationale": "Tank unlocked (85 Materials); Whetstone Habit adds 5% damage. Tower Memory step 2 starts to bite on garrisons, and the Guardian of Floor 10 stands in the climb: 28 Units and Sharpened Arms 4 clear it about half the time.",
       "rollBuysAtStart": [
         "WHETSTONE_HABIT",
         "MUSTER_ROLL"
@@ -76,21 +76,21 @@
       "plan": {
         "startFloor": 9,
         "units": {
-          "WARRIOR": 6,
-          "ARCHER": 5,
-          "HEALER": 1,
+          "WARRIOR": 10,
+          "ARCHER": 8,
+          "HEALER": 2,
           "TANK": 2,
-          "PORTER": 5
+          "PORTER": 6
         },
         "upgrades": {
           "UNLOCK_HEALER": 1,
           "UNLOCK_TANK": 1,
           "SUPPLY_LINES": 3,
-          "SHARPENED_ARMS": 2
+          "SHARPENED_ARMS": 4
         },
         "dowry": null,
-        "supplies": 500,
-        "carryingCapacity": 500,
+        "supplies": 1430.0,
+        "carryingCapacity": 1430.0,
         "towerMemoryStep": 2,
         "inheritances": [
           "SEED_GRAIN",
@@ -116,23 +116,23 @@
       "plan": {
         "startFloor": 12,
         "units": {
-          "WARRIOR": 4,
-          "ARCHER": 4,
-          "HEALER": 1,
+          "WARRIOR": 7,
+          "ARCHER": 5,
+          "HEALER": 2,
           "TANK": 3,
-          "ROGUE": 4,
-          "PORTER": 6
+          "ROGUE": 3,
+          "PORTER": 8
         },
         "upgrades": {
           "UNLOCK_HEALER": 1,
           "UNLOCK_TANK": 1,
           "UNLOCK_ROGUE": 1,
           "SUPPLY_LINES": 3,
-          "SHARPENED_ARMS": 3
+          "SHARPENED_ARMS": 4
         },
         "dowry": null,
-        "supplies": 585,
-        "carryingCapacity": 585,
+        "supplies": 1815.0,
+        "carryingCapacity": 1815.0,
         "towerMemoryStep": 3,
         "inheritances": [
           "SEED_GRAIN",
@@ -150,7 +150,7 @@
       "generation": 5,
       "highestFloor": 21,
       "legacy": 8,
-      "rationale": "Village Charter and the Dowry held (Courses I and II complete, 18 Legacy spent). First row at Tower Memory step 4, the cap: later rows are harder through their Floors only.",
+      "rationale": "Village Charter and the Dowry held (Courses I and II complete, 18 Legacy spent). First row at Tower Memory step 4, the cap: later rows are harder through their Floors only. Six Rogues and eight Porters.",
       "rollBuysAtStart": [
         "VILLAGE_CHARTER",
         "THE_DOWRY"
@@ -162,8 +162,8 @@
           "ARCHER": 4,
           "HEALER": 2,
           "TANK": 3,
-          "ROGUE": 5,
-          "PORTER": 6
+          "ROGUE": 6,
+          "PORTER": 8
         },
         "upgrades": {
           "UNLOCK_HEALER": 1,
@@ -173,8 +173,8 @@
           "SHARPENED_ARMS": 4
         },
         "dowry": "CREDITS",
-        "supplies": 610,
-        "carryingCapacity": 610,
+        "supplies": 1890.0,
+        "carryingCapacity": 1890.0,
         "towerMemoryStep": 4,
         "inheritances": [
           "SEED_GRAIN",
@@ -207,7 +207,7 @@
           "ARCHER": 5,
           "HEALER": 2,
           "TANK": 4,
-          "ROGUE": 6,
+          "ROGUE": 7,
           "PORTER": 8
         },
         "upgrades": {
@@ -218,8 +218,8 @@
           "SHARPENED_ARMS": 5
         },
         "dowry": "CREDITS",
-        "supplies": 755,
-        "carryingCapacity": 755,
+        "supplies": 1965.0,
+        "carryingCapacity": 1965.0,
         "towerMemoryStep": 4,
         "inheritances": [
           "SEED_GRAIN",
@@ -253,7 +253,7 @@
           "ARCHER": 4,
           "HEALER": 2,
           "TANK": 4,
-          "ROGUE": 11,
+          "ROGUE": 13,
           "NECROMANCER": 2,
           "PORTER": 9
         },
@@ -266,8 +266,8 @@
           "SHARPENED_ARMS": 6
         },
         "dowry": "RELICS",
-        "supplies": 840,
-        "carryingCapacity": 840,
+        "supplies": 2220.0,
+        "carryingCapacity": 2220.0,
         "towerMemoryStep": 4,
         "inheritances": [
           "SEED_GRAIN",
@@ -304,7 +304,7 @@
           "ARCHER": 4,
           "HEALER": 3,
           "TANK": 5,
-          "ROGUE": 13,
+          "ROGUE": 14,
           "NECROMANCER": 2,
           "PORTER": 10
         },
@@ -317,8 +317,8 @@
           "SHARPENED_ARMS": 7
         },
         "dowry": "RELICS",
-        "supplies": 925,
-        "carryingCapacity": 925,
+        "supplies": 2475.0,
+        "carryingCapacity": 2475.0,
         "towerMemoryStep": 4,
         "inheritances": [
           "SEED_GRAIN",
@@ -370,8 +370,8 @@
           "SHARPENED_ARMS": 8
         },
         "dowry": "RELICS",
-        "supplies": 1070,
-        "carryingCapacity": 1070,
+        "supplies": 2910.0,
+        "carryingCapacity": 2910.0,
         "towerMemoryStep": 4,
         "inheritances": [
           "SEED_GRAIN",
@@ -422,8 +422,8 @@
           "SHARPENED_ARMS": 9
         },
         "dowry": "RELICS",
-        "supplies": 1215,
-        "carryingCapacity": 1215,
+        "supplies": 3345.0,
+        "carryingCapacity": 3345.0,
         "towerMemoryStep": 4,
         "inheritances": [
           "SEED_GRAIN",
@@ -474,8 +474,8 @@
           "SHARPENED_ARMS": 10
         },
         "dowry": "RELICS",
-        "supplies": 1420,
-        "carryingCapacity": 1420,
+        "supplies": 3960.0,
+        "carryingCapacity": 3960.0,
         "towerMemoryStep": 4,
         "inheritances": [
           "SEED_GRAIN",
@@ -526,8 +526,8 @@
           "SHARPENED_ARMS": 10
         },
         "dowry": "RELICS",
-        "supplies": 1600,
-        "carryingCapacity": 1600,
+        "supplies": 4500.0,
+        "carryingCapacity": 4500.0,
         "towerMemoryStep": 4,
         "inheritances": [
           "SEED_GRAIN",
@@ -547,8 +547,7 @@
           "OFFERING_STONE"
         ],
         "easing": [
-          80,
-          90
+          80
         ],
         "founders": true
       }

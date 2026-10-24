@@ -45,6 +45,7 @@ Generation's start):
 | `aim` | Aim weights that replace a Unit type's configured ones |
 | `risen` | Risen standing on the dueled Floor, as a Wipe there leaves them |
 | `founders` | The first Warriors and Archer are the configured Founders (Generation 1's stronger Yuva) |
+| `startFloor`, `dowry`, `inheritances` | What the pacing table records of a plan: the Floor its Expedition sets out from, the Dowry choice and the Roll held (a duel names its own Floor and applies only Whetstone Habit of the Roll) |
 
 `with...` methods copy a plan with one field changed, so a pacing table is plain data.
 
@@ -107,3 +108,7 @@ serial.
 `FloorDuelTest` (backend): determinism, a run fixed by its seed alone, the baseline numbers above,
 Floors 6 to 100 including Guardian and Surge Floors, Carrying Capacity and Supplies, Upgrades and
 Party size, Tower Memory and Easing, Aim, refused plans, and the command-line parser.
+
+The pacing table (`backend/src/test/resources/balance/pacing-table.json`) loads straight into this
+record (`PacingTable`), and `docs/research/curve-floors-6-to-100.md` is the sizing of Floors 6 to 100
+made with it.
