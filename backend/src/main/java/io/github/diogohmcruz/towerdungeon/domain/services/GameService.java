@@ -1295,6 +1295,18 @@ public class GameService {
       gameState.noteStartFloor(requestedFloor);
     }
     slot.lastMuster(command);
+    gameState.setLastMuster(
+        new GameState.MusterRollOffer(
+            true,
+            requestedFloor,
+            command.units() == null
+                ? 0
+                : command.units().values().stream().mapToInt(Integer::intValue).sum(),
+            command.salt() == null ? 0 : command.salt(),
+            saltPack,
+            command.saltBearer() == null ? null : command.saltBearer().name(),
+            command.panacea(),
+            command.overreach()));
     slot.emit(
         "EXPEDITION_STARTED",
         Map.of("startFloor", requestedFloor, "party", gameState.getTowerPartySize()));

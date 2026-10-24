@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 
 import { GameAction } from '../../interfaces/game-action.enum';
-import type { LoadoutPreview } from '../../interfaces/village';
+import type { LoadoutPreview, QuartermastersTally } from '../../interfaces/village';
 import { GameStateService } from '../../services/game-state.service';
 import { GameWebSocketService } from '../../services/game-web-socket.service';
 import { LaunchService } from '../../services/launch.service';
@@ -184,6 +184,215 @@ describe('the Gate building', () => {
     expect(caption).toContain('Salt for the Supplies 1');
     expect(caption).toContain('Setting out takes 100 Food.');
     expect(caption).toContain('Supplies last about');
+  });
+});
+
+describe('the Gate: Overreach, the Tally and Muster Roll', () => {
+  let sendAction: jasmine.Spy;
+  let game: GameStateService;
+  let launch: LaunchService;
+  let popover: PopoverService;
+
+  const OVERREACH = {
+    supplyDrainMultiplier: 1.3,
+    starvationDamageMultiplier: 2,
+    lootMultiplier: 1.5,
+  };
+  const tally = (over: Partial<QuartermastersTally> = {}): QuartermastersTally => ({
+    slots: 3,
+    saved: [],
+    runwayTicks: 11,
+    saltedRunwayTicks: 13,
+    overreachRunwayTicks: 8,
+    ...over,
+  });
+  const give = (over: Partial<LoadoutPreview> = {}) =>
+    game.update({ loadout: loadout(over) });
+  const view = () => buildingView(GATE, game.state());
+  const gauge = (id: string) => view().gauges.find((g) => g.id === id);
+  const action = (id: string) => view().actions.find((a) => a.id === id);
+
+  beforeEach(() => {
+    sendAction = jasmine.createSpy('sendAction');
+    TestBed.configureTestingModule({
+      providers: [{ provide: GameWebSocketService, useValue: { sendAction } }],
+    });
+    game = TestBed.inject(GameStateService);
+    launch = TestBed.inject(LaunchService);
+    popover = TestBed.inject(PopoverService);
+  });
+  afterEach(() => TestBed.inject(StageService).showMenus());
+
+  it('shows nothing of Overreach, the Tally or Muster Roll while the Roll holds none', () => {
+    give();
+
+    expect(gauge('overreach')).toBeUndefined();
+    expect(action('overreach')).toBeUndefined();
+    expect(view().actions.some((a) => a.id.startsWith('loadout-') || a.id === 'muster-roll')).toBeFalse();
+    expect(view().lines).toEqual([]);
+  });
+
+  it('offers the Overreach switch, says its three effects and the runway under it, and the bell sets out with it', () => {
+    give({ overreach: OVERREACH });
+
+    expect(action('overreach')!.label).toBe('Set out under Overreach');
+    expect(gauge('overreach')!.figure).toBe('Not set');
+    expect(gauge('overreach')!.leaves).toContain('The Supplies drain 1.3 times as fast.');
+    expect(gauge('overreach')!.leaves).toContain('Starvation does 2 times the damage.');
+    expect(gauge('overreach')!.leaves).toContain('All Loot found is 1.5 times as much.');
+    expect(gauge('overreach')!.leaves).toContain('Under it the Supplies last about 8 s.');
+    expect(gauge('supplies')!.leaves).toContain('Under Overreach, about 8 s.');
+
+    popover.perform(GATE_ID, 'overreach');
+
+    expect(launch.overreachChosen()).toBeTrue();
+    expect(gauge('overreach')!.figure).toBe('Set');
+    expect(gauge('supplies')!.leaves).toContain('Supplies last about 8 s');
+    expect(action('overreach')!.label).toBe('Set out without Overreach');
+    const caption = captionText(captionFor({ kind: 'building', id: GATE_ID }, game.state())!);
+    expect(caption).toContain('Overreach Set');
+    expect(caption).toContain('Under it the Supplies last about 8 s.');
+
+    launch.ring();
+
+    expect(sendAction).toHaveBeenCalledWith(
+      GameAction.INVADE,
+      jasmine.objectContaining({ overreach: true }),
+    );
+    expect(launch.overreachChosen()).toBeFalse();
+  });
+
+  it('does not send Overreach the Roll no longer holds', () => {
+    give({ overreach: OVERREACH });
+    popover.perform(GATE_ID, 'overreach');
+    give();
+
+    launch.ring();
+
+    expect(sendAction.calls.mostRecent().args[1].overreach).toBeUndefined();
+  });
+
+  it('freezes the switch while an Expedition is out', () => {
+    give({ overreach: OVERREACH });
+    game.update({ expeditionActive: true });
+
+    expect(action('overreach')!.usable).toBeFalse();
+    expect(action('overreach')!.reason).toContain('An Expedition is already out.');
+  });
+
+  it('keeps three slots, each saying in words what it holds', () => {
+    give({
+      tally: tally({
+        saved: [
+          { slot: 1, salt: 3, saltPack: 2, saltBearer: 'TANK', panacea: true, overreach: true },
+        ],
+      }),
+    });
+    const lines = view().lines.filter((l) => l.id.startsWith('slot-'));
+
+    expect(lines.length).toBe(3);
+    expect(lines[0].value).toBe('Nothing is saved here.');
+    expect(lines[1].value).toBe(
+      '3 Salt on the Supplies, a Salt Pack of 2 carried by TANK, a Panacea, Overreach.',
+    );
+    expect(view().lines[0].heading).toBe("Quartermaster's Tally");
+  });
+
+  it('saves the current choices in a slot through SAVE_LOADOUT', () => {
+    give({ overreach: OVERREACH, tally: tally() });
+    popover.perform(GATE_ID, 'salt-more');
+    popover.perform(GATE_ID, 'salt-more');
+    popover.perform(GATE_ID, 'pack-more');
+    popover.perform(GATE_ID, 'panacea');
+    popover.perform(GATE_ID, 'overreach');
+
+    expect(popover.perform(GATE_ID, 'loadout-save-2')).toBeTrue();
+
+    expect(sendAction).toHaveBeenCalledWith(GameAction.SAVE_LOADOUT, {
+      slot: 2,
+      salt: 2,
+      saltPack: 1,
+      saltBearer: 'TANK',
+      panacea: true,
+      overreach: true,
+    });
+  });
+
+  it('applies a slot by setting the Gate\'s choices, and states what it would set', () => {
+    give({
+      overreach: OVERREACH,
+      tally: tally({
+        saved: [
+          { slot: 0, salt: 3, saltPack: 1, saltBearer: 'WARRIOR', panacea: true, overreach: true },
+        ],
+      }),
+    });
+    expect(action('loadout-apply-0')!.preview).toContain('Sets the Gate to: 3 Salt on the Supplies');
+
+    expect(popover.perform(GATE_ID, 'loadout-apply-0')).toBeTrue();
+
+    expect(launch.saltToUse()).toBe(3);
+    expect(launch.packSalt()).toBe(1);
+    expect(launch.packBearer()).toBe('WARRIOR');
+    expect(launch.panaceaChosen()).toBeTrue();
+    expect(launch.overreachChosen()).toBeTrue();
+    expect(gauge('overreach')!.figure).toBe('Set');
+  });
+
+  it('clears a saved slot, and refuses an empty one in words', () => {
+    give({
+      tally: tally({
+        saved: [{ slot: 0, salt: 0, saltPack: 0, saltBearer: null, panacea: false, overreach: false }],
+      }),
+    });
+
+    expect(action('loadout-clear-1')!.usable).toBeFalse();
+    expect(action('loadout-clear-1')!.reason).toBe('No Loadout is saved in slot 2.');
+    expect(action('loadout-apply-1')!.usable).toBeFalse();
+    expect(popover.perform(GATE_ID, 'loadout-apply-1')).toBeFalse();
+
+    expect(popover.perform(GATE_ID, 'loadout-clear-0')).toBeTrue();
+    expect(sendAction).toHaveBeenCalledWith(GameAction.CLEAR_LOADOUT, { slot: 0 });
+  });
+
+  it('holds Apply while an Expedition is out', () => {
+    give({
+      tally: tally({
+        saved: [{ slot: 0, salt: 1, saltPack: 0, saltBearer: null, panacea: false, overreach: false }],
+      }),
+    });
+    game.update({ expeditionActive: true });
+
+    expect(action('loadout-apply-0')!.reason).toContain('An Expedition is already out.');
+  });
+
+  it('offers Muster Roll only when held, says why it cannot go yet, and sends MUSTER_ROLL', () => {
+    const offer = {
+      ready: false,
+      startFloor: 0,
+      partyUnits: 0,
+      salt: 2,
+      saltPack: 0,
+      saltBearer: null,
+      panacea: false,
+      overreach: true,
+    };
+    give({ musterRoll: offer });
+
+    expect(action('muster-roll')!.usable).toBeFalse();
+    expect(action('muster-roll')!.reason).toBe('No Party has set out yet this Generation.');
+    expect(popover.perform(GATE_ID, 'muster-roll')).toBeFalse();
+    expect(view().lines.find((l) => l.id === 'muster')!.value).toBe(
+      'No Party has set out yet this Generation.',
+    );
+
+    give({ musterRoll: { ...offer, ready: true, startFloor: 5 } });
+
+    expect(action('muster-roll')!.usable).toBeTrue();
+    expect(action('muster-roll')!.preview).toContain('Every Unit in the Reserves set out again from Floor 5.');
+    expect(action('muster-roll')!.preview).toContain('Overreach.');
+    expect(popover.perform(GATE_ID, 'muster-roll')).toBeTrue();
+    expect(sendAction).toHaveBeenCalledWith(GameAction.MUSTER_ROLL, undefined);
   });
 });
 

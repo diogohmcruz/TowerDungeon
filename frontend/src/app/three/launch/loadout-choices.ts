@@ -16,7 +16,7 @@ export interface LoadoutChoiceSource {
 }
 
 const NONE: LoadoutChoiceSource = {
-  choice: () => ({ salt: 0, pack: 0, bearer: '', panacea: false }),
+  choice: () => ({ salt: 0, pack: 0, bearer: '', panacea: false, overreach: false }),
   startFloor: () => 0,
   set: () => undefined,
 };

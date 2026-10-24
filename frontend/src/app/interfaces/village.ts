@@ -149,4 +149,49 @@ export interface LoadoutPreview {
   panaceaCapacity: number;
   /** Why a Panacea cannot be made now; null when it can. */
   panaceaBlocked: string | null;
+  /** Overreach, present only while the Roll holds it. */
+  overreach?: OverreachSwitch | null;
+  /** The Quartermaster's Tally, present only while the Roll holds it. */
+  tally?: QuartermastersTally | null;
+  /** Muster Roll, present only while the Roll holds it. */
+  musterRoll?: MusterRollOffer | null;
+}
+
+/** What Overreach multiplies while an Expedition is under it. */
+export interface OverreachSwitch {
+  supplyDrainMultiplier: number;
+  starvationDamageMultiplier: number;
+  lootMultiplier: number;
+}
+
+/** A Loadout saved in a slot of the Tally (not the Party). */
+export interface SavedLoadout {
+  slot: number;
+  salt: number;
+  saltPack: number;
+  saltBearer: string | null;
+  panacea: boolean;
+  overreach: boolean;
+}
+
+export interface QuartermastersTally {
+  /** How many Loadouts may be saved. */
+  slots: number;
+  saved: SavedLoadout[];
+  runwayTicks: number | null;
+  saltedRunwayTicks: number | null;
+  overreachRunwayTicks: number | null;
+}
+
+/** What Muster Roll would send again; `ready` is false before a Party has set out this Generation. */
+export interface MusterRollOffer {
+  ready: boolean;
+  startFloor: number;
+  /** Units sent; 0 is every Unit in the Reserves. */
+  partyUnits: number;
+  salt: number;
+  saltPack: number;
+  saltBearer: string | null;
+  panacea: boolean;
+  overreach: boolean;
 }

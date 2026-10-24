@@ -106,6 +106,12 @@ public class GameState {
   /** The Loadouts saved in the player's meta, shown with the Loadout. Never saved here. */
   @JsonIgnore private List<SavedLoadout> savedLoadouts = List.of();
 
+  /** Whether the Roll holds Muster Roll. Never saved. */
+  @JsonIgnore private boolean musterRollHeld = false;
+
+  /** The last Party and Loadout that set out this Generation, for Muster Roll; null before one. */
+  @JsonIgnore private MusterRollOffer lastMuster;
+
   /** Whether the Expedition out now was set out under Overreach. */
   @JsonIgnore private boolean overreach = false;
 
@@ -1469,7 +1475,37 @@ public class GameState {
                 overreachRule.supplyDrain(),
                 overreachRule.starvationDamage(),
                 overreachRule.loot()),
-        loadoutSlots <= 0 ? null : quartermastersTally(taken, partySize, perSalt));
+        loadoutSlots <= 0 ? null : quartermastersTally(taken, partySize, perSalt),
+        musterRollHeld ? (lastMuster == null ? MusterRollOffer.NONE : lastMuster) : null);
+  }
+
+  /** Whether the Roll holds Muster Roll. */
+  public void setMusterRollHeld(boolean held) {
+    this.musterRollHeld = held;
+  }
+
+  /** Notes the Party and Loadout that just set out, for the Loadout's Muster Roll line. */
+  public void setLastMuster(MusterRollOffer offer) {
+    this.lastMuster = offer;
+  }
+
+  /**
+   * Muster Roll as the Loadout offers it: present only when the Roll holds it. {@code ready} is
+   * whether a Party has set out this Generation; the rest says what it would send again. {@code
+   * partyUnits} is 0 for every Unit in the Reserves.
+   */
+  public record MusterRollOffer(
+      boolean ready,
+      int startFloor,
+      int partyUnits,
+      int salt,
+      int saltPack,
+      String saltBearer,
+      boolean panacea,
+      boolean overreach) {
+    /** Nothing has set out yet. */
+    public static final MusterRollOffer NONE =
+        new MusterRollOffer(false, 0, 0, 0, 0, null, false, false);
   }
 
   /**
@@ -1548,7 +1584,8 @@ public class GameState {
       double panaceaCapacity,
       String panaceaBlocked,
       OverreachSwitch overreach,
-      QuartermastersTally tally) {}
+      QuartermastersTally tally,
+      MusterRollOffer musterRoll) {}
 
   /** The Count: what the Campaign has lost to Starvation. */
   public TheCount getTheCount() {
