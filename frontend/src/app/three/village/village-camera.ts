@@ -99,6 +99,22 @@ export function villagePose(
   };
 }
 
+/**
+ * How thick a focus line (#133) is, as a share of its far-view thickness, for a canvas aspect and a
+ * blend: the closeup shows fewer world units across, so a world unit is more pixels, and the same
+ * line would be heavier. Scaled by this it stays one or two virtual pixels in both views.
+ */
+export function focusLineScale(
+  aspect: number,
+  closeness = 0,
+  frame: CloseupFrame = FAR_FRAME,
+): number {
+  const a = Math.max(0.2, aspect);
+  const t = Math.min(1, Math.max(0, closeness));
+  const closeSpan = Math.max(frame.span, CLOSEUP_MIN_HEIGHT * a);
+  return (FRAME_WIDTH + (closeSpan - FRAME_WIDTH) * t) / FRAME_WIDTH;
+}
+
 /** Places a camera at the Village vantage (called when the aspect or the blend changes). */
 export function fitVillageCamera(
   camera: THREE.PerspectiveCamera,

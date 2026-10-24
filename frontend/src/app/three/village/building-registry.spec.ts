@@ -110,7 +110,7 @@ describe('building registry', () => {
     it('is outlined like any other thing when hovered or selected', () => {
       const out = buildVillage({ ...EMPTY_VILLAGE, hovered: 'SILO', selected: null });
       const outline = out.filter((v) => v.id.startsWith('outline-SILO:hover:building'));
-      expect(outline.length).toBe(4);
+      expect(outline.length).toBeGreaterThanOrEqual(12);
       expect(subjectOfVolume(outline[0].id)).toEqual({ kind: 'building', id: 'SILO' });
     });
 

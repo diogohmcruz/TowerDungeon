@@ -99,7 +99,7 @@ const TRADES: readonly TradeId[] = [
 ];
 
 /** Outlines are drawn as volumes; their ids carry the subject they frame. */
-const OUTLINE = 'outline-';
+export const OUTLINE = 'outline-';
 
 export function sameThing(
   a: VillageSubject | null | undefined,
@@ -155,13 +155,14 @@ export function ofSubject(volumes: Volume[], id: string, kind: SubjectKind): Vol
 }
 
 /** One virtual pixel in world units; a hairline is one, the selected line two. */
-const PIXEL = 11 / 220;
+export const OUTLINE_PIXEL = 11 / 220;
+const PIXEL = OUTLINE_PIXEL;
 const PAD = 0.06;
 /** Dash length and gap of a dashed frame, in world units (about three and two pixels). */
 const DASH = 0.15;
 const GAP = 0.1;
 
-const OUTLINED_KINDS: readonly SubjectKind[] = [
+export const OUTLINED_KINDS: readonly SubjectKind[] = [
   'annex',
   'villagers',
   'shortcut',

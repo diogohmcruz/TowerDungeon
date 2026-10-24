@@ -5,6 +5,7 @@ import { applyStageView } from '../stage-view';
 import {
   closeupFrame,
   fitVillageCamera,
+  focusLineScale,
   villagePose,
 } from './village-camera';
 import { buildVillage, EMPTY_VILLAGE, type VillageInput } from './village-layout';
@@ -135,4 +136,18 @@ describe('the Village closeup camera (#130)', () => {
       });
     });
   }
+
+  describe('focus lines (#133)', () => {
+    it('keep their pixels: full thickness in the far view, thinner as the closeup comes in', () => {
+      const frame = closeupFrame(buildVillage({ ...BASE, villageTierLevel: 4 }));
+      for (const aspect of [0.8, 1.6, 2.4]) {
+        expect(focusLineScale(aspect, 0, frame)).toBe(1);
+        const mid = focusLineScale(aspect, 0.5, frame);
+        const close = focusLineScale(aspect, 1, frame);
+        expect(close).toBeLessThan(1);
+        expect(mid).toBeLessThan(1);
+        expect(mid).toBeGreaterThan(close);
+      }
+    });
+  });
 });
