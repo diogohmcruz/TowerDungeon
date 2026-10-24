@@ -103,8 +103,13 @@ function box(
 }
 
 export interface ExpeditionObjectsInput {
-  /** World Y of the walkable surface the Party stands on. */
+  /** World Y of the walkable surface the post stands on. */
   surfaceY: number;
+  /**
+   * World Y the crates' shelf rises from: the height of the figures' feet, which the shelf is
+   * measured against (`CRATE_RISE`). Default `surfaceY`.
+   */
+  crateSurfaceY?: number;
   supplies: number;
   maxSupplies: number;
   credits: number;
@@ -268,7 +273,7 @@ export function expeditionVolumes(input: ExpeditionObjectsInput): Volume[] {
     RELICS: input.relics,
   };
   CRATE_KINDS.forEach((kind, i) =>
-    crateStack(out, kind, i, crateX(input.partyX, i), input.surfaceY, amounts[kind]),
+    crateStack(out, kind, i, crateX(input.partyX, i), input.crateSurfaceY ?? input.surfaceY, amounts[kind]),
   );
   const marks: Volume[] = [];
   for (const id of [SUPPLIES_SUBJECT, ...CRATE_KINDS]) {
