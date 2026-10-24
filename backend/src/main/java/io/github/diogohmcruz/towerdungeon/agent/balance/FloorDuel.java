@@ -16,6 +16,7 @@ import io.github.diogohmcruz.towerdungeon.domain.models.RunSummary;
 import io.github.diogohmcruz.towerdungeon.domain.models.Unit;
 import io.github.diogohmcruz.towerdungeon.domain.models.UnitStats;
 import io.github.diogohmcruz.towerdungeon.domain.models.architecture.ArchitecturePlan;
+import io.github.diogohmcruz.towerdungeon.domain.prestige.InheritanceType;
 import io.github.diogohmcruz.towerdungeon.domain.random.SeedSource;
 import io.github.diogohmcruz.towerdungeon.domain.services.DuelBench;
 import io.github.diogohmcruz.towerdungeon.domain.services.FloorBundle;
@@ -134,6 +135,9 @@ public class FloorDuel {
     }
 
     var state = bench.open(config, seed);
+    if (plan.inheritances().contains(InheritanceType.WHETSTONE_HABIT)) {
+      state.setRollDamageBonus(config.getPrestige().getRoll().getWhetstoneHabit().getDamageBonus());
+    }
     var recruits = new SplittableRandom(seed ^ RECRUIT_STREAM);
     var party = new ArrayList<Unit>();
     var counts = new java.util.EnumMap<>(plan.units());

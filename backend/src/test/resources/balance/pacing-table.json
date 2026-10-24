@@ -24,10 +24,10 @@
         "dowry": null,
         "supplies": 390,
         "carryingCapacity": 390,
-        "aim": "BODY",
         "towerMemoryStep": 0,
-        "easingSteps": 0,
-        "inheritances": []
+        "inheritances": [],
+        "easing": [],
+        "founders": true
       }
     },
     {
@@ -55,13 +55,13 @@
         "dowry": null,
         "supplies": 415,
         "carryingCapacity": 415,
-        "aim": "BODY",
         "towerMemoryStep": 1,
-        "easingSteps": 0,
         "inheritances": [
           "SEED_GRAIN",
           "HARDY_STOCK"
-        ]
+        ],
+        "easing": [],
+        "founders": true
       }
     },
     {
@@ -91,15 +91,17 @@
         "dowry": null,
         "supplies": 500,
         "carryingCapacity": 500,
-        "aim": "BODY",
         "towerMemoryStep": 2,
-        "easingSteps": 1,
         "inheritances": [
           "SEED_GRAIN",
           "HARDY_STOCK",
           "WHETSTONE_HABIT",
           "MUSTER_ROLL"
-        ]
+        ],
+        "easing": [
+          10
+        ],
+        "founders": true
       }
     },
     {
@@ -131,9 +133,7 @@
         "dowry": null,
         "supplies": 585,
         "carryingCapacity": 585,
-        "aim": "BODY",
         "towerMemoryStep": 3,
-        "easingSteps": 0,
         "inheritances": [
           "SEED_GRAIN",
           "HARDY_STOCK",
@@ -141,7 +141,9 @@
           "MUSTER_ROLL",
           "HEAVIER_PACKS",
           "THE_HEIR"
-        ]
+        ],
+        "easing": [],
+        "founders": true
       }
     },
     {
@@ -173,9 +175,7 @@
         "dowry": "CREDITS",
         "supplies": 610,
         "carryingCapacity": 610,
-        "aim": "BODY",
         "towerMemoryStep": 4,
-        "easingSteps": 1,
         "inheritances": [
           "SEED_GRAIN",
           "HARDY_STOCK",
@@ -185,7 +185,11 @@
           "THE_HEIR",
           "VILLAGE_CHARTER",
           "THE_DOWRY"
-        ]
+        ],
+        "easing": [
+          20
+        ],
+        "founders": true
       }
     },
     {
@@ -216,9 +220,7 @@
         "dowry": "CREDITS",
         "supplies": 755,
         "carryingCapacity": 755,
-        "aim": "BODY",
         "towerMemoryStep": 4,
-        "easingSteps": 0,
         "inheritances": [
           "SEED_GRAIN",
           "HARDY_STOCK",
@@ -229,7 +231,9 @@
           "VILLAGE_CHARTER",
           "THE_DOWRY",
           "BLOOD_OF_THE_DOOR"
-        ]
+        ],
+        "easing": [],
+        "founders": true
       }
     },
     {
@@ -264,9 +268,7 @@
         "dowry": "RELICS",
         "supplies": 840,
         "carryingCapacity": 840,
-        "aim": "BODY",
         "towerMemoryStep": 4,
-        "easingSteps": 1,
         "inheritances": [
           "SEED_GRAIN",
           "HARDY_STOCK",
@@ -280,7 +282,11 @@
           "NARROW_STAIR",
           "OVERREACH",
           "QUARTERMASTERS_TALLY"
-        ]
+        ],
+        "easing": [
+          30
+        ],
+        "founders": true
       }
     },
     {
@@ -313,9 +319,7 @@
         "dowry": "RELICS",
         "supplies": 925,
         "carryingCapacity": 925,
-        "aim": "BODY",
         "towerMemoryStep": 4,
-        "easingSteps": 1,
         "inheritances": [
           "SEED_GRAIN",
           "HARDY_STOCK",
@@ -330,7 +334,11 @@
           "OVERREACH",
           "QUARTERMASTERS_TALLY",
           "HARD_WON_HABITS"
-        ]
+        ],
+        "easing": [
+          40
+        ],
+        "founders": true
       }
     },
     {
@@ -364,9 +372,7 @@
         "dowry": "RELICS",
         "supplies": 1070,
         "carryingCapacity": 1070,
-        "aim": "BODY",
         "towerMemoryStep": 4,
-        "easingSteps": 1,
         "inheritances": [
           "SEED_GRAIN",
           "HARDY_STOCK",
@@ -383,7 +389,11 @@
           "HARD_WON_HABITS",
           "THE_OPEN_BREACH",
           "OFFERING_STONE"
-        ]
+        ],
+        "easing": [
+          50
+        ],
+        "founders": true
       }
     },
     {
@@ -414,9 +424,7 @@
         "dowry": "RELICS",
         "supplies": 1215,
         "carryingCapacity": 1215,
-        "aim": "BODY",
         "towerMemoryStep": 4,
-        "easingSteps": 1,
         "inheritances": [
           "SEED_GRAIN",
           "HARDY_STOCK",
@@ -433,7 +441,11 @@
           "HARD_WON_HABITS",
           "THE_OPEN_BREACH",
           "OFFERING_STONE"
-        ]
+        ],
+        "easing": [
+          60
+        ],
+        "founders": true
       }
     },
     {
@@ -464,9 +476,7 @@
         "dowry": "RELICS",
         "supplies": 1420,
         "carryingCapacity": 1420,
-        "aim": "BODY",
         "towerMemoryStep": 4,
-        "easingSteps": 1,
         "inheritances": [
           "SEED_GRAIN",
           "HARDY_STOCK",
@@ -483,7 +493,11 @@
           "HARD_WON_HABITS",
           "THE_OPEN_BREACH",
           "OFFERING_STONE"
-        ]
+        ],
+        "easing": [
+          70
+        ],
+        "founders": true
       }
     },
     {
@@ -514,9 +528,7 @@
         "dowry": "RELICS",
         "supplies": 1600,
         "carryingCapacity": 1600,
-        "aim": "BODY",
         "towerMemoryStep": 4,
-        "easingSteps": 2,
         "inheritances": [
           "SEED_GRAIN",
           "HARDY_STOCK",
@@ -533,7 +545,12 @@
           "HARD_WON_HABITS",
           "THE_OPEN_BREACH",
           "OFFERING_STONE"
-        ]
+        ],
+        "easing": [
+          80,
+          90
+        ],
+        "founders": true
       }
     }
   ]

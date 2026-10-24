@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.util.List;
 
+import io.github.diogohmcruz.towerdungeon.agent.balance.PartyPlan;
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
 import io.github.diogohmcruz.towerdungeon.domain.models.ResourceType;
 import io.github.diogohmcruz.towerdungeon.domain.models.UnitStats;
@@ -14,9 +15,10 @@ import tools.jackson.databind.json.JsonMapper;
 
 /**
  * The pacing table of {@code prestige-and-persistence.md} 3.12 as data: for each Generation the
- * Highest Floor it should reach, the Legacy it should earn and the reference {@link PartyPlan}. The
- * data is {@code balance/pacing-table.json} on the test classpath; the numbers are placeholders the
- * floor duel harness refits.
+ * Highest Floor it should reach, the Legacy it should earn and the reference {@link PartyPlan} of
+ * the floor duel harness (#112), which the table loads into. The data is {@code
+ * balance/pacing-table.json} on the test classpath; the numbers are placeholders the floor duel
+ * harness refits.
  *
  * @param assumptions the economy model the plans are checked against
  * @param rows one per Generation, in order
@@ -54,7 +56,10 @@ public record PacingTable(Assumptions assumptions, List<Row> rows) {
 
   public static PacingTable load() {
     try (InputStream in = PacingTable.class.getResourceAsStream("/balance/pacing-table.json")) {
-      return JsonMapper.builder().build().readValue(in, PacingTable.class);
+      return JsonMapper.builder()
+          .disable(tools.jackson.databind.DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES)
+          .build()
+          .readValue(in, PacingTable.class);
     } catch (IOException e) {
       throw new UncheckedIOException(e);
     }

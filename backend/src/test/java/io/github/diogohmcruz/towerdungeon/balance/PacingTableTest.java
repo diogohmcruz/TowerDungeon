@@ -32,7 +32,6 @@ class PacingTableTest {
       assertThat(row.rationale()).as("rationale of %d", i + 1).isNotBlank();
       assertThat(row.plan()).isNotNull();
       assertThat(row.plan().units()).isNotEmpty();
-      assertThat(row.plan().aim()).isNotNull();
     }
   }
 
@@ -61,7 +60,7 @@ class PacingTableTest {
     for (var i = 1; i < 12; i++) {
       var before = table.rows().get(i - 1).plan();
       var plan = table.rows().get(i).plan();
-      assertThat(plan.partySize()).as("party %d", i + 1).isGreaterThanOrEqualTo(before.partySize());
+      assertThat(plan.size()).as("party %d", i + 1).isGreaterThanOrEqualTo(before.size());
       assertThat(plan.carryingCapacity())
           .as("capacity %d", i + 1)
           .isGreaterThanOrEqualTo(before.carryingCapacity());
