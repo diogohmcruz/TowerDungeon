@@ -138,6 +138,64 @@ describe('BuildingPopover', () => {
       }
     });
 
+    it('reads the Ledger at the Study, newest first, and closes on its button', () => {
+      TestBed.inject(GameStateService).update({
+        tradeViews: [
+          {
+            trade: 'SCRIBE',
+            plural: 'Scribes',
+            workplace: "Scribe's Study",
+            hands: 1,
+            posts: 10,
+            settling: 0,
+            settlingSeconds: 0,
+          },
+        ],
+        villageTierLevel: 2,
+        ledger: [
+          { text: 'Emergency Tilling. Pantry below 20.', loss: false },
+          { text: 'Starvation. 1 Breaker lost.', loss: true },
+        ],
+      });
+      popover.openFor({ kind: 'annex', id: 'SCRIBE' });
+      show();
+      const lines = Array.from(card()!.querySelectorAll('.written-lines li')).map(
+        (li) => li.textContent?.trim(),
+      );
+      expect(lines).toEqual([
+        '- Starvation. 1 Breaker lost.',
+        '. Emergency Tilling. Pantry below 20.',
+      ]);
+      expect(card()!.querySelector('.written-lines.scroll')).not.toBeNull();
+      (card()!.querySelector('button.dismiss') as HTMLButtonElement).click();
+      show();
+      expect(card()).toBeNull();
+    });
+
+    it('shows the Expedition Summary at the Gate', () => {
+      TestBed.inject(GameStateService).update({
+        lastRunSummary: {
+          outcome: 'WIPED',
+          startFloor: 0,
+          highestFloor: 7,
+          floorsCleared: 6,
+          enemiesDefeated: 12,
+          creditsGained: 40,
+          materialsGained: 20,
+          relicsGained: 0,
+          unitsLost: 1,
+          survivors: 0,
+          fallen: [{ name: 'Tomas', type: 'ARCHER', floor: 7 }],
+        },
+      });
+      popover.openFor({ kind: 'building', id: 'GATE' });
+      show();
+      const text = card()!.textContent!;
+      expect(text).toContain('Wipe. Floor 0 → 7');
+      expect(text).toContain('Tomas, Archer, fell on Floor 7.');
+      expect(text).toContain('Credits lost 40');
+    });
+
     it('follows the building as it moves', () => {
       stage.setViewport({ width: 1280, height: 1400 });
       popover.openFor(silo);

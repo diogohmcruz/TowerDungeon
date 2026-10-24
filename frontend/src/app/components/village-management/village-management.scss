@@ -190,15 +190,3 @@
   }
 }
 
-.ledger {
-  list-style: none;
-  margin: 8px 0 0;
-  padding: 0;
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--text);
-
-  li.loss {
-    color: var(--ember-text);
-  }
-}

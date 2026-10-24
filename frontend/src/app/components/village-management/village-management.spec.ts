@@ -169,20 +169,9 @@ describe('VillageManagement', () => {
     expect(text()).not.toMatch(/Year \d/);
   });
 
-  it('prints the last Ledger lines with a marker for losses', () => {
-    load({
-      ledger: [
-        { text: 'Emergency Tilling. Pantry below 20.', loss: false },
-        { text: 'Starvation. 1 Breaker lost.', loss: true },
-      ],
-    });
+  it('no longer prints the Ledger: it is read at the Scribe\'s Study', () => {
+    load({ ledger: [{ text: 'Starvation. 1 Breaker lost.', loss: true }] });
 
-    const lines = Array.from(
-      fixture.nativeElement.querySelectorAll('.ledger li'),
-    ).map((li) => (li as HTMLElement).textContent?.trim());
-    expect(lines).toEqual([
-      '. Emergency Tilling. Pantry below 20.',
-      '- Starvation. 1 Breaker lost.',
-    ]);
+    expect(fixture.nativeElement.querySelector('.ledger')).toBeNull();
   });
 });

@@ -4,7 +4,7 @@ import {
   EMPTY_VILLAGE,
   VillageInput,
 } from '../../three/village/village-layout';
-import type { GameState } from '../../interfaces/game-state';
+import type { GameState, RunSummary } from '../../interfaces/game-state';
 import type { Member } from '../../interfaces/member';
 import type { UnitStats } from '../../interfaces/unit.enum';
 import type { SessionMeta } from '../../interfaces/game-frame';
@@ -29,6 +29,39 @@ function quarterParam(): VillageInput['quarter'] {
   return v === 'SPRING' || v === 'SUMMER' || v === 'AUTUMN' || v === 'WINTER'
     ? v
     : null;
+}
+
+const FIXTURE_LEDGER = [
+  { text: 'Emergency Tilling. Pantry below 20.', loss: false },
+  { text: 'The Boat arrived. 2 Arrivals came ashore.', loss: false },
+  { text: 'Starvation. 1 Breaker lost.', loss: true },
+  { text: 'Quarry Heap full. Breaking stops until it is carried.', loss: false },
+  { text: 'The Floor 10 Guardian was slain. The stair eases.', loss: false },
+  { text: 'Wipe. They stay on the Floor.', loss: true },
+  { text: 'The Study gained a Post.', loss: false },
+  { text: 'The Voyage was lost to the Quarter of Autumn.', loss: true },
+];
+
+function fixtureSummary(wiped: boolean): RunSummary {
+  return {
+    outcome: wiped ? 'WIPED' : 'EXTRACTED',
+    startFloor: 0,
+    highestFloor: 12,
+    floorsCleared: 11,
+    enemiesDefeated: 38,
+    creditsGained: 1240,
+    materialsGained: 86,
+    relicsGained: wiped ? 2 : 1,
+    unitsLost: wiped ? 3 : 1,
+    survivors: wiped ? 0 : 5,
+    fallen: wiped
+      ? [
+          { name: 'Tomas', type: 'ARCHER', floor: 12 },
+          { name: 'Brann', type: 'TANK', floor: 12 },
+          { name: 'Ilse', type: 'HEALER', floor: 11 },
+        ]
+      : [{ name: 'Tomas', type: 'ARCHER', floor: 9 }],
+  };
 }
 
 function fixtureReserves(): GameState['units'] {
@@ -176,7 +209,8 @@ export class VillageFixturePage {
     // `?exodus=1` opens Exodus (the forecast reaches its minimum).
     const exodusOpen = new URLSearchParams(location.search).has('exodus');
     // `?open=FORT` opens that building's popover, for a capture with no pointer to click with.
-    const open = new URLSearchParams(location.search).get('open');
+    const query = new URLSearchParams(location.search);
+    const open = query.get('open');
     if (open) {
       const popover = inject(PopoverService);
       setTimeout(() => popover.openFor({ kind: 'building', id: open }), 1500);
@@ -285,6 +319,11 @@ export class VillageFixturePage {
         exodusMinimum: exodusOpen ? 2 : 3,
         canExodus: exodusOpen,
       },
+      // `?ledger=1` writes a Ledger (read at the Study); `?summary=wiped|extracted` a Summary (read at the Gate).
+      ...(query.has('ledger') ? { ledger: FIXTURE_LEDGER } : {}),
+      ...(query.has('summary')
+        ? { lastRunSummary: fixtureSummary(query.get('summary') === 'wiped') }
+        : {}),
     });
   }
 

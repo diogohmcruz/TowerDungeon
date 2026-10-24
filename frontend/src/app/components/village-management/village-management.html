@@ -60,15 +60,3 @@
 
 </section>
 
-<section class="village-panel glass-card">
-  @if (this.ledger().length > 0) {
-  <ul class="ledger" aria-label="Ledger">
-    @for (line of this.ledger(); track $index) {
-    <li [class.loss]="line.loss">
-      {{ line.loss ? '-' : '.' }} {{ line.text }}
-    </li>
-    }
-  </ul>
-  }
-
-</section>

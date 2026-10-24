@@ -108,6 +108,22 @@ export function listKeyIntent(event: KeyboardEvent): 'toggle' | 'close' | null {
                 }
               </p>
             }
+            @for (s of b.sections; track s.id) {
+              <section class="written" [attr.aria-label]="s.heading ?? b.title">
+                @if (s.heading) {
+                  <h4>{{ s.heading }}</h4>
+                }
+                @if (s.lines.length > 0) {
+                  <ul class="written-lines">
+                    @for (l of s.lines; track $index) {
+                      <li [class.loss]="l.loss">{{ l.mark }} {{ l.text }}</li>
+                    }
+                  </ul>
+                } @else {
+                  <p class="leaves">{{ s.empty }}</p>
+                }
+              </section>
+            }
             @for (a of b.actions; track a.id) {
               <app-action-row
                 [idPrefix]="'list-reason-' + b.id"
@@ -179,6 +195,15 @@ export function listKeyIntent(event: KeyboardEvent): 'toggle' | 'close' | null {
       margin-bottom: 16px;
       padding: 8px 12px;
       border: 1px solid var(--rule);
+    }
+    .written-lines {
+      margin: 0 0 8px;
+      padding: 0;
+      list-style: none;
+      line-height: 1.5;
+    }
+    .written-lines li.loss {
+      color: var(--ember-text);
     }
     dl {
       margin: 0 0 8px;

@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { GameAction } from '../interfaces/game-action.enum';
 import { defineBuilding } from '../three/village/building-registry';
 import { SILO } from '../three/village/buildings';
+import { GATE } from '../three/village/gate-building';
 import { GameStateService } from './game-state.service';
 import { GameWebSocketService } from './game-web-socket.service';
 import {
@@ -175,5 +176,81 @@ describe('PopoverService', () => {
     expect(popover.takeMeshPress()).toBeFalse();
     press(10, 10, 300);
     expect(popover.takeMeshPress()).toBeFalse();
+  });
+
+  describe('the report of an Expedition that ends', () => {
+    const summary = {
+      outcome: 'EXTRACTED',
+      startFloor: 0,
+      highestFloor: 4,
+      floorsCleared: 4,
+      enemiesDefeated: 9,
+      creditsGained: 10,
+      materialsGained: 5,
+      relicsGained: 0,
+      unitsLost: 0,
+      survivors: 3,
+      fallen: [],
+    };
+    const held = (on: boolean) =>
+      game.setSession({ resumed: false, savedAt: null, schema: 1, notices: [], held: on });
+
+    beforeEach(() => {
+      popover.registry = [SILO, GATE];
+    });
+
+    const sendOut = () => {
+      game.update({ expeditionActive: true });
+      frame();
+    };
+    const bringBack = (over: Partial<typeof summary> = {}) => {
+      game.update({
+        expeditionActive: false,
+        lastRunSummary: { ...summary, ...over },
+      });
+      frame();
+    };
+
+    it('opens the Gate by itself when an Expedition ends', () => {
+      sendOut();
+      bringBack();
+      expect(popover.open()?.id).toBe('GATE');
+    });
+
+    it('does not open for a summary that was already there when the game loaded', () => {
+      game.update({ lastRunSummary: summary });
+      frame();
+      expect(popover.open()).toBeNull();
+    });
+
+    it('opens after a Wipe too', () => {
+      sendOut();
+      bringBack({ outcome: 'WIPED', survivors: 0 });
+      expect(popover.open()?.id).toBe('GATE');
+    });
+
+    it('stays dismissed for the same Expedition, then opens for the next', () => {
+      sendOut();
+      bringBack();
+      popover.close();
+      frame();
+      game.update({ ledger: [{ text: 'Another line.', loss: false }] });
+      frame();
+      expect(popover.open()).toBeNull();
+
+      sendOut();
+      bringBack();
+      expect(popover.open()?.id).toBe('GATE');
+    });
+
+    it('waits while time is held, then opens', () => {
+      sendOut();
+      held(true);
+      bringBack();
+      expect(popover.open()).toBeNull();
+      held(false);
+      frame();
+      expect(popover.open()?.id).toBe('GATE');
+    });
   });
 });

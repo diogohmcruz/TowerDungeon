@@ -32,7 +32,6 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { UnitStatsService } from '../../services/unit-stats.service';
 import { VillageManagement } from '../village-management/village-management';
 import { ShortcutCard } from '../shortcut-card/shortcut-card';
-import { RunSummaryCard } from '../run-summary-card/run-summary-card';
 import { Reinforcement } from '../../interfaces/game-state';
 import { ListView } from '../list-view/list-view';
 
@@ -45,7 +44,6 @@ import { ListView } from '../list-view/list-view';
     TowerDisplay,
     VillageManagement,
     ShortcutCard,
-    RunSummaryCard,
     ListView,
   ],
   templateUrl: './game-component.html',

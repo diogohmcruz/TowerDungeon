@@ -64,6 +64,28 @@ export interface ConfirmSpec {
   cancelLabel: string;
 }
 
+/** One written line of a section: a loss is written as plainly as a gain. */
+export interface WrittenLine {
+  text: string;
+  loss: boolean;
+}
+
+/**
+ * Written content a building shows besides its gauges and rows: the Ledger at
+ * the Study, the Expedition Summary at the Gate. Plain lines, no actions.
+ */
+export interface SectionSpec {
+  id: string;
+  /** The heading above the lines; absent or null for none. */
+  heading?(state: GameState): string | null;
+  /** The lines in the order they are read (the building decides: newest first). */
+  lines(state: GameState): readonly WrittenLine[];
+  /** What to say when there are no lines. */
+  empty?: string;
+  /** A long list scrolls inside the card rather than stretching it. */
+  scroll?: boolean;
+}
+
 /** A click on a building's popover or a row of the list view. */
 export interface ActionSpec {
   id: string;
@@ -99,6 +121,13 @@ export interface BuildingDefinition {
   moreActions?(state: GameState): readonly ActionSpec[];
   /** The card asks for more width than the usual one (a tree of choices to read). */
   wide?: boolean;
+  /** Written lines under the rows (a Ledger, a Summary); absent means none. */
+  sections?: readonly SectionSpec[];
+  /**
+   * True when the popover should open by itself as an Expedition ends (an
+   * Extraction or a Wipe). It opens once per Expedition and may be dismissed.
+   */
+  opensOnReturn?(state: GameState): boolean;
 }
 
 /** Every action of a building now: the fixed ones, then the state's own. */
@@ -148,6 +177,21 @@ export interface ActionView {
   confirm: ConfirmSpec | null;
 }
 
+export interface WrittenLineView {
+  /** "-" for a loss, "." otherwise, so a loss never rests on colour alone. */
+  mark: string;
+  text: string;
+  loss: boolean;
+}
+
+export interface SectionView {
+  id: string;
+  heading: string | null;
+  lines: WrittenLineView[];
+  empty: string;
+  scroll: boolean;
+}
+
 export interface BuildingView {
   id: string;
   title: string;
@@ -156,6 +200,7 @@ export interface BuildingView {
   actions: ActionView[];
   /** The card is drawn wider than the usual one. */
   wide: boolean;
+  sections: SectionView[];
 }
 
 /** A whole figure with separators, or two decimals when it has a fraction. */
@@ -221,6 +266,20 @@ export function actionView(spec: ActionSpec, state: GameState): ActionView {
   };
 }
 
+export function sectionView(spec: SectionSpec, state: GameState): SectionView {
+  return {
+    id: spec.id,
+    heading: spec.heading?.(state) ?? null,
+    lines: spec.lines(state).map((l) => ({
+      mark: l.loss ? '-' : '.',
+      text: l.text,
+      loss: l.loss,
+    })),
+    empty: spec.empty ?? '',
+    scroll: spec.scroll ?? false,
+  };
+}
+
 export function buildingView(def: BuildingDefinition, state: GameState): BuildingView {
   return {
     id: def.id,
@@ -233,6 +292,7 @@ export function buildingView(def: BuildingDefinition, state: GameState): Buildin
     actions: actionSpecs(def, state)
       .filter((a) => (a.visible ? a.visible(state) : true))
       .map((a) => actionView(a, state)),
+    sections: (def.sections ?? []).map((x) => sectionView(x, state)),
   };
 }
 

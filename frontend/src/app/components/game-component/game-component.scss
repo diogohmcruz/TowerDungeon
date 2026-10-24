@@ -52,15 +52,6 @@
     display: contents;
   }
 
-  > app-run-summary-card {
-    display: block;
-    grid-column: span 2;
-    margin: 0;
-    pointer-events: auto;
-    --panel: transparent;
-    --card-bg: var(--glass-bg);
-  }
-
   &.menus-hidden {
     display: none;
   }
