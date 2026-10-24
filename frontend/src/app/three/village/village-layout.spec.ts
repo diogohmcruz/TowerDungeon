@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import {
   ANNEX_X,
   BASE_GAP,
+  BELL_SPOT,
   buildVillage,
   EMPTY_VILLAGE,
   figureCounts,
@@ -25,6 +26,7 @@ import {
   SHORTCUT_MARK_ID,
   shortcutMarkHeight,
   siloFill,
+  STAIR,
   UPGRADE_MODULES,
   VILLAGE_CAPACITY,
   VillageInput,
@@ -33,6 +35,7 @@ import {
   Volume,
 } from './village-layout';
 import { closeupFrame, VILLAGE_FOV, villagePose } from './village-camera';
+import { subjectOfVolume } from './village-subjects';
 
 const BUSY: VillageInput = {
   ...EMPTY_VILLAGE,
@@ -852,6 +855,170 @@ describe('village layout', () => {
       expect(sea(null)).toEqual(sea(0.01));
       expect(find(sea(0.2), 'sea-body').tone).toBeLessThan(find(sea(0.01), 'sea-body').tone);
       expect(find(sea(0.2), 'sea-band-1').tone).toBeGreaterThan(find(sea(0.01), 'sea-band-1').tone);
+    });
+  });
+
+  describe('the road (#148)', () => {
+    const isRoad = (v: Volume) => v.id.startsWith('road-');
+    const paving = (v: Volume[]) => v.filter((x) => x.id.startsWith('road-paving'));
+    const walls = (v: Volume[]) => v.filter((x) => x.id.startsWith('road-wall'));
+    const FULL = Object.fromEntries(Object.entries(UPGRADE_MODULES).map(([id, m]) => [id, m.cap]));
+    const OFFERED = Object.fromEntries(Object.keys(UPGRADE_MODULES).map((id) => [id, 0]));
+    const SPORES = { ...BUSY.hands, SPOREWARDEN: 6 };
+    const SCENES: Array<[string, VillageInput]> = [
+      ['an empty Village', EMPTY_VILLAGE],
+      ['Tier I', { ...BUSY, villageTierLevel: 1, upgrades: FULL, saltPansOpen: false }],
+      ['Tier II', { ...BUSY, villageTierLevel: 2, upgrades: FULL }],
+      ['Tier III', { ...BUSY, villageTierLevel: 3, upgrades: FULL, sporeCellarOpen: true, spores: 7, hands: SPORES }],
+      [
+        'Tier IV with the Port and every Upgrade',
+        { ...BUSY, upgrades: FULL, sporeCellarOpen: true, spores: 7, hands: SPORES, port: 'BUILT', boatDocked: true, offer: true },
+      ],
+      ['Tier IV with the Upgrades offered, not bought', { ...BUSY, upgrades: OFFERED, sporeCellarOpen: true }],
+    ];
+    const overlaps = (a: Volume, b: Volume, eps = 1e-6) =>
+      Math.abs(a.x - b.x) < (a.w + b.w) / 2 - eps &&
+      Math.abs(a.y - b.y) < (a.h + b.h) / 2 - eps &&
+      Math.abs(a.z - b.z) < (a.d + b.d) / 2 - eps;
+
+    it('is drawn at every Village Tier, as boxes of the Village in the ink ramp', () => {
+      for (const [name, input] of SCENES) {
+        const road = buildVillage(input).filter(isRoad);
+        expect(paving(road).length).withContext(name).toBeGreaterThan(8);
+        expect(walls(road).length).withContext(name).toBeGreaterThan(10);
+        for (const v of road) {
+          expect(v.group).withContext(v.id).toBe('village');
+          expect(v.alpha).toBe(1);
+          expect(v.tone).toBeGreaterThanOrEqual(0);
+          expect(v.tone).toBeLessThanOrEqual(1);
+        }
+      }
+    });
+
+    it('does not depend on the state: the same road everywhere, still or moving', () => {
+      const roads = SCENES.map(([, input]) =>
+        buildVillage({ ...input, tick: 5, still: false, flicker: 2 }).filter(isRoad),
+      );
+      for (const r of roads) expect(r).toEqual(roads[0]);
+    });
+
+    it('is paved lighter than the ground and bounded by low walls', () => {
+      const v = buildVillage(BUSY);
+      const ground = v.find((x) => x.id === 'ground')!;
+      for (const p of paving(v)) {
+        expect(p.tone).toBeGreaterThan(ground.tone + 0.2);
+        expect(p.y + p.h / 2).toBeLessThanOrEqual(0.1);
+      }
+      for (const w of walls(v)) {
+        expect(w.y + w.h / 2).toBeLessThanOrEqual(0.2);
+        expect(Math.min(w.w, w.d)).toBeLessThanOrEqual(0.08);
+      }
+    });
+
+    it("runs unbroken from the front of the ground to the stair's foot", () => {
+      const tiles = paving(buildVillage(BUSY));
+      const touches = (a: Volume, b: Volume) =>
+        Math.abs(a.x - b.x) <= (a.w + b.w) / 2 + 1e-6 && Math.abs(a.z - b.z) <= (a.d + b.d) / 2 + 1e-6;
+      const front = tiles.filter((t) => t.z + t.d / 2 >= 3.4);
+      expect(front.length).toBeGreaterThan(0);
+      const foot = tiles.filter(
+        (t) =>
+          t.z - t.d / 2 <= STAIR.z + STAIR.d / 2 + 0.1 &&
+          t.x - t.w / 2 <= STAIR.x0 &&
+          t.x + t.w / 2 >= STAIR.x0,
+      );
+      expect(foot.length).toBeGreaterThan(0);
+      const seen = new Set<Volume>(front);
+      const queue = [...front];
+      while (queue.length) {
+        const t = queue.pop()!;
+        for (const n of tiles) {
+          if (!seen.has(n) && touches(t, n)) {
+            seen.add(n);
+            queue.push(n);
+          }
+        }
+      }
+      expect(foot.every((t) => seen.has(t))).toBeTrue();
+    });
+
+    it('winds: it crosses the front, climbs the middle and bends toward the Gate', () => {
+      const tiles = paving(buildVillage(BUSY));
+      const xs = tiles.map((t) => t.x);
+      const zs = tiles.map((t) => t.z);
+      expect(Math.max(...xs) - Math.min(...xs)).toBeGreaterThan(2);
+      expect(Math.max(...zs) - Math.min(...zs)).toBeGreaterThan(2.5);
+      // The climb to the Gate drifts sideways band by band, never in a ruler-straight line.
+      const climb = tiles.filter((t) => t.z > 0.9 && t.z < 2.1 && t.w < 0.4).map((t) => t.x);
+      expect(new Set(climb.map((x) => x.toFixed(2))).size).toBeGreaterThan(3);
+    });
+
+    it('steps up toward the stair in small terraces, never higher than the first tread', () => {
+      const tiles = paving(buildVillage(BUSY)).sort((a, b) => b.z - a.z);
+      const tops = tiles.map((t) => t.y + t.h / 2);
+      expect(new Set(tops.map((t) => t.toFixed(3))).size).toBeGreaterThanOrEqual(3);
+      expect(Math.max(...tops)).toBeLessThan(STAIR.rise / STAIR.steps);
+    });
+
+    it('stands clear of every building, module, figure and object it passes', () => {
+      for (const [name, input] of SCENES) {
+        for (const tick of [0, 3, 5, 8]) {
+          const v = buildVillage({ ...input, tick, still: false });
+          const road = v.filter(isRoad);
+          const others = v.filter(
+            (x) =>
+              !isRoad(x) &&
+              x.alpha > 0 &&
+              x.group !== 'sea' &&
+              x.id !== 'ground' &&
+              !x.id.startsWith('season-') &&
+              !x.id.startsWith('chasm-') &&
+              !x.id.startsWith('outline-'),
+          );
+          for (const r of road) {
+            for (const o of others) {
+              expect(overlaps(r, o)).withContext(`${name} tick ${tick}: ${r.id} meets ${o.id}`).toBeFalse();
+            }
+          }
+        }
+      }
+    });
+
+    it('leaves the Gate, bell and stair where they are, and goes through the Gate between its piers', () => {
+      const v = buildVillage(BUSY);
+      const find = (id: string) => v.find((x) => x.id === id)!;
+      expect(find('bell-beam').x).toBe(BELL_SPOT.x);
+      expect(find('stair-0').x).toBeCloseTo(STAIR.x0 + STAIR.run / STAIR.steps / 2, 9);
+      const pierW = find('gate-pier-w');
+      const pierE = find('gate-pier-e');
+      const through = paving(v).filter((t) => Math.abs(t.z - BELL_SPOT.z) <= t.d / 2);
+      expect(through.length).toBeGreaterThan(0);
+      for (const t of through) {
+        expect(t.x - t.w / 2).toBeGreaterThan(pierW.x + pierW.w / 2);
+        expect(t.x + t.w / 2).toBeLessThan(pierE.x - pierE.w / 2);
+      }
+    });
+
+    it('stands for nothing the player can point at: no subject, so no hover region', () => {
+      for (const v of buildVillage(BUSY).filter(isRoad)) {
+        expect(subjectOfVolume(v.id)).withContext(v.id).toBeNull();
+      }
+    });
+
+    it('does not widen or heighten the Village, nor move the closeup frame', () => {
+      for (const [name, input] of SCENES) {
+        const all = buildVillage(input);
+        const without = all.filter((x) => !isRoad(x));
+        expect(villageBounds(all)).withContext(name).toEqual(villageBounds(without));
+        expect(closeupFrame(all)).withContext(name).toEqual(closeupFrame(without));
+        expect(all.length).withContext(name).toBeLessThanOrEqual(VILLAGE_CAPACITY);
+      }
+    });
+
+    it('keeps ids unique, and the paving and the walls on the ground', () => {
+      const v = buildVillage(BUSY);
+      expect(new Set(ids(v)).size).toBe(v.length);
+      for (const r of [...paving(v), ...walls(v)]) expect(r.y - r.h / 2).toBeCloseTo(0, 9);
     });
   });
 });

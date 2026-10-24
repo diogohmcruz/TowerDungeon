@@ -52,6 +52,9 @@ export const VILLAGE_TONE = {
   salt: 0.95,
   heap: 0.5,
   tower: 0.32,
+  /** The road's paving, paler than the ground, and its low walls, paler still (#148). */
+  paving: 0.6,
+  kerb: 0.78,
 } as const;
 
 /** Floors the Tower's drawn height stands for, so a Floor maps to a relative height. */
@@ -470,6 +473,120 @@ function stair(out: Volume[], tier: number, flicker: number): void {
     box(out, `lamp-${i}`, 'village', x, h + 0.17, frontZ, 0.07, 0.12, 0.07, on ? Math.min(1, VILLAGE_TONE.lit * wobble) : VILLAGE_TONE.lampOff);
     box(out, `lamp-post-${i}`, 'village', x, h + 0.07, frontZ, 0.02, 0.1, 0.02, VILLAGE_TONE.timber);
   }
+}
+
+/**
+ * The road (#148): a paved way with low walls from the front of the ground to the Gate at the
+ * stair's foot, so the Base door is where the way ends. It comes in from the front edge, turns
+ * west along the front (the open ground the Upgrade modules leave), turns north up the one lane
+ * between the Healer's roof and the brazier, then drifts west band by band to the Gate and passes
+ * through it. It climbs in three small terraces, each a hand's breadth higher, and the walls
+ * climb with it: the last stretch's east wall is a retaining wall over the Fields' terraces.
+ * Scenery only: no subject, no hit region, and it keeps clear of every building and lane.
+ */
+const ROAD_HALF = 0.15;
+const ROAD_WALL = 0.05;
+const ROAD_WALL_H = 0.07;
+/** The front run's kerb stands only this far over its paving, so it hides no building's foot (#134, #135). */
+const ROAD_KERB_H = 0.03;
+/** The three terrace levels of the paving (below the first tread, which is 0.079). */
+const ROAD_LEVELS = [0.02, 0.04, 0.06] as const;
+/** The corridor between the Healer's roof and the brazier, and the south run along the front. */
+const ROAD_CORRIDOR_X = -1.575;
+const ROAD_FRONT_X = 1.15;
+/** Where the run along the front lies at its ends (z), and the corridor leaves it. */
+const ROAD_RUN_Z = 3.26;
+
+/** A wall along a band's side: all of its length, or only this part of it (a gap or a corner). */
+type RoadWall = boolean | readonly [number, number];
+
+/** One run of paving: a band of the road that heads north (z) or west (x) from its start edge. */
+interface RoadBand {
+  /** `north`: centre `c` is x and it spans `a..b` in z. `west`: `c` is z and it spans `a..b` in x. */
+  way: 'north' | 'west';
+  c: number;
+  a: number;
+  b: number;
+  level: 0 | 1 | 2;
+  /** The walls on the low side (west of a northward band, north of a westward one) and the high side. */
+  walls: readonly [RoadWall, RoadWall];
+  /** Extra height of the high-side wall, where it holds a terrace back. */
+  retain?: number;
+  /** Along the front, where a low camera looks over it at what stands behind: a kerb, not a wall. */
+  kerb?: boolean;
+}
+
+function roadBands(): RoadBand[] {
+  const bands: RoadBand[] = [];
+  const both = [true, true] as const;
+  const corner = ROAD_CORRIDOR_X - ROAD_HALF;
+  // In from the front edge at the east end.
+  bands.push({ way: 'north', c: ROAD_FRONT_X, a: 3.4, b: 3.5, level: 0, walls: [false, false], kerb: true });
+  // West along the front with a slight drift in z, the south wall open where the entry joins it
+  // and the north wall open where the corridor leaves it.
+  const run: Array<[number, number, number, readonly [RoadWall, RoadWall]]> = [
+    // [z centre, east end, west end, walls]
+    [ROAD_RUN_Z, ROAD_FRONT_X + ROAD_HALF, 0.7, [false, false]],
+    [3.22, 0.7, 0.1, [false, false]],
+    [3.2, 0.1, -0.5, [false, true]],
+    [3.22, -0.5, -1.0, [false, true]],
+    [ROAD_RUN_Z, -1.0, corner, [false, true]],
+  ];
+  for (const [zc, east, west, walls] of run) bands.push({ way: 'west', c: zc, a: west, b: east, level: 0, walls, kerb: true });
+  // North up the corridor, then the climb: each band drifts a little west of the last.
+  bands.push({ way: 'north', c: ROAD_CORRIDOR_X, a: 2.6, b: ROAD_RUN_Z - ROAD_HALF, level: 0, walls: both });
+  bands.push({ way: 'north', c: ROAD_CORRIDOR_X, a: 2.1, b: 2.6, level: 1, walls: both });
+  const climb: Array<[number, number, 1 | 2]> = [
+    [-1.6, 2.1, 1],
+    [-1.64, 1.9, 2],
+    [-1.68, 1.7, 2],
+    [-1.72, 1.5, 2],
+    [-1.76, 1.3, 2],
+    [-1.78, 1.1, 2],
+  ];
+  for (const [x, z1, level] of climb) {
+    bands.push({ way: 'north', c: x, a: z1 - 0.2, b: z1, level, walls: both, retain: z1 <= 1.5 ? 0.05 : undefined });
+  }
+  // Through the Gate's frame, which is the wall there, to the stair's first tread.
+  bands.push({ way: 'north', c: -1.74, a: 0.46, b: 0.9, level: 2, walls: [false, false] });
+  return bands;
+}
+
+function road(out: Volume[]): void {
+  roadBands().forEach((band, i) => {
+    const level = ROAD_LEVELS[band.level];
+    const north = band.way === 'north';
+    const mid = (band.a + band.b) / 2;
+    const len = band.b - band.a;
+    // Paving, and a dark seam across its front (south or east) edge: the courses of the paving.
+    if (north) {
+      box(out, `road-paving-${i}`, 'village', band.c, 0, mid, 2 * ROAD_HALF, level, len, VILLAGE_TONE.paving);
+      box(out, `road-seam-${i}`, 'village', band.c, level, band.b - 0.012, 2 * ROAD_HALF, 0.01, 0.012, VILLAGE_TONE.dark);
+    } else {
+      box(out, `road-paving-${i}`, 'village', mid, 0, band.c, len, level, 2 * ROAD_HALF, VILLAGE_TONE.paving);
+      box(out, `road-seam-${i}`, 'village', band.b - 0.012, level, band.c, 0.012, 0.01, 2 * ROAD_HALF, VILLAGE_TONE.dark);
+    }
+    // The walls stand outside the paving, a wall's thickness wide.
+    const sides: Array<[RoadWall, number, number]> = [
+      [band.walls[0], band.c - ROAD_HALF - ROAD_WALL / 2, 0],
+      [band.walls[1], band.c + ROAD_HALF + ROAD_WALL / 2, band.retain ?? 0],
+    ];
+    sides.forEach(([wall, edge, extra], s) => {
+      if (wall === false) return;
+      const [a, b] = wall === true ? [band.a, band.b] : wall;
+      const h = level + (band.kerb ? ROAD_KERB_H : ROAD_WALL_H) + extra;
+      const name = `road-wall-${i}-${s}`;
+      if (north) box(out, name, 'village', edge, 0, (a + b) / 2, ROAD_WALL, h, b - a, VILLAGE_TONE.kerb);
+      else box(out, name, 'village', (a + b) / 2, 0, edge, b - a, h, ROAD_WALL, VILLAGE_TONE.kerb);
+    });
+  });
+  // The two corners of the front run, where the wall turns: the east end, and the west end that
+  // the corridor leaves from.
+  const wallH = ROAD_LEVELS[0] + ROAD_KERB_H;
+  const west = ROAD_CORRIDOR_X - ROAD_HALF - ROAD_WALL / 2;
+  const z0 = ROAD_RUN_Z - ROAD_HALF;
+  const z1 = ROAD_RUN_Z + ROAD_HALF + ROAD_WALL;
+  box(out, 'road-wall-end-west', 'village', west, 0, (z0 + z1) / 2, ROAD_WALL, wallH, z1 - z0, VILLAGE_TONE.kerb);
 }
 
 function fields(out: Volume[], quarter: Quarter | null): void {
@@ -1133,10 +1250,11 @@ function baseDoor(out: Volume[]): void {
 
 /**
  * Instances the Village mesh holds: one draw call whatever the count. Raised from 512 to 640 for the
- * sea's strips, dashes and the larger Boat (#147); the busiest Village with every Upgrade built, the
- * Port and the Boat uses about 540.
+ * sea's strips, dashes and the larger Boat (#147), then to 768 for the road, its walls and its
+ * courses (#148, about 55 instances): the busiest Village with every Upgrade built, the Port and the
+ * Boat uses about 645.
  */
-export const VILLAGE_CAPACITY = 640;
+export const VILLAGE_CAPACITY = 768;
 
 /** The Port's land ends here at the bay's deepest: the right-hand 20% of the frame, beyond the Village's 60%. */
 export const SHORE_X0 = FRAME_WIDTH * 0.3;
@@ -1458,6 +1576,7 @@ export function buildVillage(input: VillageInput): Volume[] {
   const quarter = input.quarter ?? null;
   ground(out, quarter, (input.port ?? 'HIDDEN') !== 'HIDDEN');
   quarterMarks(out, quarter);
+  road(out);
   tower(out);
   shaft(out);
   fort(out, input.reserves, input.wounded ?? 0);
