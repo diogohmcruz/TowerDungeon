@@ -86,9 +86,6 @@
   } @else {
   <app-village-management />
 
-  @if (gameState().forecast; as forecast) {
-  <app-toll-bar [forecast]="forecast" (leave)="exodus()" />
-  }
 
   <section class="expedition-card glass-card">
   <section class="expedition-start">
@@ -189,21 +186,6 @@
         [affordable]="canAfford(up.nextCost)"
         (buy)="buyUpgrade($event)"
       />
-      }
-    </div>
-  </section>
-
-  <section class="milestone-panel glass-card wide">
-    <h3>
-      Milestones
-      <span class="progress-note">
-        Highest Floor {{ gameState().highestFloor }} · {{
-        gameState().expeditionsCompleted }} Expeditions
-      </span>
-    </h3>
-    <div class="milestone-list">
-      @for (ms of gameState().milestones; track ms.id) {
-      <app-milestone-card [milestone]="ms" />
       }
     </div>
   </section>

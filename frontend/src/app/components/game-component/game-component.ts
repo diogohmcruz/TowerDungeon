@@ -33,11 +33,9 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { UnitStatsService } from '../../services/unit-stats.service';
 import { VillageManagement } from '../village-management/village-management';
 import { UpgradeCard } from '../upgrade-card/upgrade-card';
-import { MilestoneCard } from '../milestone-card/milestone-card';
 import { ShortcutCard } from '../shortcut-card/shortcut-card';
 import { RunSummaryCard } from '../run-summary-card/run-summary-card';
 import { Reinforcement } from '../../interfaces/game-state';
-import { TollBar } from '../toll-bar/toll-bar';
 import { SuccessionScreen } from '../succession-screen/succession-screen';
 import { ListView } from '../list-view/list-view';
 
@@ -51,10 +49,8 @@ import { ListView } from '../list-view/list-view';
     ExpeditionHud,
     VillageManagement,
     UpgradeCard,
-    MilestoneCard,
     ShortcutCard,
     RunSummaryCard,
-    TollBar,
     SuccessionScreen,
     ListView,
   ],
@@ -199,10 +195,6 @@ export class GameComponent implements OnDestroy {
 
   selectStartFloor(floor: number) {
     this.selectedStartFloor.set(floor);
-  }
-
-  exodus() {
-    this.ws.sendAction(GameAction.EXODUS, null);
   }
 
   rollBuy(id: string) {

@@ -10,7 +10,7 @@ import {
 
 import { ListViewService } from '../../services/list-view.service';
 import { PopoverService } from '../../services/popover.service';
-import type { ActionView } from '../../three/village/building-registry';
+import { ActionRow } from '../action-row/action-row';
 
 /** Keys that open the list and close it. Not while typing, and never with a modifier. */
 export function listKeyIntent(event: KeyboardEvent): 'toggle' | 'close' | null {
@@ -45,6 +45,7 @@ export function listKeyIntent(event: KeyboardEvent): 'toggle' | 'close' | null {
 @Component({
   selector: 'app-list-view',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [ActionRow],
   template: `
     <button
       type="button"
@@ -93,23 +94,25 @@ export function listKeyIntent(event: KeyboardEvent): 'toggle' | 'close' | null {
                 </dd>
               }
             </dl>
-            @for (a of b.actions; track a.id) {
-              <button
-                type="button"
-                class="btn"
-                [attr.aria-disabled]="a.usable ? null : 'true'"
-                [attr.aria-describedby]="a.usable ? null : reasonId(b.id, a)"
-                (click)="run(b.id, a)"
-              >
-                {{ a.label }}
-              </button>
-              @if (a.reason) {
-                <span class="reason" [id]="reasonId(b.id, a)">
-                  {{ a.reason }}
-                </span>
-              } @else if (a.preview) {
-                <span class="reason">{{ a.preview }}</span>
+            @for (l of b.lines; track l.id) {
+              @if (l.heading) {
+                <h4>{{ l.heading }}</h4>
               }
+              <p class="line">
+                <span class="name">{{ l.label }}</span>
+                {{ l.value }}
+                @if (l.detail) {
+                  <span class="leaves">{{ l.detail }}</span>
+                }
+              </p>
+            }
+            @for (a of b.actions; track a.id) {
+              <app-action-row
+                [idPrefix]="'list-reason-' + b.id"
+                [action]="a"
+                [alwaysPreview]="true"
+                (perform)="run(b.id, $event)"
+              />
             }
           </section>
         } @empty {
@@ -192,9 +195,17 @@ export function listKeyIntent(event: KeyboardEvent): 'toggle' | 'close' | null {
     .reason {
       margin-left: 8px;
     }
-    button[aria-disabled='true'] {
-      opacity: 0.45;
-      cursor: not-allowed;
+    h4 {
+      margin: 8px 0 2px;
+      color: var(--bone);
+    }
+    .line {
+      margin: 0;
+      color: var(--bone);
+    }
+    .name {
+      margin-right: 6px;
+      color: var(--muted);
     }
   `,
 })
@@ -227,13 +238,9 @@ export class ListView {
     });
   }
 
-  protected reasonId(buildingId: string, action: ActionView): string {
-    return `list-reason-${buildingId}-${action.id}`;
-  }
-
   /** The same route as the popover; a refused action does nothing and its reason is in the row. */
-  protected run(buildingId: string, action: ActionView): void {
-    if (action.usable) this.popover.perform(buildingId, action.id);
+  protected run(buildingId: string, actionId: string): void {
+    this.popover.perform(buildingId, actionId);
   }
 
   protected remember(event: Event): void {

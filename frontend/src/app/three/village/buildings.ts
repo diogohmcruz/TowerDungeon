@@ -10,6 +10,7 @@ import { defineBuilding, type BuildingDefinition } from './building-registry';
 import { GATE } from './gate-building';
 import { FORT } from './fort-building';
 import { ANNEXES } from './annex-buildings';
+import { REFERENCE_PILLAR } from './reference-pillar-building';
 import { siloFill } from './village-layout';
 
 /** What Selling Food leaves in the Pantry: it sells while more than one Food is held. */
@@ -123,7 +124,7 @@ export const SILO = defineBuilding({
 });
 
 /** Every registered building, in the order the list view shows them. */
-export const BUILDINGS: readonly BuildingDefinition[] = [SILO, ...ANNEXES, GATE, FORT];
+export const BUILDINGS: readonly BuildingDefinition[] = [SILO, ...ANNEXES, GATE, FORT, REFERENCE_PILLAR];
 
 export function buildingDefinition(
   id: string,

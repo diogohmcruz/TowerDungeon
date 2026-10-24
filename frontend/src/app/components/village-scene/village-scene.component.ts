@@ -17,6 +17,7 @@ import { captionFor, captionText } from '../../three/village/village-captions';
 import { GameStateService } from '../../services/game-state.service';
 import { StageService } from '../../services/stage.service';
 import { woundedTotal } from '../../three/village/fort-building';
+import { pillarInput } from '../../three/village/reference-pillar-building';
 import { VillageInput } from '../../three/village/village-layout';
 import { towerRegion } from '../../three/stage-view';
 import { VILLAGE_FOV } from '../../three/village/village-camera';
@@ -157,6 +158,7 @@ export class VillageScene {
       materials: s.resources.MATERIALS,
       relics: s.resources.RELICS,
       villageTierLevel: s.villageTierLevel,
+      pillar: pillarInput(s),
       upgrades,
       saltPansOpen: s.loadout?.saltPansOpen ?? false,
       salt: s.village.salt,

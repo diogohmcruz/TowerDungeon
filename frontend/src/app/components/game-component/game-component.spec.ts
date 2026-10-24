@@ -279,24 +279,12 @@ describe('GameComponent', () => {
     };
     const host = () => fixture.nativeElement as HTMLElement;
 
-    it('shows the Toll bar while the Campaign is played, and sends EXODUS only after confirming', () => {
+    it('keeps the Toll and the Milestones off the card layer: the reference pillar and the list view carry them', () => {
       stateService.update({ forecast });
       fixture.detectChanges();
 
-      expect(host().querySelector('app-toll-bar')).not.toBeNull();
-      (host().querySelector('.toll-exodus') as HTMLElement).click();
-      fixture.detectChanges();
-      expect(sendAction).not.toHaveBeenCalled();
-
-      (host().querySelector('.toll-confirm button') as HTMLElement).click();
-      expect(sendAction).toHaveBeenCalledOnceWith(GameAction.EXODUS, null);
-    });
-
-    it('has no Toll bar once the Campaign has ended', () => {
-      stateService.update({ forecast: null, gameOutcome: 'EXODUS' });
-      fixture.detectChanges();
-
-      expect(host().querySelector('app-toll-bar')).toBeNull();
+      expect(host().querySelector('.toll-exodus')).toBeNull();
+      expect(host().querySelector('.milestone-panel')).toBeNull();
     });
 
     it('names each ending and never congratulates', () => {
@@ -313,6 +301,7 @@ describe('GameComponent', () => {
         expect(banner?.textContent).not.toMatch(/Ignelia is free|Conquered|Prestige/);
       }
     });
+
 
     it('reports the stored Toll and Legacy as plain numbers on the ending', () => {
       stateService.update({

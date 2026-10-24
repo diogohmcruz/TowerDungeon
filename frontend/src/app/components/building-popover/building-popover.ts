@@ -4,12 +4,11 @@ import {
   computed,
   ElementRef,
   inject,
-  signal,
 } from '@angular/core';
 
 import { PopoverService } from '../../services/popover.service';
 import { StageService } from '../../services/stage.service';
-import type { ActionView } from '../../three/village/building-registry';
+import { ActionRow } from '../action-row/action-row';
 import { placeCard } from '../unit-focus/card-placement';
 
 /**
@@ -21,6 +20,7 @@ import { placeCard } from '../unit-focus/card-placement';
 @Component({
   selector: 'app-building-popover',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [ActionRow],
   template: `
     @if (view(); as v) {
       <aside
@@ -50,25 +50,24 @@ import { placeCard } from '../unit-focus/card-placement';
             }
           </section>
         }
-        @for (a of v.actions; track a.id) {
-          <button
-            type="button"
-            class="btn"
-            [attr.aria-disabled]="a.usable ? null : 'true'"
-            [attr.aria-describedby]="a.usable ? null : reasonId(a)"
-            (click)="run(v.id, a)"
-            (mouseenter)="point(a.id)"
-            (mouseleave)="point(null)"
-            (focus)="point(a.id)"
-            (blur)="point(null)"
-          >
-            {{ a.label }}
-          </button>
-          @if (a.reason) {
-            <p class="reason" [id]="reasonId(a)">{{ a.reason }}</p>
-          } @else if (a.preview && pointed() === a.id) {
-            <p class="reason preview" role="status">{{ a.preview }}</p>
+        @for (l of v.lines; track l.id) {
+          @if (l.heading) {
+            <h4>{{ l.heading }}</h4>
           }
+          <p class="line">
+            <span class="label">{{ l.label }}</span>
+            <span class="value">{{ l.value }}</span>
+          </p>
+          @if (l.detail) {
+            <p class="leaves">{{ l.detail }}</p>
+          }
+        }
+        @for (a of v.actions; track a.id) {
+          <app-action-row
+            idPrefix="popover-reason"
+            [action]="a"
+            (perform)="run(v.id, $event)"
+          />
         }
       </aside>
     }
@@ -124,15 +123,16 @@ import { placeCard } from '../unit-focus/card-placement';
       margin: 4px 0 0;
       color: var(--muted);
     }
-    button.btn {
-      display: block;
-      width: 100%;
-      margin-top: 6px;
-      text-align: left;
+    h4 {
+      margin: 8px 0 2px;
+      font-size: 12px;
+      color: var(--bone);
     }
-    button[aria-disabled='true'] {
-      opacity: 0.45;
-      cursor: not-allowed;
+    .line {
+      display: flex;
+      gap: 8px;
+      justify-content: space-between;
+      margin: 0;
     }
   `,
 })
@@ -142,13 +142,6 @@ export class BuildingPopover {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   protected readonly view = this.popover.open;
-
-  /** The action under the pointer or the focus: what it would leave is said under it. */
-  protected readonly pointed = signal<string | null>(null);
-
-  protected point(actionId: string | null): void {
-    this.pointed.set(actionId);
-  }
 
   protected readonly place = computed(() => {
     const { width, height } = this.stage.viewport();
@@ -161,21 +154,21 @@ export class BuildingPopover {
     if (!v) return 0;
     const lines = (text: string) => Math.ceil(text.length / 38) * 18 + 4;
     const gauges = v.gauges.reduce((n, g) => n + 36 + (g.leaves ? lines(g.leaves) : 0), 0);
+    const rows = v.lines.reduce(
+      (n, l) => n + 18 + (l.heading ? 24 : 0) + (l.detail ? lines(l.detail) : 0),
+      0,
+    );
     const actions = v.actions.reduce(
       (n, a) =>
         n + 38 + (a.reason ? lines(a.reason) : 0) + (a.preview ? lines(a.preview) : 0),
       0,
     );
-    return 36 + gauges + actions;
+    return 36 + gauges + rows + actions;
   });
 
-  protected reasonId(action: ActionView): string {
-    return `popover-reason-${action.id}`;
-  }
-
   /** A refused action does nothing; its reason is already on the card in words. */
-  protected run(buildingId: string, action: ActionView): void {
-    if (action.usable) this.popover.perform(buildingId, action.id);
+  protected run(buildingId: string, actionId: string): void {
+    this.popover.perform(buildingId, actionId);
   }
 
   protected onEscape(event: Event): void {
