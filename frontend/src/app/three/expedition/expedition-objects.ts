@@ -219,7 +219,7 @@ export interface GroupRect {
 }
 
 /** Slack around a formation, in CSS px, so a near miss between figures still hovers it. */
-const GROUP_SLACK_PX = 6;
+export const GROUP_SLACK_PX = 6;
 
 /** The union of figure rectangles, one per group id, in first-seen order. */
 export function unionRects(

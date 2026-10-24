@@ -52,7 +52,7 @@ import {
   figureId,
   figureRect,
   parseFigureId,
-  pickSprite,
+  pickSpriteSteady,
   UnitFocus,
 } from '../../three/figures/figure-pick';
 import { hoverCaption } from '../../three/figures/unit-hover';
@@ -122,11 +122,13 @@ import {
 import { towerLaunchVolumes } from '../../three/launch/launch-objects';
 import { LAUNCH_CAPACITY, rimVolumes } from '../../three/launch/object-rim';
 import { subjectOfVolume } from '../../three/village/village-subjects';
+import { resolveHover, type HoverRegion } from '../../three/hover-resolver';
+import { volumeRegions } from '../../three/village/volume-regions';
 import type { VillageSubject } from '../../three/village/village-subjects';
 import {
   expeditionVolumes,
   finishSubject,
-  groupAt,
+  GROUP_SLACK_PX,
   groupKey,
   groupSubject,
   isGroupSubject,
@@ -191,6 +193,25 @@ export function isUnitClick(
       UNIT_CLICK_SLOP_PX &&
     click.timeStamp - press.at <= UNIT_CLICK_MAX_MS
   );
+}
+
+/** Whether the click is the end of the press: it barely moved and soon lifted. */
+function isClickOf(
+  press: { x: number; y: number; at: number },
+  click: { clientX: number; clientY: number; timeStamp: number },
+): boolean {
+  return (
+    Math.hypot(click.clientX - press.x, click.clientY - press.y) <= CLICK_SLOP_PX &&
+    click.timeStamp - press.at <= CLICK_MAX_MS
+  );
+}
+
+/** A rectangle grown by `by` on every side. */
+function growRect(
+  r: { left: number; top: number; right: number; bottom: number },
+  by: number,
+) {
+  return { left: r.left - by, top: r.top - by, right: r.right + by, bottom: r.bottom + by };
 }
 
 /** World Y of the walkable surface of floor `n` (figures stand here, before the lift). */
@@ -667,6 +688,10 @@ export class TowerSceneGraph {
   private lastPanMs = 0;
   /** Timestamp of the pointer press that landed on a launch control; such a click never toggles the closeup. */
   private launchPressAt = -1;
+  /** Timestamp of the click the launch mesh acted on, so the canvas's own click does not act twice. */
+  private launchClickedAt = -1;
+  /** The unit the frame's hover is on: the press takes it, so the hover and the click never disagree. */
+  private hoverUnit: UnitFocus | null = null;
   private pointerDown = false;
   private lastPointerY = 0;
 
@@ -770,18 +795,9 @@ export class TowerSceneGraph {
     // The bell and the lamp act (architecture doc 5.5) through the LaunchService,
     // the same route as the panel's buttons.
     injectObjectEvents(() => this.launchRef()?.nativeElement, {
-      pointermove: (event) => {
-        event.stopPropagation();
-        const subject = this.launchSubjectAt(event.instanceId);
-        this.selection.hover(subject);
-        this.store.snapshot.gl.domElement.style.cursor = subject
-          ? 'pointer'
-          : '';
-      },
-      pointerout: () => {
-        this.selection.hover(null);
-        this.store.snapshot.gl.domElement.style.cursor = '';
-      },
+      // No hover from the ray: the bell, the lamp, the post and the crates are resolved once per
+      // frame from the pointer's position with the groups (`updateSubjectHover`), steady across
+      // the gaps between their boxes.
       // A press on a launch control is not a click on empty space: remember which
       // press it was, so the closeup toggle on the canvas lets it pass.
       pointerdown: (event) => {
@@ -793,13 +809,32 @@ export class TowerSceneGraph {
       click: (event) => {
         event.stopPropagation();
         const subject = this.launchSubjectAt(event.instanceId);
-        if (subject) this.launch.activate(subject);
+        if (subject) {
+          this.launchClickedAt = (event.nativeEvent as Event).timeStamp;
+          this.launch.activate(subject);
+        }
       },
     });
 
     if (isDevMode()) {
       // Spike #15 measurement hook: renderer.info of the last frame.
       (window as unknown as Record<string, unknown>)['__tower'] = {
+        // The hover sweep (#126): the subject hovered now, and the regions the frame resolves it from (CSS px on the page).
+        hovered: () => this.selection.hovered(),
+        regions: () => {
+          const el = this.store.snapshot.gl.domElement;
+          const box = el.getBoundingClientRect();
+          const shift = (r: { left: number; top: number; right: number; bottom: number }) => ({
+            left: r.left + box.left,
+            top: r.top + box.top,
+            right: r.right + box.left,
+            bottom: r.bottom + box.top,
+          });
+          return [
+            ...volumeRegions(this.store.snapshot.camera, this.launchVolumes(), el.clientWidth, el.clientHeight),
+            ...this.groupRects().map((g) => ({ subject: g.subject, direct: false, rects: [g.rect] })),
+          ].map((r) => ({ subject: r.subject, direct: r.direct, rects: r.rects.map(shift) }));
+        },
         // Capture tooling (#95): where each member sprite is on the canvas, in CSS px.
         figures: () => {
           const el = this.store.snapshot.gl.domElement;
@@ -917,6 +952,7 @@ export class TowerSceneGraph {
           : null,
       );
 
+      this.updateSubjectHover();
       this.updateUnitHover();
     });
   }
@@ -1156,6 +1192,7 @@ export class TowerSceneGraph {
    */
   private updateUnitHover(): void {
     const hit = this.hoveredSprite();
+    this.hoverUnit = hit ? parseFigureId(hit.id) : null;
     this.placeOutline(this.hoverOutlineRef()?.nativeElement, this.hoverOutlineCell, hit);
     const at = this.pointer;
     this.unitHover.set(
@@ -1176,7 +1213,11 @@ export class TowerSceneGraph {
     ) {
       return null;
     }
-    const hit = this.spriteAt(at.x, at.y);
+    const hit = this.spriteAt(
+      at.x,
+      at.y,
+      this.hoverUnit ? figureId(this.hoverUnit) : null,
+    );
     const focus = this.zoom.focus();
     if (!hit || (focus && hit.id === figureId(focus))) {
       return null;
@@ -1248,6 +1289,8 @@ export class TowerSceneGraph {
       y: number;
       at: number;
       unit: UnitFocus | null;
+      /** The bell, the lamp, the post or a crate the hover is on at the press. */
+      control: VillageSubject | null;
     } | null = null;
     const onPointerDown = (e: PointerEvent) => {
       this.pointerDown = true;
@@ -1258,15 +1301,27 @@ export class TowerSceneGraph {
               x: e.clientX,
               y: e.clientY,
               at: e.timeStamp,
-              unit: this.figureAt(e),
+              unit: this.hoverUnit ?? this.figureAt(e),
+              control: this.hoveredControl(),
             }
           : null;
     };
     const onClick = (e: MouseEvent) => {
       const p = press;
       press = null;
-      const onLaunch = !!p && p.at === this.launchPressAt;
+      // The mesh claims a press its ray landed on; a press inside a control's region that the ray
+      // missed (a gap, the hold margin) is that control's too.
+      const meshClaimed = !!p && p.at === this.launchPressAt;
+      const onLaunch = meshClaimed || !!p?.control;
       this.launchPressAt = -1;
+      if (
+        p?.control &&
+        !meshClaimed &&
+        isClickOf(p, e) &&
+        this.launchClickedAt !== e.timeStamp
+      ) {
+        this.launch.activate(p.control);
+      }
       // A sprite opens its unit view; anything else, specks included, is empty space.
       if (isUnitClick(p, e, onLaunch)) {
         this.zoom.focusUnit(p!.unit!);
@@ -1283,11 +1338,9 @@ export class TowerSceneGraph {
       // A finger has no hover: only a mouse or a pen names what it is over.
       this.pointer =
         e.pointerType === 'touch' ? null : this.pointerAt(e);
-      this.hoverGroupAt(e);
     };
     const onHoverLeave = () => {
       this.pointer = null;
-      this.clearGroupHover();
     };
     const onPointerMove = (e: PointerEvent) => {
       if (!this.pointerDown) return;
@@ -1336,31 +1389,62 @@ export class TowerSceneGraph {
     });
   }
 
-  /**
-   * Hovering the Party's formation or an enemy group states its exact numbers
-   * (the caption reads the hovered subject). The bell, the lamp, the post and the
-   * crates are picked by the raycaster and win: this only sets or clears a group.
-   */
-  private hoverGroupAt(e: PointerEvent): void {
-    const current = this.selection.hovered();
-    if (
-      !this.active() ||
-      this.zoom.level() !== 'battle' ||
-      this.pointerDown ||
-      (current && !isGroupSubject(current))
-    ) {
-      return;
-    }
-    const subject = groupAt(this.groupRects(), ...this.canvasPoint(e));
-    this.selection.hover(subject);
-    this.store.snapshot.gl.domElement.style.cursor = subject ? 'help' : '';
+  /** Kinds this scene resolves the hover of: the launch controls, the Expedition objects and the groups. */
+  private ownsHover(subject: VillageSubject | null): boolean {
+    return (
+      !!subject &&
+      (subject.kind === 'bell' ||
+        subject.kind === 'recall' ||
+        subject.kind === 'expedition')
+    );
   }
 
-  private clearGroupHover(): void {
-    if (isGroupSubject(this.selection.hovered())) {
-      this.selection.hover(null);
-      this.store.snapshot.gl.domElement.style.cursor = '';
+  /** The bell, the lamp, the post or a crate under the pointer now (a group is not a control). */
+  private hoveredControl(): VillageSubject | null {
+    const over = this.selection.hovered();
+    return this.ownsHover(over) && !isGroupSubject(over) ? over : null;
+  }
+
+  /**
+   * What the pointer is over in the scene, decided once per frame from its position alone, to one
+   * subject (#126): a thing it is directly over first (the bell, the lamp, the post, a crate), then
+   * the Party's formation or an enemy group, the smaller first, held until the pointer has left it
+   * by a small margin. It reads the boxes and the figures as drawn this frame, so a figure that moves
+   * or a camera that eases is followed, and moving one pixel inside a region never changes it.
+   * A finger has no hover (no pointer here).
+   */
+  private updateSubjectHover(): void {
+    const current = this.selection.hovered();
+    // What something else (a panel row) hovers is not this scene's to clear or replace.
+    if (current && !this.ownsHover(current)) return;
+    // A button held down is a drag that pans: the hover stays as it was until it lifts.
+    if (this.pointerDown) return;
+    const at = this.pointer;
+    const el = this.store.snapshot.gl.domElement;
+    let next: VillageSubject | null = null;
+    if (
+      at &&
+      this.active() &&
+      this.zoom.level() === 'battle'
+    ) {
+      const regions: HoverRegion[] = [
+        ...volumeRegions(
+          this.store.snapshot.camera,
+          this.launchVolumes(),
+          el.clientWidth,
+          el.clientHeight,
+        ),
+        ...this.groupRects().map((g) => ({
+          subject: g.subject,
+          direct: false,
+          rects: [growRect(g.rect, GROUP_SLACK_PX)],
+        })),
+      ];
+      next = resolveHover(regions, at.x, at.y, current)?.subject ?? null;
     }
+    if (next === current || (next && current && next.id === current.id)) return;
+    this.selection.hover(next);
+    el.style.cursor = next ? (isGroupSubject(next) ? 'help' : 'pointer') : '';
   }
 
   private pointerAt(e: MouseEvent): { x: number; y: number } {
@@ -1405,10 +1489,14 @@ export class TowerSceneGraph {
   }
 
   /** The sprite at a point of the canvas (CSS px): one hit-test for the click and the hover. */
-  private spriteAt(x: number, y: number): FigureInstance | null {
+  private spriteAt(
+    x: number,
+    y: number,
+    holdId: string | null = null,
+  ): FigureInstance | null {
     const el = this.store.snapshot.gl.domElement;
     const plan = this.figurePlan();
-    return pickSprite(
+    return pickSpriteSteady(
       this.store.snapshot.camera,
       plan.marks.slice(0, plan.figureCount),
       x,
@@ -1416,6 +1504,7 @@ export class TowerSceneGraph {
       el.clientWidth,
       el.clientHeight,
       this.stage.scale(),
+      holdId,
     );
   }
 

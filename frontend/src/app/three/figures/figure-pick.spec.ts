@@ -12,6 +12,8 @@ import {
   PICK_MIN_SIZE,
   pickFigure,
   pickSprite,
+  pickSpriteSteady,
+  SPRITE_HOLD_PX,
 } from './figure-pick';
 
 const W = 800;
@@ -215,5 +217,52 @@ describe('figure picking', () => {
         a.id,
       );
     });
+  });
+});
+
+describe('the steady sprite hover (#126)', () => {
+  const cam = camera();
+  // Two close sprites whose hit areas overlap: the nearer one wins a plain pick, pixel by pixel.
+  const a = figure('unit-1', -0.1);
+  const b = figure('unit-2', 0.1);
+  const centre = (f: FigureInstance) => {
+    const r = figureRect(cam, f, W, H);
+    return { x: (r.left + r.right) / 2, y: (r.top + r.bottom) / 2, r };
+  };
+  const pick = (x: number, y: number, hold: string | null) =>
+    pickSpriteSteady(cam, [a, b], x, y, W, H, 1, hold)?.id ?? null;
+
+  it('flips between two overlapping sprites under the plain pick, and does not once one is held', () => {
+    const { y } = centre(a);
+    const xs: number[] = [];
+    for (let x = centre(a).x - 20; x <= centre(b).x + 20; x++) xs.push(x);
+    const plain = xs.map((x) => pickSprite(cam, [a, b], x, y, W, H, 1)?.id ?? null);
+    expect(new Set(plain).size).toBeGreaterThan(1);
+    // Sweeping left to right with the hover held: it changes only where the held sprite's area ends.
+    let hold: string | null = null;
+    const steady = xs.map((x) => (hold = pick(x, y, hold)));
+    const changes = steady.filter((v, i) => i > 0 && v !== steady[i - 1]).length;
+    expect(changes).toBeLessThanOrEqual(2); // none, a, b
+    expect(steady.indexOf('unit-1')).toBeGreaterThanOrEqual(0);
+  });
+
+  it('keeps the held sprite just outside its area, and lets go past the margin', () => {
+    const far = figure('unit-1', -3);
+    const rr = figureRect(cam, far, W, H);
+    const edge = hitRect(rr, { margin: PICK_MARGIN + 1 });
+    const yy = (rr.top + rr.bottom) / 2;
+    const at = (x: number) =>
+      pickSpriteSteady(cam, [far], x, yy, W, H, 1, 'unit-1')?.id ?? null;
+    expect(at(edge.right + SPRITE_HOLD_PX)).toBe('unit-1');
+    expect(at(edge.right + SPRITE_HOLD_PX + 1)).toBeNull();
+  });
+
+  it('takes a sprite on its first pixel when none is held', () => {
+    const far = figure('unit-1', -3);
+    const rr = figureRect(cam, far, W, H);
+    const edge = hitRect(rr, { margin: PICK_MARGIN + 1 });
+    const yy = (rr.top + rr.bottom) / 2;
+    expect(pickSpriteSteady(cam, [far], edge.left - 1, yy, W, H, 1, null)).toBeNull();
+    expect(pickSpriteSteady(cam, [far], edge.left + 0.5, yy, W, H, 1, null)?.id).toBe('unit-1');
   });
 });
