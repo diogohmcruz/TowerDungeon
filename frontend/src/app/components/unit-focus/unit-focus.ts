@@ -4,6 +4,7 @@ import {
   computed,
   inject,
   input,
+  viewChild,
 } from '@angular/core';
 
 import { Squad } from '../../interfaces/game-state';
@@ -14,6 +15,7 @@ import { ZoomService } from '../../services/zoom.service';
 import { UnitFocus } from '../../three/figures/figure-pick';
 import { CharacterCard } from '../character-card/character-card';
 import { EnemyCard } from '../enemy-card/enemy-card';
+import { CardFit } from './card-fit';
 import { placeCard } from './card-placement';
 
 /** The member a unit view is on, found among the Party or the current Floor's garrison. */
@@ -42,11 +44,12 @@ export function focusedMember(
 @Component({
   selector: 'app-unit-focus',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CharacterCard, EnemyCard],
+  imports: [CharacterCard, EnemyCard, CardFit],
   template: `
     @if (view(); as v) {
       <aside
         class="unit-focus"
+        appCardFit
         [style.left.px]="place().left"
         [style.top.px]="place().top"
         [style.width.px]="place().width"
@@ -72,6 +75,13 @@ export function focusedMember(
       /* The same hard-edged panel as the rest: ink on ink, no rounding. */
       border: 1px solid var(--bone);
       background: var(--panel);
+      scrollbar-width: thin;
+      scrollbar-color: var(--bone) transparent;
+    }
+    /* More below: a bone edge at the foot, until the end is scrolled to. */
+    .unit-focus.more-below {
+      box-shadow: inset 0 -14px 10px -10px
+        color-mix(in srgb, var(--bone) 55%, transparent);
     }
   `,
 })
@@ -89,8 +99,15 @@ export class UnitFocusCard {
     return focus && member ? { kind: focus.kind, member } : null;
   });
 
+  private readonly fit = viewChild(CardFit);
+
   protected readonly place = computed(() => {
     const { width, height } = this.stage.viewport();
-    return placeCard(this.zoom.anchor(), width, height);
+    return placeCard(
+      this.zoom.anchor(),
+      width,
+      height,
+      this.fit()?.height() || undefined,
+    );
   });
 }
