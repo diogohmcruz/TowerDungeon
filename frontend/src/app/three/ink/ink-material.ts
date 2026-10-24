@@ -13,7 +13,7 @@ export interface InkUniforms {
 }
 
 /** Exponential-squared fog density per theme (the values the lit scene used). */
-const FOG_DENSITY: Record<InkTheme, number> = { night: 0.05, day: 0.028 };
+export const FOG_DENSITY: Record<InkTheme, number> = { night: 0.05, day: 0.028 };
 
 /** 0 flat bands to 1 full dither; `prefers-contrast: more` drops the dither. */
 export function inkAmount(): number {
