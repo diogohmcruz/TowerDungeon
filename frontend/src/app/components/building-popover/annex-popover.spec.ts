@@ -127,7 +127,7 @@ describe('the Annexes and the Silo as buildings', () => {
     popover.openFor({ kind: 'annex', id: 'TILLER' });
     show();
     expect(el().textContent).toContain('At least 5 Tillers stay in the Fields.');
-    expect(el().querySelectorAll('button').length).toBe(0);
+    expect(el().querySelectorAll('button:not(.dismiss)').length).toBe(0);
   });
 
   it('keeps a closed footing out of the buildings and says what opens it on hover', () => {

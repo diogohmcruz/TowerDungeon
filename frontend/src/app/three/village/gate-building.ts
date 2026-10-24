@@ -12,6 +12,7 @@ import { setOutAvailability } from '../launch/launch-controls';
 import { loadoutChoices } from '../launch/loadout-choices';
 import { loadoutForecast, type LoadoutForecast } from '../launch/loadout-forecast';
 import { defineBuilding, type ActionSpec } from './building-registry';
+import { hasReturned, RUN_SUMMARY_SECTION } from './records-buildings';
 
 export const GATE_ID = 'GATE';
 
@@ -99,6 +100,9 @@ export const GATE = defineBuilding({
   id: GATE_ID,
   title: 'The Gate: the Loadout',
   visible: (s: GameState) => !!s.loadout,
+  // The last Expedition is written up here, and opens by itself when one comes back.
+  sections: [RUN_SUMMARY_SECTION],
+  opensOnReturn: hasReturned,
   gauges: [
     {
       id: 'capacity',

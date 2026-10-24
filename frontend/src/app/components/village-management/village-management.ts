@@ -56,5 +56,4 @@ export class VillageManagement {
 
   readonly theCount = computed(() => this.gameState().theCount);
   readonly tally = computed(() => this.gameState().tally);
-  readonly ledger = computed(() => this.gameState().ledger.slice(-5));
 }

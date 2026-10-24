@@ -20,6 +20,7 @@ import {
   type BuildingDefinition,
   type GaugeSpec,
 } from './building-registry';
+import { LEDGER_SECTION } from './records-buildings';
 import { saltAfterSale, sellSaltAction } from './salt-sale';
 import { lockOf } from './trade-locks';
 
@@ -290,6 +291,8 @@ function annex(trade: TradeId): BuildingDefinition {
             ...(trade === 'SALTER' ? [sellSaltAction()] : []),
           ],
     ...(trade === 'SCRIBE' ? { moreActions: tomeActions } : {}),
+    // The Ledger is read at the Scribe's Study.
+    ...(trade === 'SCRIBE' ? { sections: [LEDGER_SECTION] } : {}),
   });
 }
 

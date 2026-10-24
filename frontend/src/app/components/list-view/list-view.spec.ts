@@ -93,6 +93,31 @@ describe('ListView', () => {
     expect(text).toContain('Sell Food');
   });
 
+  it('keeps the Ledger and the Expedition Summary, now off the card layer', () => {
+    TestBed.inject(GameStateService).update({
+      tradeViews: [
+        {
+          trade: 'SCRIBE',
+          plural: 'Scribes',
+          workplace: "Scribe's Study",
+          hands: 1,
+          posts: 10,
+          settling: 0,
+          settlingSeconds: 0,
+        },
+      ],
+      villageTierLevel: 2,
+      ledger: [{ text: 'Starvation. 1 Breaker lost.', loss: true }],
+    });
+    key('l');
+    settle();
+    const text = el().textContent!;
+    expect(text).toContain("The Scribe's Study");
+    expect(text).toContain('- Starvation. 1 Breaker lost.');
+    expect(text).toContain('The Gate');
+    expect(text).toContain('No Expedition has come back yet.');
+  });
+
   it('runs an action exactly as the popover does', () => {
     list.show();
     settle();

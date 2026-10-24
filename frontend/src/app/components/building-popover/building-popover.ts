@@ -36,6 +36,27 @@ const WIDE_CARD_WIDTH = 420;
         [style.max-height.px]="place().maxHeight"
       >
         <h3>{{ v.title }}</h3>
+        <!-- What is read comes first: the Summary of the Expedition that just came back, the Ledger. -->
+        @for (s of v.sections; track s.id) {
+          <section class="written" [attr.aria-label]="s.heading ?? v.title">
+            @if (s.heading) {
+              <h4>{{ s.heading }}</h4>
+            }
+            @if (s.lines.length > 0) {
+              <ul
+                class="written-lines"
+                [class.scroll]="s.scroll"
+                [attr.tabindex]="s.scroll ? 0 : null"
+              >
+                @for (l of s.lines; track $index) {
+                  <li [class.loss]="l.loss">{{ l.mark }} {{ l.text }}</li>
+                }
+              </ul>
+            } @else {
+              <p class="leaves">{{ s.empty }}</p>
+            }
+          </section>
+        }
         @for (g of v.gauges; track g.id) {
           <section class="gauge" [attr.aria-label]="g.label">
             <p class="figure">
@@ -72,6 +93,9 @@ const WIDE_CARD_WIDTH = 420;
             (perform)="run(v.id, $event)"
           />
         }
+        <button type="button" class="btn dismiss" (click)="dismiss()">
+          Close
+        </button>
       </aside>
     }
   `,
@@ -137,6 +161,28 @@ const WIDE_CARD_WIDTH = 420;
       justify-content: space-between;
       margin: 0;
     }
+    .written {
+      margin-bottom: 8px;
+    }
+    .written-lines {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      line-height: 1.5;
+    }
+    .written-lines.scroll {
+      max-height: 132px;
+      overflow-y: auto;
+    }
+    .written-lines li.loss {
+      color: var(--ember-text);
+    }
+    button.dismiss {
+      display: block;
+      width: 100%;
+      margin-top: 6px;
+      text-align: left;
+    }
   `,
 })
 export class BuildingPopover {
@@ -172,8 +218,21 @@ export class BuildingPopover {
         n + 38 + (a.reason ? lines(a.reason) : 0) + (a.preview ? lines(a.preview) : 0),
       0,
     );
-    return 36 + gauges + rows + actions;
+    const written = v.sections.reduce(
+      (n, s) =>
+        n +
+        24 +
+        (s.lines.length > 0
+          ? Math.min(s.scroll ? 132 : Infinity, s.lines.length * 19)
+          : 20),
+      0,
+    );
+    return 36 + gauges + rows + written + actions + 38;
   });
+
+  protected dismiss(): void {
+    this.popover.close();
+  }
 
   /** A refused action does nothing; its reason is already on the card in words. */
   protected run(buildingId: string, actionId: string): void {

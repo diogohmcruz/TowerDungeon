@@ -129,7 +129,28 @@ export class PopoverService {
         this.succession = shown;
       });
     });
+    // An Expedition that ends (Extraction or Wipe) opens the building that reports it,
+    // once: the flag is spent when it opens, so a dismissed card stays dismissed.
+    effect(() => {
+      const state = this.stateService.state();
+      const held = this.stateService.session()?.held === true;
+      const zoomed = this.zoom.level() !== 'battle';
+      untracked(() => {
+        if (state.expeditionActive) {
+          this.returning = true;
+          return;
+        }
+        if (!this.returning || held || zoomed) return;
+        const def = this.registry.find((d) => d.opensOnReturn?.(state));
+        if (!def) return;
+        this.returning = false;
+        this.openFor({ kind: 'building', id: def.id });
+      });
+    });
   }
+
+  /** An Expedition was seen out, and its report has not been opened yet. */
+  private returning = false;
 
   /** Whether a subject is a registered, shown building. */
   isBuilding(subject: VillageSubject | null): boolean {
