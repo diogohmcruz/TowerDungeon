@@ -75,6 +75,7 @@ export const VOLUME_SUBJECTS: ReadonlyArray<{
   { prefix: 'vault', kind: 'building', id: 'VAULT' },
   { prefix: 'crate-', kind: 'building', id: 'VAULT' },
   { prefix: 'roll-', kind: 'building', id: 'SUCCESSION' },
+  { prefix: 'ring-', kind: 'building', id: 'RING' },
 ];
 
 const TRADES: readonly TradeId[] = [
@@ -118,6 +119,9 @@ export function subjectOfVolume(volumeId: string): VillageSubject | null {
   if (volumeId.startsWith(SHORTCUT_MARK_ID)) {
     return { kind: 'shortcut', id: volumeId.slice(SHORTCUT_MARK_ID.length).split(':')[0] };
   }
+  // An Upgrade module, its footing and its pad are one building: the Upgrade's id.
+  const grown = /^(?:grow:|upgrade-footing:|upgrade-hit:)([A-Z_]+)/.exec(volumeId);
+  if (grown) return { kind: 'building', id: grown[1] };
   const villager = /^villager-([A-Z]+)-/.exec(volumeId);
   if (villager && (TRADES as readonly string[]).includes(villager[1])) {
     return { kind: 'villagers', id: villager[1] };

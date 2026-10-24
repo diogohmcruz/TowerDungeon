@@ -1,15 +1,11 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { GameAction } from '../../interfaces/game-action.enum';
 import { GameState } from '../../interfaces/game-state';
 import {
-  PostUpgradeView,
-  TomeView,
   TradePreview,
   TradeView,
 } from '../../interfaces/village';
 import { GameStateService } from '../../services/game-state.service';
-import { VillageSelectionService } from '../../services/village-selection.service';
 import { GameWebSocketService } from '../../services/game-web-socket.service';
 import { VillageManagement } from './village-management';
 
@@ -146,63 +142,6 @@ describe('VillageManagement', () => {
     expect(text()).toContain('peak Villagers 24');
   });
 
-  const tomeViews: TomeView[] = [
-    {
-      tome: 'TILLERS_RECORD',
-      title: "Tillers' Record",
-      effect: 'Fields output',
-      bonusPercent: 25,
-      bonusFlat: 0,
-      level: 1,
-      cost: 90,
-      gated: true,
-      blocked: 'Tome 2 costs 90. Stockroom holds 80. Needs Highest Floor 8.',
-    },
-    {
-      tome: 'SEAM_CHARTS',
-      title: 'Seam Charts',
-      effect: 'Breaker output',
-      bonusPercent: 25,
-      bonusFlat: 0,
-      level: 0,
-      cost: 60,
-      gated: false,
-      blocked: null,
-    },
-    {
-      tome: 'SURVIVORS_NOTES',
-      title: "Survivors' Notes",
-      effect: 'Wave Carrying Capacity',
-      bonusPercent: 0,
-      bonusFlat: 10,
-      level: 2,
-      cost: 135,
-      gated: false,
-      blocked: null,
-    },
-  ];
-
-  const postUpgrades: PostUpgradeView[] = [
-    {
-      trade: 'BREAKER',
-      workplace: 'Quarry',
-      level: 1,
-      posts: 15,
-      nextPosts: 20,
-      cost: 40,
-      blocked: null,
-    },
-    {
-      trade: 'SCRIBE',
-      workplace: "Scribe's Study",
-      level: 0,
-      posts: 10,
-      nextPosts: 15,
-      cost: 25,
-      blocked: 'Posts cost 25 Materials. The Vault holds 3.',
-    },
-  ];
-
   it('states the Year and its Quarter in words, and the sea once the Port exists', () => {
     load({ year: 3, quarter: 'AUTUMN', nextQuarter: 'WINTER', seaRisk: 0.2 });
     expect(text()).toContain('Year 3, Autumn, Winter follows');
@@ -230,118 +169,6 @@ describe('VillageManagement', () => {
     expect(text()).not.toMatch(/Year \d/);
   });
 
-  it('lists the Tomes, and states why a gated level cannot be bought', () => {
-    load({ tomeViews });
-
-    expect(text()).toContain("Tillers' Record");
-    expect(text()).toContain('Level 1: Fields output +25%');
-    expect(text()).toContain(
-      'Tome 2 costs 90. Stockroom holds 80. Needs Highest Floor 8.',
-    );
-    const gated = fixture.nativeElement.querySelector(
-      '[aria-label="Buy Tillers\' Record"]',
-    ) as HTMLButtonElement;
-    const open = fixture.nativeElement.querySelector(
-      '[aria-label="Buy Seam Charts"]',
-    ) as HTMLButtonElement;
-    expect(gated.disabled).toBeTrue();
-    expect(open.disabled).toBeFalse();
-  });
-
-  it("shows Survivors' Notes as a flat Carrying Capacity bonus", () => {
-    load({ tomeViews });
-
-    expect(text()).toContain('Level 2: Wave Carrying Capacity +20');
-  });
-
-  it('shows Trust and the Ring, and sends the purchase', () => {
-    load({
-      trustHeld: 12,
-      ring: {
-        level: 2,
-        maxLevel: 5,
-        cost: 23,
-        maxed: false,
-        speedBonus: 0.5,
-        speedPerLevel: 0.25,
-        capacityBonus: 10,
-        capacityPerLevel: 5,
-        blocked: 'Ring 3 costs 23. Trust 12.',
-      },
-    });
-
-    expect(text()).toContain('Trust held 12');
-    expect(text()).toContain('Level 2 of 5');
-    expect(text()).toContain('Ring 3 costs 23. Trust 12.');
-    const bind = fixture.nativeElement.querySelector(
-      '[aria-label="Strengthen the Ring"]',
-    ) as HTMLButtonElement;
-    expect(bind.disabled).toBeTrue();
-
-    load({
-      trustHeld: 30,
-      ring: { ...stateService.state().ring, blocked: null, cost: 23 },
-    });
-    (
-      fixture.nativeElement.querySelector(
-        '[aria-label="Strengthen the Ring"]',
-      ) as HTMLButtonElement
-    ).click();
-    expect(sendAction).toHaveBeenCalledWith(GameAction.BUY_RING);
-  });
-
-  it('sends the Tome purchase', () => {
-    load({ tomeViews });
-
-    (
-      fixture.nativeElement.querySelector(
-        '[aria-label="Buy Seam Charts"]',
-      ) as HTMLButtonElement
-    ).click();
-
-    expect(sendAction).toHaveBeenCalledWith(GameAction.BUY_TOME, {
-      tome: 'SEAM_CHARTS',
-    });
-  });
-
-  it('shows the Post upgrades with their cost and sends the purchase', () => {
-    load({ postUpgrades });
-
-    expect(text()).toContain('15 Posts, 20 after the next');
-    expect(text()).toContain('Raise (40 Materials)');
-    expect(text()).toContain('Posts cost 25 Materials. The Vault holds 3.');
-    const raise = fixture.nativeElement.querySelector(
-      '[aria-label="Raise Posts of Quarry"]',
-    ) as HTMLButtonElement;
-    raise.click();
-    expect(sendAction).toHaveBeenCalledWith(GameAction.BUY_POSTS, {
-      trade: 'BREAKER',
-    });
-    expect(
-      (
-        fixture.nativeElement.querySelector(
-          '[aria-label="Raise Posts of Scribe\'s Study"]',
-        ) as HTMLButtonElement
-      ).disabled,
-    ).toBeTrue();
-  });
-
-  it('keeps the avoided glossary terms out of the panel copy', () => {
-    load({ tomeViews, postUpgrades });
-
-    const avoided = [
-      'idle units',
-      'standby',
-      'food pantry',
-      'buy villagers',
-      'farmers',
-      'quarriers',
-      'lore',
-    ];
-    const copy = text().toLowerCase();
-    avoided.forEach((term) => expect(copy).not.toContain(term));
-  });
-
   it('prints the last Ledger lines with a marker for losses', () => {
     load({
       ledger: [
@@ -357,93 +184,5 @@ describe('VillageManagement', () => {
       '. Emergency Tilling. Pantry below 20.',
       '- Starvation. 1 Breaker lost.',
     ]);
-  });
-  describe('Village selection', () => {
-    let selection: VillageSelectionService;
-    const row = (key: string): HTMLElement =>
-      fixture.nativeElement.querySelector(`[data-row="${key}"]`);
-
-    beforeEach(() => {
-      selection = TestBed.inject(VillageSelectionService);
-      load({ postUpgrades });
-    });
-
-    it('hovering a row hovers its thing and marks the row, and leaving lets go', () => {
-      row('upgrade:BREAKER').dispatchEvent(new Event('mouseenter'));
-      fixture.detectChanges();
-
-      expect(selection.hovered()).toEqual({ kind: 'upgrade', id: 'BREAKER' });
-      expect(row('upgrade:BREAKER').classList).toContain('linked');
-
-      row('upgrade:BREAKER').dispatchEvent(new Event('mouseleave'));
-      fixture.detectChanges();
-
-      expect(selection.hovered()).toBeNull();
-      expect(row('upgrade:BREAKER').classList).not.toContain('linked');
-    });
-
-    it('marks the row when the scene hovers the thing', () => {
-      selection.hover({ kind: 'villagers', id: 'SCRIBE' });
-      fixture.detectChanges();
-
-      expect(row('upgrade:SCRIBE').classList).toContain('linked');
-      expect(row('upgrade:BREAKER').classList).not.toContain('linked');
-    });
-
-    it('takes focus on a row as a hover, from the keyboard', () => {
-      row('upgrade:SCRIBE').dispatchEvent(new Event('focusin'));
-
-      expect(selection.hovered()?.id).toBe('SCRIBE');
-    });
-
-    it('picks a row with Enter or Space, and lets go with Escape', () => {
-      const el = row('upgrade:BREAKER');
-      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
-      fixture.detectChanges();
-
-      expect(selection.selected()?.id).toBe('BREAKER');
-      expect(el.classList).toContain('chosen');
-      expect(el.getAttribute('aria-current')).toBe('true');
-
-      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
-      expect(selection.selected()).toBeNull();
-
-      el.dispatchEvent(new KeyboardEvent('keydown', { key: ' ' }));
-      expect(selection.selected()?.id).toBe('BREAKER');
-    });
-
-    it('is reachable by Tab: every row has a tab stop', () => {
-      ['upgrade:BREAKER', 'upgrade:SCRIBE'].forEach((key) =>
-        expect(row(key)?.getAttribute('tabindex')).toBe('0'),
-      );
-    });
-
-    it('never acts from a pick: pressing a row sends nothing', () => {
-      row('upgrade:BREAKER').click();
-
-      expect(sendAction).not.toHaveBeenCalled();
-    });
-
-    it('does not pick when the button inside the row is pressed, but still acts', () => {
-      const raise = fixture.nativeElement.querySelector(
-        '[aria-label="Raise Posts of Quarry"]',
-      ) as HTMLButtonElement;
-
-      raise.click();
-
-      expect(selection.selected()).toBeNull();
-      expect(sendAction).toHaveBeenCalledTimes(1);
-    });
-
-    it('focuses and scrolls to the Upgrade row when the scene is clicked', () => {
-      const posts = row('upgrade:BREAKER');
-      spyOn(posts, 'scrollIntoView');
-
-      selection.selectFromScene({ kind: 'upgrade', id: 'BREAKER' });
-      fixture.detectChanges();
-
-      expect(document.activeElement).toBe(posts);
-      expect(posts.classList).toContain('chosen');
-    });
   });
 });

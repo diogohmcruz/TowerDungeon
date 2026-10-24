@@ -163,6 +163,8 @@ export class VillageScene {
       villageTierLevel: s.villageTierLevel,
       pillar: pillarInput(s),
       upgrades,
+      ringLevel: s.ring?.level ?? 0,
+      ringMax: s.ring?.maxLevel ?? 0,
       saltPansOpen: (s.loadout?.saltPansOpen ?? false) || s.villageTierLevel >= 2,
       salt: s.village.salt,
       shortcuts: (s.shortcuts ?? [])

@@ -270,28 +270,6 @@
   margin: 4px 0;
 }
 
-.upgrade-panel {
-
-  h3 {
-    font-family: var(--font-pixel);
-    font-size: 12px;
-    color: var(--bone);
-    margin: 0 0 8px;
-  }
-
-  .upgrade-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-  }
-
-  app-upgrade-card {
-    flex: 1 1 200px;
-    min-width: 0;
-    max-width: 20em;
-  }
-}
-
 .expedition-start {
 
   h3 {

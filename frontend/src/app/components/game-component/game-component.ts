@@ -32,7 +32,6 @@ import { TowerDisplay } from '../tower/tower-display.component';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { UnitStatsService } from '../../services/unit-stats.service';
 import { VillageManagement } from '../village-management/village-management';
-import { UpgradeCard } from '../upgrade-card/upgrade-card';
 import { ShortcutCard } from '../shortcut-card/shortcut-card';
 import { RunSummaryCard } from '../run-summary-card/run-summary-card';
 import { Reinforcement } from '../../interfaces/game-state';
@@ -47,7 +46,6 @@ import { ListView } from '../list-view/list-view';
     TowerDisplay,
     ExpeditionHud,
     VillageManagement,
-    UpgradeCard,
     ShortcutCard,
     RunSummaryCard,
     ListView,
@@ -211,18 +209,6 @@ export class GameComponent implements OnDestroy {
     return Object.values(wave.units ?? {}).reduce(
       (total, members) => total + (members?.length ?? 0),
       0,
-    );
-  }
-
-  buyUpgrade(upgradeId: string) {
-    this.ws.sendAction(GameAction.UPGRADE, { upgradeId });
-  }
-
-  canAfford(cost: { MATERIALS?: number; RELICS?: number }): boolean {
-    const banked = this.gameState().resources;
-    return (
-      (cost.MATERIALS ?? 0) <= banked.MATERIALS &&
-      (cost.RELICS ?? 0) <= banked.RELICS
     );
   }
 }
