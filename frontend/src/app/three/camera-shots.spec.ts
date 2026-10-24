@@ -1,4 +1,5 @@
-import { dampFactor, SHOTS, ShotBlend } from './camera-shots';
+import { dampFactor, fitDistance, SHOTS, ShotBlend } from './camera-shots';
+import { TOWER_LAUNCH_Z, TOWER_RECALL_X } from './launch/launch-objects';
 
 describe('camera shots', () => {
   it('starts on the battle shot and has a closeup that fills the screen', () => {
@@ -43,5 +44,43 @@ describe('camera shots', () => {
     expect(blend.step(SHOTS.battle, 1)).toBeTrue();
     expect(blend.current).toEqual(SHOTS.battle);
     expect(blend.step(SHOTS.battle, 1)).toBeFalse();
+  });
+
+  describe('fitDistance', () => {
+    const reach = TOWER_RECALL_X + 0.6;
+    const { fov, distance } = SHOTS.closeup;
+    /** The half width the closeup shows at the lamp's depth. */
+    const shown = (d: number, aspect: number) =>
+      Math.tan((fov * Math.PI) / 360) * (d - TOWER_LAUNCH_Z) * aspect;
+
+    it('asks for no more than the closeup on a wide screen', () => {
+      expect(fitDistance(fov, 1280 / 720, reach, TOWER_LAUNCH_Z)).toBeLessThan(
+        distance,
+      );
+      expect(fitDistance(fov, 1920 / 1080, reach, TOWER_LAUNCH_Z)).toBeLessThan(
+        distance,
+      );
+    });
+
+    it('stands the closeup back until the lamp is in the picture on a narrow screen', () => {
+      for (const [w, h] of [
+        [440, 900],
+        [800, 700],
+        [360, 640],
+        [1000, 700],
+      ]) {
+        const d = Math.max(
+          distance,
+          fitDistance(fov, w / h, reach, TOWER_LAUNCH_Z),
+        );
+        expect(shown(d, w / h)).toBeGreaterThanOrEqual(TOWER_RECALL_X + 0.25);
+      }
+      // The old closeup showed less than the lamp's own distance from the centre at 440 x 900.
+      expect(shown(distance, 440 / 900)).toBeLessThan(TOWER_RECALL_X);
+    });
+
+    it('gives no distance for a screen with no size', () => {
+      expect(fitDistance(fov, 0, reach, TOWER_LAUNCH_Z)).toBe(0);
+    });
   });
 });

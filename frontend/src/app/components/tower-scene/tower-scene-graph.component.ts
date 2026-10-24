@@ -108,6 +108,7 @@ import { ZoomService } from '../../services/zoom.service';
 import { UnitHoverService } from '../../services/unit-hover.service';
 import {
   dampFactor,
+  fitDistance,
   prefersReducedMotion,
   SHOTS,
   ShotBlend,
@@ -119,7 +120,12 @@ import {
   bellAvailability,
   extractAvailability,
 } from '../../three/launch/launch-controls';
-import { towerLaunchVolumes } from '../../three/launch/launch-objects';
+import {
+  TOWER_LAUNCH_Z,
+  TOWER_RECALL_X,
+  towerLaunchVolumes,
+} from '../../three/launch/launch-objects';
+import { InstanceWriter } from '../../three/ink/instance-writer';
 import { LAUNCH_CAPACITY, rimVolumes } from '../../three/launch/object-rim';
 import { subjectOfVolume } from '../../three/village/village-subjects';
 import { resolveHover, type HoverRegion } from '../../three/hover-resolver';
@@ -172,6 +178,12 @@ export function isEmptySpaceClick(
     click.timeStamp - press.at <= CLICK_MAX_MS
   );
 }
+
+/**
+ * Half the width the closeup keeps in view: the recall lamp (and the bell opposite),
+ * its pick box and a margin. A screen too narrow for it makes the closeup stand back.
+ */
+const CLOSEUP_REACH = TOWER_RECALL_X + 0.6;
 
 /** A press that moves farther than this, or lasts longer, is a drag or a hold, not a click on empty space. */
 const CLICK_SLOP_PX = 5;
@@ -920,8 +932,27 @@ export class TowerSceneGraph {
         this.camTarget.set(at.x, at.y - dropY + pose.lookUp, at.z);
         this.camPos.set(at.x, at.y - dropY + pose.camUp, at.z + pose.distance);
       } else {
+        // The closeup stands back on a narrow screen, so the lamp is still in the picture.
+        let distance = pose.distance;
+        if (this.zoom.level() === 'closeup') {
+          const el = this.store.snapshot.gl.domElement;
+          const region = towerRegion(
+            el.clientWidth,
+            this.stage.narrow(),
+            pose.spread,
+          );
+          distance = Math.max(
+            distance,
+            fitDistance(
+              pose.fov,
+              region.width / (el.clientHeight || 1),
+              CLOSEUP_REACH,
+              TOWER_LAUNCH_Z,
+            ),
+          );
+        }
         this.camTarget.set(0, viewY + pose.lookUp, 0);
-        this.camPos.set(0, viewY + pose.camUp, pose.distance);
+        this.camPos.set(0, viewY + pose.camUp, distance);
       }
 
       // Both the position and the look-at target ease, so the view never snaps.
@@ -1517,57 +1548,6 @@ export class TowerSceneGraph {
 
   private readTheme(): boolean {
     return document.documentElement.dataset['theme'] === 'dark';
-  }
-}
-
-/** Fills an instanced ink mesh (matrices plus the three ink attributes) in order. */
-class InstanceWriter {
-  private n = 0;
-  private readonly matrix = new THREE.Matrix4();
-  private readonly position = new THREE.Vector3();
-  private readonly scale = new THREE.Vector3();
-  private readonly tone: THREE.BufferAttribute;
-  private readonly alpha: THREE.BufferAttribute;
-  private readonly role: THREE.BufferAttribute;
-
-  private readonly capacity: number;
-
-  constructor(private readonly mesh: THREE.InstancedMesh) {
-    this.capacity = mesh.instanceMatrix.count;
-    const a = mesh.geometry.attributes;
-    this.tone = a['aTone'] as THREE.BufferAttribute;
-    this.alpha = a['aAlpha'] as THREE.BufferAttribute;
-    this.role = a['aRole'] as THREE.BufferAttribute;
-  }
-
-  add(
-    position: [number, number, number],
-    scale: [number, number, number],
-    tone: number,
-    alpha: number,
-    crimson: boolean,
-  ): void {
-    if (this.n >= this.capacity) {
-      return;
-    }
-    this.matrix.compose(
-      this.position.set(...position),
-      IDENTITY_QUATERNION,
-      this.scale.set(...scale),
-    );
-    this.mesh.setMatrixAt(this.n, this.matrix);
-    this.tone.setX(this.n, tone);
-    this.alpha.setX(this.n, alpha);
-    this.role.setX(this.n, crimson ? 1 : 0);
-    this.n++;
-  }
-
-  finish(): void {
-    this.mesh.count = this.n;
-    this.mesh.instanceMatrix.needsUpdate = true;
-    this.tone.needsUpdate = true;
-    this.alpha.needsUpdate = true;
-    this.role.needsUpdate = true;
   }
 }
 
