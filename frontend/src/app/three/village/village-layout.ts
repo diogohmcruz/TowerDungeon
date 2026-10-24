@@ -227,6 +227,11 @@ export const LANES: Record<
 
 /** The silo stands behind the stair's foot, so the two never share a plan. */
 const SILO_Z = -0.3;
+/**
+ * The open ground in front of the lanes, where the Cellar and the Pans already stand: the supply
+ * store stands here, not behind the stair and the Tower's base, which hid it (#134).
+ */
+const FRONT_Z = 2.0;
 const FIGURE = { w: 0.1, h: 0.35, d: 0.05 };
 /** One virtual pixel in world units (an 11-unit frame across about 220 pixels). */
 const PIXEL = FRAME_WIDTH / 220;
@@ -689,6 +694,11 @@ function cellar(out: Volume[], spores: number): void {
 interface GrowthModule {
   /** Most levels shown; levels beyond this still count in the game, not in the picture. */
   cap: number;
+  /**
+   * The module stands on open ground in front of the buildings it projects over (in the far view),
+   * so it is pointed at part by part and wins over them, instead of nested in their boxes (#134).
+   */
+  inFront?: boolean;
   /** Draws the module for the `n`th level owned (0-based). */
   build(out: Volume[], id: string, n: number): void;
 }
@@ -741,15 +751,16 @@ export const UPGRADE_MODULES: Record<string, GrowthModule> = {
       box(out, `${id}:ember`, 'village', -0.7, 0.5, -0.7, 0.2, 0.06, 0.2, VILLAGE_TONE.lit);
     },
   },
-  // Supply Lines: a second silo, then crates stacked beside it.
+  // Supply Lines: a second silo before the Fields, then crates stood beside it.
   SUPPLY_LINES: {
     cap: 4,
+    inFront: true,
     build(out, id, n) {
       if (n === 0) {
-        box(out, `${id}:silo`, 'village', -1.0, 0, SILO_Z, 0.3, 1.4, 0.3, VILLAGE_TONE.silo);
+        box(out, `${id}:silo`, 'village', -1.0, 0, FRONT_Z, 0.3, 1.4, 0.3, VILLAGE_TONE.silo);
         return;
       }
-      box(out, `${id}:crate`, 'village', -0.7 + n * 0.17, 0, SILO_Z, 0.14, 0.14 + (n % 2) * 0.06, 0.14, VILLAGE_TONE.timber);
+      box(out, `${id}:crate`, 'village', -0.7 + n * 0.17, 0, FRONT_Z, 0.14, 0.14 + (n % 2) * 0.06, 0.14, VILLAGE_TONE.timber);
     },
   },
   // Sharpened Arms: a spear stood in the rack before the Vault, one per level.
