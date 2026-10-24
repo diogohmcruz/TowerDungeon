@@ -216,4 +216,109 @@ describe('the Village Tier buildings', () => {
       }
     });
   });
+
+  describe('Tier IV: the Vault splits', () => {
+    const expectedAt = (tier: number) => {
+      load(stock(tier));
+      return views().map((b) => b.id);
+    };
+
+    it('below Tier IV the Vault is unchanged and the new buildings are closed', () => {
+      for (const tier of [1, 2, 3]) {
+        const shown = expectedAt(tier);
+        expect(shown).toContain('VAULT');
+        for (const id of ['STRONGBOX', 'RELIQUARY', 'HEAP']) expect(shown).not.toContain(id);
+        expect(gaugeLabels('VAULT')).toContain('Materials');
+      }
+    });
+
+    it('Tier IV: Credits at the Strongbox, Relics at the Reliquary, Materials at the Heap', () => {
+      const shown = expectedAt(4);
+      expect(shown).not.toContain('VAULT');
+      expect(gaugeLabels('STRONGBOX')).toEqual(['Credits']);
+      expect(actionIds('STRONGBOX')).toEqual([]);
+      expect(gaugeLabels('RELIQUARY')).toEqual(['Relics']);
+      expect(actionIds('RELIQUARY')).toEqual(['sell-relics']);
+      expect(gaugeLabels('HEAP')).toEqual(['Materials']);
+      expect(actionIds('HEAP')).toEqual(['sell-materials']);
+    });
+
+    it('sends the same sales as before and refuses an empty store in words', () => {
+      const sent: GameAction[] = [];
+      const commands: BuildingCommands = { send: (a) => void sent.push(a) };
+      load(stock(4));
+      buildingDefinition('RELIQUARY')!.actions[0].run(commands, state);
+      buildingDefinition('HEAP')!.actions[0].run(commands, state);
+      expect(sent).toEqual([GameAction.SELL_RELICS, GameAction.SELL_MATERIALS]);
+      load(stock(4, { resources: { ...base().resources, MATERIALS: 0, RELICS: 0 } }));
+      const heap = views().find((b) => b.id === 'HEAP')!;
+      expect(heap.actions[0].usable).toBeFalse();
+      expect(heap.actions[0].reason).toContain('no Materials');
+      expect(views().find((b) => b.id === 'RELIQUARY')!.actions[0].reason).toContain('no Relics');
+    });
+
+    it('states the real Tier condition on a closed building', () => {
+      load(stock(2));
+      for (const id of ['STRONGBOX', 'RELIQUARY', 'HEAP']) {
+        const caption = captionFor({ kind: 'building', id }, state)!;
+        expect(caption.status).toBe('Closed.');
+        expect(caption.lock).toContain('Village Tier IV');
+        expect(caption.lock).toContain('Tier 2');
+      }
+      load(stock(4));
+      expect(captionFor({ kind: 'building', id: 'STRONGBOX' }, state)!.lock).toBeNull();
+      expect(captionText(captionFor({ kind: 'building', id: 'STRONGBOX' }, state)!)).toContain(
+        'Credits 1,840',
+      );
+    });
+
+    describe('as drawn', () => {
+      const at = (tier: number, over: Partial<VillageInput> = {}) =>
+        buildVillage({
+          ...EMPTY_VILLAGE,
+          villageTierLevel: tier,
+          materials: 300,
+          relics: 3,
+          credits: 100,
+          ...over,
+        });
+      const ids = (v: { id: string }[]) => v.map((x) => x.id);
+
+      it('stands as footings below Tier IV, beside the unchanged Vault', () => {
+        const v = ids(at(3));
+        expect(v).toContain('vault');
+        expect(v).toContain('strongbox-footing-n');
+        expect(v).toContain('stack-footing-n');
+        expect(v).not.toContain('strongbox');
+        for (const part of ['strongbox-footing-n', 'reliquary-hit', 'stack-footing-w']) {
+          expect(v).toContain(part);
+        }
+        expect(subjectOfVolume('reliquary-footing-s')).toEqual({ kind: 'building', id: 'RELIQUARY' });
+        expect(subjectOfVolume('stack-footing-e')).toEqual({ kind: 'building', id: 'HEAP' });
+      });
+
+      it('splits the Vault at Tier IV and maps every part to its building', () => {
+        const v = at(4);
+        expect(ids(v)).not.toContain('vault');
+        expect(ids(v).some((i) => i.startsWith('crate-'))).toBeFalse();
+        const expected: Record<string, string[]> = {
+          STRONGBOX: ['strongbox', 'strongbox-door', 'strongbox-credits-bar', 'strongbox-credits-fill', 'strongbox-hit'],
+          RELIQUARY: ['reliquary', 'reliquary-relics-notch-0', 'reliquary-hit'],
+          HEAP: ['stack-plinth', 'stack-crate-0', 'stack-scale-bar', 'stack-hit'],
+        };
+        for (const [building, parts] of Object.entries(expected)) {
+          for (const part of parts) {
+            expect(ids(v)).toContain(part);
+            expect(subjectOfVolume(part)).toEqual({ kind: 'building', id: building });
+          }
+          expect(outlineVolumes(v, building, 1, 'hover').length).toBe(4);
+        }
+        const lit = v.filter((x) => /^reliquary-relics(-more)?-notch-/.test(x.id) && x.tone === 1);
+        expect(lit.length).toBe(3);
+        const all = at(4, { relics: 40 }).filter((x) => /^reliquary-relics(-more)?-notch-/.test(x.id));
+        expect(all.length).toBe(5);
+        expect(all.every((x) => x.tone === 1)).toBeTrue();
+      });
+    });
+  });
 });
