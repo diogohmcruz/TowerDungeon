@@ -264,6 +264,7 @@ function floorSurfaceY(n: number): number {
       [groundY]="GROUND_TOP"
       [fogDensity]="LANDSCAPE_FOG"
       [nearZ]="LANDSCAPE_NEAR"
+      [crown]="false"
     />
 
     <!-- Floor strips: three layers per floor and the pencil above the Highest Floor, one draw call. -->
