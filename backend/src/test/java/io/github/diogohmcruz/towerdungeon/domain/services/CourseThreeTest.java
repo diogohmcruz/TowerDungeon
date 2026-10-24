@@ -353,6 +353,22 @@ class CourseThreeTest {
     assertThat(next.isOverreaching()).isTrue();
   }
 
+  @Test
+  void theLoadoutOffersMusterRollOnlyWhenHeldAndSaysWhenItCanGo() {
+    var none = playing();
+    assertThat(none.getLoadout().musterRoll()).isNull();
+
+    var next = playing(InheritanceType.OVERREACH, InheritanceType.MUSTER_ROLL);
+    assertThat(next.getLoadout().musterRoll().ready()).isFalse();
+
+    service.execute(PLAYER, setOut(Map.of(), 0, true));
+
+    var offer = next.getLoadout().musterRoll();
+    assertThat(offer.ready()).isTrue();
+    assertThat(offer.overreach()).isTrue();
+    assertThat(offer.partyUnits()).isZero();
+  }
+
   private ArchitecturePlan plan() {
     return ArchitecturePlan.generate(
         config.getArchitecture().getSeed(),

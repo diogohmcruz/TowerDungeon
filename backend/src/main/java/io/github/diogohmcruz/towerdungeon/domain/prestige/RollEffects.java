@@ -131,6 +131,7 @@ public final class RollEffects {
                 overreach.getStarvationDamageMultiplier(),
                 overreach.getLootMultiplier())
             : null);
+    state.setMusterRollHeld(holds(InheritanceType.MUSTER_ROLL));
     state.setLoadoutSlots(
         holds(InheritanceType.QUARTERMASTERS_TALLY)
             ? Math.max(0, numbers.getQuartermastersTally().getSlots())

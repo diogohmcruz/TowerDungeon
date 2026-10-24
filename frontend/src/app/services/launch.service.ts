@@ -43,6 +43,8 @@ export class LaunchService {
   readonly packBearer = signal('');
   /** Whether the Loadout has chosen to carry a Panacea. */
   readonly panaceaChosen = signal(false);
+  /** Whether the Loadout has set the Expedition to Overreach (only sent while the Roll holds it). */
+  readonly overreachChosen = signal(false);
 
   private readonly _refusal = signal<Refusal | null>(null);
   /** The latest refusal, as one line; clears by itself. */
@@ -57,6 +59,7 @@ export class LaunchService {
         pack: this.packSalt(),
         bearer: this.packBearer(),
         panacea: this.panaceaChosen(),
+        overreach: this.overreachChosen(),
       }),
       startFloor: () => this.startFloor(),
       set: (patch) => {
@@ -64,6 +67,7 @@ export class LaunchService {
         if (patch.pack !== undefined) this.packSalt.set(patch.pack);
         if (patch.bearer !== undefined) this.packBearer.set(patch.bearer);
         if (patch.panacea !== undefined) this.panaceaChosen.set(patch.panacea);
+        if (patch.overreach !== undefined) this.overreachChosen.set(patch.overreach);
       },
     });
   }
@@ -103,17 +107,20 @@ export class LaunchService {
       ? Math.min(this.packSalt(), Math.max(0, (loadout?.saltHeld ?? 0) - salt))
       : 0;
     const panacea = this.panaceaChosen() && loadout?.panaceaBlocked === null;
+    const overreach = this.overreachChosen() && !!loadout?.overreach;
     const payload = {
       units: new Map(),
       startFloor: this.startFloor(),
       salt,
       ...(pack > 0 ? { saltPack: pack, saltBearer: bearer } : {}),
       panacea,
+      ...(overreach ? { overreach } : {}),
     };
     this.ws.sendAction(GameAction.INVADE, payload);
     this.saltToUse.set(0);
     this.packSalt.set(0);
     this.panaceaChosen.set(false);
+    this.overreachChosen.set(false);
   }
 
   sendExtract(): void {

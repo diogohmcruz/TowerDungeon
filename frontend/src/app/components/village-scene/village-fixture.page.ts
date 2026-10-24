@@ -264,6 +264,36 @@ export class VillageFixturePage {
         saltPansOpen: true,
         trustHeld: 12,
         bearerTypes: ['TANK', 'WARRIOR'],
+        // `?roll=1`: the Roll holds Overreach, the Quartermaster's Tally and Muster Roll.
+        ...(query.has('roll')
+          ? {
+              overreach: {
+                supplyDrainMultiplier: 1.3,
+                starvationDamageMultiplier: 2,
+                lootMultiplier: 1.5,
+              },
+              tally: {
+                slots: 3,
+                saved: [
+                  { slot: 0, salt: 3, saltPack: 2, saltBearer: 'TANK', panacea: true, overreach: false },
+                  { slot: 2, salt: 0, saltPack: 0, saltBearer: null, panacea: false, overreach: true },
+                ],
+                runwayTicks: 11,
+                saltedRunwayTicks: 13,
+                overreachRunwayTicks: 8,
+              },
+              musterRoll: {
+                ready: true,
+                startFloor: 5,
+                partyUnits: 0,
+                salt: 2,
+                saltPack: 0,
+                saltBearer: null,
+                panacea: false,
+                overreach: true,
+              },
+            }
+          : {}),
       },
       // The Fort: some Reserves, a few wounded, Credits to hire with and the Types' costs.
       credit: Number(new URLSearchParams(location.search).get('credit') ?? 40),

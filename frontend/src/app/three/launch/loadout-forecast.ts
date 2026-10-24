@@ -12,6 +12,7 @@ export interface LoadoutChoice {
   pack: number;
   bearer: string;
   panacea: boolean;
+  overreach: boolean;
 }
 
 export interface LoadoutForecast {
@@ -22,6 +23,10 @@ export interface LoadoutForecast {
   bearerChosen: string;
   panaceaAvailable: boolean;
   panaceaChosen: boolean;
+  /** The Roll holds Overreach. */
+  overreachAvailable: boolean;
+  /** Chosen, and the Roll holds it. */
+  overreachChosen: boolean;
   /** Carrying Capacity left once the Panacea, if chosen, takes its share. */
   capacity: number;
   /** Supplies taken from the Pantry: no more than the capacity left. */
@@ -32,6 +37,8 @@ export interface LoadoutForecast {
   lastsPlain: number | null;
   lastsChosen: number | null;
   lastsFullySalted: number | null;
+  /** The runway under Overreach with the chosen Salt, whether or not it is chosen; null with no one to feed or no Overreach held. */
+  lastsOverreach: number | null;
   /** The Pantry would hold less than a minute after leaving. */
   pantryHoldsShort: boolean;
 }
@@ -59,10 +66,15 @@ export function loadoutForecast(
     taken > 0
       ? Math.min(1, (saltChosen * preview.suppliesPerSalt) / taken)
       : 0;
-  const lasts = (s: number): number | null => {
+  const overreachAvailable = !!preview.overreach;
+  const overreachChosen = choice.overreach && overreachAvailable;
+  const lasts = (s: number, overreach = overreachChosen): number | null => {
     const perUnit =
-      preview.drainPerUnit -
-      s * (preview.drainPerUnit - preview.saltedDrainPerUnit);
+      (preview.drainPerUnit -
+        s * (preview.drainPerUnit - preview.saltedDrainPerUnit)) *
+      (overreach && preview.overreach
+        ? preview.overreach.supplyDrainMultiplier
+        : 1);
     const drain = preview.partySize * perUnit;
     return drain > 0 ? Math.floor(taken / drain) : null;
   };
@@ -74,6 +86,8 @@ export function loadoutForecast(
     bearerChosen,
     panaceaAvailable,
     panaceaChosen,
+    overreachAvailable,
+    overreachChosen,
     capacity,
     taken,
     pantryAfter: Math.max(
@@ -83,7 +97,42 @@ export function loadoutForecast(
     lastsPlain: lasts(0),
     lastsChosen: lasts(share),
     lastsFullySalted: lasts(1),
+    lastsOverreach: overreachAvailable ? lasts(share, true) : null,
     pantryHoldsShort:
       preview.pantryHoldSeconds !== null && preview.pantryHoldSeconds < 60,
+  };
+}
+
+/** What a Loadout holds, in words, for a saved slot, a Muster Roll and a preview. */
+export interface LoadoutWords {
+  salt: number;
+  saltPack: number;
+  saltBearer: string | null;
+  panacea: boolean;
+  overreach: boolean;
+}
+
+export function describeLoadout(l: LoadoutWords): string {
+  const parts: string[] = [];
+  parts.push(l.salt > 0 ? `${l.salt} Salt on the Supplies` : 'no Salt on the Supplies');
+  parts.push(
+    l.saltPack > 0
+      ? `a Salt Pack of ${l.saltPack}${l.saltBearer ? ` carried by ${l.saltBearer}` : ''}`
+      : 'no Salt Pack',
+  );
+  parts.push(l.panacea ? 'a Panacea' : 'no Panacea');
+  parts.push(l.overreach ? 'Overreach' : 'no Overreach');
+  const text = parts.join(', ');
+  return `${text.charAt(0).toUpperCase()}${text.slice(1)}.`;
+}
+
+/** What the Gate's present choices hold, as a Loadout to save. */
+export function chosenLoadout(f: LoadoutForecast): LoadoutWords {
+  return {
+    salt: f.saltChosen,
+    saltPack: f.packChosen,
+    saltBearer: f.packChosen > 0 ? f.bearerChosen : null,
+    panacea: f.panaceaChosen,
+    overreach: f.overreachChosen,
   };
 }

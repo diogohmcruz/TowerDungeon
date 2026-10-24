@@ -84,7 +84,10 @@ class FieldAccountingTest {
           "overreachRule", "derived from the Roll in the player's meta, re-applied on restore",
           "loadoutSlots", "derived from the Roll in the player's meta, re-applied on restore",
           "savedLoadouts",
-              "kept in the player's meta (PlayerMeta.savedLoadouts), not in the Campaign");
+              "kept in the player's meta (PlayerMeta.savedLoadouts), not in the Campaign",
+          "musterRollHeld", "derived from the Roll in the player's meta, re-applied on restore",
+          "lastMuster",
+              "the last Party's Muster Roll offer, kept in the PlayerSlot for the Loadout line");
 
   private static final Map<String, String> GAME_STATE_TRANSIENT =
       merged(

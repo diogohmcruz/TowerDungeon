@@ -26,7 +26,7 @@ const preview = (over: Partial<LoadoutPreview> = {}): LoadoutPreview => ({
   ...over,
 });
 
-const none: LoadoutChoice = { salt: 0, pack: 0, bearer: '', panacea: false };
+const none: LoadoutChoice = { salt: 0, pack: 0, bearer: '', panacea: false, overreach: false };
 
 describe('loadoutForecast', () => {
   it('takes the defaults: the capacity, the Supplies and the Pantry as the frame says', () => {
@@ -61,6 +61,7 @@ describe('loadoutForecast', () => {
       pack: 9,
       bearer: 'WARRIOR',
       panacea: false,
+      overreach: false,
     });
 
     expect(f.packMax).toBe(2);
@@ -107,5 +108,26 @@ describe('loadoutForecast', () => {
     expect(loadoutForecast(preview({ pantryHoldSeconds: 90 }), none).pantryHoldsShort).toBeFalse();
     expect(loadoutForecast(preview({ pantryHoldSeconds: null }), none).pantryHoldsShort).toBeFalse();
     expect(loadoutForecast(preview({ partySize: 0 }), none).lastsChosen).toBeNull();
+  });
+
+  it('offers no Overreach unless the Roll holds it, and lengthens the drain when chosen', () => {
+    const held = preview({
+      overreach: {
+        supplyDrainMultiplier: 1.3,
+        starvationDamageMultiplier: 2,
+        lootMultiplier: 1.5,
+      },
+    });
+    const off = loadoutForecast(preview(), { ...none, overreach: true });
+    const on = loadoutForecast(held, { ...none, overreach: true });
+    const unset = loadoutForecast(held, none);
+
+    expect(off.overreachChosen).toBeFalse();
+    expect(off.lastsOverreach).toBeNull();
+    expect(off.lastsChosen).toBe(11);
+    expect(on.overreachChosen).toBeTrue();
+    expect(on.lastsChosen).toBe(8);
+    expect(unset.lastsChosen).toBe(11);
+    expect(unset.lastsOverreach).toBe(8);
   });
 });
