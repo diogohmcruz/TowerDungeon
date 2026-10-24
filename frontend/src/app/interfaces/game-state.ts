@@ -81,6 +81,35 @@ export interface BoatView {
   ticksToDock: number;
 }
 
+/** Where the Voyage stands: no Boat to send, ready to sail, or at sea (backend `VoyageState`). */
+export type VoyageState = 'UNAVAILABLE' | 'READY' | 'SAILING';
+
+/** What a Voyage returns for its Relics. */
+export type VoyageGoods = 'SALT' | 'SPORES';
+
+/**
+ * The Voyage as the frame reports it (backend `VoyageView`): its state, the cargo
+ * and goods while at sea, the ticks left, the sea's chance drawn at departure, and
+ * the rates and caps that turn a load into goods and into a chance. Whether the sea
+ * has taken the cargo is not in it. A Trial has no Boat, so it is UNAVAILABLE.
+ */
+export interface VoyageView {
+  state: VoyageState;
+  relics: number | null;
+  goods: VoyageGoods | null;
+  ticksLeft: number;
+  ticksTotal: number;
+  riskTaken: number | null;
+  seaRisk: number | null;
+  nextSeaRisk: number | null;
+  relicsPerLot: number;
+  saltPerLot: number;
+  sporesPerLot: number;
+  maxRelics: number;
+  riskReferenceRelics: number;
+  riskCap: number;
+}
+
 export interface Fallen {
   name: string;
   type: string;
@@ -244,6 +273,8 @@ export interface GameState {
   port?: PortView;
   /** The Boat; absent from older frames, which means not built. */
   boat?: BoatView;
+  /** The Voyage; absent from older frames, which means no Boat to send. */
+  voyage?: VoyageView;
   /** What the Village Tier has opened so far, comma-separated. */
   villageTierOpens: string;
   tomeViews: TomeView[];

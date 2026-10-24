@@ -124,7 +124,7 @@ describe('village captions', () => {
     it('states in words what finishes the footing', () => {
       load({ port: portView('FOOTING') });
 
-      const c = captionFor({ kind: 'port', id: 'PORT' }, state)!;
+      const c = captionFor({ kind: 'building', id: 'PORT' }, state)!;
 
       expect(c.name).toBe('The Port');
       expect(c.lock).toBe(
@@ -135,9 +135,9 @@ describe('village captions', () => {
 
     it('says the finished Port stands, and whether the Boat lies at the pier', () => {
       load({ port: portView('BUILT') });
-      expect(captionFor({ kind: 'port', id: 'PORT' }, state)!.lock).toBeNull();
+      expect(captionFor({ kind: 'building', id: 'PORT' }, state)!.lock).toBeNull();
       expect(
-        captionText(captionFor({ kind: 'port', id: 'PORT' }, state)!),
+        captionText(captionFor({ kind: 'building', id: 'PORT' }, state)!),
       ).toContain('pier stands');
 
       load({
@@ -145,7 +145,7 @@ describe('village captions', () => {
         boat: { state: 'DOCKED', dockTicks: 600, ticksToDock: 0 },
       });
       expect(
-        captionText(captionFor({ kind: 'port', id: 'PORT' }, state)!),
+        captionText(captionFor({ kind: 'building', id: 'PORT' }, state)!),
       ).toContain('A Boat lies at the pier');
     });
 
@@ -155,7 +155,7 @@ describe('village captions', () => {
           port: portView('BUILT'),
           boat: { state: 'DUE', dockTicks: 600, ticksToDock },
         });
-        return captionText(captionFor({ kind: 'port', id: 'PORT' }, state)!);
+        return captionText(captionFor({ kind: 'building', id: 'PORT' }, state)!);
       };
       expect(say(300)).toContain('The Boat is due, in about 5 minutes.');
       expect(say(61)).toContain('in about 2 minutes.');
@@ -168,19 +168,19 @@ describe('village captions', () => {
         boat: { state: 'NOT_BUILT', dockTicks: 600, ticksToDock: 0 },
       });
       expect(
-        captionText(captionFor({ kind: 'port', id: 'PORT' }, state)!),
+        captionText(captionFor({ kind: 'building', id: 'PORT' }, state)!),
       ).not.toContain('Boat');
       load({ port: portView('BUILT'), boat: undefined });
       expect(
-        captionText(captionFor({ kind: 'port', id: 'PORT' }, state)!),
+        captionText(captionFor({ kind: 'building', id: 'PORT' }, state)!),
       ).not.toContain('Boat');
     });
 
     it('has no caption while hidden or when the frame has no Port', () => {
       load({ port: portView('HIDDEN') });
-      expect(captionFor({ kind: 'port', id: 'PORT' }, state)).toBeNull();
+      expect(captionFor({ kind: 'building', id: 'PORT' }, state)).toBeNull();
       load({ port: undefined });
-      expect(captionFor({ kind: 'port', id: 'PORT' }, state)).toBeNull();
+      expect(captionFor({ kind: 'building', id: 'PORT' }, state)).toBeNull();
     });
   });
 
