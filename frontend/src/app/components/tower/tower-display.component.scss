@@ -13,4 +13,9 @@
   inset: 0;
   overflow: hidden;
   background: var(--sky);
+  /* The game page's host is pointer-events: none so it never covers the top bar, and that
+     is inherited: without this, the popover's buttons and the scene's own overlays are
+     click-through and the press lands on the canvas below. Overlays that must not take a
+     press (the hover caption, the veil, the scene lines) say none for themselves. */
+  pointer-events: auto;
 }

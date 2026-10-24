@@ -356,4 +356,70 @@ describe('GameComponent', () => {
       expect(host().querySelector('.held-party')).not.toBeNull();
     });
   });
+
+  describe('a real press reaches the menus (the host takes no pointer, and that is inherited)', () => {
+    /**
+     * The control found at a point by the browser's own hit test, as a real mouse does,
+     * then the press, the lift and the click delivered to that very element. Setting
+     * `button.click()` on a node skips the hit test, which is how a menu that nothing could
+     * reach shipped in 3.0.0.
+     */
+    const pressAt = (button: HTMLElement): Element | null => {
+      const box = button.getBoundingClientRect();
+      const x = box.left + box.width / 2;
+      const y = box.top + box.height / 2;
+      const hit = document.elementFromPoint(x, y);
+      if (hit) {
+        const init = { bubbles: true, clientX: x, clientY: y, button: 0 };
+        hit.dispatchEvent(new PointerEvent('pointerdown', init));
+        hit.dispatchEvent(new PointerEvent('pointerup', init));
+        hit.dispatchEvent(new MouseEvent('click', init));
+      }
+      return hit;
+    };
+    const reaches = (button: HTMLElement) => {
+      const hit = pressAt(button);
+      return !!hit && (hit === button || button.contains(hit));
+    };
+
+    beforeEach(() => {
+      // The card is placed within the stage's viewport: make it the window the test can hit.
+      stage().setViewport({ width: window.innerWidth, height: window.innerHeight });
+      document.body.appendChild(host());
+      stateService.update({
+        village: { ...stateService.state().village, food: 400 },
+      });
+    });
+    afterEach(() => host().remove());
+
+    it('sends the command of a popover action pressed with the mouse', () => {
+      TestBed.inject(PopoverService).openFor({ kind: 'building', id: 'SILO' });
+      TestBed.flushEffects();
+      fixture.detectChanges();
+      const sell = host().querySelector('.popover button.btn') as HTMLButtonElement;
+      expect(sell.textContent).toContain('Sell Food');
+      expect(reaches(sell)).withContext('the press lands on the button').toBeTrue();
+      expect(sendAction).toHaveBeenCalledOnceWith(GameAction.SELL_FOOD, undefined);
+      expect(host().querySelector('.popover')).withContext('the card stays').not.toBeNull();
+    });
+
+    it('sends the command of a list view action pressed with the mouse', () => {
+      TestBed.inject(ListViewService).show();
+      TestBed.flushEffects();
+      fixture.detectChanges();
+      const sell = Array.from(
+        host().querySelectorAll<HTMLButtonElement>('.list button.btn'),
+      ).find((b) => b.textContent?.includes('Sell Food'))!;
+      expect(reaches(sell)).withContext('the press lands on the button').toBeTrue();
+      expect(sendAction).toHaveBeenCalledWith(GameAction.SELL_FOOD, undefined);
+    });
+
+    it('reaches the top bar while the list stands over the scene', () => {
+      TestBed.inject(ListViewService).show();
+      fixture.detectChanges();
+      const toggle = host().querySelector('.menus-toggle') as HTMLButtonElement;
+      expect(reaches(toggle)).toBeTrue();
+      expect(TestBed.inject(ListViewService).open()).toBeFalse();
+    });
+  });
 });
