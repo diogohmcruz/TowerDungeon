@@ -82,8 +82,8 @@ void main() {
   int idx = int(base + step(threshold, level - base));
 
   vec3 color = uRamp[idx];
-  // A Guardian's lines and fill are crimson; it is also larger, never colour alone.
-  if (vCell.z > 0.5 && vCell.z < 1.5 && idx >= 1) color = uCrimson;
+  // A Guardian's detail and fill are crimson, its slot-1 lines keep the ramp so the body shows its form; it is also larger, never colour alone.
+  if (vCell.z > 0.5 && vCell.z < 1.5 && idx >= 2) color = uCrimson;
   gl_FragColor = vec4(color, 1.0);
   #include <colorspace_fragment>
 }
