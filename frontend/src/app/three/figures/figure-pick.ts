@@ -142,3 +142,22 @@ export function pickFigure(
   }
   return best;
 }
+
+/**
+ * The one hit-test of the scene: the sprite a click opens and the sprite a hover
+ * highlights, so the two can never disagree. The canvas snaps a figure to its own
+ * coarser grid, so the hit area grows by one virtual pixel (`pixelScale`) more.
+ */
+export function pickSprite(
+  camera: THREE.Camera,
+  sprites: readonly FigureInstance[],
+  x: number,
+  y: number,
+  canvasWidth: number,
+  canvasHeight: number,
+  pixelScale: number,
+): FigureInstance | null {
+  return pickFigure(camera, sprites, x, y, canvasWidth, canvasHeight, {
+    margin: PICK_MARGIN + pixelScale,
+  });
+}

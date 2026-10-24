@@ -103,3 +103,42 @@ void main() {
   #include <colorspace_fragment>
 }
 `;
+
+/**
+ * The outline of the figure under the pointer: the same ring as the chosen unit's, but
+ * dashed, so a hover reads as "this one" and not as "chosen". No animation, no glow.
+ */
+export const HOVER_OUTLINE_FRAGMENT = /* glsl */ `
+#define OUTLINE_PAD 1.0
+uniform sampler2D uFigures;
+uniform vec2 uGrid;
+uniform vec2 uCellPx;
+uniform float uTexelStep;
+uniform vec3 uRamp[4];
+
+varying vec2 vUv;
+varying vec4 vCell;
+
+float inked(vec2 p) {
+  if (p.x < 0.0 || p.y < 0.0 || p.x >= uCellPx.x || p.y >= uCellPx.y) return 0.0;
+  vec2 uv = (vCell.xy * uCellPx + p + 0.5) / (uGrid * uCellPx);
+  return floor(texture2D(uFigures, uv).r * 255.0 / uTexelStep + 0.5) > 0.5 ? 1.0 : 0.0;
+}
+
+void main() {
+  vec2 px = floor(vec2(vUv.x, 1.0 - vUv.y) * (uCellPx + 2.0 * OUTLINE_PAD)) - OUTLINE_PAD;
+  if (inked(px) > 0.5) discard;
+  float near = 0.0;
+  for (int dy = -1; dy <= 1; dy++) {
+    for (int dx = -1; dx <= 1; dx++) {
+      near += inked(px + vec2(float(dx), float(dy)));
+    }
+  }
+  if (near < 0.5) discard;
+  // Dashed: two texels drawn, two left out, along the diagonal of the grid. The chosen unit's
+  // outline is solid, so the two differ in line, not only in colour.
+  if (mod(floor((px.x + px.y) / 2.0), 2.0) > 0.5) discard;
+  gl_FragColor = vec4(uRamp[3], 1.0);
+  #include <colorspace_fragment>
+}
+`;

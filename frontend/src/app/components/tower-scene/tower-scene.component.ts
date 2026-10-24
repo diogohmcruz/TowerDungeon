@@ -19,6 +19,7 @@ import {
 } from '../../three/ink/ink-fixture';
 import { StageService } from '../../services/stage.service';
 import { GameStateService } from '../../services/game-state.service';
+import { UnitHoverService } from '../../services/unit-hover.service';
 import { LaunchService } from '../../services/launch.service';
 import { VillageSelectionService } from '../../services/village-selection.service';
 import { captionFor, captionText } from '../../three/village/village-captions';
@@ -48,6 +49,18 @@ import { TowerSceneGraph } from './tower-scene-graph.component';
         [pillarMarks]="pillarMarks()"
       />
     </ngt-canvas>
+    @if (unitHover.hover(); as hover) {
+      @if (hover.caption) {
+        <p
+          class="unit-hover"
+          [class.flip]="hover.x > region().left + region().width - 220"
+          [style.left.px]="hover.x"
+          [style.top.px]="hover.y"
+        >
+          {{ hover.caption }}
+        </p>
+      }
+    }
     <app-scene-lines
       [caption]="caption()"
       [locked]="locked()"
@@ -62,6 +75,22 @@ import { TowerSceneGraph } from './tower-scene-graph.component';
       position: relative;
       width: 100%;
       height: 100%;
+    }
+    /* Beside the pointer; plain words, never a pointer target, no motion of its own. */
+    .unit-hover {
+      position: absolute;
+      margin: 0;
+      padding: 2px 8px;
+      transform: translate(14px, 14px);
+      background: var(--panel);
+      border: 1px solid var(--rule);
+      color: var(--text);
+      font-size: 12px;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+    .unit-hover.flip {
+      transform: translate(calc(-100% - 14px), 14px);
     }
     /* The canvas draws at 1 / pixel scale of its CSS size; keep the pixels hard. */
     :host ::ng-deep canvas {
@@ -128,6 +157,7 @@ export class TowerScene {
 
   private readonly game = inject(GameStateService).state;
   private readonly selection = inject(VillageSelectionService);
+  protected readonly unitHover = inject(UnitHoverService);
   private readonly launch = inject(LaunchService);
 
   /** Where the words sit: inside the Tower's region, clear of the menus. */

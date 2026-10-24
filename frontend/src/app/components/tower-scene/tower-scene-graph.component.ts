@@ -44,6 +44,7 @@ import {
 import {
   FIGURE_FRAGMENT,
   FIGURE_VERTEX,
+  HOVER_OUTLINE_FRAGMENT,
   OUTLINE_FRAGMENT,
   OUTLINE_PAD,
 } from '../../three/figures/figure.glsl';
@@ -51,10 +52,10 @@ import {
   figureId,
   figureRect,
   parseFigureId,
-  PICK_MARGIN,
-  pickFigure,
+  pickSprite,
   UnitFocus,
 } from '../../three/figures/figure-pick';
+import { hoverCaption } from '../../three/figures/unit-hover';
 import {
   createInkUniforms,
   setInkTheme,
@@ -104,6 +105,7 @@ import { applyStageView, towerRegion } from '../../three/stage-view';
 import { StageService } from '../../services/stage.service';
 import { TransitionService } from '../../services/transition.service';
 import { ZoomService } from '../../services/zoom.service';
+import { UnitHoverService } from '../../services/unit-hover.service';
 import {
   dampFactor,
   prefersReducedMotion,
@@ -380,6 +382,25 @@ function floorSurfaceY(n: number): number {
       />
     </ngt-instanced-mesh>
 
+    <!-- The dashed outline of the figure under the pointer: one instance, the same ring, thinner. -->
+    <ngt-instanced-mesh
+      #hoverOutline
+      *args="[undefined, undefined, 1]"
+      [frustumCulled]="false"
+    >
+      <ngt-plane-geometry *args="[1, 1]">
+        <ngt-instanced-buffer-attribute
+          attach="attributes.aCell"
+          *args="[hoverOutlineCell, 4]"
+        />
+      </ngt-plane-geometry>
+      <ngt-shader-material
+        [vertexShader]="figureVertex"
+        [fragmentShader]="hoverOutlineFragment"
+        [uniforms]="figureUniforms"
+      />
+    </ngt-instanced-mesh>
+
     <!-- Specks: the figures over the cap, one more draw call. -->
     <ngt-instanced-mesh
       #specks
@@ -460,6 +481,7 @@ export class TowerSceneGraph {
   protected readonly figureVertex = FIGURE_VERTEX;
   protected readonly figureFragment = FIGURE_FRAGMENT;
   protected readonly outlineFragment = OUTLINE_FRAGMENT;
+  protected readonly hoverOutlineFragment = HOVER_OUTLINE_FRAGMENT;
   protected readonly inkUniforms = createInkUniforms(this.theme());
 
   // Textures owned here, disposed on destroy.
@@ -500,6 +522,7 @@ export class TowerSceneGraph {
   protected readonly markCell = new Float32Array(MARK_CAPACITY * 4);
   protected readonly speckCell = new Float32Array(SPECK_CAPACITY * 4);
   protected readonly outlineCell = new Float32Array(4);
+  protected readonly hoverOutlineCell = new Float32Array(4);
   protected readonly bodyTone = new Float32Array(BOX_CAPACITY);
   protected readonly bodyAlpha = new Float32Array(BOX_CAPACITY);
   protected readonly bodyRole = new Float32Array(BOX_CAPACITY);
@@ -527,6 +550,8 @@ export class TowerSceneGraph {
     viewChild<ElementRef<THREE.InstancedMesh>>('specks');
   private readonly outlineRef =
     viewChild<ElementRef<THREE.InstancedMesh>>('outline');
+  private readonly hoverOutlineRef =
+    viewChild<ElementRef<THREE.InstancedMesh>>('hoverOutline');
 
   /**
    * The strip plan is rebuilt only when the tower's `layoutVersion` changes
@@ -648,6 +673,9 @@ export class TowerSceneGraph {
   private readonly store = injectStore();
   private readonly stage = inject(StageService);
   private readonly zoom = inject(ZoomService);
+  private readonly unitHover = inject(UnitHoverService);
+  /** Where the pointer last was on the canvas (CSS px), when it is a mouse or a pen; null off the canvas and for touch. */
+  private pointer: { x: number; y: number } | null = null;
   private readonly transition = inject(TransitionService);
   private readonly shot = new ShotBlend();
   private readonly reducedMotion = prefersReducedMotion();
@@ -888,6 +916,8 @@ export class TowerSceneGraph {
           ? figureRect(camera, subject, el.clientWidth, el.clientHeight)
           : null,
       );
+
+      this.updateUnitHover();
     });
   }
 
@@ -1076,12 +1106,23 @@ export class TowerSceneGraph {
 
   /** The sprite the unit view is on, if it is one (a speck has no sprite to outline). */
   private writeOutline(sprites: FigureInstance[]): void {
-    const mesh = this.outlineRef()?.nativeElement;
+    const focus = this.zoom.focus();
+    this.placeOutline(
+      this.outlineRef()?.nativeElement,
+      this.outlineCell,
+      (focus && sprites.find((s) => s.id === figureId(focus))) || null,
+    );
+  }
+
+  /** Puts a one-instance outline mesh on a sprite, or hides it. */
+  private placeOutline(
+    mesh: THREE.InstancedMesh | undefined,
+    cell: Float32Array,
+    f: FigureInstance | null,
+  ): void {
     if (!mesh?.isInstancedMesh) {
       return;
     }
-    const focus = this.zoom.focus();
-    const f = focus && sprites.find((s) => s.id === figureId(focus));
     if (!f) {
       mesh.count = 0;
       return;
@@ -1098,13 +1139,63 @@ export class TowerSceneGraph {
         ),
       ),
     );
-    this.outlineCell.set(
+    cell.set(
       [f.cell % FIGURE_COLS, Math.floor(f.cell / FIGURE_COLS), f.role, 1],
       0,
     );
     mesh.count = 1;
     mesh.instanceMatrix.needsUpdate = true;
     markAttributes(mesh, ['aCell']);
+  }
+
+  /**
+   * The sprite under the pointer, by the very hit-test a click uses (`figureAt`), drawn with the
+   * dashed outline and named beside the pointer. Run every frame, so it follows a figure that
+   * moves and a camera that eases. Off for the chosen unit, for touch, while a button is down
+   * (a drag pans), and under a launch or Expedition object, which wins as the group hover does.
+   */
+  private updateUnitHover(): void {
+    const hit = this.hoveredSprite();
+    this.placeOutline(this.hoverOutlineRef()?.nativeElement, this.hoverOutlineCell, hit);
+    const at = this.pointer;
+    this.unitHover.set(
+      hit && at
+        ? { id: hit.id, caption: this.captionOfFigure(hit.id), x: at.x, y: at.y }
+        : null,
+    );
+  }
+
+  private hoveredSprite(): FigureInstance | null {
+    const at = this.pointer;
+    const over = this.selection.hovered();
+    if (
+      !at ||
+      !this.active() ||
+      this.pointerDown ||
+      (over && !isGroupSubject(over))
+    ) {
+      return null;
+    }
+    const hit = this.spriteAt(at.x, at.y);
+    const focus = this.zoom.focus();
+    if (!hit || (focus && hit.id === figureId(focus))) {
+      return null;
+    }
+    return hit;
+  }
+
+  private captionOfFigure(id: string): string {
+    const focus = parseFigureId(id);
+    if (!focus) {
+      return '';
+    }
+    const member =
+      focus.kind === 'unit'
+        ? this.flattenSquad(this.party()).find((m) => m.id === focus.id)
+        : this.tower()?.floors?.[this.currentFloor()]?.enemies?.find(
+            (m) => m.id === focus.id,
+          );
+    return member ? hoverCaption(member, focus.kind) : '';
   }
 
   /** The figure (sprite or speck) the unit view is on, as the plan places it now. */
@@ -1188,8 +1279,16 @@ export class TowerSceneGraph {
         }
       }
     };
-    const onHoverMove = (e: PointerEvent) => this.hoverGroupAt(e);
-    const onHoverLeave = () => this.clearGroupHover();
+    const onHoverMove = (e: PointerEvent) => {
+      // A finger has no hover: only a mouse or a pen names what it is over.
+      this.pointer =
+        e.pointerType === 'touch' ? null : this.pointerAt(e);
+      this.hoverGroupAt(e);
+    };
+    const onHoverLeave = () => {
+      this.pointer = null;
+      this.clearGroupHover();
+    };
     const onPointerMove = (e: PointerEvent) => {
       if (!this.pointerDown) return;
       nudge((e.clientY - this.lastPointerY) * 0.02);
@@ -1264,6 +1363,11 @@ export class TowerSceneGraph {
     }
   }
 
+  private pointerAt(e: MouseEvent): { x: number; y: number } {
+    const [x, y] = this.canvasPoint(e);
+    return { x, y };
+  }
+
   private canvasPoint(e: MouseEvent): [number, number] {
     const box = this.store.snapshot.gl.domElement.getBoundingClientRect();
     return [e.clientX - box.left, e.clientY - box.top];
@@ -1300,21 +1404,25 @@ export class TowerSceneGraph {
     return [...unionRects(figures), ...marks];
   }
 
-  /** The member whose sprite is under a click, if any. */
-  private figureAt(e: MouseEvent): UnitFocus | null {
+  /** The sprite at a point of the canvas (CSS px): one hit-test for the click and the hover. */
+  private spriteAt(x: number, y: number): FigureInstance | null {
     const el = this.store.snapshot.gl.domElement;
-    const box = el.getBoundingClientRect();
     const plan = this.figurePlan();
-    const hit = pickFigure(
+    return pickSprite(
       this.store.snapshot.camera,
       plan.marks.slice(0, plan.figureCount),
-      e.clientX - box.left,
-      e.clientY - box.top,
+      x,
+      y,
       el.clientWidth,
       el.clientHeight,
-      // The canvas snaps the figure to its own coarser grid: one virtual pixel more on each side.
-      { margin: PICK_MARGIN + this.stage.scale() },
+      this.stage.scale(),
     );
+  }
+
+  /** The member whose sprite is under a click, if any. */
+  private figureAt(e: MouseEvent): UnitFocus | null {
+    const [x, y] = this.canvasPoint(e);
+    const hit = this.spriteAt(x, y);
     return hit ? parseFigureId(hit.id) : null;
   }
 
