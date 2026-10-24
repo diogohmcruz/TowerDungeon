@@ -34,7 +34,7 @@ export function fitVillageCamera(camera: THREE.PerspectiveCamera): void {
   const pose = villagePose(camera.aspect);
   camera.fov = VILLAGE_FOV;
   camera.near = 0.5;
-  camera.far = pose.distance + 80;
+  camera.far = pose.distance + 120;
   camera.position.set(...pose.position);
   camera.lookAt(...pose.target);
   camera.updateProjectionMatrix();

@@ -33,6 +33,7 @@ import { subjectOfVolume } from '../../three/village/village-subjects';
 import { applyStageView } from '../../three/stage-view';
 import { StageService } from '../../services/stage.service';
 import { fitVillageCamera } from '../../three/village/village-camera';
+import { LandscapeGraph } from '../landscape/landscape-graph.component';
 import '../../three/catalogue';
 
 /** Instances the Village mesh can hold (about 250 are used at the busiest). */
@@ -40,6 +41,8 @@ const VILLAGE_CAPACITY = 512;
 
 /** The Village's own fog: its depth is about 30 units, the Tower fades by alpha. */
 const VILLAGE_FOG_DENSITY = 0.01;
+/** World y of the Village ground's top face (its box is 0.2 thick, centred on -0.2). */
+const VILLAGE_GROUND_TOP = -0.1;
 
 /**
  * The Village Elevation: one instanced ink mesh, no lights, a fixed vantage.
@@ -49,9 +52,17 @@ const VILLAGE_FOG_DENSITY = 0.01;
   selector: 'app-village-scene-graph',
   changeDetection: ChangeDetectionStrategy.OnPush,
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
-  imports: [NgtArgs],
+  imports: [NgtArgs, LandscapeGraph],
   template: `
     <ngt-color *args="[clearHex()]" attach="background" />
+    <!-- The ambient landscape behind and to the left of the Village: one more draw call. -->
+    <app-landscape-graph
+      [quarter]="village().quarter ?? null"
+      [theme]="theme()"
+      [groundY]="GROUND_TOP"
+      [fogDensity]="FOG_DENSITY"
+      [time]="village().flicker"
+    />
     <ngt-instanced-mesh
       #village
       *args="[undefined, undefined, CAPACITY]"
@@ -95,6 +106,8 @@ export class VillageSceneGraph {
   protected readonly clearHex = computed(() => RAMPS[this.theme()][0]);
 
   protected readonly CAPACITY = VILLAGE_CAPACITY;
+  protected readonly GROUND_TOP = VILLAGE_GROUND_TOP;
+  protected readonly FOG_DENSITY = VILLAGE_FOG_DENSITY;
   protected readonly inkVertex = INK_VERTEX;
   protected readonly inkFragment = INK_FRAGMENT;
   protected readonly inkUniforms = createInkUniforms(this.theme());

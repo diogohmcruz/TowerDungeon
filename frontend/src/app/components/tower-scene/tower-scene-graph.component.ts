@@ -106,6 +106,8 @@ import {
 import { towerLaunchVolumes } from '../../three/launch/launch-objects';
 import { subjectOfVolume } from '../../three/village/village-subjects';
 import type { Volume } from '../../three/village/village-layout';
+import type { Quarter } from '../../interfaces/game-state';
+import { LandscapeGraph } from '../landscape/landscape-graph.component';
 
 /** Instances of the box mesh: the foundation and the backdrop wall. */
 const BOX_CAPACITY = 4;
@@ -113,6 +115,13 @@ const BOX_CAPACITY = 4;
 const LAUNCH_CAPACITY = 128;
 /** Fog starts to eat the ink beyond the focal distance of the battle shot. */
 const FOG_NEAR = 13;
+
+/** World y of the ground the foundation stands on (its underside), where the landscape's plain meets it. */
+const GROUND_TOP = floorToY(0) + 0.13 - 0.85;
+/** Fog of the landscape in this scene (the camera is closer than the Village's). */
+const LANDSCAPE_FOG = 0.012;
+/** The plain reaches past the camera (z 12.5), so no void shows under it. */
+const LANDSCAPE_NEAR = 20;
 
 /** Specks and figures are tinted by ink density only; this is the tone of a figure over the cap. */
 const SPECK_TONE = 0.85;
@@ -148,10 +157,19 @@ function floorSurfaceY(n: number): number {
   selector: 'app-tower-scene-graph',
   changeDetection: ChangeDetectionStrategy.OnPush,
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
-  imports: [NgtArgs],
+  imports: [NgtArgs, LandscapeGraph],
   template: `
     <!-- Drawn, not lit (ADR 0003): clear colour = ramp slot 0, no lights, no scene fog. -->
     <ngt-color *args="[clearHex()]" attach="background" />
+
+    <!-- The ambient landscape: the plain, ridges and ruins the Tower stands in, one draw call. -->
+    <app-landscape-graph
+      [quarter]="quarter()"
+      [theme]="theme()"
+      [groundY]="GROUND_TOP"
+      [fogDensity]="LANDSCAPE_FOG"
+      [nearZ]="LANDSCAPE_NEAR"
+    />
 
     <!-- Floor strips: three layers per floor and the pencil above the Highest Floor, one draw call. -->
     <ngt-instanced-mesh
@@ -329,6 +347,26 @@ export class TowerSceneGraph {
   launchOverride = input<{ bell: boolean; recall: boolean } | null>(null);
 
   private readonly dark = signal(this.readTheme());
+  private readonly gameState = inject(GameStateService).state;
+
+  /** The Quarter's weather for the landscape (`?quarter=` picks one in dev fixtures). */
+  protected readonly quarter = computed<Quarter | null>(() => {
+    const forced = isDevMode()
+      ? new URLSearchParams(location.search).get('quarter')?.toUpperCase()
+      : undefined;
+    if (
+      forced === 'SPRING' ||
+      forced === 'SUMMER' ||
+      forced === 'AUTUMN' ||
+      forced === 'WINTER'
+    ) {
+      return forced;
+    }
+    return this.gameState().quarter ?? null;
+  });
+  protected readonly GROUND_TOP = GROUND_TOP;
+  protected readonly LANDSCAPE_FOG = LANDSCAPE_FOG;
+  protected readonly LANDSCAPE_NEAR = LANDSCAPE_NEAR;
 
   /** Canvas width/height ratio; drives how much the formations shrink to fit. */
   private readonly viewAspect = signal(0.6);
