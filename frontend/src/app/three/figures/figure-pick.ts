@@ -21,9 +21,12 @@ export function figureId(focus: UnitFocus): string {
   return `${focus.kind}-${focus.id}`;
 }
 
-/** The member a figure id names, or null for a Wave column, a numeral or anything else. */
+/**
+ * The member a figure id names, or null for a Wave column, a numeral or anything else. A member's
+ * id is an int from the server and may be negative ("enemy--1549096401"): it is a hash, not a count.
+ */
 export function parseFigureId(id: string): UnitFocus | null {
-  const match = /^(unit|enemy)-(\d+)$/.exec(id);
+  const match = /^(unit|enemy)-(-?\d+)$/.exec(id);
   return match
     ? { kind: match[1] as UnitFocus['kind'], id: Number(match[2]) }
     : null;
