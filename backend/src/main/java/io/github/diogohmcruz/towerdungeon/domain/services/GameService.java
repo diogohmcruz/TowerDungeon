@@ -870,6 +870,7 @@ public class GameService {
           Command.SellMaterials _,
           Command.SellRelics _,
           Command.SellSalt _,
+          Command.SendVoyage _,
           Command.AssignTrade _,
           Command.GiveRemedy _,
           Command.ReattachPart _,
@@ -935,6 +936,7 @@ public class GameService {
             case Command.ReattachPart reattach -> reattachPart(slot, gameState, playerId, reattach);
             case Command.BuyPosts posts -> buyPosts(slot, gameState, playerId, posts);
             case Command.BuildPort _ -> buildPort(slot, gameState, playerId);
+            case Command.SendVoyage voyage -> sendVoyage(slot, gameState, playerId, voyage);
             case Command.Hold _ -> hold(slot, playerId);
             case Command.Resume _ -> resume(slot, playerId);
             case Command.SendReinforcements wave ->
@@ -1207,6 +1209,21 @@ public class GameService {
     }
     slot.emit("PORT_BUILT", Map.of());
     return CommandResult.applied("The Port was finished.");
+  }
+
+  private CommandResult sendVoyage(
+      PlayerSlot slot, GameState gameState, String playerId, Command.SendVoyage command) {
+    if (command.relics() == null || command.goods() == null) {
+      return CommandResult.rejected(
+          Reason.INVALID_ARGUMENT, "Say how many Relics, and Salt or Spores to bring back.");
+    }
+    var refused = gameState.sendVoyage(command.relics(), command.goods());
+    log.info("Player[{}] Voyage {} -> {}", playerId, command, refused.orElse("sailed"));
+    if (refused.isPresent()) {
+      return CommandResult.rejected(Reason.PURCHASE_REFUSED, refused.get());
+    }
+    slot.emit("VOYAGE_SENT", Map.of("relics", command.relics(), "goods", command.goods().name()));
+    return CommandResult.applied("The Boat sailed.");
   }
 
   private CommandResult startExpedition(
@@ -1919,6 +1936,10 @@ public class GameService {
     if (boatBefore != gameState.getBoat().state()
         && gameState.getBoat().state() == GameState.BoatState.DOCKED) {
       slot.emit("BOAT_DOCKED", Map.of());
+    }
+    var voyageEnded = gameState.takeVoyageEnded();
+    if (voyageEnded != null) {
+      slot.emit(voyageEnded, Map.of());
     }
     var party = new AimTally();
     var garrison = new AimTally();

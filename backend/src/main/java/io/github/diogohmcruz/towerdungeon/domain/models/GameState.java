@@ -164,6 +164,12 @@ public class GameState {
   /** Whether the Boat has docked and the Arrivals have stepped into the Reserves. Once only. */
   private boolean arrivalsCame;
 
+  /** The Voyage under way; null while the Boat is in port. */
+  @JsonIgnore private Voyage sailing;
+
+  /** How the last Voyage ended, until the service has told the player; null otherwise. */
+  @JsonIgnore private String voyageEnded;
+
   /** The Trial this Campaign is; null for a real Campaign. Shown to the client without a seed. */
   @JsonInclude(JsonInclude.Include.NON_NULL)
   private TrialRun trial;
@@ -1022,6 +1028,7 @@ public class GameState {
     rechargeHomeCasters();
     refreshVillageTier();
     advanceBoat();
+    advanceVoyage();
   }
 
   private void writeStarvation(Optional<Trade> lostTrade, Unit lostReserve) {
@@ -1246,6 +1253,159 @@ public class GameState {
       writeLedger(
           arrival.getName() + ", " + typeName(arrival.getUnitType()) + ", steps ashore.", false);
     }
+  }
+
+  /** Where the Voyage stands: no Boat to send, ready to sail, or at sea. */
+  public enum VoyageState {
+    UNAVAILABLE,
+    READY,
+    SAILING
+  }
+
+  /**
+   * The Voyage for the frame: its state, the cargo and goods while at sea, the ticks left of the
+   * ticks it takes, the sea risk now and the next Quarter's, and the rates and caps that turn a
+   * load into goods and into a chance (the chance is {@code min(riskCap, seaRisk * relics /
+   * riskReferenceRelics)}). Whether the sea has already taken the cargo is not shown.
+   */
+  public record VoyageView(
+      VoyageState state,
+      Integer relics,
+      VoyageGoods goods,
+      int ticksLeft,
+      int ticksTotal,
+      Double riskTaken,
+      Double seaRisk,
+      Double nextSeaRisk,
+      int relicsPerLot,
+      int saltPerLot,
+      int sporesPerLot,
+      int maxRelics,
+      int riskReferenceRelics,
+      double riskCap) {}
+
+  public VoyageView getVoyage() {
+    var rules = config.getVoyage();
+    var state =
+        sailing != null
+            ? VoyageState.SAILING
+            : getBoat().state() == BoatState.DOCKED ? VoyageState.READY : VoyageState.UNAVAILABLE;
+    return new VoyageView(
+        state,
+        sailing == null ? null : sailing.relics(),
+        sailing == null ? null : sailing.goods(),
+        sailing == null ? 0 : sailing.ticksLeft(),
+        rules.getTicks(),
+        sailing == null ? null : sailing.risk(),
+        getSeaRisk(),
+        getNextSeaRisk(),
+        rules.getRelicsPerLot(),
+        rules.getSaltPerLot(),
+        rules.getSporesPerLot(),
+        rules.getMaxRelics(),
+        rules.getRiskReferenceRelics(),
+        rules.getRiskCap());
+  }
+
+  /**
+   * The chance the sea takes a cargo of {@code relics} if it sailed now: the Year's sea risk scaled
+   * by the cargo's value, never above the cap.
+   */
+  public double voyageRisk(int relics) {
+    var rules = config.getVoyage();
+    var seaRisk = getSeaRisk();
+    var scaled =
+        seaRisk == null ? 0d : seaRisk * relics / Math.max(1, rules.getRiskReferenceRelics());
+    return Math.min(rules.getRiskCap(), Math.max(0d, scaled));
+  }
+
+  /**
+   * Sends the docked Boat on a Voyage with {@code relics} from the Vault, to return {@code goods}.
+   * The sea's chance is drawn here, once, from the combat stream. Returns why not, or empty.
+   */
+  public Optional<String> sendVoyage(int relics, VoyageGoods goods) {
+    var rules = config.getVoyage();
+    if (gameOutcome != GameOutcome.PLAYING || phase != CampaignPhase.ACTIVE) {
+      return Optional.of("Nothing sails.");
+    }
+    if (getBoat().state() != BoatState.DOCKED) {
+      return Optional.of("There is no Boat at the pier.");
+    }
+    if (sailing != null) {
+      return Optional.of("The Boat is already at sea.");
+    }
+    if (goods == null) {
+      return Optional.of("Say what the Boat should bring back: Salt or Spores.");
+    }
+    if (relics <= 0 || relics % rules.getRelicsPerLot() != 0) {
+      return Optional.of("Relics go in lots of " + rules.getRelicsPerLot() + ".");
+    }
+    if (relics > rules.getMaxRelics()) {
+      return Optional.of("The Boat carries at most " + rules.getMaxRelics() + " Relics.");
+    }
+    if (vaultRelics() < relics) {
+      return Optional.of("The Vault does not hold " + relics + " Relics.");
+    }
+    var risk = voyageRisk(relics);
+    var lost = random.combat().nextDouble() < risk;
+    resources.merge(ResourceType.RELICS, -(double) relics, Double::sum);
+    sailing = new Voyage(relics, goods, rules.getTicks(), lost, currentQuarter(), risk);
+    writeLedger("The Boat sails with " + relics + " Relics, for " + goodsName(goods) + ".", false);
+    return Optional.empty();
+  }
+
+  private static String goodsName(VoyageGoods goods) {
+    return goods == VoyageGoods.SALT ? "Salt" : "Spores";
+  }
+
+  /**
+   * Counts one connected lifecycle tick of the Voyage. On the last it comes home: the goods go into
+   * the Stockroom as the Salt a Party did not use does, or the sea has taken the cargo, which costs
+   * the cargo and never the Boat.
+   */
+  private void advanceVoyage() {
+    if (sailing == null || phase != CampaignPhase.ACTIVE || gameOutcome != GameOutcome.PLAYING) {
+      return;
+    }
+    sailing = sailing.sailed();
+    if (sailing.ticksLeft() > 0) {
+      return;
+    }
+    var rules = config.getVoyage();
+    var voyage = sailing;
+    sailing = null;
+    if (voyage.lost()) {
+      voyageEnded = "VOYAGE_LOST";
+      writeLedger(
+          "The sea took the cargo of the Voyage sailed in "
+              + quarterName(voyage.sailedIn())
+              + ". The Boat comes home empty.",
+          true);
+      return;
+    }
+    var lots = voyage.relics() / rules.getRelicsPerLot();
+    if (voyage.goods() == VoyageGoods.SALT) {
+      var salt = lots * rules.getSaltPerLot();
+      village.returnSalt(salt);
+      writeLedger("The Boat returns with " + salt + " Salt.", false);
+    } else {
+      var spores = lots * rules.getSporesPerLot();
+      village.addSpores(spores);
+      writeLedger("The Boat returns with " + spores + " Spores.", false);
+    }
+    voyageEnded = "VOYAGE_RETURNED";
+  }
+
+  private static String quarterName(Quarter quarter) {
+    var name = quarter.name().toLowerCase();
+    return Character.toUpperCase(name.charAt(0)) + name.substring(1);
+  }
+
+  /** How the Voyage that has just ended ended, once; null when none has. */
+  public String takeVoyageEnded() {
+    var ended = voyageEnded;
+    voyageEnded = null;
+    return ended;
   }
 
   private PortState portState() {
@@ -2509,7 +2669,8 @@ public class GameState {
             boatTicks,
             arrivalsCame,
             yearRuns() ? yearNumber : 1,
-            yearRuns() ? tickInYear : 0);
+            yearRuns() ? tickInYear : 0,
+            sailing);
     return new GameSnapshot(
         campaign,
         expeditionActive ? expeditionSnapshot() : null,
@@ -2692,6 +2853,7 @@ public class GameState {
     state.portBuilt = Boolean.TRUE.equals(c.portBuilt()) && snapshot.trial() == null;
     state.boatTicks = snapshot.trial() == null && c.boatTicks() != null ? c.boatTicks() : 0;
     state.arrivalsCame = snapshot.trial() == null && Boolean.TRUE.equals(c.arrivalsCame());
+    state.sailing = state.arrivalsCame ? c.voyage() : null;
     state.enemiesDefeated = c.enemiesDefeated();
     state.gameOutcome = c.outcome();
     state.lastRunSummary = c.lastExpeditionSummary();
