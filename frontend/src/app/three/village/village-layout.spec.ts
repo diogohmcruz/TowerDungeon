@@ -109,7 +109,7 @@ describe('village layout', () => {
   describe('Annexes', () => {
     it('keeps the Annexes apart along x', () => {
       const ranges = Object.entries(ANNEX_X)
-        .filter(([k]) => k !== 'pans') // the Pans stand in front of the Quarry
+        .filter(([k]) => k !== 'pans' && k !== 'cellar') // the Pans stand before the Quarry, the Cellar before the Fort
         .map(([, r]) => r)
         .sort((a, b) => a[0] - b[0]);
       for (let i = 1; i < ranges.length; i++) {
@@ -167,7 +167,7 @@ describe('village layout', () => {
 
       const v = buildVillage(BUSY);
       expect(ids(v).filter((n) => n.startsWith('crate-')).length).toBe(12);
-      expect(ids(v).filter((n) => n.startsWith('heap-')).length).toBe(12);
+      expect(ids(v).filter((n) => /^heap-\d+$/.test(n)).length).toBe(12);
       const slits = v.filter((x) => x.id.startsWith('slit-'));
       expect(slits.filter((s) => s.tone === 1).length).toBe(3);
       const empty = buildVillage(EMPTY_VILLAGE);

@@ -157,10 +157,13 @@ export class VillageScene {
       quarryHeapCap: s.quarryHeapCap,
       materials: s.resources.MATERIALS,
       relics: s.resources.RELICS,
+      credits: s.credit,
+      sporeCellarOpen: s.villageTierLevel >= 3,
+      spores: s.village.spores,
       villageTierLevel: s.villageTierLevel,
       pillar: pillarInput(s),
       upgrades,
-      saltPansOpen: s.loadout?.saltPansOpen ?? false,
+      saltPansOpen: (s.loadout?.saltPansOpen ?? false) || s.villageTierLevel >= 2,
       salt: s.village.salt,
       shortcuts: (s.shortcuts ?? [])
         .filter((sc) => sc.unlocked)

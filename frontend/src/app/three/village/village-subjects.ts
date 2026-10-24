@@ -63,6 +63,8 @@ export const VOLUME_SUBJECTS: ReadonlyArray<{
   { prefix: 'slit-', kind: 'annex', id: 'SCRIBE' },
   { prefix: 'footing-', kind: 'annex', id: 'SALTER' },
   { prefix: 'pan-', kind: 'annex', id: 'SALTER' },
+  // The Spore Cellar is the Sporewardens' Annex, drawn from Village Tier III.
+  { prefix: 'cellar', kind: 'annex', id: 'SPOREWARDEN' },
   { prefix: 'port-', kind: 'port', id: PORT_SUBJECT },
   // Registered buildings (`buildings.ts`): the popover framework's subjects.
   { prefix: 'silo', kind: 'building', id: 'SILO' },
@@ -70,6 +72,8 @@ export const VOLUME_SUBJECTS: ReadonlyArray<{
   { prefix: 'fort-', kind: 'building', id: 'FORT' },
   { prefix: 'reserve-', kind: 'building', id: 'FORT' },
   { prefix: 'pillar', kind: 'building', id: 'PILLAR' },
+  { prefix: 'vault', kind: 'building', id: 'VAULT' },
+  { prefix: 'crate-', kind: 'building', id: 'VAULT' },
 ];
 
 const TRADES: readonly TradeId[] = [
@@ -125,8 +129,8 @@ export function subjectOfVolume(volumeId: string): VillageSubject | null {
 export function ofSubject(volumes: Volume[], id: string, kind: SubjectKind): Volume[] {
   return volumes.filter((v) => {
     if (v.id.startsWith(OUTLINE)) return false;
-    // A building's invisible near-miss pad is for picking only: its frame and anchor hug what is drawn.
-    if (kind === 'building' && v.alpha === 0) return false;
+    // A building's or Annex's invisible near-miss pad is for picking only: its frame and anchor hug what is drawn.
+    if ((kind === 'building' || kind === 'annex') && v.alpha === 0) return false;
     const s = subjectOfVolume(v.id);
     return s?.id === id && s.kind === kind;
   });

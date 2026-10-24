@@ -14,6 +14,7 @@ import {
   type BuildingDefinition,
   type GaugeSpec,
 } from './building-registry';
+import { saltAfterSale, sellSaltAction } from './salt-sale';
 import { lockOf } from './trade-locks';
 
 /** The least number of Tillers that stay in the Fields (an assignment limit). */
@@ -106,6 +107,16 @@ const PRODUCT: Record<TradeId, Product> = {
   },
 };
 
+/** What a Trade's good does once made: where it waits, and what selling it leaves. */
+const PRODUCT_LEAVES: Partial<Record<TradeId, (state: GameState) => string | null>> = {
+  BREAKER: (s) =>
+    `The Heap holds up to ${Math.round(s.quarryHeapCap)}. Carried down on Extraction, ${Math.round(s.heapDeliveryPerFloor)} per Floor cleared; a Wipe delivers none.`,
+  SALTER: (s) =>
+    `The Stockroom holds ${Math.round(s.stockroomCap)} of each good. Selling Salt sells every whole Salt and leaves ${saltAfterSale(s.village.salt).toFixed(2)}.`,
+  SPOREWARDEN: (s) =>
+    `The Stockroom holds ${Math.round(s.stockroomCap)} of each good. Spores are not sold: they heal.`,
+};
+
 function handsGauge(trade: TradeId, plural: string): GaugeSpec {
   return {
     id: 'hands',
@@ -148,6 +159,7 @@ function productGauge(trade: TradeId): GaugeSpec {
     value: product.stock,
     fill: (s) => product.stock(s) / Math.max(1, product.cap(s)),
     rate: (s) => outputOf(s, trade),
+    leaves: PRODUCT_LEAVES[trade],
   };
 }
 
@@ -192,7 +204,12 @@ function annex(trade: TradeId): BuildingDefinition {
     actions:
       trade === 'TILLER'
         ? []
-        : [assign(trade, 1, plural), assign(trade, -1, plural)],
+        : [
+            assign(trade, 1, plural),
+            assign(trade, -1, plural),
+            // Salt is sold where it is made (the Vault sold it before the Pans opened).
+            ...(trade === 'SALTER' ? [sellSaltAction()] : []),
+          ],
   });
 }
 
