@@ -20,6 +20,11 @@ export const CLOSEUP_PITCH_DEG = -24;
 export const CLOSEUP_LOOK_Y = 0.9;
 /** Empty ground kept on each side of the built Village in the closeup, in world units. */
 export const CLOSEUP_MARGIN = 0.5;
+/**
+ * How much wider a volume shows per world unit it stands nearer the camera than the Village's depth,
+ * in the closeup (about 1 / the camera's distance, 6 units for the usual screen).
+ */
+export const CLOSEUP_NEAR_GAIN = 0.12;
 /** The closeup never shows fewer than this many units of height, so a wide screen keeps the roofs. */
 export const CLOSEUP_MIN_HEIGHT = 3.4;
 
@@ -39,21 +44,32 @@ export const FAR_FRAME: CloseupFrame = { centerX: 0, span: FRAME_WIDTH };
  * the Stone at Tier IV), not by a fixed rectangle.
  */
 export function closeupFrame(volumes: readonly Volume[]): CloseupFrame {
-  let minX = Infinity;
-  let maxX = -Infinity;
-  for (const v of volumes) {
-    if (
-      (v.group !== 'village' && v.group !== 'port') ||
-      v.id === 'ground' ||
-      v.id.startsWith('outline-') ||
-      v.id.startsWith('shortcut-')
-    ) {
-      continue;
+  const built = volumes.filter(
+    (v) =>
+      (v.group === 'village' || v.group === 'port') &&
+      v.id !== 'ground' &&
+      !v.id.startsWith('outline-') &&
+      !v.id.startsWith('shortcut-'),
+  );
+  const extent = (reach: (v: Volume) => [number, number]): [number, number] => {
+    let min = Infinity;
+    let max = -Infinity;
+    for (const v of built) {
+      const [a, b] = reach(v);
+      min = Math.min(min, a);
+      max = Math.max(max, b);
     }
-    minX = Math.min(minX, v.x - v.w / 2);
-    maxX = Math.max(maxX, v.x + v.w / 2);
-  }
-  if (!(maxX > minX)) return FAR_FRAME;
+    return [min, max];
+  };
+  const [flatMin, flatMax] = extent((v) => [v.x - v.w / 2, v.x + v.w / 2]);
+  if (!(flatMax > flatMin)) return FAR_FRAME;
+  // A volume nearer the camera than the Village's depth stands wider on the screen, so it is
+  // counted at the width it shows: the nearer, the further from the middle (#135).
+  const middle = (flatMin + flatMax) / 2;
+  const [minX, maxX] = extent((v) => {
+    const k = 1 + CLOSEUP_NEAR_GAIN * Math.max(0, v.z + v.d / 2 - VILLAGE_Z);
+    return [middle + (v.x - v.w / 2 - middle) * k, middle + (v.x + v.w / 2 - middle) * k];
+  });
   return {
     centerX: (minX + maxX) / 2,
     span: maxX - minX + 2 * CLOSEUP_MARGIN,

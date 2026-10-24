@@ -114,6 +114,21 @@ function fixtureCatalog(): Record<string, UnitStats> {
   );
 }
 
+/** The Upgrades bought by default (their levels), and at most (`?bought=all`: every module standing). */
+const FIXTURE_UPGRADES: Record<string, [number, number]> = {
+  UNLOCK_HEALER: [1, 1],
+  UNLOCK_TANK: [0, 1],
+  UNLOCK_ROGUE: [1, 1],
+  UNLOCK_NECROMANCER: [0, 1],
+  UNLOCK_DRACO_METAMORPH: [0, 1],
+  SUPPLY_LINES: [3, 4],
+  SHARPENED_ARMS: [0, 4],
+};
+function fixtureLevel(id: string): number {
+  const all = new URLSearchParams(location.search).get('bought') === 'all';
+  return FIXTURE_UPGRADES[id][all ? 1 : 0];
+}
+
 /** `?tier=1|2|3|4` sets the Village Tier (default 2). */
 function tierParam(): number {
   const v = Number(new URLSearchParams(location.search).get('tier') ?? 2);
@@ -335,13 +350,13 @@ export class VillageFixturePage {
       unitCatalog: fixtureCatalog(),
       // The Upgrades: bought at their modules (an unbought one stands as a footing), as the scene draws them.
       availableUpgrades: [
-        ['UNLOCK_HEALER', 'Field Medic joins', 1, false, 'HEALER', 40],
-        ['UNLOCK_TANK', 'Ironclad joins', 0, false, 'TANK', 85],
-        ['UNLOCK_ROGUE', 'Shadow joins', 1, false, 'ROGUE', 110],
-        ['UNLOCK_NECROMANCER', 'Necromancer joins', 0, false, 'NECROMANCER', 200],
-        ['UNLOCK_DRACO_METAMORPH', 'Draco-Metamorph joins', 0, false, 'DRACO_METAMORPH', 400],
-        ['SUPPLY_LINES', 'Supply Lines', 3, true, null, 150],
-        ['SHARPENED_ARMS', 'Sharpened Arms', 0, true, null, 90],
+        ['UNLOCK_HEALER', 'Field Medic joins', fixtureLevel('UNLOCK_HEALER'), false, 'HEALER', 40],
+        ['UNLOCK_TANK', 'Ironclad joins', fixtureLevel('UNLOCK_TANK'), false, 'TANK', 85],
+        ['UNLOCK_ROGUE', 'Shadow joins', fixtureLevel('UNLOCK_ROGUE'), false, 'ROGUE', 110],
+        ['UNLOCK_NECROMANCER', 'Necromancer joins', fixtureLevel('UNLOCK_NECROMANCER'), false, 'NECROMANCER', 200],
+        ['UNLOCK_DRACO_METAMORPH', 'Draco-Metamorph joins', fixtureLevel('UNLOCK_DRACO_METAMORPH'), false, 'DRACO_METAMORPH', 400],
+        ['SUPPLY_LINES', 'Supply Lines', fixtureLevel('SUPPLY_LINES'), true, null, 150],
+        ['SHARPENED_ARMS', 'Sharpened Arms', fixtureLevel('SHARPENED_ARMS'), true, null, 90],
       ].map(([id, name, level, repeatable, unlockUnit, cost]) => ({
         id: id as string,
         name: name as string,
@@ -458,15 +473,7 @@ export class VillageFixturePage {
           milestonesTotal: 4,
           tollShare: 0.67,
         },
-        upgrades: {
-          UNLOCK_HEALER: 1,
-          UNLOCK_TANK: 0,
-          UNLOCK_ROGUE: 1,
-          UNLOCK_NECROMANCER: 0,
-          UNLOCK_DRACO_METAMORPH: 0,
-          SUPPLY_LINES: 3,
-          SHARPENED_ARMS: 0,
-        },
+        upgrades: Object.fromEntries(Object.keys(FIXTURE_UPGRADES).map((id) => [id, fixtureLevel(id)])),
         fallenCount: Number(new URLSearchParams(location.search).get('fallen') ?? 5),
         ringLevel: 2,
         ringMax: 5,

@@ -232,6 +232,15 @@ const SILO_Z = -0.3;
  * store stands here, not behind the stair and the Tower's base, which hid it (#134).
  */
 const FRONT_Z = 2.0;
+/**
+ * Tall Upgrade modules (the watchtower, the obelisk, the brazier) stand on this row, before the
+ * store and the Pans, so no building stands in front of them; the low ones (roof, stockade) stand
+ * on the row in front of it (#135).
+ */
+const TALL_ROW_Z = 2.35;
+const FRONT_ROW_Z = 2.8;
+/** The spear rack stands at the very front, so the taller modules behind it are never hidden by it. */
+const RACK_Z = 3.1;
 const FIGURE = { w: 0.1, h: 0.35, d: 0.05 };
 /** One virtual pixel in world units (an 11-unit frame across about 220 pixels). */
 const PIXEL = FRAME_WIDTH / 220;
@@ -705,50 +714,55 @@ interface GrowthModule {
 
 /** The module table: one entry per Upgrade in the catalogue (see `INVISIBLE_UPGRADES`). */
 export const UPGRADE_MODULES: Record<string, GrowthModule> = {
-  // The Field Medic: a lean-to roof over the Fort's yard.
+  // The Field Medic: a lean-to roof over the Spore Cellar's stair, on the open ground before it.
   UNLOCK_HEALER: {
     cap: 1,
+    inFront: true,
     build(out, id) {
-      const x = mid(ANNEX_X.fort);
-      box(out, `${id}:roof`, 'village', x, 0.55, 0.85, 1.2, 0.04, 0.5, VILLAGE_TONE.timber);
-      box(out, `${id}:post-a`, 'village', x - 0.55, 0, 0.7, 0.04, 0.55, 0.04, VILLAGE_TONE.timber);
-      box(out, `${id}:post-b`, 'village', x + 0.55, 0, 0.7, 0.04, 0.55, 0.04, VILLAGE_TONE.timber);
+      const x = -2.4;
+      box(out, `${id}:roof`, 'village', x, 0.45, FRONT_ROW_Z, 1.2, 0.04, 0.5, VILLAGE_TONE.timber);
+      box(out, `${id}:post-a`, 'village', x - 0.55, 0, FRONT_ROW_Z - 0.15, 0.04, 0.45, 0.04, VILLAGE_TONE.timber);
+      box(out, `${id}:post-b`, 'village', x + 0.55, 0, FRONT_ROW_Z - 0.15, 0.04, 0.45, 0.04, VILLAGE_TONE.timber);
     },
   },
-  // The Ironclad: a stockade fence across the Fort's front.
+  // The Ironclad: a stockade fence across the front of the Quarry and the Pans.
   UNLOCK_TANK: {
     cap: 1,
+    inFront: true,
     build(out, id) {
-      const [x0, x1] = ANNEX_X.fort;
+      const [x0, x1] = ANNEX_X.pans;
       for (let i = 0; i < 6; i++) {
-        box(out, `${id}:post-${i}`, 'village', x0 + 0.1 + (i * (x1 - x0 - 0.2)) / 5, 0, 1.12, 0.05, 0.3, 0.05, VILLAGE_TONE.timber);
+        box(out, `${id}:post-${i}`, 'village', x0 + 0.1 + (i * (x1 - x0 - 0.2)) / 5, 0, FRONT_ROW_Z, 0.05, 0.3, 0.05, VILLAGE_TONE.timber);
       }
-      box(out, `${id}:rail`, 'village', mid(ANNEX_X.fort), 0.2, 1.12, x1 - x0 - 0.1, 0.03, 0.03, VILLAGE_TONE.timber);
+      box(out, `${id}:rail`, 'village', mid(ANNEX_X.pans), 0.2, FRONT_ROW_Z, x1 - x0 - 0.1, 0.03, 0.03, VILLAGE_TONE.timber);
     },
   },
-  // The Shadow: a watchtower behind the Vault.
+  // The Shadow: a watchtower on the open ground before the Vault, between its two halves.
   UNLOCK_ROGUE: {
     cap: 1,
+    inFront: true,
     build(out, id) {
-      box(out, `${id}:shaft`, 'village', 2.6, 0, -0.6, 0.3, 1.6, 0.3, VILLAGE_TONE.stone);
-      box(out, `${id}:cap`, 'village', 2.6, 1.6, -0.6, 0.46, 0.16, 0.46, VILLAGE_TONE.timber);
-      box(out, `${id}:slit`, 'village', 2.6, 1.2, -0.43, 0.04, 0.2, 0.02, VILLAGE_TONE.dark);
+      box(out, `${id}:shaft`, 'village', 2.95, 0, TALL_ROW_Z, 0.3, 1.6, 0.3, VILLAGE_TONE.stone);
+      box(out, `${id}:cap`, 'village', 2.95, 1.6, TALL_ROW_Z, 0.46, 0.16, 0.46, VILLAGE_TONE.timber);
+      box(out, `${id}:slit`, 'village', 2.95, 1.2, TALL_ROW_Z + 0.17, 0.04, 0.2, 0.02, VILLAGE_TONE.dark);
     },
   },
-  // The Necromancer: a lone dark obelisk behind the Quarry.
+  // The Necromancer: a lone dark obelisk on the open ground before the Study.
   UNLOCK_NECROMANCER: {
     cap: 1,
+    inFront: true,
     build(out, id) {
-      box(out, `${id}:obelisk`, 'village', 0.3, 0, -0.7, 0.16, 1.3, 0.16, VILLAGE_TONE.dark);
-      box(out, `${id}:plinth`, 'village', 0.3, 0, -0.7, 0.3, 0.1, 0.3, VILLAGE_TONE.stone);
+      box(out, `${id}:obelisk`, 'village', 1.45, 0, TALL_ROW_Z, 0.16, 1.3, 0.16, VILLAGE_TONE.dark);
+      box(out, `${id}:plinth`, 'village', 1.45, 0, TALL_ROW_Z, 0.3, 0.1, 0.3, VILLAGE_TONE.stone);
     },
   },
-  // The Draco-Metamorph: a squat bone-lit brazier behind the Fields.
+  // The Draco-Metamorph: a squat bone-lit brazier on the open ground beside the supply store, clear of the gate bell.
   UNLOCK_DRACO_METAMORPH: {
     cap: 1,
+    inFront: true,
     build(out, id) {
-      box(out, `${id}:bowl`, 'village', -0.7, 0, -0.7, 0.34, 0.5, 0.34, VILLAGE_TONE.stone);
-      box(out, `${id}:ember`, 'village', -0.7, 0.5, -0.7, 0.2, 0.06, 0.2, VILLAGE_TONE.lit);
+      box(out, `${id}:bowl`, 'village', -1.18, 0, TALL_ROW_Z, 0.34, 0.5, 0.34, VILLAGE_TONE.stone);
+      box(out, `${id}:ember`, 'village', -1.18, 0.5, TALL_ROW_Z, 0.2, 0.06, 0.2, VILLAGE_TONE.lit);
     },
   },
   // Supply Lines: a second silo before the Fields, then crates stood beside it.
@@ -757,19 +771,20 @@ export const UPGRADE_MODULES: Record<string, GrowthModule> = {
     inFront: true,
     build(out, id, n) {
       if (n === 0) {
-        box(out, `${id}:silo`, 'village', -1.0, 0, FRONT_Z, 0.3, 1.4, 0.3, VILLAGE_TONE.silo);
+        box(out, `${id}:silo`, 'village', -0.85, 0, FRONT_Z, 0.3, 1.4, 0.3, VILLAGE_TONE.silo);
         return;
       }
       box(out, `${id}:crate`, 'village', -0.7 + n * 0.17, 0, FRONT_Z, 0.14, 0.14 + (n % 2) * 0.06, 0.14, VILLAGE_TONE.timber);
     },
   },
-  // Sharpened Arms: a spear stood in the rack before the Vault, one per level.
+  // Sharpened Arms: a spear stood in the rack at the very front, one per level, nearest the Vault.
   SHARPENED_ARMS: {
     cap: 4,
+    inFront: true,
     build(out, id, n) {
-      const x = 2.2 + n * 0.22;
-      box(out, `${id}:spear`, 'village', x, 0, 1.0, 0.03, 0.8, 0.03, VILLAGE_TONE.ash);
-      box(out, `${id}:head`, 'village', x, 0.8, 1.0, 0.07, 0.1, 0.03, VILLAGE_TONE.lit);
+      const x = 1.75 + n * 0.15;
+      box(out, `${id}:spear`, 'village', x, 0, RACK_Z, 0.03, 0.8, 0.03, VILLAGE_TONE.ash);
+      box(out, `${id}:head`, 'village', x, 0.8, RACK_Z, 0.07, 0.1, 0.03, VILLAGE_TONE.lit);
     },
   },
 };
