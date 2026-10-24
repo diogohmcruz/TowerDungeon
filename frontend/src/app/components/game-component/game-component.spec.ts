@@ -5,6 +5,7 @@ import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { ZoomService } from '../../services/zoom.service';
 import { StageService } from '../../services/stage.service';
 import { ListViewService } from '../../services/list-view.service';
+import { MenusService } from '../../services/menus.service';
 import { PopoverService } from '../../services/popover.service';
 import { GameComponent } from './game-component';
 import { GameAction } from '../../interfaces/game-action.enum';
@@ -19,7 +20,7 @@ describe('GameComponent', () => {
   const host = () => fixture.nativeElement as HTMLElement;
   const stage = () => TestBed.inject(StageService);
   const press = (key: string, init: KeyboardEventInit = {}) =>
-    document.dispatchEvent(new KeyboardEvent('keydown', { key, ...init }));
+    document.dispatchEvent(new KeyboardEvent('keydown', { key, cancelable: true, ...init }));
 
   beforeEach(async () => {
     sendAction = jasmine.createSpy('sendAction');
@@ -38,7 +39,7 @@ describe('GameComponent', () => {
     stage().setViewport({ width: 1400, height: 800 });
     fixture.detectChanges();
   });
-  afterEach(() => stage().showMenus());
+  afterEach(() => stage().setLaunchBarHidden(false));
 
   it('should create', () => {
     expect(component).toBeTruthy();
@@ -85,70 +86,153 @@ describe('GameComponent', () => {
   describe('the menus (H and the hide button)', () => {
     const list = () => host().querySelector('app-list-view .list') as HTMLElement | null;
     const bar = () => host().querySelector('.launch-bar') as HTMLElement;
+    const button = () => host().querySelector('.menus-toggle') as HTMLButtonElement;
+    const detect = () => {
+      TestBed.flushEffects();
+      fixture.detectChanges();
+    };
+    /** The button reads Hide menus (pressed false) while something shows, Show menus (pressed true) otherwise. */
+    const reads = (showing: boolean) => {
+      expect(button().textContent).toContain(showing ? 'Hide menus' : 'Show menus');
+      expect(button().getAttribute('aria-pressed')).toBe(String(!showing));
+      expect(button().getAttribute('aria-label')).toBe(
+        showing ? 'Hide menus (H)' : 'Show menus (H)',
+      );
+      expect(button().title).toBe(showing ? 'Hide menus (H)' : 'Show menus (H)');
+    };
 
-    it('hides and restores the menus with the H key', () => {
-      expect(stage().menusHidden()).toBeFalse();
-      press('h');
-      fixture.detectChanges();
-      expect(stage().menusHidden()).toBeTrue();
-      press('H');
-      fixture.detectChanges();
-      expect(stage().menusHidden()).toBeFalse();
+    it('reads Show menus when nothing is showing on a wide screen', () => {
+      reads(false);
     });
 
-    it('hides and restores the menus with the button, which stays reachable', () => {
-      const button = host().querySelector('.menus-toggle') as HTMLButtonElement;
-      button.click();
-      fixture.detectChanges();
-      expect(stage().menusHidden()).toBeTrue();
-      expect(button.getAttribute('aria-pressed')).toBe('true');
-      expect(button.textContent).toContain('Show menus');
-      expect(getComputedStyle(button).pointerEvents).toBe('auto');
-      button.click();
-      fixture.detectChanges();
-      expect(stage().menusHidden()).toBeFalse();
-      expect(button.textContent).toContain('Hide menus');
-    });
-
-    it('hides the open list view and gives it back, still open', () => {
-      TestBed.inject(ListViewService).show();
-      fixture.detectChanges();
-      expect(list()?.hidden).toBeFalse();
-      press('h');
-      fixture.detectChanges();
-      expect(list()?.hidden).toBeTrue();
-      expect(getComputedStyle(list()!).display).toBe('none');
-      press('h');
-      fixture.detectChanges();
-      expect(list()?.hidden).toBeFalse();
-    });
-
-    it('opening the list with L shows the menus the hide key put away', () => {
-      press('h');
-      fixture.detectChanges();
+    it('follows the list view: L opens it, L and Escape close it', () => {
       press('l');
-      fixture.detectChanges();
-      expect(stage().menusHidden()).toBeFalse();
-      expect(list()?.hidden).toBeFalse();
+      detect();
+      reads(true);
+      press('l');
+      detect();
+      reads(false);
+      press('L');
+      detect();
+      reads(true);
+      press('Escape');
+      detect();
+      expect(list()).toBeNull();
+      reads(false);
     });
 
-    it('closes a popover that is open, and opens none while hidden', () => {
+    it('follows a popover: opening, Escape, a click elsewhere and held time', () => {
       const popover = TestBed.inject(PopoverService);
       popover.openFor({ kind: 'building', id: 'SILO' });
-      fixture.detectChanges();
-      expect(popover.openId()).toBe('SILO');
-      press('h');
-      fixture.detectChanges();
+      detect();
+      reads(true);
+      press('Escape');
+      detect();
       expect(popover.openId()).toBeNull();
+      reads(false);
+
+      popover.openFor({ kind: 'building', id: 'SILO' });
+      detect();
+      reads(true);
+      popover.notePress({ x: 10, y: 10, at: 0 });
+      popover.emptyClick({ clientX: 10, clientY: 10, timeStamp: 50 });
+      detect();
+      reads(false);
+
+      popover.openFor({ kind: 'building', id: 'SILO' });
+      detect();
+      reads(true);
+      stateService.setSession({
+        resumed: false,
+        savedAt: null,
+        schema: 1,
+        notices: [],
+        held: true,
+      });
+      detect();
+      expect(popover.openId()).toBeNull();
+      reads(false);
     });
 
-    it('hides the narrow launch bar too', () => {
-      stage().setViewport({ width: 440, height: 800 });
-      fixture.detectChanges();
-      expect(getComputedStyle(bar()).display).toBe('flex');
+    it('H closes everything that shows, and opens the list when nothing does', () => {
+      const popover = TestBed.inject(PopoverService);
+      const listView = TestBed.inject(ListViewService);
+      listView.show();
+      detect();
+      reads(true);
       press('h');
-      fixture.detectChanges();
+      detect();
+      expect(listView.open()).toBeFalse();
+      reads(false);
+      press('H');
+      detect();
+      expect(listView.open()).toBeTrue();
+      expect(list()?.hidden).toBeFalse();
+      reads(true);
+
+      listView.hide();
+      popover.openFor({ kind: 'building', id: 'SILO' });
+      detect();
+      reads(true);
+      press('h');
+      detect();
+      expect(popover.openId()).toBeNull();
+      reads(false);
+    });
+
+    it('a popover opens after H, and the button follows it', () => {
+      press('h');
+      press('h');
+      TestBed.inject(ListViewService).hide();
+      detect();
+      reads(false);
+      TestBed.inject(PopoverService).openFor({ kind: 'building', id: 'SILO' });
+      detect();
+      expect(TestBed.inject(PopoverService).openId()).toBe('SILO');
+      reads(true);
+    });
+
+    it('the button does what H does, and stays reachable', () => {
+      button().click();
+      detect();
+      expect(TestBed.inject(ListViewService).open()).toBeTrue();
+      reads(true);
+      expect(getComputedStyle(button()).pointerEvents).toBe('auto');
+      button().click();
+      detect();
+      expect(TestBed.inject(ListViewService).open()).toBeFalse();
+      reads(false);
+    });
+
+    it('on a narrow screen the launch bar counts, and Escape on the list leaves it showing', () => {
+      stage().setViewport({ width: 440, height: 800 });
+      detect();
+      expect(getComputedStyle(bar()).display).toBe('flex');
+      reads(true);
+      press('l');
+      detect();
+      press('Escape');
+      detect();
+      reads(true);
+      press('h');
+      detect();
       expect(getComputedStyle(bar()).display).toBe('none');
+      reads(false);
+      press('h');
+      detect();
+      expect(getComputedStyle(bar()).display).toBe('flex');
+      reads(true);
+    });
+
+    it('opening the list with L brings back the launch bar put away', () => {
+      stage().setViewport({ width: 440, height: 800 });
+      press('h');
+      detect();
+      expect(getComputedStyle(bar()).display).toBe('none');
+      press('l');
+      detect();
+      expect(getComputedStyle(bar()).display).toBe('flex');
+      expect(list()?.hidden).toBeFalse();
     });
 
     it('ignores H while typing and with a modifier', () => {
@@ -158,8 +242,9 @@ describe('GameComponent', () => {
       document.body.appendChild(input);
       input.dispatchEvent(new KeyboardEvent('keydown', { key: 'h', bubbles: true }));
       input.remove();
-      fixture.detectChanges();
-      expect(stage().menusHidden()).toBeFalse();
+      detect();
+      expect(TestBed.inject(ListViewService).open()).toBeFalse();
+      reads(false);
     });
 
     describe('the closeup', () => {
@@ -180,20 +265,21 @@ describe('GameComponent', () => {
         expect(button()?.textContent).toContain('Closeup');
       });
 
-      it('holds time and hides the menus, and Escape steps back', () => {
+      it('holds time and hides the menus, and Escape steps back and restores them', () => {
+        TestBed.inject(ListViewService).show();
         stateService.update({ expeditionActive: true });
         fixture.detectChanges();
         button()!.click();
         fixture.detectChanges();
         expect(sendAction).toHaveBeenCalledWith(GameAction.HOLD, null);
-        expect(stage().menusHidden()).toBeTrue();
+        expect(TestBed.inject(MenusService).showing()).toBeFalse();
         expect(button()?.getAttribute('aria-pressed')).toBe('true');
 
         stateService.setSession(held(true));
         press('Escape');
         fixture.detectChanges();
         expect(sendAction).toHaveBeenCalledWith(GameAction.RESUME, null);
-        expect(stage().menusHidden()).toBeFalse();
+        expect(TestBed.inject(MenusService).showing()).toBeTrue();
         expect(button()?.getAttribute('aria-pressed')).toBe('false');
       });
     });

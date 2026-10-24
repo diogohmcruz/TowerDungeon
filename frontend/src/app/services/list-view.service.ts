@@ -37,8 +37,8 @@ export class ListViewService {
   show(): void {
     // One surface at a time: the popover gives way to the list.
     this.popover.close();
-    // The list is a menu: opening it shows the menus the hide key put away.
-    this.stage.showMenus();
+    // The list is a menu: opening it brings back the launch bar the hide key put away.
+    this.stage.setLaunchBarHidden(false);
     this._open.set(true);
   }
 

@@ -31,12 +31,12 @@ describe('StageService', () => {
     expect(make().quality()).toBe(3);
   });
 
-  it('hides and restores the menus', () => {
+  it('puts the narrow launch bar away and brings it back', () => {
     const stage = make();
-    expect(stage.menusHidden()).toBeFalse();
-    stage.toggleMenus();
-    expect(stage.menusHidden()).toBeTrue();
-    stage.showMenus();
-    expect(stage.menusHidden()).toBeFalse();
+    expect(stage.launchBarHidden()).toBeFalse();
+    stage.setLaunchBarHidden(true);
+    expect(stage.launchBarHidden()).toBeTrue();
+    stage.setLaunchBarHidden(false);
+    expect(stage.launchBarHidden()).toBeFalse();
   });
 });

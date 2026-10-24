@@ -66,7 +66,7 @@ describe('the Gate building', () => {
     popover = TestBed.inject(PopoverService);
     give();
   });
-  afterEach(() => TestBed.inject(StageService).showMenus());
+  afterEach(() => TestBed.inject(StageService).setLaunchBarHidden(false));
 
   it('is registered, and shown while the frame carries a Loadout', () => {
     expect(BUILDINGS).toContain(GATE);
@@ -221,7 +221,7 @@ describe('the Gate: Overreach, the Tally and Muster Roll', () => {
     launch = TestBed.inject(LaunchService);
     popover = TestBed.inject(PopoverService);
   });
-  afterEach(() => TestBed.inject(StageService).showMenus());
+  afterEach(() => TestBed.inject(StageService).setLaunchBarHidden(false));
 
   it('shows nothing of Overreach, the Tally or Muster Roll while the Roll holds none', () => {
     give();

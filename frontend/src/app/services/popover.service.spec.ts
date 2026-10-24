@@ -59,7 +59,7 @@ describe('PopoverService', () => {
     game.setSession({ resumed: false, savedAt: null, schema: 1, notices: [], held: false });
     frame();
   });
-  afterEach(() => TestBed.inject(StageService).showMenus());
+  afterEach(() => TestBed.inject(StageService).setLaunchBarHidden(false));
 
   it('opens a registered building on a click and selects it for the outline', () => {
     press();

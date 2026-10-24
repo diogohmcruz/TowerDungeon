@@ -36,7 +36,7 @@ describe('BuildingPopover', () => {
     fixture = TestBed.createComponent(BuildingPopover);
     show();
   });
-  afterEach(() => stage.showMenus());
+  afterEach(() => stage.setLaunchBarHidden(false));
 
   it('shows nothing until a building is picked', () => {
     expect(card()).toBeNull();

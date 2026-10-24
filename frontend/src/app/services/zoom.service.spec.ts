@@ -5,6 +5,8 @@ import { Squad } from '../interfaces/game-state';
 import { GameStateService } from './game-state.service';
 import { UnitViewService } from './unit-view.service';
 import { GameWebSocketService } from './game-web-socket.service';
+import { ListViewService } from './list-view.service';
+import { MenusService } from './menus.service';
 import { StageService } from './stage.service';
 import { ZoomService } from './zoom.service';
 
@@ -13,6 +15,8 @@ describe('ZoomService', () => {
   let zoom: ZoomService;
   let state: GameStateService;
   let stage: StageService;
+  let menus: MenusService;
+  let list: ListViewService;
 
   const session = (held: boolean) => ({
     resumed: false,
@@ -29,21 +33,24 @@ describe('ZoomService', () => {
     });
     state = TestBed.inject(GameStateService);
     stage = TestBed.inject(StageService);
+    menus = TestBed.inject(MenusService);
+    list = TestBed.inject(ListViewService);
+    list.show();
     zoom = TestBed.inject(ZoomService);
     state.update({ expeditionActive: true });
     state.setSession(session(false));
     TestBed.flushEffects();
   });
-  afterEach(() => stage.showMenus());
+  afterEach(() => stage.setLaunchBarHidden(false));
 
   it('holds and enters the closeup on a click, hiding the menus', () => {
     zoom.toggleCloseup();
     expect(sendAction).toHaveBeenCalledOnceWith(GameAction.HOLD, null);
     expect(zoom.level()).toBe('closeup');
-    expect(stage.menusHidden()).toBeTrue();
+    expect(menus.showing()).toBeFalse();
   });
 
-  it('resumes and returns to battle on the second click, restoring the menus', () => {
+  it('resumes and returns to battle on the second click, restoring the open list view', () => {
     zoom.toggleCloseup();
     state.setSession(session(true));
     zoom.toggleCloseup();
@@ -52,14 +59,16 @@ describe('ZoomService', () => {
       [GameAction.RESUME, null],
     ]);
     expect(zoom.level()).toBe('battle');
-    expect(stage.menusHidden()).toBeFalse();
+    expect(menus.showing()).toBeTrue();
   });
 
-  it('leaves the menus hidden when the player had hidden them', () => {
-    stage.setMenusHidden(true);
+  it('leaves the menus away when the player had put them away', () => {
+    menus.toggle();
+    expect(menus.showing()).toBeFalse();
     zoom.toggleCloseup();
     zoom.back();
-    expect(stage.menusHidden()).toBeTrue();
+    expect(menus.showing()).toBeFalse();
+    expect(list.open()).toBeFalse();
   });
 
   it('steps back (Escape) and does nothing at battle', () => {
@@ -94,7 +103,7 @@ describe('ZoomService', () => {
       zoom.focusUnit(hero);
       expect(zoom.level()).toBe('unit');
       expect(zoom.focus()).toEqual(hero);
-      expect(stage.menusHidden()).toBeTrue();
+      expect(menus.showing()).toBeFalse();
       expect(sendAction.calls.allArgs()).toEqual([[GameAction.HOLD, null]]);
     });
 
@@ -111,7 +120,7 @@ describe('ZoomService', () => {
         [GameAction.HOLD, null],
         [GameAction.RESUME, null],
       ]);
-      expect(stage.menusHidden()).toBeFalse();
+      expect(menus.showing()).toBeTrue();
     });
 
     it('opens from the closeup without holding twice', () => {
@@ -222,7 +231,7 @@ describe('ZoomService', () => {
     state.setSession(session(false));
     TestBed.flushEffects();
     expect(zoom.level()).toBe('battle');
-    expect(stage.menusHidden()).toBeFalse();
+    expect(menus.showing()).toBeTrue();
     expect(sendAction).toHaveBeenCalledTimes(1);
   });
 });

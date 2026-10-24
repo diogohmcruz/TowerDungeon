@@ -1,14 +1,14 @@
-<!-- The top bar's own buttons. H hides the menus (the list view, the popovers, the narrow bar); these stay. -->
+<!-- The top bar's own buttons. The first one follows what is on screen: Hide menus while the list view, a popover or the narrow bar shows, Show menus (opens the list) when none does. -->
 <button
   type="button"
   class="menus-toggle"
-  (click)="stage.toggleMenus()"
-  [attr.aria-pressed]="stage.menusHidden()"
+  (click)="menus.toggle()"
+  [attr.aria-pressed]="!menus.showing()"
   aria-keyshortcuts="H"
-  [attr.aria-label]="stage.menusHidden() ? 'Show menus (H)' : 'Hide menus (H)'"
-  [title]="stage.menusHidden() ? 'Show menus (H)' : 'Hide menus (H)'"
+  [attr.aria-label]="menus.showing() ? 'Hide menus (H)' : 'Show menus (H)'"
+  [title]="menus.showing() ? 'Hide menus (H)' : 'Show menus (H)'"
 >
-  {{ stage.menusHidden() ? 'Show menus' : 'Hide menus' }}
+  {{ menus.showing() ? 'Hide menus' : 'Show menus' }}
 </button>
 @if (gameState().expeditionActive) {
 <button
@@ -38,7 +38,7 @@
 
 <!-- Narrow screens have no clear lane for the bell and the lamp, so they are repeated
      here as plain buttons: the same commands, the same refusals. -->
-<div class="launch-bar" [class.menus-hidden]="stage.menusHidden()">
+<div class="launch-bar" [class.menus-hidden]="stage.launchBarHidden() || zoom.level() !== 'battle'">
   @if (launch.refusal(); as refusal) {
   <p class="launch-line" role="status">{{ refusal.text }}</p>
   }

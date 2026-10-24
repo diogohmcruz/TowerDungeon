@@ -9,7 +9,7 @@ import {
 import { GameStateService } from '../../services/game-state.service';
 import { GameWebSocketService } from '../../services/game-web-socket.service';
 import { PopoverService } from '../../services/popover.service';
-import { StageService } from '../../services/stage.service';
+import { ZoomService } from '../../services/zoom.service';
 import { actionSpecs, buildingViews } from '../../three/village/building-registry';
 import { BUILDINGS } from '../../three/village/buildings';
 import { ListView, listKeyIntent } from './list-view';
@@ -377,14 +377,16 @@ describe('ListView', () => {
       expect(sendAction).toHaveBeenCalledWith(GameAction.REMEDY, { unitId: 7 });
     });
 
-    it('is hidden with the menus, and comes back open', () => {
+    it('is hidden under a zoomed view, and comes back open', () => {
       list.show();
       settle();
-      const stage = TestBed.inject(StageService);
-      stage.setMenusHidden(true);
+      const game = TestBed.inject(GameStateService);
+      game.update({ expeditionActive: true });
+      const zoom = TestBed.inject(ZoomService);
+      zoom.toggleCloseup();
       settle();
       expect((el().querySelector('.list') as HTMLElement).hidden).toBeTrue();
-      stage.showMenus();
+      zoom.release();
       settle();
       expect((el().querySelector('.list') as HTMLElement).hidden).toBeFalse();
     });
