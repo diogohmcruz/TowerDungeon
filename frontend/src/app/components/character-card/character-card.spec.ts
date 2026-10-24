@@ -212,6 +212,11 @@ describe('CharacterCard', () => {
     expect(el.querySelector('.spore-doses')).toBeNull();
   });
 
+  it('renders a member without stats, falling back to zero, instead of throwing', () => {
+    const el = render({ stats: undefined, maxHealth: undefined, damage: undefined });
+    expect(el.querySelector('.member-damage')?.textContent).toContain('Damage 0');
+  });
+
   describe('detailed (the unit view)', () => {
     const detailedRender = (overrides: Partial<Member>): HTMLElement => {
       fixture.componentRef.setInput('detailed', true);

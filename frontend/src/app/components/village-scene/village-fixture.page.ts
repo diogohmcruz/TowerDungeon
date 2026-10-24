@@ -82,22 +82,36 @@ function fixtureFallen(): NonNullable<GameState['wallOfNames']> {
   });
 }
 
-function fixtureReserves(): GameState['units'] {
-  const member = (id: number, hurt: boolean) =>
-    ({
-      id,
-      name: `Reserve ${id}`,
-      currentHealth: hurt ? 4 : 10,
-      maxHealth: 10,
-    }) as unknown as Member;
+export function fixtureReserves(): GameState['units'] {
+  // A real member carries its own stats, damage and max health, as the backend serialises a Unit.
+  const member = (type: string, id: number, hurt: boolean): Member => ({
+    id,
+    name: `Reserve ${id}`,
+    stats: {
+      type,
+      health: 10,
+      damage: 2,
+      attackType: (type === 'ARCHER' ? 'RANGED' : 'MELEE') as unknown as never,
+    },
+    currentHealth: hurt ? 4 : 10,
+    maxHealth: 10,
+    damage: 2,
+    accuracy: 75,
+    evasion: 10,
+    affinity: null,
+    sanity: 10,
+    maxSanity: 10,
+    phobias: [],
+    gear: { slots: {} },
+  });
   let id = 0;
-  const list = (n: number, hurt: number) =>
-    Array.from({ length: n }, (_, i) => member(id++, i < hurt));
+  const list = (type: string, n: number, hurt: number) =>
+    Array.from({ length: n }, (_, i) => member(type, id++, i < hurt));
   return {
     ...game0().units,
-    WARRIOR: list(9, 2),
-    ARCHER: list(6, 1),
-    PORTER: list(3, 0),
+    WARRIOR: list('WARRIOR', 9, 2),
+    ARCHER: list('ARCHER', 6, 1),
+    PORTER: list('PORTER', 3, 0),
   };
 }
 

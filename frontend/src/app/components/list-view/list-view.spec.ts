@@ -13,6 +13,7 @@ import { ZoomService } from '../../services/zoom.service';
 import { actionSpecs, buildingViews } from '../../three/village/building-registry';
 import { BUILDINGS } from '../../three/village/buildings';
 import { ListView, listKeyIntent } from './list-view';
+import { fixtureReserves } from '../village-scene/village-fixture.page';
 import { flushEffects } from '../../testing/flush-effects';
 
 describe('ListView', () => {
@@ -78,6 +79,23 @@ describe('ListView', () => {
     key('Escape');
     settle();
     expect(el().querySelector('.list')).toBeNull();
+  });
+
+  it('opens on the village fixture Reserves and logs no error (their cards read stats)', () => {
+    const game = TestBed.inject(GameStateService);
+    game.update({
+      units: TestBed.runInInjectionContext(() => fixtureReserves()),
+    });
+    // The global hook (test-setup.spec) may already spy on console.error; either way, start clean.
+    const errors = jasmine.isSpy(console.error)
+      ? (console.error as jasmine.Spy)
+      : spyOn(console, 'error');
+    errors.calls.reset();
+    key('l');
+    settle();
+    expect(el().querySelectorAll('app-character-card').length).toBe(18);
+    expect(el().querySelector('.member-damage')?.textContent).toContain('Damage 2');
+    expect(errors.calls.allArgs()).toEqual([]);
   });
 
   it('opens from the skip button a screen reader announces', () => {
