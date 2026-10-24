@@ -27,10 +27,12 @@ export function placeCard(
   viewportHeight: number,
   /** The height the card wants; it is slid up to fit that much on screen, and scrolls past it. */
   minHeight = CARD_MIN_HEIGHT,
+  /** The width the card asks for (a wide card, such as the Succession's). */
+  wanted = CARD_WIDTH,
 ): CardPlacement {
   const width = Math.max(
     1,
-    Math.min(CARD_WIDTH, viewportWidth - 2 * CARD_MARGIN),
+    Math.min(wanted, viewportWidth - 2 * CARD_MARGIN),
   );
   const maxLeft = Math.max(CARD_MARGIN, viewportWidth - width - CARD_MARGIN);
   const clampLeft = (left: number) =>

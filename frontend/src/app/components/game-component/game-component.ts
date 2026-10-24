@@ -36,7 +36,6 @@ import { UpgradeCard } from '../upgrade-card/upgrade-card';
 import { ShortcutCard } from '../shortcut-card/shortcut-card';
 import { RunSummaryCard } from '../run-summary-card/run-summary-card';
 import { Reinforcement } from '../../interfaces/game-state';
-import { SuccessionScreen } from '../succession-screen/succession-screen';
 import { ListView } from '../list-view/list-view';
 
 @Component({
@@ -51,7 +50,6 @@ import { ListView } from '../list-view/list-view';
     UpgradeCard,
     ShortcutCard,
     RunSummaryCard,
-    SuccessionScreen,
     ListView,
   ],
   templateUrl: './game-component.html',
@@ -195,22 +193,6 @@ export class GameComponent implements OnDestroy {
 
   selectStartFloor(floor: number) {
     this.selectedStartFloor.set(floor);
-  }
-
-  rollBuy(id: string) {
-    this.ws.sendAction(GameAction.ROLL_BUY, { id });
-  }
-
-  rollRefund(id: string) {
-    this.ws.sendAction(GameAction.ROLL_REFUND, { id });
-  }
-
-  choose(id: string) {
-    this.ws.sendAction(GameAction.CHOOSE, { id });
-  }
-
-  beginGeneration() {
-    this.ws.sendAction(GameAction.BEGIN_GENERATION, null);
   }
 
   resume() {

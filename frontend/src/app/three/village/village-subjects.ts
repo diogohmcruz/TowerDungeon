@@ -74,6 +74,7 @@ export const VOLUME_SUBJECTS: ReadonlyArray<{
   { prefix: 'pillar', kind: 'building', id: 'PILLAR' },
   { prefix: 'vault', kind: 'building', id: 'VAULT' },
   { prefix: 'crate-', kind: 'building', id: 'VAULT' },
+  { prefix: 'roll-', kind: 'building', id: 'SUCCESSION' },
 ];
 
 const TRADES: readonly TradeId[] = [

@@ -15,6 +15,7 @@ import {
   buildingViews,
 } from '../three/village/building-registry';
 import { BUILDINGS } from '../three/village/buildings';
+import { SUCCESSION_ID } from '../three/village/succession-building';
 import type { VillageSubject } from '../three/village/village-subjects';
 import { GameAction } from '../interfaces/game-action.enum';
 import { GameStateService } from './game-state.service';
@@ -82,7 +83,7 @@ export class PopoverService {
 
   /** Every shown building, with its gauges and actions: the list view's rows. */
   readonly buildings = computed(() =>
-    buildingViews(this.registry, this.stateService.state()),
+    buildingViews(this.registry, this.stateService.registryState()),
   );
 
   private readonly _openId = signal<string | null>(null);
@@ -104,6 +105,9 @@ export class PopoverService {
   private press: Press | null = null;
   private meshPressAt = -1;
 
+  /** Whether the Succession was shown the last time we looked: the popover opens when it first is. */
+  private succession = false;
+
   constructor() {
     // Time held, a zoomed view up, or the Village gone (an Expedition is out): no popover.
     effect(() => {
@@ -114,6 +118,16 @@ export class PopoverService {
       if (held || zoomed || state.expeditionActive || gone) {
         untracked(() => this.close());
       }
+    });
+    // The Campaign ends and waits in OFFER: the Succession opens at the Tower's foot by itself.
+    effect(() => {
+      const shown = this.buildings().some((b) => b.id === SUCCESSION_ID);
+      untracked(() => {
+        if (shown && !this.succession) {
+          this.openFor({ kind: 'building', id: SUCCESSION_ID });
+        }
+        this.succession = shown;
+      });
     });
   }
 
@@ -223,7 +237,7 @@ export class PopoverService {
    */
   perform(buildingId: string, actionId: string): boolean {
     const def = this.registry.find((d) => d.id === buildingId);
-    const state = this.stateService.state();
+    const state = this.stateService.registryState();
     const action = def && actionSpecs(def, state).find((a) => a.id === actionId);
     if (!def || !action || !action.availability(state).usable) {
       return false;

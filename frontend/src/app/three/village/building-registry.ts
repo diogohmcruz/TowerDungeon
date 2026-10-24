@@ -97,6 +97,8 @@ export interface BuildingDefinition {
    * a click would do now). Shown after `actions`; looked up by id like them.
    */
   moreActions?(state: GameState): readonly ActionSpec[];
+  /** The card asks for more width than the usual one (a tree of choices to read). */
+  wide?: boolean;
 }
 
 /** Every action of a building now: the fixed ones, then the state's own. */
@@ -152,6 +154,8 @@ export interface BuildingView {
   gauges: GaugeView[];
   lines: LineView[];
   actions: ActionView[];
+  /** The card is drawn wider than the usual one. */
+  wide: boolean;
 }
 
 /** A whole figure with separators, or two decimals when it has a fraction. */
@@ -221,6 +225,7 @@ export function buildingView(def: BuildingDefinition, state: GameState): Buildin
   return {
     id: def.id,
     title: def.title,
+    wide: def.wide === true,
     gauges: def.gauges
       .filter((g) => (g.visible ? g.visible(state) : true))
       .map((g) => gaugeView(g, state)),
