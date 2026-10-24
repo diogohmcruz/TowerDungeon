@@ -161,3 +161,39 @@ export function pickSprite(
     margin: PICK_MARGIN + pixelScale,
   });
 }
+
+/** CSS px the pointer may stray past a hovered sprite's hit area before the hover lets go. */
+export const SPRITE_HOLD_PX = 4;
+
+/**
+ * The sprite a hover is on (#126): the one `pickSprite` finds, except that the sprite already
+ * hovered (`holdId`) keeps it while the pointer is inside its hit area, even where a neighbour's
+ * overlaps and is nearer, and until the pointer has left that area by the hold margin. Moving one
+ * pixel never changes it; entering a sprite's area when none is held takes it at once.
+ */
+export function pickSpriteSteady(
+  camera: THREE.Camera,
+  sprites: readonly FigureInstance[],
+  x: number,
+  y: number,
+  canvasWidth: number,
+  canvasHeight: number,
+  pixelScale: number,
+  holdId: string | null,
+): FigureInstance | null {
+  const hit = pickSprite(camera, sprites, x, y, canvasWidth, canvasHeight, pixelScale);
+  const held = holdId ? sprites.find((f) => f.id === holdId) : undefined;
+  if (!held || !parseFigureId(held.id) || hit?.id === held.id) {
+    return hit;
+  }
+  const area = hitRect(figureRect(camera, held, canvasWidth, canvasHeight), {
+    margin: PICK_MARGIN + pixelScale,
+  });
+  const inside = (grow: number) =>
+    x >= area.left - grow &&
+    x <= area.right + grow &&
+    y >= area.top - grow &&
+    y <= area.bottom + grow;
+  // Inside its own area it stays; just outside it stays only while nothing else is under the pointer.
+  return inside(0) || (!hit && inside(SPRITE_HOLD_PX)) ? held : hit;
+}

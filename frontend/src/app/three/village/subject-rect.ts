@@ -47,3 +47,34 @@ export function subjectRect(
   }
   return Number.isFinite(left) ? { left, top, right, bottom } : null;
 }
+
+/**
+ * Where one volume lands on the canvas, in CSS px: the box around the projection of its eight
+ * corners. Null when it is behind the camera. The camera's matrices must be current.
+ */
+export function volumeRect(
+  camera: THREE.Camera,
+  v: Pick<Volume, 'x' | 'y' | 'z' | 'w' | 'h' | 'd'>,
+  canvasWidth: number,
+  canvasHeight: number,
+): ScreenRect | null {
+  let left = Infinity;
+  let top = Infinity;
+  let right = -Infinity;
+  let bottom = -Infinity;
+  for (const sx of [-0.5, 0.5]) {
+    for (const sy of [-0.5, 0.5]) {
+      for (const sz of [-0.5, 0.5]) {
+        corner.set(v.x + sx * v.w, v.y + sy * v.h, v.z + sz * v.d).project(camera);
+        if (corner.z > 1) continue;
+        const x = ((corner.x + 1) / 2) * canvasWidth;
+        const y = ((1 - corner.y) / 2) * canvasHeight;
+        left = Math.min(left, x);
+        right = Math.max(right, x);
+        top = Math.min(top, y);
+        bottom = Math.max(bottom, y);
+      }
+    }
+  }
+  return Number.isFinite(left) ? { left, top, right, bottom } : null;
+}
