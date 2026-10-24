@@ -116,7 +116,7 @@ import { ZoomService } from '../../services/zoom.service';
 import { UnitHoverService } from '../../services/unit-hover.service';
 import {
   dampFactor,
-  fitDistance,
+  closeupDistance,
   prefersReducedMotion,
   SHOTS,
   ShotBlend,
@@ -194,6 +194,13 @@ export function isEmptySpaceClick(
  * its pick box and a margin. A screen too narrow for it makes the closeup stand back.
  */
 const CLOSEUP_REACH = TOWER_RECALL_X + 0.6;
+
+/**
+ * Room kept either side of the fight in the closeup, as a share of its half width. On a wide
+ * screen the closeup frames the fight and nothing more, so the bell, the lamp and the Supplies
+ * post may leave the picture (#143; the Gate's and the narrow bar's routes reach them).
+ */
+const CLOSEUP_FIGHT_MARGIN = 1.03;
 
 /** A press that moves farther than this, or lasts longer, is a drag or a hold, not a click on empty space. */
 const CLICK_SLOP_PX = 5;
@@ -710,6 +717,19 @@ export class TowerSceneGraph {
     });
   });
 
+  /**
+   * Half the width of the fight, from the middle of the Tower: the outermost sprite's far edge.
+   * The layout depends on the screen (its fit and the figure boost), so it is read from the plan.
+   */
+  private fightReach(): number {
+    const plan = this.figurePlan();
+    let reach = 0;
+    for (const f of plan.marks.slice(0, plan.figureCount)) {
+      reach = Math.max(reach, Math.abs(f.x) + f.w / 2);
+    }
+    return reach;
+  }
+
   private figureMember(member: Member, kind: 'unit' | 'enemy'): FigureMember {
     return {
       id: member.id,
@@ -981,7 +1001,8 @@ export class TowerSceneGraph {
         this.camTarget.set(at.x, at.y - dropY + pose.lookUp, at.z);
         this.camPos.set(at.x, at.y - dropY + pose.camUp, at.z + pose.distance);
       } else {
-        // The closeup stands back on a narrow screen, so the lamp is still in the picture.
+        // The closeup frames the fight: it stands back only as far as the whole Party and garrison
+        // need to fit the width (#143), and, on a narrow screen, so the lamp is still in the picture.
         let distance = pose.distance;
         if (this.zoom.level() === 'closeup') {
           const el = this.store.snapshot.gl.domElement;
@@ -990,14 +1011,17 @@ export class TowerSceneGraph {
             this.stage.narrow(),
             pose.spread,
           );
-          distance = Math.max(
-            distance,
-            fitDistance(
-              pose.fov,
-              region.width / (el.clientHeight || 1),
-              CLOSEUP_REACH,
-              TOWER_LAUNCH_Z,
-            ),
+          const aspect = region.width / (el.clientHeight || 1);
+          distance = closeupDistance(
+            pose,
+            aspect,
+            {
+              reach: this.fightReach() * CLOSEUP_FIGHT_MARGIN,
+              depth: FIGURE_Z,
+            },
+            this.stage.narrow()
+              ? { reach: CLOSEUP_REACH, depth: TOWER_LAUNCH_Z }
+              : null,
           );
         }
         this.camTarget.set(0, viewY + pose.lookUp, 0);

@@ -23,8 +23,9 @@ export interface Shot {
 
 export const SHOTS: Readonly<Record<ShotName, Shot>> = {
   battle: { fov: 64, distance: 12.5, camUp: 7, lookUp: 1.3, spread: 0 },
-  // About one Floor tall with the Floor above and below just in frame.
-  closeup: { fov: 42, distance: 5.2, camUp: 1.85, lookUp: 1.85, spread: 1 },
+  // The fight: the camera stands as near as the Party and the garrison allow across the width
+  // (the Tower scene fits the distance to the screen), so a figure is about a sixth of the height.
+  closeup: { fov: 42, distance: 3, camUp: 1.62, lookUp: 1.62, spread: 1 },
   // The camera centres on one figure, about a third of the screen high, and looks slightly down.
   unit: { fov: 30, distance: 1.9, camUp: 0.25, lookUp: 0, spread: 1 },
 };
@@ -47,6 +48,32 @@ export function fitDistance(
   }
   const half = Math.tan((fov * Math.PI) / 360);
   return reach / (half * aspect) + depth;
+}
+
+/** A half width to keep in view at a depth in front of the Tower's plane. */
+export interface Reach {
+  reach: number;
+  depth: number;
+}
+
+/**
+ * How far the closeup stands from the Tower (#143): as close as its Shot, but never so close that
+ * the `fight` (the Party and the garrison) leaves the picture, and, when a `lamp` reach is given
+ * (a narrow screen), never so close that the bell and the lamp do. On a wide screen the lamp
+ * reach is left out: the closeup frames the fight and the bell, lamp and Supplies post may leave
+ * the picture, reached by the Gate and the narrow bar instead.
+ */
+export function closeupDistance(
+  shot: Shot,
+  aspect: number,
+  fight: Reach,
+  lamp: Reach | null,
+): number {
+  return Math.max(
+    shot.distance,
+    fitDistance(shot.fov, aspect, fight.reach, fight.depth),
+    lamp ? fitDistance(shot.fov, aspect, lamp.reach, lamp.depth) : 0,
+  );
 }
 
 /** Closer than this to its target a scalar lands on it, so the camera comes to rest. */

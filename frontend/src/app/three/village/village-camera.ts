@@ -17,9 +17,9 @@ const VILLAGE_Z = 1;
  */
 export const CLOSEUP_PITCH_DEG = -24;
 /** The height the closeup looks at: about the middle of the tallest building. */
-export const CLOSEUP_LOOK_Y = 0.9;
+export const CLOSEUP_LOOK_Y = 0.5;
 /** Empty ground kept on each side of the built Village in the closeup, in world units. */
-export const CLOSEUP_MARGIN = 0.5;
+export const CLOSEUP_MARGIN = 0.3;
 /**
  * How much wider a volume shows per world unit it stands nearer the camera than the Village's depth,
  * in the closeup (about 1 / the camera's distance, 6 units for the usual screen).

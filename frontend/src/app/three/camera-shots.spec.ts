@@ -1,4 +1,11 @@
-import { dampFactor, fitDistance, SHOTS, ShotBlend } from './camera-shots';
+import {
+  closeupDistance,
+  dampFactor,
+  fitDistance,
+  SHOTS,
+  ShotBlend,
+} from './camera-shots';
+import { FIGURE_Z } from './figures/figure-layout';
 import { TOWER_LAUNCH_Z, TOWER_RECALL_X } from './launch/launch-objects';
 
 describe('camera shots', () => {
@@ -53,15 +60,6 @@ describe('camera shots', () => {
     const shown = (d: number, aspect: number) =>
       Math.tan((fov * Math.PI) / 360) * (d - TOWER_LAUNCH_Z) * aspect;
 
-    it('asks for no more than the closeup on a wide screen', () => {
-      expect(fitDistance(fov, 1280 / 720, reach, TOWER_LAUNCH_Z)).toBeLessThan(
-        distance,
-      );
-      expect(fitDistance(fov, 1920 / 1080, reach, TOWER_LAUNCH_Z)).toBeLessThan(
-        distance,
-      );
-    });
-
     it('stands the closeup back until the lamp is in the picture on a narrow screen', () => {
       for (const [w, h] of [
         [440, 900],
@@ -81,6 +79,55 @@ describe('camera shots', () => {
 
     it('gives no distance for a screen with no size', () => {
       expect(fitDistance(fov, 0, reach, TOWER_LAUNCH_Z)).toBe(0);
+    });
+  });
+
+  describe('closeupDistance (#143)', () => {
+    const fight = { reach: 0.97, depth: FIGURE_Z };
+    const lamp = { reach: TOWER_RECALL_X + 0.6, depth: TOWER_LAUNCH_Z };
+    const old = 5.2;
+    /** How much larger a figure is than in the old closeup (a figure's size goes with 1 / its distance from the camera). */
+    const magnification = (d: number) => (old - FIGURE_Z) / (d - FIGURE_Z);
+
+    it('frames the fight at least twice as large as the old closeup on a wide screen', () => {
+      for (const aspect of [1440 / 900, 1920 / 1080, 2560 / 1440]) {
+        const d = closeupDistance(SHOTS.closeup, aspect, fight, null);
+        expect(magnification(d)).toBeGreaterThanOrEqual(2);
+      }
+    });
+
+    it('keeps the whole fight in the width, whatever the screen', () => {
+      for (const aspect of [1, 1.2, 1440 / 900, 1920 / 1080, 21 / 9]) {
+        const d = closeupDistance(SHOTS.closeup, aspect, fight, null);
+        const half =
+          Math.tan((SHOTS.closeup.fov * Math.PI) / 360) *
+          (d - FIGURE_Z) *
+          aspect;
+        // Within the Shot's own minimum distance the fight may stand in the picture with room to spare.
+        expect(half).toBeGreaterThanOrEqual(fight.reach - 1e-9);
+      }
+    });
+
+    it('lets the bell and the lamp leave the picture on a wide screen', () => {
+      const wide = closeupDistance(SHOTS.closeup, 1440 / 900, fight, null);
+      expect(
+        fitDistance(SHOTS.closeup.fov, 1440 / 900, lamp.reach, lamp.depth),
+      ).toBeGreaterThan(wide);
+    });
+
+    it('stands back for the lamp on a narrow screen, as before', () => {
+      const aspect = 440 / 900;
+      const d = closeupDistance(SHOTS.closeup, aspect, fight, lamp);
+      expect(d).toBeGreaterThanOrEqual(
+        fitDistance(SHOTS.closeup.fov, aspect, lamp.reach, lamp.depth),
+      );
+      expect(d).toBeGreaterThan(old * 0.9);
+    });
+
+    it('stays outside the unit view', () => {
+      expect(closeupDistance(SHOTS.closeup, 3, fight, null)).toBeGreaterThan(
+        SHOTS.unit.distance,
+      );
     });
   });
 });
