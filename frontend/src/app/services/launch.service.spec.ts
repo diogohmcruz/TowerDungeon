@@ -4,7 +4,10 @@ import { GameAction } from '../interfaces/game-action.enum';
 import { GameStateService } from './game-state.service';
 import { GameWebSocketService } from './game-web-socket.service';
 import { LaunchService } from './launch.service';
-import { isEmptySpaceClick } from '../components/tower-scene/tower-scene-graph.component';
+import {
+  isEmptySpaceClick,
+  isUnitClick,
+} from '../components/tower-scene/tower-scene-graph.component';
 import {
   bellAvailability,
   extractAvailability,
@@ -269,6 +272,32 @@ describe('launching from the picture', () => {
         isEmptySpaceClick(press, { ...click, timeStamp: 900 }, false),
       ).toBeFalse();
       expect(isEmptySpaceClick(null, click, false)).toBeFalse();
+    });
+  });
+
+  describe('the click on a unit', () => {
+    const unit = { kind: 'unit' as const, id: 3 };
+    const press = { x: 10, y: 10, at: 100, unit };
+    const click = { clientX: 10, clientY: 10, timeStamp: 200 };
+
+    it('opens the unit under the press', () => {
+      expect(isUnitClick(press, click, false)).toBeTrue();
+    });
+
+    it('survives the drift of a finger and a slow press, which the empty space does not', () => {
+      const slow = { clientX: 20, clientY: 10, timeStamp: 1000 };
+      expect(isEmptySpaceClick(press, slow, false)).toBeFalse();
+      expect(isUnitClick(press, slow, false)).toBeTrue();
+    });
+
+    it('is still not a drag, a very long hold, a launch control press or a press on empty space', () => {
+      expect(isUnitClick(press, { ...click, clientX: 60 }, false)).toBeFalse();
+      expect(
+        isUnitClick(press, { ...click, timeStamp: 3000 }, false),
+      ).toBeFalse();
+      expect(isUnitClick(press, click, true)).toBeFalse();
+      expect(isUnitClick({ ...press, unit: null }, click, false)).toBeFalse();
+      expect(isUnitClick(null, click, false)).toBeFalse();
     });
   });
 });

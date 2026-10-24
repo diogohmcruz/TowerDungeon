@@ -65,6 +65,8 @@ import { TowerSceneGraph } from './tower-scene-graph.component';
     /* The canvas draws at 1 / pixel scale of its CSS size; keep the pixels hard. */
     :host ::ng-deep canvas {
       image-rendering: pixelated;
+      /* A finger on a unit is a tap or a pan of the camera, never the page's own scroll that would cancel the tap. */
+      touch-action: none;
     }
   `,
 })

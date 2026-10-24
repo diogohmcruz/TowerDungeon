@@ -68,9 +68,44 @@ export function figureRect(
 }
 
 /**
- * The member figure under a click at (`x`, `y`) on the canvas, front-most
- * first. Only the sprites are given: specks, Wave columns and numerals are
- * not clickable, so a click on them is a click on empty space.
+ * A figure is a few screen pixels across in the battle view (8 by 11 at 1440 px), and the
+ * canvas draws on a coarser grid than the screen, so a hit area of exactly the drawn bounds
+ * misses most honest clicks. The hit area is the drawn rectangle grown to at least this
+ * size on each side (CSS px), then by the margin.
+ */
+export const PICK_MIN_SIZE = 22;
+/** CSS px added on every side of the drawn bounds (the caller adds the pixel scale, the grid's snap). */
+export const PICK_MARGIN = 4;
+
+export interface PickOptions {
+  /** Added to every side of the (minimum-sized) rectangle, CSS px. */
+  margin?: number;
+  /** The hit area is never smaller than this, CSS px. */
+  minSize?: number;
+}
+
+/** The area that counts as a hit on a figure drawn in `rect`. */
+export function hitRect(
+  rect: ScreenRect,
+  { margin = PICK_MARGIN, minSize = PICK_MIN_SIZE }: PickOptions = {},
+): ScreenRect {
+  const cx = (rect.left + rect.right) / 2;
+  const cy = (rect.top + rect.bottom) / 2;
+  const halfW = Math.max(rect.right - rect.left, minSize) / 2 + margin;
+  const halfH = Math.max(rect.bottom - rect.top, minSize) / 2 + margin;
+  return {
+    left: cx - halfW,
+    top: cy - halfH,
+    right: cx + halfW,
+    bottom: cy + halfH,
+  };
+}
+
+/**
+ * The member figure under a click at (`x`, `y`) on the canvas. Only the sprites are
+ * given: specks, Wave columns and numerals are not clickable, so a click on them is a
+ * click on empty space. Where hit areas overlap the nearest figure wins (by distance
+ * from the click to the middle of its drawn bounds), then the front-most.
  */
 export function pickFigure(
   camera: THREE.Camera,
@@ -79,18 +114,30 @@ export function pickFigure(
   y: number,
   canvasWidth: number,
   canvasHeight: number,
+  options: PickOptions = {},
 ): FigureInstance | null {
   let best: FigureInstance | null = null;
+  let bestDistance = Infinity;
   for (const figure of sprites) {
     if (!parseFigureId(figure.id)) {
       continue;
     }
-    const r = figureRect(camera, figure, canvasWidth, canvasHeight);
+    const drawn = figureRect(camera, figure, canvasWidth, canvasHeight);
+    const r = hitRect(drawn, options);
     if (x < r.left || x > r.right || y < r.top || y > r.bottom) {
       continue;
     }
-    if (!best || figure.z > best.z) {
+    const distance = Math.hypot(
+      x - (drawn.left + drawn.right) / 2,
+      y - (drawn.top + drawn.bottom) / 2,
+    );
+    if (
+      !best ||
+      distance < bestDistance - 0.5 ||
+      (distance <= bestDistance + 0.5 && figure.z > best.z)
+    ) {
       best = figure;
+      bestDistance = distance;
     }
   }
   return best;
