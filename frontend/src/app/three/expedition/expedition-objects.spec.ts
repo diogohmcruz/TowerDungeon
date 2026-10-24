@@ -4,9 +4,13 @@ import {
   subjectOfVolume,
   outlineVolumes,
 } from '../village/village-subjects';
+import { VILLAGE_TONE } from '../village/village-layout';
 import {
+  casketCount,
+  coinColumns,
   CRATE_KINDS,
   crateCount,
+  heapCourses,
   CrateKind,
   expeditionCaption,
   finishSubject,
@@ -87,25 +91,79 @@ describe('Expedition objects', () => {
     expect(crates[2]).toBeGreaterThan(crates[1]);
   });
 
-  it('stacks more crates for a larger load and none for nothing', () => {
+  const count = (v: ReturnType<typeof expeditionVolumes>, prefix: string) =>
+    v.filter((x) => x.id.startsWith(prefix) && x.alpha > 0).length;
+
+  it('shows a larger load as a larger pile and nothing for nothing', () => {
     const kinds: CrateKind[] = ['CREDITS', 'MATERIALS', 'RELICS'];
     for (const kind of kinds) {
       expect(crateCount(kind, 0)).toBe(0);
       expect(crateCount(kind, 1)).toBe(1);
       expect(crateCount(kind, 1e6)).toBe(3);
     }
-    const boxes = (v: ReturnType<typeof expeditionVolumes>, k: string) =>
-      v.filter((x) => x.id.startsWith(`carried-${k}-box-`)).length;
-    expect(boxes(expeditionVolumes({ ...input, credits: 0 }), 'credits')).toBe(0);
-    expect(boxes(expeditionVolumes({ ...input, credits: 5 }), 'credits')).toBe(1);
-    expect(boxes(expeditionVolumes({ ...input, credits: 5000 }), 'credits')).toBe(3);
+    const credits = (n: number) => count(expeditionVolumes({ ...input, credits: n }), 'carried-credits-coin-');
+    const blocks = (n: number) => count(expeditionVolumes({ ...input, materials: n }), 'carried-materials-block-');
+    const pieces = (n: number) => count(expeditionVolumes({ ...input, relics: n }), 'carried-relics-casket-');
+    // The thresholds are unchanged: 100 and 1000 Credits, 20 and 200 Materials, 2 and 5 Relics.
+    expect([0, 1, 99, 100, 999, 1000].map(credits)).toEqual([0, 3, 3, 7, 7, 11]);
+    expect([0, 1, 19, 20, 199, 200].map(blocks)).toEqual([0, 3, 3, 5, 5, 6]);
+    expect([0, 1, 1, 2, 4, 5].map(pieces)).toEqual([0, 4, 4, 8, 8, 12]);
   });
 
-  it('tells the crates apart by shape: Credits one slat, Materials two, Relics three', () => {
-    const volumes = expeditionVolumes({ ...input, credits: 5, materials: 5, relics: 5 });
-    const slats = (k: string) =>
-      volumes.filter((x) => x.id.startsWith(`carried-${k}-slat-0-`)).length;
-    expect([slats('credits'), slats('materials'), slats('relics')]).toEqual([1, 2, 3]);
+  it('grows each pile through its tiers without ever leaving its shelf', () => {
+    expect(coinColumns(0)).toEqual([]);
+    expect(coinColumns(3).length).toBe(3);
+    expect(heapCourses(3)).toEqual([3, 2, 1]);
+    expect(casketCount(3)).toBe(3);
+    for (const tier of [1, 2, 3]) {
+      expect(coinColumns(tier).reduce((a, b) => a + b, 0)).toBeGreaterThan(
+        coinColumns(tier - 1).reduce((a, b) => a + b, 0),
+      );
+      expect(heapCourses(tier).reduce((a, b) => a + b, 0)).toBeGreaterThan(
+        heapCourses(tier - 1).reduce((a, b) => a + b, 0),
+      );
+    }
+    const volumes = expeditionVolumes({ ...input, credits: 1e6, materials: 1e6, relics: 1e6 });
+    for (const kind of CRATE_KINDS) {
+      const id = `carried-${kind.toLowerCase()}`;
+      const shelf = volumes.find((v) => v.id === `${id}-base`)!;
+      const hit = volumes.find((v) => v.id === `${id}-hit`)!;
+      for (const v of volumes.filter((x) => x.id.startsWith(`${id}-`) && x.alpha > 0 && x !== shelf)) {
+        expect(v.x - v.w / 2).withContext(v.id).toBeGreaterThanOrEqual(shelf.x - shelf.w / 2 - 1e-9);
+        expect(v.x + v.w / 2).withContext(v.id).toBeLessThanOrEqual(shelf.x + shelf.w / 2 + 1e-9);
+        // Nothing stands taller than the pick pad, so the hover reaches the whole pile.
+        expect(v.y + v.h / 2).withContext(v.id).toBeLessThanOrEqual(hit.y + hit.h / 2 + 1e-9);
+        expect(v.y - v.h / 2).withContext(v.id).toBeGreaterThanOrEqual(shelf.y - shelf.h / 2 - 1e-9);
+      }
+    }
+  });
+
+  it('tells the three kinds apart by shape: coin columns, a tapering heap, caskets with a lit slit', () => {
+    const volumes = expeditionVolumes({ ...input, credits: 5000, materials: 500, relics: 9 });
+    const of = (k: string) => volumes.filter((v) => v.id.startsWith(`carried-${k}-`) && v.alpha > 0);
+    const coins = of('credits').filter((v) => v.id.includes('-coin-'));
+    const blocks = of('materials').filter((v) => v.id.includes('-block-'));
+    // Coins are flat discs: wider than tall, in columns of the same footprint.
+    expect(coins.every((v) => v.w > 2 * v.h)).toBeTrue();
+    expect(new Set(coins.map((v) => v.id.split('-')[3])).size).toBe(3);
+    // The heap tapers: every course holds fewer blocks than the one under it.
+    const perCourse = heapCourses(3);
+    expect(perCourse.every((n, i) => i === 0 || n < perCourse[i - 1])).toBeTrue();
+    expect(blocks.length).toBe(perCourse.reduce((a, b) => a + b, 0));
+    // A casket is taller than a coin and carries a lit slit the other two kinds have not.
+    // A slit is cut into a face: a thin decal at the lit density.
+    const lit = (k: string) => of(k).filter((v) => v.tone === VILLAGE_TONE.lit && v.d < 0.05);
+    expect(lit('relics').length).toBe(3);
+    expect(lit('credits').length).toBe(0);
+    expect(lit('materials').length).toBe(0);
+  });
+
+  it('draws only the Village\'s own ink densities', () => {
+    const allowed = new Set<number>(Object.values(VILLAGE_TONE));
+    const volumes = expeditionVolumes({ ...input, credits: 5000, materials: 500, relics: 9 });
+    for (const v of volumes.filter((x) => x.id.startsWith('carried-'))) {
+      expect(allowed.has(v.tone)).withContext(`${v.id} tone ${v.tone}`).toBeTrue();
+    }
   });
 
   it('maps every volume to an expedition subject, and the hit boxes are invisible', () => {
