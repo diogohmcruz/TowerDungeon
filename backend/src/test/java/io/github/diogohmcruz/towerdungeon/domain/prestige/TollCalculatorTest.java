@@ -40,17 +40,17 @@ class TollCalculatorTest {
   }
 
   @Test
-  void firstExpeditionOfFloorsOneToTenIsAboutEightMarks() {
+  void firstExpeditionOfFloorsOneToTenIsAboutTwentyNineMarks() {
     var result = calc(tally(0, 375, 150, 3, 1, 10, 1));
 
     assertThat(result.materialsMarks()).isCloseTo(0.89, within(TOLERANCE));
     assertThat(result.creditsMarks()).isCloseTo(0.45, within(TOLERANCE));
     assertThat(result.relicsMarks()).isCloseTo(0.39, within(TOLERANCE));
-    assertThat(result.expeditionsMarks()).isCloseTo(0.73, within(TOLERANCE));
-    assertThat(result.ascentMarks()).isCloseTo(4.0, within(TOLERANCE));
+    assertThat(result.expeditionsMarks()).isCloseTo(5.34, within(TOLERANCE));
+    assertThat(result.ascentMarks()).isCloseTo(20.0, within(TOLERANCE));
     assertThat(result.guardianMarks()).isCloseTo(1.5, within(TOLERANCE));
-    assertThat(result.marks()).isCloseTo(8.0, within(0.1));
-    assertThat(result.legacy()).isEqualTo(1); // floor(8.0 / 9) is 0, plus New Ground 1
+    assertThat(result.marks()).isCloseTo(28.6, within(0.1));
+    assertThat(result.legacy()).isEqualTo(4); // floor(28.6 / 9) is 3, plus New Ground 1
   }
 
   @Test
@@ -86,7 +86,7 @@ class TollCalculatorTest {
     var atDoor = calc(tally(0, 0, 0, 0, 0, 99, 0));
     var beyond = calc(tally(0, 0, 0, 0, 0, 100, 0));
 
-    assertThat(atDoor.ascentMarks()).isCloseTo(0.4 * 99, within(1e-9));
+    assertThat(atDoor.ascentMarks()).isCloseTo(2.0 * 99, within(1e-9));
     assertThat(beyond.ascentMarks()).isEqualTo(atDoor.ascentMarks());
   }
 
@@ -97,12 +97,12 @@ class TollCalculatorTest {
     assertThat(calc(tally(0, 0, 0, 0, 0, 30, 0), context).ascentMarks()).isZero();
     assertThat(calc(tally(0, 0, 0, 0, 0, 12, 0), context).ascentMarks()).isZero();
     assertThat(calc(tally(0, 0, 0, 0, 0, 40, 0), context).ascentMarks())
-        .isCloseTo(0.4 * 10, within(1e-9));
+        .isCloseTo(2.0 * 10, within(1e-9));
   }
 
   @Test
   void loadScalesMarksAndIsCapped() {
-    var tally = tally(0, 0, 0, 0, 0, 50, 0); // S = 20
+    var tally = tally(0, 0, 0, 0, 0, 10, 0); // S = 20
     var none = calc(tally);
     var three = calc(tally, new TollContext(3, 0, 0.0, 0, 0));
     var atCap = calc(tally, new TollContext(8, 0, 0.0, 0, 0));
@@ -117,7 +117,7 @@ class TollCalculatorTest {
 
   @Test
   void residueIsAddedToTheTollAndTheRemainderCarriesOver() {
-    var result = calc(tally(0, 0, 0, 0, 0, 50, 0), new TollContext(0, 0, 2.5, 0, 0)); // 20 + 2.5
+    var result = calc(tally(0, 0, 0, 0, 0, 10, 0), new TollContext(0, 0, 2.5, 0, 0)); // 20 + 2.5
 
     assertThat(result.toll()).isCloseTo(22.5, within(1e-9));
     assertThat(result.legacy()).isEqualTo(2);
@@ -178,7 +178,7 @@ class TollCalculatorTest {
   @Test
   void defaultsBindToTheDesignedValues() {
     assertThat(CONFIG.getPointsDivisor()).isEqualTo(9.0);
-    assertThat(CONFIG.getAscentMarksPerFloor()).isEqualTo(0.4);
+    assertThat(CONFIG.getAscentMarksPerFloor()).isEqualTo(2.0);
     assertThat(CONFIG.getGuardianMarks()).isEqualTo(1.5);
     assertThat(CONFIG.getLoadMark()).isEqualTo(0.05);
     assertThat(CONFIG.getLoadCap()).isEqualTo(8);

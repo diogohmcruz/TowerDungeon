@@ -286,7 +286,7 @@ game:
     seed: 362108372306
   prestige:
     points-divisor: 9.0
-    ascent-marks-per-floor: 0.4
+    ascent-marks-per-floor: 2.0
     guardian-marks: 1.5
     load-mark: 0.05
     load-cap: 8
@@ -342,7 +342,7 @@ game:
       materials-banked: {marks: 6.0, par: 17000.0}
       credits-banked: {marks: 3.0, par: 6800.0}
       relics-banked: {marks: 4.0, par: 320.0}
-      expeditions: {marks: 3.0, par: 17.0}
+      expeditions: {marks: 22.0, par: 17.0}
   persistence:
     # Must be a mounted volume: on an ephemeral filesystem every deploy deletes every Campaign.
     data-dir: ./data

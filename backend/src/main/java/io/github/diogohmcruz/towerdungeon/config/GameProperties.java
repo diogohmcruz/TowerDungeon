@@ -1242,7 +1242,7 @@ public class GameProperties {
     private double pointsDivisor = 9.0;
 
     /** Marks per Floor climbed above the inherited Start Floor. */
-    private double ascentMarksPerFloor = 0.4;
+    private double ascentMarksPerFloor = 2.0;
 
     /** Marks per Guardian slain. */
     private double guardianMarks = 1.5;
@@ -1495,7 +1495,7 @@ public class GameProperties {
       private final Counter materialsBanked = counter(6.0, 17000.0);
       private final Counter creditsBanked = counter(3.0, 6800.0);
       private final Counter relicsBanked = counter(4.0, 320.0);
-      private final Counter expeditions = counter(3.0, 17.0);
+      private final Counter expeditions = counter(22.0, 17.0);
 
       private static Counter counter(double marks, double par) {
         var counter = new Counter();

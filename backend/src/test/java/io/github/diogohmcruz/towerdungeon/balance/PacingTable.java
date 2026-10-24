@@ -72,6 +72,30 @@ public record PacingTable(Assumptions assumptions, List<Row> rows) {
    * every Floor cleared is banked (Extraction). Quarry Heap and Relics are not counted.
    */
   public Economy earned(Row row, GameProperties props) {
+    var found = found(row, props);
+    var credits = found.credits();
+    var materials = found.materials();
+    var n = assumptions.expeditionsPerGeneration();
+    var heldCredits = props.getStart().getCredit();
+    var roll = props.getPrestige().getRoll();
+    if (row.plan().inheritances().contains(InheritanceType.SEED_GRAIN)) {
+      heldCredits = roll.getSeedGrain().getCredits();
+    }
+    if ("CREDITS".equals(row.plan().dowry())) {
+      heldCredits += roll.getDowry().getCredits();
+    }
+    var relics = n * assumptions.relicsPerExpedition();
+    if ("RELICS".equals(row.plan().dowry())) {
+      relics += roll.getDowry().getRelics();
+    }
+    return new Economy(credits + heldCredits, materials, relics);
+  }
+
+  /**
+   * The Credits and Materials the Expeditions before the final push find on Floors and bank, with
+   * no Credits held: what the Toll's Credits and Materials counters read.
+   */
+  public Economy found(Row row, GameProperties props) {
     var n = assumptions.expeditionsPerGeneration();
     var credits = 0.0;
     var materials = 0.0;
@@ -87,19 +111,7 @@ public record PacingTable(Assumptions assumptions, List<Row> rows) {
         materials += props.getReward().getMaterialsPerFloor() * f * factor;
       }
     }
-    var heldCredits = props.getStart().getCredit();
-    var roll = props.getPrestige().getRoll();
-    if (row.plan().inheritances().contains(InheritanceType.SEED_GRAIN)) {
-      heldCredits = roll.getSeedGrain().getCredits();
-    }
-    if ("CREDITS".equals(row.plan().dowry())) {
-      heldCredits += roll.getDowry().getCredits();
-    }
-    var relics = n * assumptions.relicsPerExpedition();
-    if ("RELICS".equals(row.plan().dowry())) {
-      relics += roll.getDowry().getRelics();
-    }
-    return new Economy(credits + heldCredits, materials, relics);
+    return new Economy(credits, materials, 0.0);
   }
 
   /** What the plan costs: Credits for recruits, Materials and Relics for Upgrades. */
