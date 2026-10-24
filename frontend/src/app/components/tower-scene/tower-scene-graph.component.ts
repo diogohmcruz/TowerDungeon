@@ -89,6 +89,7 @@ import '../../three/catalogue';
 import { figureBoost } from '../../three/ink/pixel-scale';
 import { applyStageView, towerRegion } from '../../three/stage-view';
 import { StageService } from '../../services/stage.service';
+import { TransitionService } from '../../services/transition.service';
 import { ZoomService } from '../../services/zoom.service';
 import {
   dampFactor,
@@ -573,6 +574,7 @@ export class TowerSceneGraph {
   private readonly store = injectStore();
   private readonly stage = inject(StageService);
   private readonly zoom = inject(ZoomService);
+  private readonly transition = inject(TransitionService);
   private readonly shot = new ShotBlend();
   private readonly reducedMotion = prefersReducedMotion();
   private readonly game = inject(GameStateService).state;
@@ -717,13 +719,17 @@ export class TowerSceneGraph {
         this.panY = THREE.MathUtils.lerp(this.panY, 0, damp * 0.6);
       }
 
-      const viewY = focusY + this.panY;
+      // The Set out rise and the drop back: the camera is lower while the Set out transition plays.
+      // It is driven by its own eased curve (no overshoot), so the damped approach is bypassed.
+      const dropY = this.transition.drop;
+      const viewY = focusY + this.panY - dropY;
       this.camTarget.set(0, viewY + pose.lookUp, 0);
       this.camPos.set(0, viewY + pose.camUp, pose.distance);
 
       // Both the position and the look-at target ease, so the view never snaps.
-      camera.position.lerp(this.camPos, damp);
-      this.lookAtSmooth.lerp(this.camTarget, damp);
+      const follow = dropY > 0 || this.transition.running ? 1 : damp;
+      camera.position.lerp(this.camPos, follow);
+      this.lookAtSmooth.lerp(this.camTarget, follow);
       camera.lookAt(this.lookAtSmooth);
       const cam = camera as THREE.PerspectiveCamera;
 
