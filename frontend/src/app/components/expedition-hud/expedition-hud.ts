@@ -1,4 +1,4 @@
-import { Component, computed, input } from '@angular/core';
+import { Component, computed, inject, input } from '@angular/core';
 import { LowerCasePipe } from '@angular/common';
 import { Tower } from '../../interfaces/tower';
 import { Member } from '../../interfaces/member';
@@ -7,6 +7,7 @@ import { EnemyCard } from '../enemy-card/enemy-card';
 import { Army } from '../army/army';
 import { ExpeditionLoot } from '../expedition-loot/expedition-loot';
 import { Supplies } from '../supplies/supplies';
+import { ZoomService } from '../../services/zoom.service';
 
 /**
  * The Expedition HUD (architecture doc 5.5): the Floor, the carried loot, Supplies, the
@@ -19,6 +20,8 @@ import { Supplies } from '../supplies/supplies';
   styleUrl: './expedition-hud.scss',
 })
 export class ExpeditionHud {
+  /** An enemy is chosen here (the Party through its name button), to open its unit view. */
+  protected readonly zoom = inject(ZoomService);
   tower = input<Tower | undefined>();
   party = input<Squad>();
   supplies = input<number>(0);
@@ -31,7 +34,9 @@ export class ExpeditionHud {
 
   towerFloors = computed(() => this.tower()?.floors ?? {});
   currentFloor = computed(() => this.tower()?.currentFloor ?? 0);
-  currentTowerFloor = computed(() => this.towerFloors()?.[this.currentFloor() ?? 0]);
+  currentTowerFloor = computed(
+    () => this.towerFloors()?.[this.currentFloor() ?? 0],
+  );
   currentTowerFloorEnemies = computed(() => this.currentTowerFloor()?.enemies);
   groupedEnemyEntries = computed<[string, Member[]][]>(() => {
     const groups: Record<string, Member[]> = {};
@@ -43,6 +48,8 @@ export class ExpeditionHud {
   });
   currentFloorIsBoss = computed(() => this.currentTowerFloor()?.boss === true);
   /** The Floor shown wears the mark of a Race's Finish Floor, but only when listed by the server. */
-  currentFloorMarked = computed(() => this.pillarMarks().includes(this.currentFloor()));
+  currentFloorMarked = computed(() =>
+    this.pillarMarks().includes(this.currentFloor()),
+  );
   enemyCount = computed(() => this.currentTowerFloorEnemies()?.length ?? 0);
 }

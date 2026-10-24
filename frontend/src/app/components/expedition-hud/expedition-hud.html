@@ -42,6 +42,14 @@
           <div class="member-list">
             @for (enemy of group[1]; track enemy.id) {
               <app-enemy-card [enemy]="enemy" />
+              <button
+                type="button"
+                class="btn btn-ghost view-unit"
+                [attr.aria-label]="'View ' + enemy.name"
+                (click)="zoom.focusUnit({ kind: 'enemy', id: enemy.id })"
+              >
+                View
+              </button>
             }
           </div>
         </section>

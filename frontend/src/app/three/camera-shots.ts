@@ -2,20 +2,20 @@
  * Camera Shots for the Tower scene (architecture doc 3.5): a table of poses and
  * scalars damped toward the active one. No overshoot: each scalar closes a
  * fraction of its gap per frame, which never passes the target. The unit view
- * (#95) adds a third rung to the ladder beside these two.
+ * (#95) is the third rung of the ladder.
  */
 
 /** The rungs of the zoom ladder, outermost first. */
-export type ShotName = 'battle' | 'closeup';
+export type ShotName = 'battle' | 'closeup' | 'unit';
 
 export interface Shot {
   /** Vertical field of view, degrees. */
   fov: number;
-  /** Camera distance in front of the Tower (z). */
+  /** Camera distance in front of the Tower (z); in the unit Shot, in front of the figure. */
   distance: number;
-  /** Camera height above the focused Floor's base. */
+  /** Camera height above the focused Floor's base; in the unit Shot, above the figure's centre. */
   camUp: number;
-  /** Look-at height above the focused Floor's base. */
+  /** Look-at height above the focused Floor's base; in the unit Shot, above the figure's centre. */
   lookUp: number;
   /** 0 frames the Tower in its region on the right; 1 centres it on the whole screen. */
   spread: number;
@@ -25,6 +25,8 @@ export const SHOTS: Readonly<Record<ShotName, Shot>> = {
   battle: { fov: 64, distance: 12.5, camUp: 7, lookUp: 1.3, spread: 0 },
   // About one Floor tall with the Floor above and below just in frame.
   closeup: { fov: 42, distance: 5.2, camUp: 1.85, lookUp: 1.85, spread: 1 },
+  // The camera centres on one figure, about a third of the screen high, and looks slightly down.
+  unit: { fov: 30, distance: 1.9, camUp: 0.25, lookUp: 0, spread: 1 },
 };
 
 /** Closer than this to its target a scalar lands on it, so the camera comes to rest. */

@@ -15,11 +15,17 @@
   type="button"
   class="menus-toggle closeup-toggle"
   (click)="zoom.toggleCloseup()"
-  [attr.aria-pressed]="zoom.closeup()"
+  [attr.aria-pressed]="zoom.level() !== 'battle'"
   aria-label="Closeup of the current Floor. Holds the Party and the Village clock. Escape steps back."
   title="Closeup of the current Floor (holds time; Escape steps back)"
 >
-  {{ zoom.closeup() ? 'Leave closeup' : 'Closeup' }}
+  {{
+    zoom.level() === 'unit'
+      ? 'Back to closeup'
+      : zoom.closeup()
+        ? 'Leave closeup'
+        : 'Closeup'
+  }}
 </button>
 }
 <article class="flex-wrapper menu-column" [class.menus-hidden]="stage.menusHidden()">

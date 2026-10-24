@@ -110,6 +110,11 @@
       flex-direction: column;
       gap: 5px;
     }
+
+    .view-unit {
+      align-self: flex-end;
+      margin-top: -2px;
+    }
   }
 }
 

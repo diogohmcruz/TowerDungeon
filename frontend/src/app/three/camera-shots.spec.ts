@@ -7,6 +7,12 @@ describe('camera shots', () => {
     expect(SHOTS.closeup.spread).toBe(1);
   });
 
+  it('has a unit shot that is closer than the closeup and fills the screen', () => {
+    expect(SHOTS.unit.fov).toBeLessThan(SHOTS.closeup.fov);
+    expect(SHOTS.unit.distance).toBeLessThan(SHOTS.closeup.distance);
+    expect(SHOTS.unit.spread).toBe(1);
+  });
+
   it('eases toward the shot without ever passing it', () => {
     const blend = new ShotBlend();
     const frames: number[] = [];

@@ -36,6 +36,7 @@ import {
   FigureInstance,
   FigureMember,
   MARK_CAPACITY,
+  FIGURE_Z,
   planFigures,
   SPECK_CAPACITY,
   SURFACE_LIFT,
@@ -43,7 +44,16 @@ import {
 import {
   FIGURE_FRAGMENT,
   FIGURE_VERTEX,
+  OUTLINE_FRAGMENT,
+  OUTLINE_PAD,
 } from '../../three/figures/figure.glsl';
+import {
+  figureId,
+  figureRect,
+  parseFigureId,
+  pickFigure,
+  UnitFocus,
+} from '../../three/figures/figure-pick';
 import {
   createInkUniforms,
   setInkTheme,
@@ -319,6 +329,25 @@ function floorSurfaceY(n: number): number {
       />
     </ngt-instanced-mesh>
 
+    <!-- The bone outline of the figure a unit view is on: one instance, a few texels larger than its sprite. -->
+    <ngt-instanced-mesh
+      #outline
+      *args="[undefined, undefined, 1]"
+      [frustumCulled]="false"
+    >
+      <ngt-plane-geometry *args="[1, 1]">
+        <ngt-instanced-buffer-attribute
+          attach="attributes.aCell"
+          *args="[outlineCell, 4]"
+        />
+      </ngt-plane-geometry>
+      <ngt-shader-material
+        [vertexShader]="figureVertex"
+        [fragmentShader]="outlineFragment"
+        [uniforms]="figureUniforms"
+      />
+    </ngt-instanced-mesh>
+
     <!-- Specks: the figures over the cap, one more draw call. -->
     <ngt-instanced-mesh
       #specks
@@ -394,6 +423,7 @@ export class TowerSceneGraph {
   protected readonly numeralFragment = NUMERAL_FRAGMENT;
   protected readonly figureVertex = FIGURE_VERTEX;
   protected readonly figureFragment = FIGURE_FRAGMENT;
+  protected readonly outlineFragment = OUTLINE_FRAGMENT;
   protected readonly inkUniforms = createInkUniforms(this.theme());
 
   // Textures owned here, disposed on destroy.
@@ -433,6 +463,7 @@ export class TowerSceneGraph {
   protected readonly numeralDigit = new Float32Array(NUMERAL_CAPACITY * 2);
   protected readonly markCell = new Float32Array(MARK_CAPACITY * 4);
   protected readonly speckCell = new Float32Array(SPECK_CAPACITY * 4);
+  protected readonly outlineCell = new Float32Array(4);
   protected readonly bodyTone = new Float32Array(BOX_CAPACITY);
   protected readonly bodyAlpha = new Float32Array(BOX_CAPACITY);
   protected readonly bodyRole = new Float32Array(BOX_CAPACITY);
@@ -458,6 +489,8 @@ export class TowerSceneGraph {
     viewChild<ElementRef<THREE.InstancedMesh>>('marks');
   private readonly specksRef =
     viewChild<ElementRef<THREE.InstancedMesh>>('specks');
+  private readonly outlineRef =
+    viewChild<ElementRef<THREE.InstancedMesh>>('outline');
 
   /**
    * The strip plan is rebuilt only when the tower's `layoutVersion` changes
@@ -669,6 +702,25 @@ export class TowerSceneGraph {
     if (isDevMode()) {
       // Spike #15 measurement hook: renderer.info of the last frame.
       (window as unknown as Record<string, unknown>)['__tower'] = {
+        // Capture tooling (#95): where each member sprite is on the canvas, in CSS px.
+        figures: () => {
+          const el = this.store.snapshot.gl.domElement;
+          const box = el.getBoundingClientRect();
+          const plan = this.figurePlan();
+          return plan.marks.slice(0, plan.figureCount).map((f) => {
+            const r = figureRect(
+              this.store.snapshot.camera,
+              f,
+              el.clientWidth,
+              el.clientHeight,
+            );
+            return {
+              id: f.id,
+              x: box.left + (r.left + r.right) / 2,
+              y: box.top + (r.top + r.bottom) / 2,
+            };
+          });
+        },
         info: () => {
           const gl = this.store.gl();
           const i = gl.info;
@@ -694,6 +746,8 @@ export class TowerSceneGraph {
       this.shot.step(SHOTS[this.zoom.level()], damp);
       const pose = this.shot.current;
       const zoomed = this.zoom.level() !== 'battle';
+      const unitView = this.zoom.level() === 'unit';
+      const subject = unitView ? this.focusSubject() : null;
 
       // Keep the panned view within the discovered tower (floor 1 → top floor).
       const floorsArr = this.floors();
@@ -723,8 +777,19 @@ export class TowerSceneGraph {
       // It is driven by its own eased curve (no overshoot), so the damped approach is bypassed.
       const dropY = this.transition.drop;
       const viewY = focusY + this.panY - dropY;
-      this.camTarget.set(0, viewY + pose.lookUp, 0);
-      this.camPos.set(0, viewY + pose.camUp, pose.distance);
+      if (unitView) {
+        // The unit Shot frames the figure itself; without it (gone from the plan) the Party's deck.
+        const at = subject ?? {
+          x: 0,
+          y: floorSurfaceY(this.anchorFloor()) + SURFACE_LIFT + 0.3,
+          z: FIGURE_Z,
+        };
+        this.camTarget.set(at.x, at.y - dropY + pose.lookUp, at.z);
+        this.camPos.set(at.x, at.y - dropY + pose.camUp, at.z + pose.distance);
+      } else {
+        this.camTarget.set(0, viewY + pose.lookUp, 0);
+        this.camPos.set(0, viewY + pose.camUp, pose.distance);
+      }
 
       // Both the position and the look-at target ease, so the view never snaps.
       const follow = dropY > 0 || this.transition.running ? 1 : damp;
@@ -746,6 +811,13 @@ export class TowerSceneGraph {
         cam.fov = pose.fov;
         cam.updateProjectionMatrix();
       }
+
+      // The card follows the figure: tell it where the figure is on the canvas.
+      this.zoom.setAnchor(
+        subject && el.clientWidth > 0
+          ? figureRect(camera, subject, el.clientWidth, el.clientHeight)
+          : null,
+      );
     });
   }
 
@@ -919,6 +991,55 @@ export class TowerSceneGraph {
       this.speckCell,
       SPECK_TONE,
     );
+    this.writeOutline(plan.marks.slice(0, plan.figureCount));
+  }
+
+  /** The sprite the unit view is on, if it is one (a speck has no sprite to outline). */
+  private writeOutline(sprites: FigureInstance[]): void {
+    const mesh = this.outlineRef()?.nativeElement;
+    if (!mesh?.isInstancedMesh) {
+      return;
+    }
+    const focus = this.zoom.focus();
+    const f = focus && sprites.find((s) => s.id === figureId(focus));
+    if (!f) {
+      mesh.count = 0;
+      return;
+    }
+    mesh.setMatrixAt(
+      0,
+      new THREE.Matrix4().compose(
+        new THREE.Vector3(f.x, f.y, f.z),
+        IDENTITY_QUATERNION,
+        new THREE.Vector3(
+          (f.w * (FIGURE_W + 2 * OUTLINE_PAD)) / FIGURE_W,
+          (f.h * (FIGURE_H + 2 * OUTLINE_PAD)) / FIGURE_H,
+          1,
+        ),
+      ),
+    );
+    this.outlineCell.set(
+      [f.cell % FIGURE_COLS, Math.floor(f.cell / FIGURE_COLS), f.role, 1],
+      0,
+    );
+    mesh.count = 1;
+    mesh.instanceMatrix.needsUpdate = true;
+    markAttributes(mesh, ['aCell']);
+  }
+
+  /** The figure (sprite or speck) the unit view is on, as the plan places it now. */
+  private focusSubject(): FigureInstance | null {
+    const focus = this.zoom.focus();
+    if (!focus) {
+      return null;
+    }
+    const plan = this.figurePlan();
+    const id = figureId(focus);
+    return (
+      plan.marks.slice(0, plan.figureCount).find((f) => f.id === id) ??
+      plan.specks.find((f) => f.id === id) ??
+      null
+    );
   }
 
   /** Spike #15: renderable objects and triangles in the scene, ignoring culling. */
@@ -961,7 +1082,13 @@ export class TowerSceneGraph {
       const onLaunch = !!p && p.at === this.launchPressAt;
       this.launchPressAt = -1;
       if (isEmptySpaceClick(p, e, onLaunch)) {
-        this.zoom.toggleCloseup();
+        // A sprite opens its unit view; anything else, specks included, is empty space.
+        const hit = this.figureAt(e);
+        if (hit) {
+          this.zoom.focusUnit(hit);
+        } else {
+          this.zoom.toggleCloseup();
+        }
       }
     };
     const onPointerMove = (e: PointerEvent) => {
@@ -1005,6 +1132,22 @@ export class TowerSceneGraph {
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
     });
+  }
+
+  /** The member whose sprite is under a click, if any. */
+  private figureAt(e: MouseEvent): UnitFocus | null {
+    const el = this.store.snapshot.gl.domElement;
+    const box = el.getBoundingClientRect();
+    const plan = this.figurePlan();
+    const hit = pickFigure(
+      this.store.snapshot.camera,
+      plan.marks.slice(0, plan.figureCount),
+      e.clientX - box.left,
+      e.clientY - box.top,
+      el.clientWidth,
+      el.clientHeight,
+    );
+    return hit ? parseFigureId(hit.id) : null;
   }
 
   private readTheme(): boolean {

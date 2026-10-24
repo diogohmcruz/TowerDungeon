@@ -1,7 +1,9 @@
 import { TestBed } from '@angular/core/testing';
 
 import { GameAction } from '../interfaces/game-action.enum';
+import { Squad } from '../interfaces/game-state';
 import { GameStateService } from './game-state.service';
+import { UnitViewService } from './unit-view.service';
 import { GameWebSocketService } from './game-web-socket.service';
 import { StageService } from './stage.service';
 import { ZoomService } from './zoom.service';
@@ -82,6 +84,127 @@ describe('ZoomService', () => {
     zoom.toggleCloseup();
     zoom.toggleCloseup();
     expect(sendAction).not.toHaveBeenCalled();
+  });
+
+  describe('the unit view', () => {
+    const hero = { kind: 'unit', id: 3 } as const;
+    const ghoul = { kind: 'enemy', id: 9 } as const;
+
+    it('goes from battle straight to the unit, holding time once', () => {
+      zoom.focusUnit(hero);
+      expect(zoom.level()).toBe('unit');
+      expect(zoom.focus()).toEqual(hero);
+      expect(stage.menusHidden()).toBeTrue();
+      expect(sendAction.calls.allArgs()).toEqual([[GameAction.HOLD, null]]);
+    });
+
+    it('steps back unit, closeup, battle, resuming only at the end', () => {
+      zoom.focusUnit(hero);
+      state.setSession(session(true));
+      zoom.back();
+      expect(zoom.level()).toBe('closeup');
+      expect(zoom.focus()).toBeNull();
+      expect(sendAction).toHaveBeenCalledTimes(1);
+      zoom.back();
+      expect(zoom.level()).toBe('battle');
+      expect(sendAction.calls.allArgs()).toEqual([
+        [GameAction.HOLD, null],
+        [GameAction.RESUME, null],
+      ]);
+      expect(stage.menusHidden()).toBeFalse();
+    });
+
+    it('opens from the closeup without holding twice', () => {
+      zoom.toggleCloseup();
+      state.setSession(session(true));
+      zoom.focusUnit(ghoul);
+      expect(zoom.level()).toBe('unit');
+      expect(sendAction).toHaveBeenCalledTimes(1);
+    });
+
+    it('a second choice of the same unit steps back to the closeup', () => {
+      zoom.focusUnit(hero);
+      zoom.focusUnit({ ...hero });
+      expect(zoom.level()).toBe('closeup');
+    });
+
+    it('a different unit moves the view without leaving it', () => {
+      zoom.focusUnit(hero);
+      zoom.focusUnit(ghoul);
+      expect(zoom.level()).toBe('unit');
+      expect(zoom.focus()).toEqual(ghoul);
+      expect(sendAction).toHaveBeenCalledTimes(1);
+    });
+
+    it('a click on empty space (the toggle) steps back one rung', () => {
+      zoom.focusUnit(hero);
+      zoom.toggleCloseup();
+      expect(zoom.level()).toBe('closeup');
+    });
+
+    it('opens the view of a Party member chosen in an army list, and lets the choice go', () => {
+      state.update({
+        unitsOnTower: { WARRIOR: [{ id: 3 }] } as unknown as Squad,
+      });
+      const unitView = TestBed.inject(UnitViewService);
+      unitView.choose(3);
+      TestBed.flushEffects();
+      expect(zoom.level()).toBe('unit');
+      expect(zoom.focus()).toEqual({ kind: 'unit', id: 3 });
+      expect(unitView.chosen()).toBeNull();
+      expect(sendAction).toHaveBeenCalledOnceWith(GameAction.HOLD, null);
+    });
+
+    it('ignores a Reserve chosen in the panel: it is not drawn as a figure', () => {
+      state.update({
+        unitsOnTower: { WARRIOR: [{ id: 3 }] } as unknown as Squad,
+      });
+      const unitView = TestBed.inject(UnitViewService);
+      unitView.choose(77);
+      TestBed.flushEffects();
+      expect(zoom.level()).toBe('battle');
+      expect(unitView.chosen()).toBeNull();
+      expect(sendAction).not.toHaveBeenCalled();
+    });
+
+    it('does not open without an Expedition', () => {
+      state.update({ expeditionActive: false });
+      zoom.focusUnit(hero);
+      expect(zoom.level()).toBe('battle');
+      expect(zoom.focus()).toBeNull();
+      expect(sendAction).not.toHaveBeenCalled();
+    });
+
+    it('leaves a Party that was already Held to the player to resume', () => {
+      state.setSession(session(true));
+      zoom.focusUnit(hero);
+      zoom.back();
+      zoom.back();
+      expect(sendAction).not.toHaveBeenCalled();
+    });
+
+    it('keeps the anchor only while a unit is shown, ignoring sub-pixel moves', () => {
+      zoom.focusUnit(hero);
+      const rect = { left: 10, top: 20, right: 50, bottom: 90 };
+      zoom.setAnchor(rect);
+      const first = zoom.anchor();
+      zoom.setAnchor({ ...rect, left: 10.2 });
+      expect(zoom.anchor()).toBe(first);
+      zoom.setAnchor({ ...rect, left: 14 });
+      expect(zoom.anchor()?.left).toBe(14);
+      zoom.back();
+      expect(zoom.anchor()).toBeNull();
+    });
+
+    it('lets go of the hold and the view when the Expedition ends', () => {
+      zoom.focusUnit(hero);
+      state.setSession(session(true));
+      state.update({ expeditionActive: false });
+      state.setSession(session(false));
+      TestBed.flushEffects();
+      expect(zoom.level()).toBe('battle');
+      expect(zoom.focus()).toBeNull();
+    });
   });
 
   it('releases the hold when leaving the page', () => {
