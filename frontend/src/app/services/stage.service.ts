@@ -12,7 +12,7 @@ import { NARROW_BELOW } from '../three/stage-view';
 export const QUALITY_STORAGE = 'td-quality';
 
 /**
- * The full-screen stage: the viewport, whether the menus are shown, and the
+ * The full-screen stage: the viewport, whether the narrow launch bar is put away, and the
  * pixel scale the scenes draw at (automatic, or the player's quality setting).
  */
 @Injectable({ providedIn: 'root' })
@@ -23,12 +23,16 @@ export class StageService {
   );
   private readonly _quality = signal<Quality>(this.readQuality());
   private readonly _viewport = signal(this.measure());
-  private readonly _menusHidden = signal(false);
+  private readonly _launchBarHidden = signal(false);
 
   readonly quality = this._quality.asReadonly();
   readonly viewport = this._viewport.asReadonly();
-  /** True while the menus are hidden (the key or the button). */
-  readonly menusHidden = this._menusHidden.asReadonly();
+  /**
+   * True while the player has put the narrow launch bar away (H or the button).
+   * Whether the menus as a whole are showing is `MenusService.showing`: the list
+   * view, a popover and this bar each hold their own state, and nothing copies it.
+   */
+  readonly launchBarHidden = this._launchBarHidden.asReadonly();
   /** Below about 1100 px the menus take the full width. */
   readonly narrow = computed(() => this._viewport().width < NARROW_BELOW);
   /** Screen pixels per virtual pixel. */
@@ -61,16 +65,8 @@ export class StageService {
     }
   }
 
-  toggleMenus(): void {
-    this._menusHidden.update((hidden) => !hidden);
-  }
-
-  setMenusHidden(hidden: boolean): void {
-    this._menusHidden.set(hidden);
-  }
-
-  showMenus(): void {
-    this._menusHidden.set(false);
+  setLaunchBarHidden(hidden: boolean): void {
+    this._launchBarHidden.set(hidden);
   }
 
   remeasure(): void {

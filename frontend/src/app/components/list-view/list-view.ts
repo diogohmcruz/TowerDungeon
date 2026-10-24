@@ -18,7 +18,6 @@ import { GameWebSocketService } from '../../services/game-web-socket.service';
 import { LaunchService } from '../../services/launch.service';
 import { ListViewService } from '../../services/list-view.service';
 import { PopoverService } from '../../services/popover.service';
-import { StageService } from '../../services/stage.service';
 import { ZoomService } from '../../services/zoom.service';
 import { endingOf, SUCCESSION_ID } from '../../three/village/succession-building';
 import { villageFacts } from '../../three/village/village-facts';
@@ -75,7 +74,7 @@ export function listKeyIntent(event: KeyboardEvent): 'toggle' | 'close' | null {
         class="list"
         role="region"
         aria-label="List view of buildings"
-        [hidden]="stage.menusHidden()"
+        [hidden]="zoom.level() !== 'battle'"
       >
         <header>
           <h2>Buildings</h2>
@@ -326,10 +325,9 @@ export class ListView {
   protected readonly popover = inject(PopoverService);
   private readonly stateService = inject(GameStateService);
   protected readonly game = this.stateService.state;
-  protected readonly stage = inject(StageService);
   protected readonly launch = inject(LaunchService);
   private readonly ws = inject(GameWebSocketService);
-  private readonly zoom = inject(ZoomService);
+  protected readonly zoom = inject(ZoomService);
 
   /** The Party has not moved, and not because the closeup took the hold. */
   protected readonly held = computed(
@@ -395,7 +393,12 @@ export class ListView {
     if (intent === 'toggle') {
       event.preventDefault();
       this.list.toggle();
-    } else if (intent === 'close' && this.list.open()) {
+    } else if (
+      intent === 'close' &&
+      this.list.open() &&
+      // Escape steps a zoomed view back first; the list underneath stays as the player left it.
+      this.zoom.level() === 'battle'
+    ) {
       event.preventDefault();
       this.list.hide();
     }

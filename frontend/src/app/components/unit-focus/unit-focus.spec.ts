@@ -54,7 +54,7 @@ describe('UnitFocusCard', () => {
     fixture.componentRef.setInput('tower', tower);
     fixture.detectChanges();
   });
-  afterEach(() => TestBed.inject(StageService).showMenus());
+  afterEach(() => TestBed.inject(StageService).setLaunchBarHidden(false));
 
   const el = () => fixture.nativeElement as HTMLElement;
 

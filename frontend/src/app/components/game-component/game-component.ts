@@ -2,6 +2,7 @@ import { Component, effect, inject, OnDestroy, Signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { GameStateService } from '../../services/game-state.service';
 import { LaunchService } from '../../services/launch.service';
+import { MenusService } from '../../services/menus.service';
 import { StageService } from '../../services/stage.service';
 import { UnitStatsService } from '../../services/unit-stats.service';
 import { ZoomService } from '../../services/zoom.service';
@@ -29,6 +30,7 @@ import { ListView } from '../list-view/list-view';
 export class GameComponent implements OnDestroy {
   protected readonly stage = inject(StageService);
   protected readonly zoom = inject(ZoomService);
+  protected readonly menus = inject(MenusService);
 
   ngOnDestroy(): void {
     // Leaving the page releases a closeup's hold.
@@ -65,7 +67,7 @@ export class GameComponent implements OnDestroy {
       }
       return;
     }
-    this.stage.toggleMenus();
+    this.menus.toggle();
   }
 
   private readonly stateService = inject(GameStateService);

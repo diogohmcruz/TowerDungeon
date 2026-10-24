@@ -69,7 +69,7 @@ describe('the Annexes and the Silo as buildings', () => {
     fixture = TestBed.createComponent(BuildingPopover);
     show();
   });
-  afterEach(() => TestBed.inject(StageService).showMenus());
+  afterEach(() => TestBed.inject(StageService).setLaunchBarHidden(false));
 
   it('opens an Annex from a click on it and on its Villagers', () => {
     popover.openFor({ kind: 'annex', id: 'BREAKER' });

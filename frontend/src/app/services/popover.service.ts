@@ -21,7 +21,6 @@ import { GameAction } from '../interfaces/game-action.enum';
 import { GameStateService } from './game-state.service';
 import { GameWebSocketService } from './game-web-socket.service';
 import { LaunchService } from './launch.service';
-import { StageService } from './stage.service';
 import { VillageSelectionService } from './village-selection.service';
 import { ZoomService } from './zoom.service';
 
@@ -75,7 +74,6 @@ export class PopoverService {
   private readonly selection = inject(VillageSelectionService);
   private readonly zoom = inject(ZoomService);
   private readonly launch = inject(LaunchService);
-  private readonly stage = inject(StageService);
 
   /** The registry the views are built from; a test may swap it. */
   registry: readonly BuildingDefinition[] = BUILDINGS;
@@ -124,9 +122,7 @@ export class PopoverService {
       const held = this.stateService.session()?.held === true;
       const zoomed = this.zoom.level() !== 'battle';
       const gone = this.open() === null;
-      // H hides the overlays, the popover among them.
-      const hidden = this.stage.menusHidden();
-      if (held || zoomed || hidden || state.expeditionActive || gone) {
+      if (held || zoomed || state.expeditionActive || gone) {
         untracked(() => this.close());
       }
     });
