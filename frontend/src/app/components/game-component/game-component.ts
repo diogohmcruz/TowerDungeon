@@ -2,13 +2,16 @@ import { Component, effect, inject, OnDestroy, Signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { GameStateService } from '../../services/game-state.service';
 import { LaunchService } from '../../services/launch.service';
+import { ListViewService } from '../../services/list-view.service';
 import { MenusService } from '../../services/menus.service';
+import { PopoverService } from '../../services/popover.service';
 import { StageService } from '../../services/stage.service';
 import { UnitStatsService } from '../../services/unit-stats.service';
 import { ZoomService } from '../../services/zoom.service';
 import { Unit, UnitStats } from '../../interfaces/unit.enum';
 import { TowerDisplay } from '../tower/tower-display.component';
 import { ListView } from '../list-view/list-view';
+import { closeupKey, keyIsFree } from './closeup-key';
 
 /**
  * The game page: the full-screen scene, the top bar's own buttons (hide, closeup,
@@ -31,6 +34,8 @@ export class GameComponent implements OnDestroy {
   protected readonly stage = inject(StageService);
   protected readonly zoom = inject(ZoomService);
   protected readonly menus = inject(MenusService);
+  private readonly popover = inject(PopoverService);
+  private readonly list = inject(ListViewService);
 
   ngOnDestroy(): void {
     // Leaving the page releases a closeup's hold.
@@ -39,32 +44,12 @@ export class GameComponent implements OnDestroy {
 
   /**
    * H hides and restores the menus (the list view, the popovers and the narrow
-   * launch bar); Escape steps the zoom back. Not while typing, and not with a modifier.
+   * launch bar); Escape steps the zoom back and C is the closeup (`closeupKey`). Not while typing,
+   * and not with a modifier.
    */
   protected onKey(event: KeyboardEvent): void {
-    const key = event.key.toLowerCase();
-    if (
-      (key !== 'h' && key !== 'escape') ||
-      event.ctrlKey ||
-      event.metaKey ||
-      event.altKey ||
-      event.defaultPrevented
-    ) {
-      return;
-    }
-    const target = event.target as HTMLElement | null;
-    if (
-      target &&
-      (target.isContentEditable ||
-        ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
-    ) {
-      return;
-    }
-    if (key === 'escape') {
-      if (this.zoom.level() !== 'battle') {
-        event.preventDefault();
-        this.zoom.back();
-      }
+    if (closeupKey(event, this.zoom, this.popover, this.list)) return;
+    if (event.key.toLowerCase() !== 'h' || !keyIsFree(event)) {
       return;
     }
     this.menus.toggle();

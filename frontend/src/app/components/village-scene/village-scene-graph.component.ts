@@ -40,7 +40,12 @@ import {
 } from '../../three/village/village-subjects';
 import { applyStageView } from '../../three/stage-view';
 import { StageService } from '../../services/stage.service';
-import { fitVillageCamera } from '../../three/village/village-camera';
+import { ZoomService } from '../../services/zoom.service';
+import { dampFactor, prefersReducedMotion } from '../../three/camera-shots';
+import {
+  closeupFrame,
+  fitVillageCamera,
+} from '../../three/village/village-camera';
 import { LandscapeGraph } from '../landscape/landscape-graph.component';
 import '../../three/catalogue';
 
@@ -107,6 +112,11 @@ export class VillageSceneGraph {
   private readonly launch = inject(LaunchService);
   private readonly popover = inject(PopoverService);
   private readonly stage = inject(StageService);
+  private readonly zoom = inject(ZoomService);
+  /** 0 is the far view, 1 the closeup (#130); it eases between them, or cuts under reduced motion. */
+  private closeness = 0;
+  /** What the closeup frames: the built Village of this Tier. */
+  private readonly frame = computed(() => closeupFrame(this.volumes()));
   private readonly dark = signal(this.readTheme());
 
   protected readonly theme = computed<InkTheme>(() =>
@@ -152,6 +162,11 @@ export class VillageSceneGraph {
       this.inkUniforms.uFogDensity.value = VILLAGE_FOG_DENSITY;
       this.store.snapshot.invalidate();
     });
+    // The closeup toggled: wake the sleeping renderer so the camera sets off.
+    effect(() => {
+      this.zoom.villageCloseup();
+      this.store.snapshot.invalidate();
+    });
     effect(() => {
       this.write(this.volumes());
       this.store.snapshot.invalidate();
@@ -188,6 +203,9 @@ export class VillageSceneGraph {
           const el = this.store.snapshot.gl.domElement;
           return volumeRegions(this.framedCamera(el.clientWidth, el.clientHeight), this.volumes(), el.clientWidth, el.clientHeight);
         },
+        volumes: () => this.volumes(),
+        registered: () => this.popover.buildings().map((b) => b.id),
+        zoomed: () => this.closeness,
         subjects: () => {
           const seen = new Map<string, { kind: string; id: string }>();
           for (const v of this.volumes()) {
@@ -211,16 +229,16 @@ export class VillageSceneGraph {
       };
     }
 
-    // A fixed vantage: only the framing follows the canvas aspect.
+    // The vantage follows the canvas and, in the closeup, the blend toward it: the far view is a
+    // fixed pose; the closeup widens the stage to the whole screen and frames the built Village.
     // The canvas fills the screen; the Village is framed in the Tower's region of it.
-    injectBeforeRender(({ camera }) => {
+    injectBeforeRender(({ camera, delta }) => {
       const cam = camera as THREE.PerspectiveCamera;
       const el = this.store.snapshot.gl.domElement;
       const w = el.clientWidth;
       const h = el.clientHeight;
-      if (applyStageView(cam, w, h, this.stage.narrow())) {
-        fitVillageCamera(cam);
-      }
+      this.easeCloseness(delta);
+      this.frameCamera(cam, w, h);
       // The open building's popover follows it: report where it is on the canvas.
       const open = this.popover.open();
       this.popover.setAnchor(
@@ -228,7 +246,28 @@ export class VillageSceneGraph {
           ? subjectRect(cam, this.volumes(), this.popover.openSubject() ?? { kind: 'building', id: open.id }, w, h)
           : null,
       );
+      // The renderer sleeps between changes: keep it awake until the camera has arrived.
+      if (this.closeness !== (this.zoom.villageCloseup() ? 1 : 0)) {
+        this.store.snapshot.invalidate();
+      }
     });
+  }
+
+  /** Moves the blend toward the rung the zoom is on: damped, never past it; a cut under reduced motion. */
+  private easeCloseness(delta: number): void {
+    const target = this.zoom.villageCloseup() ? 1 : 0;
+    if (this.closeness === target) return;
+    // A frame after a long sleep is not a long step: the ease is read over frames, not idle time.
+    const damp = prefersReducedMotion() ? 1 : dampFactor(Math.min(delta || 1 / 60, 1 / 20));
+    const gap = target - this.closeness;
+    this.closeness =
+      damp >= 1 || Math.abs(gap) < 1e-3 ? target : this.closeness + gap * damp;
+  }
+
+  /** Sets a camera to the stage view and the Village vantage at the blend now. */
+  private frameCamera(cam: THREE.PerspectiveCamera, w: number, h: number): void {
+    applyStageView(cam, w, h, this.stage.narrow(), this.closeness);
+    fitVillageCamera(cam, this.closeness, this.frame());
   }
 
   /**
@@ -264,7 +303,7 @@ export class VillageSceneGraph {
       const subject = this.pressSubject;
       this.pressSubject = null;
       if (subject) this.clickSubject(subject, e);
-      else this.popover.emptyClick(e);
+      else this.emptyGround(e);
     };
     let bound: HTMLElement | undefined;
     const stop = effect(() => {
@@ -293,11 +332,8 @@ export class VillageSceneGraph {
    * pointer hit-tests is what is on screen.
    */
   private framedCamera(width: number, height: number): THREE.PerspectiveCamera {
-    const cam = this.pickCamera;
-    if (applyStageView(cam, width, height, this.stage.narrow())) {
-      fitVillageCamera(cam);
-    }
-    return cam;
+    this.frameCamera(this.pickCamera, width, height);
+    return this.pickCamera;
   }
 
   /** The subject under a pointer event, resolved from its position alone (see `resolveHover`). */
@@ -324,10 +360,27 @@ export class VillageSceneGraph {
    * scene carries on with the launch controls and the selection for everything else.
    */
   private clickSubject(subject: VillageSubject | null, event: MouseEvent): void {
+    if (!subject) {
+      this.emptyGround(event);
+      return;
+    }
     if (this.popover.sceneClick(subject, event)) return;
     if (subject && !this.launch.activate(subject)) {
       this.selection.selectFromScene(subject);
     }
+  }
+
+  /**
+   * A click on nothing (the ground, the Tower, the sky). An open card closes first; with none
+   * open it is the Village closeup's toggle, as a click on empty space is the Tower's.
+   */
+  private emptyGround(event: MouseEvent): void {
+    if (!this.popover.wasClick(event)) return;
+    if (this.popover.openId() !== null) {
+      this.popover.close();
+      return;
+    }
+    this.zoom.toggleVillageCloseup();
   }
 
   private subjectAt(instanceId: number | undefined) {

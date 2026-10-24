@@ -67,8 +67,19 @@ describe('resolveHover', () => {
     const b = building('B', 40, 0, 60, 50);
     // In both, the smaller (B) wins when nothing is held; the held one stays.
     expect(at([a, b], 45, 25)).toBe('B');
-    expect(at([a, b], 45, 25, a.subject)).toBe('A');
+    expect(at([a, b], 41, 25, a.subject)).toBe('A');
     expect(at([a, b], 55, 25, a.subject)).toBe('B');
+  });
+
+  it('lets a building inside the held one take over once the pointer is well inside it, and holds it on the way out', () => {
+    const gateRegion = building('GATE', 0, 0, 100, 60);
+    const ring = building('RING', 40, 10, 70, 40);
+    const regions = [gateRegion, ring];
+    expect(at(regions, 41, 25, gateRegion.subject)).toBe('GATE');
+    expect(at(regions, 40 + HOVER_HOLD_PX, 25, gateRegion.subject)).toBe('RING');
+    // Leaving the Ring into the Gate: held a moment, then the Gate.
+    expect(at(regions, 70 + HOVER_HOLD_PX, 25, ring.subject)).toBe('RING');
+    expect(at(regions, 70 + HOVER_HOLD_PX + 1, 25, ring.subject)).toBe('GATE');
   });
 
   it('is steady: a sweep across a building made of many parts never changes subject inside it', () => {
