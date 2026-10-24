@@ -48,6 +48,7 @@ import {
   standCentreY,
   standFeetY,
 } from '../../three/figures/figure-anchor';
+import { ROLE_PARTY, ROLE_RAMP } from '../../three/figures/figure-tone';
 import {
   FIGURE_FRAGMENT,
   FIGURE_VERTEX,
@@ -1263,7 +1264,13 @@ export class TowerSceneGraph {
       ),
     );
     cell.set(
-      [f.cell % FIGURE_COLS, Math.floor(f.cell / FIGURE_COLS), f.role, 1],
+      [
+        f.cell % FIGURE_COLS,
+        Math.floor(f.cell / FIGURE_COLS),
+        // The ring is drawn one texel out and over the Party's rim: it is no Party quad itself.
+        f.role === ROLE_PARTY ? ROLE_RAMP : f.role,
+        1,
+      ],
       0,
     );
     mesh.count = 1;

@@ -1,14 +1,19 @@
 import { INK_DITHER } from '../ink/ink.glsl';
+import { PARTY_DAY_SLOTS, PARTY_RIM_PAD } from './figure-tone';
 
 /**
  * Figure shader: instanced camera-facing quads that sample a ramp-slot texel
  * from the silhouette atlas, then resolve it through the shared fog and Bayer
  * dither, so figures are ink like everything else (ADR 0003, no lights).
  * The instance matrix carries the centre and the width and height.
- *   aCell = (atlas column, atlas row, role 0 ramp | 1 Guardian crimson, tone 0..1)
+ *   aCell = (atlas column, atlas row, role 0 ramp | 1 Guardian crimson | 2 Party, tone 0..1)
+ * A Party quad is `PARTY_RIM_PAD` texels larger on each side (it carries a rim) and
+ * stands a hair behind, so the unit-view outline, drawn at the sprite's depth, wins.
  */
 export const FIGURE_VERTEX = /* glsl */ `
+#define RIM_PAD ${PARTY_RIM_PAD.toFixed(1)}
 attribute vec4 aCell;
+uniform vec2 uCellPx;
 
 varying vec2 vUv;
 varying vec4 vCell;
@@ -19,14 +24,20 @@ void main() {
   vCell = aCell;
   mat4 m = modelMatrix * instanceMatrix;
   vec2 size = vec2(length(m[0].xyz), length(m[1].xyz));
+  bool party = aCell.z > 1.5;
+  if (party) size *= (uCellPx + 2.0 * RIM_PAD) / uCellPx;
   vec4 viewPos = viewMatrix * vec4(m[3].xyz, 1.0);
   viewPos.xy += position.xy * size;
+  if (party) viewPos.z -= 0.01;
   vDepth = -viewPos.z;
   gl_Position = projectionMatrix * viewPos;
 }
 `;
 
 export const FIGURE_FRAGMENT = /* glsl */ `
+#define RIM_PAD ${PARTY_RIM_PAD.toFixed(1)}
+// The slot a Party texel value is drawn as by day (see figure-tone.ts).
+const float PARTY_DAY[4] = float[4](${PARTY_DAY_SLOTS.map((n) => n.toFixed(1)).join(', ')});
 uniform sampler2D uFigures;
 uniform vec2 uGrid;
 uniform vec2 uCellPx;
@@ -43,11 +54,35 @@ varying vec4 vCell;
 varying float vDepth;
 
 ${INK_DITHER}
+float texelAt(vec2 p) {
+  if (p.x < 0.0 || p.y < 0.0 || p.x >= uCellPx.x || p.y >= uCellPx.y) return 0.0;
+  vec2 uv = (vCell.xy * uCellPx + p + 0.5) / (uGrid * uCellPx);
+  return floor(texture2D(uFigures, uv).r * 255.0 / uTexelStep + 0.5);
+}
+
+float luma(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
+
 void main() {
-  vec2 px = min(floor(vec2(vUv.x, 1.0 - vUv.y) * uCellPx), uCellPx - 1.0);
-  vec2 uv = (vCell.xy * uCellPx + px + 0.5) / (uGrid * uCellPx);
-  float v = floor(texture2D(uFigures, uv).r * 255.0 / uTexelStep + 0.5);
+  bool party = vCell.z > 1.5;
+  float pad = party ? RIM_PAD : 0.0;
+  vec2 px = min(floor(vec2(vUv.x, 1.0 - vUv.y) * (uCellPx + 2.0 * pad)), uCellPx + 2.0 * pad - 1.0) - pad;
+  float v = texelAt(px);
+  if (party && v < 0.5) {
+    // The Party's rim: slot 0 on every empty texel beside the figure, diagonals included.
+    float near = 0.0;
+    for (int dy = -1; dy <= 1; dy++) {
+      for (int dx = -1; dx <= 1; dx++) {
+        near += texelAt(px + vec2(float(dx), float(dy))) > 0.5 ? 1.0 : 0.0;
+      }
+    }
+    if (near < 0.5) discard;
+    gl_FragColor = vec4(uRamp[0], 1.0);
+    #include <colorspace_fragment>
+    return;
+  }
   if (v < 0.5) discard;
+  // By day (ink darker than the ground) the Party's body is drawn in the ink.
+  if (party && v < 3.5 && luma(uRamp[3]) < luma(uRamp[0])) v = PARTY_DAY[int(v)];
 
   float threshold = mix(0.5, bayer4(gl_FragCoord.xy / uCell), uAmount);
   // Value 4 is the plate: the clear colour, so a numeral sits on a patch of void.
@@ -57,7 +92,7 @@ void main() {
 
   vec3 color = uRamp[idx];
   // A Guardian's lines and fill are crimson; it is also larger, never colour alone.
-  if (vCell.z > 0.5 && idx >= 1) color = uCrimson;
+  if (vCell.z > 0.5 && vCell.z < 1.5 && idx >= 1) color = uCrimson;
   gl_FragColor = vec4(color, 1.0);
   #include <colorspace_fragment>
 }
