@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { TOTAL_MS, WIPE_HOLD_MS } from '../three/transition';
 import { GameStateService } from './game-state.service';
 import { TransitionService } from './transition.service';
+import { flushEffects } from '../testing/flush-effects';
 
 class Still extends TransitionService {
   protected override schedule = () => 0;
@@ -24,13 +25,13 @@ describe('TransitionService', () => {
     });
     state = TestBed.inject(GameStateService);
     service = TestBed.inject(TransitionService);
-    TestBed.flushEffects();
+    flushEffects();
   });
 
   it('starts on the Village and plays Set out: dissolve, swap, rise, then rests', () => {
     expect(service.towerShown()).toBeFalse();
     state.update({ expeditionActive: true });
-    TestBed.flushEffects();
+    flushEffects();
     expect(service.running).toBeTrue();
     service.advance(200);
     expect(service.towerShown()).toBeFalse();
@@ -47,10 +48,10 @@ describe('TransitionService', () => {
 
   it('keeps the Tower on screen while Extraction drops the camera, then shows the Village', () => {
     state.update({ expeditionActive: true });
-    TestBed.flushEffects();
+    flushEffects();
     service.finish();
     state.update({ expeditionActive: false });
-    TestBed.flushEffects();
+    flushEffects();
     service.advance(300);
     expect(service.towerShown()).toBeTrue();
     expect(service.drop).toBeGreaterThan(0);
@@ -60,13 +61,13 @@ describe('TransitionService', () => {
 
   it('holds a Wipe on the empty stair before the drop', () => {
     state.update({ expeditionActive: true });
-    TestBed.flushEffects();
+    flushEffects();
     service.finish();
     state.update({
       expeditionActive: false,
       lastRunSummary: { outcome: 'WIPED' } as never,
     });
-    TestBed.flushEffects();
+    flushEffects();
     service.advance(WIPE_HOLD_MS - 1);
     expect(service.drop).toBe(0);
     expect(service.cover()).toBe(0);
@@ -77,7 +78,7 @@ describe('TransitionService', () => {
   it('is an instant cut under reduced motion', () => {
     reduced = true;
     state.update({ expeditionActive: true });
-    TestBed.flushEffects();
+    flushEffects();
     expect(service.running).toBeFalse();
     expect(service.towerShown()).toBeTrue();
     expect(service.cover()).toBe(0);
@@ -86,10 +87,10 @@ describe('TransitionService', () => {
 
   it('a new transition finishes the previous one first', () => {
     state.update({ expeditionActive: true });
-    TestBed.flushEffects();
+    flushEffects();
     service.advance(100);
     state.update({ expeditionActive: false });
-    TestBed.flushEffects();
+    flushEffects();
     service.advance(TOTAL_MS + 1);
     expect(service.towerShown()).toBeFalse();
     expect(service.running).toBeFalse();

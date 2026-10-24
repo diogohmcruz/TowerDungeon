@@ -15,6 +15,7 @@ import {
 import { StageService } from './stage.service';
 import { VillageSelectionService } from './village-selection.service';
 import { ZoomService } from './zoom.service';
+import { flushEffects } from '../testing/flush-effects';
 
 const silo = { kind: 'building', id: 'SILO' } as const;
 const CELLAR = defineBuilding({
@@ -44,7 +45,7 @@ describe('PopoverService', () => {
     clientY: y,
     timeStamp: at,
   });
-  const frame = () => TestBed.flushEffects();
+  const frame = () => flushEffects();
 
   beforeEach(() => {
     sendAction = jasmine.createSpy('sendAction');

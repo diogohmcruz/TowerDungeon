@@ -6,6 +6,7 @@ import { GameWebSocketService } from '../../services/game-web-socket.service';
 import { PopoverService } from '../../services/popover.service';
 import { StageService } from '../../services/stage.service';
 import { BuildingPopover } from './building-popover';
+import { flushEffects } from '../../testing/flush-effects';
 
 describe('BuildingPopover', () => {
   let fixture: ComponentFixture<BuildingPopover>;
@@ -17,7 +18,7 @@ describe('BuildingPopover', () => {
   const el = () => fixture.nativeElement as HTMLElement;
   const card = () => el().querySelector('.popover') as HTMLElement | null;
   const show = () => {
-    TestBed.flushEffects();
+    flushEffects();
     fixture.detectChanges();
   };
 

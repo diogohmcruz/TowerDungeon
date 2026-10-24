@@ -9,6 +9,7 @@ import { ListViewService } from './list-view.service';
 import { MenusService } from './menus.service';
 import { StageService } from './stage.service';
 import { ZoomService } from './zoom.service';
+import { flushEffects } from '../testing/flush-effects';
 
 describe('ZoomService', () => {
   let sendAction: jasmine.Spy;
@@ -39,7 +40,7 @@ describe('ZoomService', () => {
     zoom = TestBed.inject(ZoomService);
     state.update({ expeditionActive: true });
     state.setSession(session(false));
-    TestBed.flushEffects();
+    flushEffects();
   });
   afterEach(() => stage.setLaunchBarHidden(false));
 
@@ -157,7 +158,7 @@ describe('ZoomService', () => {
       });
       const unitView = TestBed.inject(UnitViewService);
       unitView.choose(3);
-      TestBed.flushEffects();
+      flushEffects();
       expect(zoom.level()).toBe('unit');
       expect(zoom.focus()).toEqual({ kind: 'unit', id: 3 });
       expect(unitView.chosen()).toBeNull();
@@ -170,7 +171,7 @@ describe('ZoomService', () => {
       });
       const unitView = TestBed.inject(UnitViewService);
       unitView.choose(77);
-      TestBed.flushEffects();
+      flushEffects();
       expect(zoom.level()).toBe('battle');
       expect(unitView.chosen()).toBeNull();
       expect(sendAction).not.toHaveBeenCalled();
@@ -210,7 +211,7 @@ describe('ZoomService', () => {
       state.setSession(session(true));
       state.update({ expeditionActive: false });
       state.setSession(session(false));
-      TestBed.flushEffects();
+      flushEffects();
       expect(zoom.level()).toBe('battle');
       expect(zoom.focus()).toBeNull();
     });
@@ -229,7 +230,7 @@ describe('ZoomService', () => {
     state.setSession(session(true));
     state.update({ expeditionActive: false });
     state.setSession(session(false));
-    TestBed.flushEffects();
+    flushEffects();
     expect(zoom.level()).toBe('battle');
     expect(menus.showing()).toBeTrue();
     expect(sendAction).toHaveBeenCalledTimes(1);
@@ -238,7 +239,7 @@ describe('ZoomService', () => {
   describe('the Village closeup (#130)', () => {
     beforeEach(() => {
       state.update({ expeditionActive: false });
-      TestBed.flushEffects();
+      flushEffects();
     });
 
     it('toggles on a click, holds no time and hides no menu', () => {
@@ -261,7 +262,7 @@ describe('ZoomService', () => {
     it('is gone when an Expedition sets out, and the Tower ladder is as before', () => {
       zoom.toggleVillageCloseup();
       state.update({ expeditionActive: true });
-      TestBed.flushEffects();
+      flushEffects();
       expect(zoom.villageCloseup()).toBeFalse();
       zoom.toggleVillageCloseup();
       expect(zoom.villageCloseup()).toBeFalse();

@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
+import { stubScenes } from '../../testing/scene-stubs';
 import { TowerDisplay } from './tower-display.component';
 
 describe('Tower', () => {
@@ -7,9 +8,11 @@ describe('Tower', () => {
   let fixture: ComponentFixture<TowerDisplay>;
 
   beforeEach(async () => {
-    await TestBed.configureTestingModule({
+    TestBed.configureTestingModule({
       imports: [TowerDisplay],
-    }).compileComponents();
+    });
+    stubScenes();
+    await TestBed.compileComponents();
 
     fixture = TestBed.createComponent(TowerDisplay);
     component = fixture.componentInstance;
