@@ -15,6 +15,7 @@ import {
 import { buildingDefinition, BUILDINGS } from './buildings';
 import { marginBody, previewOf } from './annex-buildings';
 import { lockOf } from './trade-locks';
+import { expeditionCaption } from '../expedition/expedition-objects';
 import { buildingView, gaugeView, isVisible } from './building-registry';
 import type { SubjectKind, VillageSubject } from './village-subjects';
 
@@ -289,6 +290,9 @@ const building: CaptionBuilder = (subject, state) => {
   };
 };
 
+/** An Expedition object: the Supplies post, a crate, the Party or an enemy group. */
+const expedition: CaptionBuilder = (subject, state) => expeditionCaption(subject, state);
+
 export const CAPTION_BUILDERS: Partial<Record<SubjectKind, CaptionBuilder>> = {
   building,
   annex,
@@ -299,6 +303,7 @@ export const CAPTION_BUILDERS: Partial<Record<SubjectKind, CaptionBuilder>> = {
   bell,
   recall,
   'base-door': baseDoor,
+  expedition,
 };
 
 export function captionFor(

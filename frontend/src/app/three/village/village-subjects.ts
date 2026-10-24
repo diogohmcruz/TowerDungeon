@@ -21,7 +21,8 @@ export type SubjectKind =
   | 'bell'
   | 'recall'
   | 'base-door'
-  | 'building';
+  | 'building'
+  | 'expedition';
 
 /**
  * The launch controls (architecture doc 5.5). The bell and the recall lamp are
@@ -76,6 +77,11 @@ export const VOLUME_SUBJECTS: ReadonlyArray<{
   { prefix: 'crate-', kind: 'building', id: 'VAULT' },
   { prefix: 'roll-', kind: 'building', id: 'SUCCESSION' },
   { prefix: 'ring-', kind: 'building', id: 'RING' },
+  // The Expedition objects (`three/expedition`): the Supplies post and the three crates.
+  { prefix: 'supplies-', kind: 'expedition', id: 'SUPPLIES' },
+  { prefix: 'carried-credits', kind: 'expedition', id: 'CREDITS' },
+  { prefix: 'carried-materials', kind: 'expedition', id: 'MATERIALS' },
+  { prefix: 'carried-relics', kind: 'expedition', id: 'RELICS' },
 ];
 
 const TRADES: readonly TradeId[] = [
@@ -104,6 +110,7 @@ export function subjectOfVolume(volumeId: string): VillageSubject | null {
     if (volumeId.endsWith(':building') || volumeId.includes(':building-')) {
       return { kind: 'building', id };
     }
+    if (volumeId.includes(':expedition-')) return { kind: 'expedition', id };
     if (id === BELL_SUBJECT) return { kind: 'bell', id };
     if (id === RECALL_SUBJECT) return { kind: 'recall', id };
     if (id === BASE_DOOR_SUBJECT) return { kind: 'base-door', id };
@@ -135,7 +142,7 @@ export function ofSubject(volumes: Volume[], id: string, kind: SubjectKind): Vol
   return volumes.filter((v) => {
     if (v.id.startsWith(OUTLINE)) return false;
     // A building's or Annex's invisible near-miss pad is for picking only: its frame and anchor hug what is drawn.
-    if ((kind === 'building' || kind === 'annex') && v.alpha === 0) return false;
+    if ((kind === 'building' || kind === 'annex' || kind === 'expedition') && v.alpha === 0) return false;
     const s = subjectOfVolume(v.id);
     return s?.id === id && s.kind === kind;
   });
@@ -157,6 +164,7 @@ const OUTLINED_KINDS: readonly SubjectKind[] = [
   'recall',
   'base-door',
   'building',
+  'expedition',
 ];
 
 /**

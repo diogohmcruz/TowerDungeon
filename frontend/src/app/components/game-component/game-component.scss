@@ -48,7 +48,6 @@
   align-content: start;
   grid-auto-flow: dense;
 
-  > app-expedition-hud,
   > app-village-management {
     display: contents;
   }

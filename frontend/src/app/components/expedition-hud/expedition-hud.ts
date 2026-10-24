@@ -10,8 +10,10 @@ import { Supplies } from '../supplies/supplies';
 import { ZoomService } from '../../services/zoom.service';
 
 /**
- * The Expedition HUD (architecture doc 5.5): the Floor, the carried loot, Supplies, the
- * Party and the enemies, a card of the management layer. Absent outside an Expedition.
+ * The Expedition's numbers as plain DOM (architecture doc 5.6): the Floor, the carried
+ * loot, Supplies, the Party and the enemies. In the picture they are objects (the Supplies
+ * post, the crates, hover on the formations); this is their route in the list view, so
+ * nothing is pointer-only. Absent outside an Expedition.
  */
 @Component({
   selector: 'app-expedition-hud',

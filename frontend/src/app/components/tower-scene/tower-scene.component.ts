@@ -13,6 +13,7 @@ import { Tower } from '../../interfaces/tower';
 import { Squad, Reinforcement } from '../../interfaces/game-state';
 import {
   buildFixture,
+  CarriedFigures,
   InkFixture,
   readFixtureParams,
 } from '../../three/ink/ink-fixture';
@@ -43,6 +44,7 @@ import { TowerSceneGraph } from './tower-scene-graph.component';
         [active]="fixture ? true : active()"
         [reinforcements]="fixture?.reinforcements ?? reinforcements()"
         [launchOverride]="launchOverride"
+        [carried]="carried()"
       />
     </ngt-canvas>
     <app-scene-lines
@@ -83,6 +85,19 @@ export class TowerScene {
   protected readonly shownParty = computed(
     () => this.fixture?.party ?? this.party(),
   );
+
+  /** What the Expedition carries, for the Supplies post and the crates (a fixture's, or the game's). */
+  protected readonly carried = computed<CarriedFigures>(() => {
+    if (this.fixture) return this.fixture.carried;
+    const s = this.game();
+    return {
+      supplies: s.supplies ?? 0,
+      maxSupplies: s.maxSupplies ?? 0,
+      credits: s.carriedCredits ?? 0,
+      materials: s.carriedLoot?.MATERIALS ?? 0,
+      relics: s.carriedLoot?.RELICS ?? 0,
+    };
+  });
 
   protected readonly camera: NgtCameraParameters = {
     position: [0, 4.8, 12.5],

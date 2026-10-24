@@ -116,6 +116,17 @@ import {
 } from '../../three/launch/launch-controls';
 import { towerLaunchVolumes } from '../../three/launch/launch-objects';
 import { subjectOfVolume } from '../../three/village/village-subjects';
+import type { VillageSubject } from '../../three/village/village-subjects';
+import {
+  expeditionVolumes,
+  groupAt,
+  groupKey,
+  groupSubject,
+  isGroupSubject,
+  PARTY,
+  unionRects,
+} from '../../three/expedition/expedition-objects';
+import type { CarriedFigures } from '../../three/ink/ink-fixture';
 import type { Volume } from '../../three/village/village-layout';
 import type { Quarter } from '../../interfaces/game-state';
 import { LandscapeGraph } from '../landscape/landscape-graph.component';
@@ -123,7 +134,7 @@ import { LandscapeGraph } from '../landscape/landscape-graph.component';
 /** Instances of the box mesh: the foundation and the backdrop wall. */
 const BOX_CAPACITY = 4;
 /** Boxes the launch objects and their outlines can use (about 80 are drawn). */
-const LAUNCH_CAPACITY = 128;
+const LAUNCH_CAPACITY = 256;
 /** Fog starts to eat the ink beyond the focal distance of the battle shot. */
 const FOG_NEAR = 13;
 
@@ -375,6 +386,8 @@ export class TowerSceneGraph {
   reinforcements = input<Reinforcement[]>([]);
   /** Dev tooling: draws the bell and the lamp lit or dark whatever the game says. */
   launchOverride = input<{ bell: boolean; recall: boolean } | null>(null);
+  /** Supplies and the loads carried, drawn as the Supplies post and the crates. */
+  carried = input<CarriedFigures | null>(null);
 
   private readonly dark = signal(this.readTheme());
   private readonly gameState = inject(GameStateService).state;
@@ -625,16 +638,40 @@ export class TowerSceneGraph {
     };
   });
 
-  /** The launch objects as boxes, beside the Floor the Party fights on. */
+  /** Where the Party's formation stands, so the crates lie at its feet. */
+  private readonly partyX = computed(() => {
+    const plan = this.figurePlan();
+    const xs = [...plan.marks.slice(0, plan.figureCount), ...plan.specks]
+      .filter((f) => f.id.startsWith('unit-'))
+      .map((f) => f.x);
+    return xs.length ? (Math.min(...xs) + Math.max(...xs)) / 2 : -1.9;
+  });
+
+  /** The launch objects and the Expedition objects as boxes, beside the Floor the Party fights on. */
   private readonly launchVolumes = computed<Volume[]>(() => {
     if (!this.active()) return [];
     const u = this.usable();
-    return towerLaunchVolumes({
-      surfaceY: floorSurfaceY(this.anchorFloor()) + SURFACE_LIFT,
-      bellUsable: u.bell,
-      recallUsable: u.recall,
-      hovered: this.selection.hovered()?.id ?? null,
-    });
+    const surfaceY = floorSurfaceY(this.anchorFloor()) + SURFACE_LIFT;
+    const hovered = this.selection.hovered()?.id ?? null;
+    const c = this.carried();
+    return [
+      ...towerLaunchVolumes({
+        surfaceY,
+        bellUsable: u.bell,
+        recallUsable: u.recall,
+        hovered,
+      }),
+      ...expeditionVolumes({
+        surfaceY,
+        supplies: c?.supplies ?? 0,
+        maxSupplies: c?.maxSupplies ?? 0,
+        credits: c?.credits ?? 0,
+        materials: c?.materials ?? 0,
+        relics: c?.relics ?? 0,
+        partyX: this.partyX(),
+        hovered,
+      }),
+    ];
   });
 
   constructor() {
@@ -1091,6 +1128,8 @@ export class TowerSceneGraph {
         }
       }
     };
+    const onHoverMove = (e: PointerEvent) => this.hoverGroupAt(e);
+    const onHoverLeave = () => this.clearGroupHover();
     const onPointerMove = (e: PointerEvent) => {
       if (!this.pointerDown) return;
       nudge((e.clientY - this.lastPointerY) * 0.02);
@@ -1116,6 +1155,8 @@ export class TowerSceneGraph {
       el.addEventListener('wheel', onWheel, { passive: false });
       el.addEventListener('pointerdown', onPointerDown);
       el.addEventListener('click', onClick);
+      el.addEventListener('pointermove', onHoverMove);
+      el.addEventListener('pointerleave', onHoverLeave);
       window.addEventListener('pointermove', onPointerMove);
       window.addEventListener('pointerup', onPointerUp);
       updateAspect(el);
@@ -1129,9 +1170,65 @@ export class TowerSceneGraph {
       bound?.removeEventListener('wheel', onWheel);
       bound?.removeEventListener('pointerdown', onPointerDown);
       bound?.removeEventListener('click', onClick);
+      bound?.removeEventListener('pointermove', onHoverMove);
+      bound?.removeEventListener('pointerleave', onHoverLeave);
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
     });
+  }
+
+  /**
+   * Hovering the Party's formation or an enemy group states its exact numbers
+   * (the caption reads the hovered subject). The bell, the lamp, the post and the
+   * crates are picked by the raycaster and win: this only sets or clears a group.
+   */
+  private hoverGroupAt(e: PointerEvent): void {
+    const current = this.selection.hovered();
+    if (
+      !this.active() ||
+      this.zoom.level() !== 'battle' ||
+      this.pointerDown ||
+      (current && !isGroupSubject(current))
+    ) {
+      return;
+    }
+    const subject = groupAt(this.groupRects(), ...this.canvasPoint(e));
+    this.selection.hover(subject);
+    this.store.snapshot.gl.domElement.style.cursor = subject ? 'help' : '';
+  }
+
+  private clearGroupHover(): void {
+    if (isGroupSubject(this.selection.hovered())) {
+      this.selection.hover(null);
+      this.store.snapshot.gl.domElement.style.cursor = '';
+    }
+  }
+
+  private canvasPoint(e: MouseEvent): [number, number] {
+    const box = this.store.snapshot.gl.domElement.getBoundingClientRect();
+    return [e.clientX - box.left, e.clientY - box.top];
+  }
+
+  /** Where the Party and each enemy group are on the canvas now, specks included. */
+  private groupRects() {
+    const el = this.store.snapshot.gl.domElement;
+    const plan = this.figurePlan();
+    const typeOf = new Map<string, VillageSubject>();
+    for (const e of this.tower()?.floors?.[this.currentFloor()]?.enemies ?? []) {
+      typeOf.set(`enemy-${e.id}`, groupSubject(groupKey(e)));
+    }
+    const figures = [...plan.marks.slice(0, plan.figureCount), ...plan.specks]
+      .map((f) => ({
+        subject: f.id.startsWith('unit-') ? PARTY : typeOf.get(f.id),
+        rect: figureRect(
+          this.store.snapshot.camera,
+          f,
+          el.clientWidth,
+          el.clientHeight,
+        ),
+      }))
+      .filter((f): f is { subject: VillageSubject; rect: typeof f.rect } => !!f.subject);
+    return unionRects(figures);
   }
 
   /** The member whose sprite is under a click, if any. */
