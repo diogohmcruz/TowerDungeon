@@ -4,6 +4,10 @@ import {
   EMPTY_VILLAGE,
   VillageInput,
 } from '../../three/village/village-layout';
+import type { GameState } from '../../interfaces/game-state';
+import type { Member } from '../../interfaces/member';
+import type { UnitStats } from '../../interfaces/unit.enum';
+import { PopoverService } from '../../services/popover.service';
 import { GameStateService } from '../../services/game-state.service';
 import { BuildingPopover } from '../building-popover/building-popover';
 import { ListView } from '../list-view/list-view';
@@ -23,6 +27,38 @@ function quarterParam(): VillageInput['quarter'] {
   return v === 'SPRING' || v === 'SUMMER' || v === 'AUTUMN' || v === 'WINTER'
     ? v
     : null;
+}
+
+function fixtureReserves(): GameState['units'] {
+  const member = (id: number, hurt: boolean) =>
+    ({
+      id,
+      name: `Reserve ${id}`,
+      currentHealth: hurt ? 4 : 10,
+      maxHealth: 10,
+    }) as unknown as Member;
+  let id = 0;
+  const list = (n: number, hurt: number) =>
+    Array.from({ length: n }, (_, i) => member(id++, i < hurt));
+  return {
+    ...game0().units,
+    WARRIOR: list(9, 2),
+    ARCHER: list(6, 1),
+    PORTER: list(3, 0),
+  };
+}
+
+function game0(): GameState {
+  return inject(GameStateService).state();
+}
+
+function fixtureCatalog(): Record<string, UnitStats> {
+  const cost: Record<string, number> = {
+    WARRIOR: 3, ARCHER: 5, PORTER: 2, HEALER: 12, ROGUE: 20, TANK: 25,
+  };
+  return Object.fromEntries(
+    Object.entries(cost).map(([k, v]) => [k, { cost: v } as UnitStats]),
+  );
 }
 
 @Component({
@@ -47,6 +83,12 @@ export class VillageFixturePage {
     // The popover and the list read the game's state, which the fixture has no backend to fill.
     const food = Number(new URLSearchParams(location.search).get('food') ?? 400);
     const game = inject(GameStateService);
+    // `?open=FORT` opens that building's popover, for a capture with no pointer to click with.
+    const open = new URLSearchParams(location.search).get('open');
+    if (open) {
+      const popover = inject(PopoverService);
+      setTimeout(() => popover.openFor({ kind: 'building', id: open }), 1500);
+    }
     game.update({
       village: { ...game.state().village, food },
       netFoodPerSecond: 1.2,
@@ -64,6 +106,23 @@ export class VillageFixturePage {
         trustHeld: 12,
         bearerTypes: ['TANK', 'WARRIOR'],
       },
+      // The Fort: some Reserves, a few wounded, Credits to hire with and the Types' costs.
+      credit: Number(new URLSearchParams(location.search).get('credit') ?? 40),
+      units: fixtureReserves(),
+      unlockedUnitTypes: ['WARRIOR', 'ARCHER', 'PORTER', 'HEALER', 'ROGUE'],
+      unitCatalog: fixtureCatalog(),
+      availableUpgrades: [
+        {
+          id: 'UNLOCK_TANK',
+          name: 'Recruit the Tank',
+          description: '',
+          level: 0,
+          maxed: false,
+          repeatable: false,
+          unlockUnit: 'TANK',
+          nextCost: { MATERIALS: 30 },
+        },
+      ],
     });
   }
 
@@ -75,6 +134,7 @@ export class VillageFixturePage {
         ...EMPTY_VILLAGE,
         food: 400,
         reserves: 18,
+        wounded: 3,
         hands: { TILLER: 14, BREAKER: 8, SCRIBE: 4, SALTER: 6, SPOREWARDEN: 0 },
         posts: { SCRIBE: 6 },
         quarryHeap: 24,

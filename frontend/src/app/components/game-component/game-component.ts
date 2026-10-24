@@ -1,6 +1,7 @@
 import {
   Component,
   computed,
+  effect,
   inject,
   OnDestroy,
   signal,
@@ -31,7 +32,6 @@ import { TowerDisplay } from '../tower/tower-display.component';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { UnitStatsService } from '../../services/unit-stats.service';
 import { VillageManagement } from '../village-management/village-management';
-import { UnitCard } from '../unit-card/unit-card';
 import { UpgradeCard } from '../upgrade-card/upgrade-card';
 import { MilestoneCard } from '../milestone-card/milestone-card';
 import { ShortcutCard } from '../shortcut-card/shortcut-card';
@@ -50,7 +50,6 @@ import { ListView } from '../list-view/list-view';
     TowerDisplay,
     ExpeditionHud,
     VillageManagement,
-    UnitCard,
     UpgradeCard,
     MilestoneCard,
     ShortcutCard,
@@ -144,12 +143,6 @@ export class GameComponent implements OnDestroy {
   private ws = inject(GameWebSocketService);
   private unitStatsService = inject(UnitStatsService);
 
-  readonly units = computed(() =>
-    (this.gameState().unlockedUnitTypes ?? []).map(
-      (type) => [type, type] as [string, string],
-    ),
-  );
-
   /** The launch commands and what the Loadout has chosen; shared with the scene's bell, lamp and doorways. */
   protected readonly launch = inject(LaunchService);
 
@@ -182,17 +175,14 @@ export class GameComponent implements OnDestroy {
     { initialValue: new Map<Unit, UnitStats>() },
   );
 
-  sendBuyAction(unitStats: string) {
-    const payload = { unitStats, quantity: 1 };
-    this.ws.sendAction(GameAction.BUY, payload);
-  }
-
-  reserveCount(unitAsString: string): number {
-    return this.gameState().units?.[unitAsString as Unit]?.length ?? 0;
-  }
-
-  mapStringToUnit(unitAsString: string): UnitStats | undefined {
-    return this.unitStats()?.get(unitAsString as Unit);
+  constructor() {
+    // The Fort's popover and the list view read costs from the state: hand them the Unit Types' stats.
+    effect(() => {
+      const stats = this.unitStats();
+      if (stats.size > 0) {
+        this.stateService.setCatalog(Object.fromEntries(stats));
+      }
+    });
   }
 
   sendInvadeAction() {

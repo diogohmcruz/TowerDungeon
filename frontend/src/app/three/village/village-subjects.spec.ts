@@ -27,8 +27,8 @@ describe('village subjects', () => {
     });
   });
 
-  it('gives the ground, the Tower and the Fort no subject', () => {
-    for (const id of ['ground', 'tower-3', 'base-slab', 'fort-keep', 'lamp-0']) {
+  it('gives the ground and the Tower no subject', () => {
+    for (const id of ['ground', 'tower-3', 'base-slab', 'lamp-0']) {
       expect(subjectOfVolume(id)).toBeNull();
     }
   });

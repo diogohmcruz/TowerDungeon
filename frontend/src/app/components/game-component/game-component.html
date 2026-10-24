@@ -90,20 +90,6 @@
   <app-toll-bar [forecast]="forecast" (leave)="exodus()" />
   }
 
-  <section class="hire glass-card wide">
-    <h3>Units to hire</h3>
-    <div class="hire-list">
-      @for (unit of units(); track unit[0]) {
-      <app-unit-card
-        [type]="unit[0]"
-        [stats]="mapStringToUnit(unit[0])"
-        [count]="reserveCount(unit[0])"
-        (buy)="sendBuyAction($event)"
-      />
-      }
-    </div>
-  </section>
-
   <section class="expedition-card glass-card">
   <section class="expedition-start">
     <h3>Start Floor</h3>

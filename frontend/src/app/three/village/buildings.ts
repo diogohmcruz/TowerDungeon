@@ -8,6 +8,7 @@ import { GameAction } from '../../interfaces/game-action.enum';
 import type { GameState } from '../../interfaces/game-state';
 import { defineBuilding, type BuildingDefinition } from './building-registry';
 import { GATE } from './gate-building';
+import { FORT } from './fort-building';
 import { siloFill } from './village-layout';
 
 /** What Selling Food leaves in the Pantry: it sells while more than one Food is held. */
@@ -54,7 +55,7 @@ export const SILO = defineBuilding({
 });
 
 /** Every registered building, in the order the list view shows them. */
-export const BUILDINGS: readonly BuildingDefinition[] = [SILO, GATE];
+export const BUILDINGS: readonly BuildingDefinition[] = [SILO, GATE, FORT];
 
 export function buildingDefinition(
   id: string,

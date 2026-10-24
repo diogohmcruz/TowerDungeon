@@ -9,7 +9,7 @@ import type { PortState } from '../../interfaces/game-state';
 import type { Quarter } from '../../interfaces/game-state';
 import type { TradeId } from '../../interfaces/village';
 import { bellObject, gateObject } from '../launch/launch-objects';
-import { slitGauge } from './gauge-kit';
+import { barGauge, slitGauge } from './gauge-kit';
 import {
   BASE_DOOR_ID,
   BASE_DOOR_SUBJECT,
@@ -99,6 +99,8 @@ export interface VillageInput {
   food: number;
   /** Reserves waiting in the Fort. */
   reserves: number;
+  /** How many of them are wounded, for the Fort's second gauge. */
+  wounded?: number;
   /** Hands per Trade, from the Trade views. */
   hands: Record<TradeId, number>;
   /** Posts of the Quarry and the Study (null when uncapped). */
@@ -288,7 +290,7 @@ function pace(tick: number, seed: number): number {
   return (p < period / 2 ? p : period - p) - period / 4; // -2..+2
 }
 
-function fort(out: Volume[]): void {
+function fort(out: Volume[], reserveCount: number, wounded: number): void {
   const x = mid(ANNEX_X.fort);
   const w = span(ANNEX_X.fort);
   // Timber-framed keep on a stone plinth with a stepped parapet.
@@ -299,6 +301,25 @@ function fort(out: Volume[]): void {
     box(out, `fort-merlon-${i}`, 'village', mx, 0.85, 0.35, 0.16, 0.14, 0.12, VILLAGE_TONE.stone);
   }
   box(out, 'fort-door', 'village', x + 0.2, 0.3, 0.41, 0.18, 0.3, 0.02, VILLAGE_TONE.dark);
+  // Two gauges on the keep's front, left of the door: Reserves held, and the share of them wounded.
+  const held = Math.max(0, reserveCount);
+  barGauge(out, 'fort-reserves', {
+    x: x - 0.2,
+    bottom: 0.66,
+    z: 0.42,
+    length: 0.5,
+    fill: held / MAX_RESERVE_FIGURES,
+  });
+  barGauge(out, 'fort-wounded', {
+    x: x - 0.2,
+    bottom: 0.48,
+    z: 0.42,
+    length: 0.5,
+    fill: held === 0 ? 0 : Math.max(0, wounded) / held,
+  });
+  // The near-miss pad: an invisible box around the keep and its plinth, so a click just
+  // beside the Fort still lands on it. It stops short of the yard, whose figures are the Fort too.
+  box(out, 'fort-hit', 'village', x, 0, 0.1, w + 0.1, 1.05, 0.9, VILLAGE_TONE.dark, 0);
 }
 
 function silo(out: Volume[], food: number): void {
@@ -832,7 +853,7 @@ export function buildVillage(input: VillageInput): Volume[] {
   ground(out, quarter);
   quarterMarks(out, quarter);
   tower(out);
-  fort(out);
+  fort(out, input.reserves, input.wounded ?? 0);
   silo(out, input.food);
   stair(out, input.villageTierLevel, input.still ? 0 : input.flicker);
   fields(out, quarter);

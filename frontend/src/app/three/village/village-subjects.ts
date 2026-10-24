@@ -67,6 +67,8 @@ export const VOLUME_SUBJECTS: ReadonlyArray<{
   // Registered buildings (`buildings.ts`): the popover framework's subjects.
   { prefix: 'silo', kind: 'building', id: 'SILO' },
   { prefix: 'gate-', kind: 'building', id: 'GATE' },
+  { prefix: 'fort-', kind: 'building', id: 'FORT' },
+  { prefix: 'reserve-', kind: 'building', id: 'FORT' },
 ];
 
 const TRADES: readonly TradeId[] = [
