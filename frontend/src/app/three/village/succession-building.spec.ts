@@ -24,6 +24,7 @@ import {
 import { captionFor, captionText } from './village-captions';
 import { buildVillage, EMPTY_VILLAGE } from './village-layout';
 import { subjectOfVolume } from './village-subjects';
+import { flushEffects } from '../../testing/flush-effects';
 
 const node = (id: string, over: Partial<SuccessionNode> = {}): SuccessionNode => ({
   id,
@@ -103,7 +104,7 @@ describe('the Succession at the Tower foot', () => {
       succession: v,
     });
     game.update({ phase: 'OFFER', gameOutcome: 'EXODUS', pending: report, ...over });
-    TestBed.flushEffects();
+    flushEffects();
   };
   const current = (): BuildingView =>
     buildingView(SUCCESSION, game.registryState());
@@ -150,10 +151,10 @@ describe('the Succession at the Tower foot', () => {
     // Closed by the player, it stays closed until the next Succession.
     popover.close();
     game.update({ gameOutcome: 'EXODUS' });
-    TestBed.flushEffects();
+    flushEffects();
     expect(popover.openId()).toBeNull();
     game.update({ phase: 'ACTIVE' });
-    TestBed.flushEffects();
+    flushEffects();
     offer();
     expect(popover.openId()).toBe(SUCCESSION_ID);
   });
@@ -354,7 +355,7 @@ describe('the Succession at the Tower foot', () => {
     let fixture: ComponentFixture<BuildingPopover>;
     const el = () => fixture.nativeElement as HTMLElement;
     const show = () => {
-      TestBed.flushEffects();
+      flushEffects();
       fixture.detectChanges();
     };
 
@@ -383,7 +384,7 @@ describe('the Succession at the Tower foot', () => {
       const listFixture = TestBed.createComponent(ListView);
       TestBed.inject(ListViewService).show();
       offer();
-      TestBed.flushEffects();
+      flushEffects();
       listFixture.detectChanges();
       const root = listFixture.nativeElement as HTMLElement;
       const button = Array.from(root.querySelectorAll('button')).find((b) =>

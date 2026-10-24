@@ -11,6 +11,8 @@ import { GameComponent } from './game-component';
 import { GameAction } from '../../interfaces/game-action.enum';
 import { GameStateService } from '../../services/game-state.service';
 import { GameWebSocketService } from '../../services/game-web-socket.service';
+import { stubScenes } from '../../testing/scene-stubs';
+import { flushEffects } from '../../testing/flush-effects';
 
 describe('GameComponent', () => {
   let component: GameComponent;
@@ -24,14 +26,16 @@ describe('GameComponent', () => {
 
   beforeEach(async () => {
     sendAction = jasmine.createSpy('sendAction');
-    await TestBed.configureTestingModule({
+    TestBed.configureTestingModule({
       imports: [GameComponent],
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
         { provide: GameWebSocketService, useValue: { sendAction } },
       ],
-    }).compileComponents();
+    });
+    stubScenes();
+    await TestBed.compileComponents();
 
     stateService = TestBed.inject(GameStateService);
     fixture = TestBed.createComponent(GameComponent);
@@ -88,7 +92,7 @@ describe('GameComponent', () => {
     const bar = () => host().querySelector('.launch-bar') as HTMLElement;
     const button = () => host().querySelector('.menus-toggle') as HTMLButtonElement;
     const detect = () => {
-      TestBed.flushEffects();
+      flushEffects();
       fixture.detectChanges();
     };
     /** The button reads Hide menus (pressed false) while something shows, Show menus (pressed true) otherwise. */
@@ -408,7 +412,7 @@ describe('GameComponent', () => {
 
     it('sends the command of a popover action pressed with the mouse', () => {
       TestBed.inject(PopoverService).openFor({ kind: 'building', id: 'SILO' });
-      TestBed.flushEffects();
+      flushEffects();
       fixture.detectChanges();
       const sell = host().querySelector('.popover button.btn') as HTMLButtonElement;
       expect(sell.textContent).toContain('Sell Food');
@@ -419,7 +423,7 @@ describe('GameComponent', () => {
 
     it('sends the command of a list view action pressed with the mouse', () => {
       TestBed.inject(ListViewService).show();
-      TestBed.flushEffects();
+      flushEffects();
       fixture.detectChanges();
       const sell = Array.from(
         host().querySelectorAll<HTMLButtonElement>('.list button.btn'),

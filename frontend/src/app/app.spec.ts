@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { App } from './app';
+import { stubScenes } from './testing/scene-stubs';
 import { GameWebSocketService, SOCKET_FACTORY } from './services/game-web-socket.service';
 import { GameStateService } from './services/game-state.service';
 
@@ -10,7 +11,7 @@ describe('App', () => {
 
   beforeEach(async () => {
     sockets.length = 0;
-    await TestBed.configureTestingModule({
+    TestBed.configureTestingModule({
       imports: [App],
       providers: [
         provideHttpClient(),
@@ -24,7 +25,9 @@ describe('App', () => {
           },
         },
       ],
-    }).compileComponents();
+    });
+    stubScenes();
+    await TestBed.compileComponents();
   });
 
   it('should create the app', () => {

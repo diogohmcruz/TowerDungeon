@@ -10,6 +10,7 @@ import { buildingViews } from '../../three/village/building-registry';
 import { BUILDINGS, villagerPurchase } from '../../three/village/buildings';
 import { captionFor, captionText } from '../../three/village/village-captions';
 import { BuildingPopover } from './building-popover';
+import { flushEffects } from '../../testing/flush-effects';
 
 const views: TradeView[] = [
   { trade: 'TILLER', plural: 'Tillers', workplace: 'Fields', hands: 16, posts: null, settling: 0, settlingSeconds: 0 },
@@ -35,7 +36,7 @@ describe('the Annexes and the Silo as buildings', () => {
 
   const el = () => fixture.nativeElement as HTMLElement;
   const show = () => {
-    TestBed.flushEffects();
+    flushEffects();
     fixture.detectChanges();
   };
   const button = (label: string) =>

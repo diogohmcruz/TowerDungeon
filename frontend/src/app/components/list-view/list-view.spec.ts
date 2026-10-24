@@ -13,6 +13,7 @@ import { ZoomService } from '../../services/zoom.service';
 import { actionSpecs, buildingViews } from '../../three/village/building-registry';
 import { BUILDINGS } from '../../three/village/buildings';
 import { ListView, listKeyIntent } from './list-view';
+import { flushEffects } from '../../testing/flush-effects';
 
 describe('ListView', () => {
   let fixture: ComponentFixture<ListView>;
@@ -21,7 +22,7 @@ describe('ListView', () => {
 
   const el = () => fixture.nativeElement as HTMLElement;
   const settle = () => {
-    TestBed.flushEffects();
+    flushEffects();
     fixture.detectChanges();
   };
   const key = (k: string, init: KeyboardEventInit = {}) =>
