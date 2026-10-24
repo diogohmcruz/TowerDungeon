@@ -1,4 +1,4 @@
-import { Unit } from './unit.enum';
+import { Unit, UnitStats } from './unit.enum';
 import { SuccessionView } from './succession';
 import { Tower } from './tower';
 import { RaceRecord, TrialCost, TrialRun } from './race';
@@ -191,6 +191,8 @@ export interface GameState {
   /** Seconds until Starvation begins at current rates; null while the Fields cover Upkeep. */
   pantryHoldSeconds: number | null;
   unlockedUnitTypes: string[];
+  /** Stats of every Unit Type (cost among them), from the unit-stats route; the Fort reads costs here. */
+  unitCatalog?: Record<string, UnitStats>;
   availableUpgrades: UpgradeOffer[];
   damageMultiplier: number;
   supplyCapacityBonus: number;

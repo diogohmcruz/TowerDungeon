@@ -169,7 +169,6 @@
   }
 }
 
-.hire,
 .army-panel {
   h3 {
     font-family: var(--font-pixel);
@@ -177,18 +176,6 @@
     color: var(--bone);
     margin: 0 0 8px;
     text-transform: uppercase;
-  }
-}
-
-.hire-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-
-  app-unit-card {
-    flex: 1 1 140px;
-    min-width: 5em;
-    max-width: 15em;
   }
 }
 

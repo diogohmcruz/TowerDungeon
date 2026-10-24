@@ -16,6 +16,7 @@ import { VillageSelectionService } from '../../services/village-selection.servic
 import { captionFor, captionText } from '../../three/village/village-captions';
 import { GameStateService } from '../../services/game-state.service';
 import { StageService } from '../../services/stage.service';
+import { woundedTotal } from '../../three/village/fort-building';
 import { VillageInput } from '../../three/village/village-layout';
 import { towerRegion } from '../../three/stage-view';
 import { VILLAGE_FOV } from '../../three/village/village-camera';
@@ -148,6 +149,7 @@ export class VillageScene {
     return {
       food: s.village.food,
       reserves: s.homeUnitCount,
+      wounded: woundedTotal(s),
       hands,
       posts,
       quarryHeap: s.village.quarryHeap,

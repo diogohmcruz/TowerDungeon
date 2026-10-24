@@ -43,7 +43,10 @@ export interface GaugeSpec {
 /** A click on a building's popover or a row of the list view. */
 export interface ActionSpec {
   id: string;
-  label: string;
+  /** What the control says; a function when it carries a figure (a cost, a count). */
+  label: string | ((state: GameState) => string);
+  /** False leaves the action out of the popover and the list (a Type with no gate to name). Absent means shown. */
+  visible?(state: GameState): boolean;
   /** Whether it can be used now; when not, the reason in words (never colour alone). */
   availability(state: GameState): Availability;
   /** Sends the command. Only called when `availability` says usable. */
@@ -141,7 +144,8 @@ export function gaugeView(spec: GaugeSpec, state: GameState): GaugeView {
 
 export function actionView(spec: ActionSpec, state: GameState): ActionView {
   const can = spec.availability(state);
-  return { id: spec.id, label: spec.label, usable: can.usable, reason: can.reason };
+  const label = typeof spec.label === 'function' ? spec.label(state) : spec.label;
+  return { id: spec.id, label, usable: can.usable, reason: can.reason };
 }
 
 export function buildingView(def: BuildingDefinition, state: GameState): BuildingView {
@@ -149,7 +153,9 @@ export function buildingView(def: BuildingDefinition, state: GameState): Buildin
     id: def.id,
     title: def.title,
     gauges: def.gauges.map((g) => gaugeView(g, state)),
-    actions: actionSpecs(def, state).map((a) => actionView(a, state)),
+    actions: actionSpecs(def, state)
+      .filter((a) => (a.visible ? a.visible(state) : true))
+      .map((a) => actionView(a, state)),
   };
 }
 

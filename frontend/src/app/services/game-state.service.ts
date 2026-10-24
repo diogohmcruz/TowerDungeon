@@ -1,6 +1,6 @@
 import { Injectable, Signal, signal } from '@angular/core';
 import { GameState } from '../interfaces/game-state';
-import { Unit } from '../interfaces/unit.enum';
+import { Unit, UnitStats } from '../interfaces/unit.enum';
 import { SessionMeta } from '../interfaces/game-frame';
 
 @Injectable({ providedIn: 'root' })
@@ -141,8 +141,21 @@ export class GameStateService {
   /** The latest frame's session facts (resumed, notices, held), or null before the first frame. */
   readonly session: Signal<SessionMeta | null> = this._session.asReadonly();
 
+  private catalog: Record<string, UnitStats> | undefined;
+
   setState(newState: GameState) {
-    this._state.set(newState);
+    // A frame does not carry the unit catalog; it keeps the one the unit-stats route gave.
+    this._state.set(
+      this.catalog && !newState.unitCatalog
+        ? { ...newState, unitCatalog: this.catalog }
+        : newState,
+    );
+  }
+
+  /** The stats of every Unit Type, for the Fort's costs. */
+  setCatalog(catalog: Record<string, UnitStats>) {
+    this.catalog = catalog;
+    this._state.update((s) => ({ ...s, unitCatalog: catalog }));
   }
 
   setSession(session: SessionMeta | null) {
