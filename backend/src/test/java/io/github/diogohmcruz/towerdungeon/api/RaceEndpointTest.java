@@ -105,7 +105,11 @@ class RaceEndpointTest {
               Map.of(),
               Instant.parse("2026-10-24T10:00:00Z")));
     }
-    var used = JsonMapper.builder().build().readTree(getRaces("Bearer " + keyNamed("spender")).body()).get(0);
+    var used =
+        JsonMapper.builder()
+            .build()
+            .readTree(getRaces("Bearer " + keyNamed("spender")).body())
+            .get(0);
     assertThat(used.path("attemptsLeft").asInt()).isZero();
     assertThat(used.path("refusal").asString()).isEqualTo("NO_ATTEMPTS");
   }

@@ -200,10 +200,23 @@ public class Tower {
     if (e.getSurgeInterval() > 0 && floor % e.getSurgeInterval() == 0) {
       budget *= e.getSurgeMultiplier();
     }
-    budget *= Math.pow(1 - e.getEaseBudgetPerBoss() * e.getEaseMultiplier(), easingStepsFor(floor));
+    budget *= easingFactor(easingStepsFor(floor));
     budget *= Math.pow(1 + e.getStepBudgetPerBoss(), stepUpsFor(floor));
     budget *= e.getMemoryBudget();
     return budget;
+  }
+
+  /**
+   * The share of a garrison that survives {@code steps} slain Guardians above it. Each removes
+   * {@code ease-budget-per-boss} of what is left (times the Easing multiplier), but the total
+   * thinning stops at {@code ease-budget-cap} and a garrison never falls below {@code
+   * ease-budget-floor} of its base budget, whichever of the two is stricter. The multiplier moves
+   * the thinning only, never the floor or the cap.
+   */
+  private double easingFactor(int steps) {
+    var e = enemiesConfig;
+    var eased = Math.pow(1 - Math.min(1, e.getEaseBudgetPerBoss() * e.getEaseMultiplier()), steps);
+    return Math.max(eased, Math.max(e.getEaseBudgetFloor(), 1 - e.getEaseBudgetCap()));
   }
 
   /** The budget of a regular floor: its eased base, swung randomly, never below the minimum. */

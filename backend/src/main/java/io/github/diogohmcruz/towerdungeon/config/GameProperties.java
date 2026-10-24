@@ -396,7 +396,17 @@ public class GameProperties {
     private double surgeMultiplier = 1.5;
 
     /** Fraction of the garrison removed for each cleared guardian standing above a floor. */
-    private double easeBudgetPerBoss = 0.15;
+    private double easeBudgetPerBoss = 0.25;
+
+    /**
+     * A garrison never falls below this share of its base budget, however many Guardians ease it.
+     */
+    private double easeBudgetFloor = 0.5;
+
+    /**
+     * The most the garrison can be thinned in total (0.6 keeps at least 40% of the base budget).
+     */
+    private double easeBudgetCap = 0.6;
 
     /** Reduction to a floor's max enemy tier for each cleared guardian above it. */
     private int easeDifficultyPerBoss = 1;
