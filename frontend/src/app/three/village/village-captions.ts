@@ -13,6 +13,8 @@ import {
   extractAvailability,
 } from '../launch/launch-controls';
 import { buildingDefinition, BUILDINGS } from './buildings';
+import { marginBody, previewOf } from './annex-buildings';
+import { lockOf } from './trade-locks';
 import { buildingView, isVisible } from './building-registry';
 import type { SubjectKind, VillageSubject } from './village-subjects';
 
@@ -41,27 +43,10 @@ type CaptionBuilder = (
   context: CaptionContext,
 ) => VillageCaption | null;
 
-/** Trades whose Annex opens with a Village Tier: the level and its name. */
-const TIER_GATES: Partial<
-  Record<TradeId, { level: number; name: string; roman: string }>
-> = {
-  SALTER: { level: 2, name: 'Sheltered', roman: 'II' },
-  SPOREWARDEN: { level: 3, name: 'Fortified', roman: 'III' },
-};
+export { lockOf };
 
 function viewOf(state: GameState, trade: string): TradeView | undefined {
   return state.tradeViews.find((v) => v.trade === trade);
-}
-
-/** The words for a locked Trade, from the Village Tier the game is at; null when open. */
-export function lockOf(state: GameState, trade: string): string | null {
-  const gate = TIER_GATES[trade as TradeId];
-  const view = viewOf(state, trade);
-  if (!gate || !view || state.villageTierLevel >= gate.level) return null;
-  return (
-    `The ${view.workplace} open at Village Tier ${gate.roman}, ${gate.name}. ` +
-    `The Village stands at Tier ${state.villageTierLevel}, ${state.villageTierName}.`
-  );
 }
 
 function rate(value: number): string {
@@ -83,6 +68,12 @@ function makesOf(state: GameState, trade: string): string {
   }
 }
 
+/** The Pantry margin one more hand here would leave (the Fields have no such move). */
+function marginLine(state: GameState, trade: TradeId): { leaves?: string } {
+  const p = previewOf(state, trade, 1);
+  return p && !p.blocked ? { leaves: `With one more here: ${marginBody(p)}` } : {};
+}
+
 const annex: CaptionBuilder = (subject, state) => {
   const view = viewOf(state, subject.id);
   if (!view) return null;
@@ -100,6 +91,7 @@ const annex: CaptionBuilder = (subject, state) => {
     status: works,
     makes: view.hands > 0 ? makesOf(state, subject.id) : '',
     lock: null,
+    ...marginLine(state, subject.id as TradeId),
   };
 };
 

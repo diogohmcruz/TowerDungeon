@@ -49,6 +49,8 @@ export interface ActionSpec {
   visible?(state: GameState): boolean;
   /** Whether it can be used now; when not, the reason in words (never colour alone). */
   availability(state: GameState): Availability;
+  /** What the action would leave, in words, shown before the click (hover or focus). */
+  preview?(state: GameState): string | null;
   /** Sends the command. Only called when `availability` says usable. */
   run(commands: BuildingCommands, state: GameState): void;
 }
@@ -99,6 +101,8 @@ export interface ActionView {
   usable: boolean;
   /** Why it cannot be used; null when it can. */
   reason: string | null;
+  /** What it would leave, in words; null when the action states none. */
+  preview: string | null;
 }
 
 export interface BuildingView {
@@ -145,7 +149,13 @@ export function gaugeView(spec: GaugeSpec, state: GameState): GaugeView {
 export function actionView(spec: ActionSpec, state: GameState): ActionView {
   const can = spec.availability(state);
   const label = typeof spec.label === 'function' ? spec.label(state) : spec.label;
-  return { id: spec.id, label, usable: can.usable, reason: can.reason };
+  return {
+    id: spec.id,
+    label,
+    usable: can.usable,
+    reason: can.reason,
+    preview: spec.preview?.(state) ?? null,
+  };
 }
 
 export function buildingView(def: BuildingDefinition, state: GameState): BuildingView {

@@ -4,6 +4,7 @@ import {
   computed,
   ElementRef,
   inject,
+  signal,
 } from '@angular/core';
 
 import { PopoverService } from '../../services/popover.service';
@@ -56,11 +57,17 @@ import { placeCard } from '../unit-focus/card-placement';
             [attr.aria-disabled]="a.usable ? null : 'true'"
             [attr.aria-describedby]="a.usable ? null : reasonId(a)"
             (click)="run(v.id, a)"
+            (mouseenter)="point(a.id)"
+            (mouseleave)="point(null)"
+            (focus)="point(a.id)"
+            (blur)="point(null)"
           >
             {{ a.label }}
           </button>
           @if (a.reason) {
             <p class="reason" [id]="reasonId(a)">{{ a.reason }}</p>
+          } @else if (a.preview && pointed() === a.id) {
+            <p class="reason preview" role="status">{{ a.preview }}</p>
           }
         }
       </aside>
@@ -136,6 +143,13 @@ export class BuildingPopover {
 
   protected readonly view = this.popover.open;
 
+  /** The action under the pointer or the focus: what it would leave is said under it. */
+  protected readonly pointed = signal<string | null>(null);
+
+  protected point(actionId: string | null): void {
+    this.pointed.set(actionId);
+  }
+
   protected readonly place = computed(() => {
     const { width, height } = this.stage.viewport();
     return placeCard(this.popover.anchor(), width, height, this.wanted());
@@ -147,7 +161,11 @@ export class BuildingPopover {
     if (!v) return 0;
     const lines = (text: string) => Math.ceil(text.length / 38) * 18 + 4;
     const gauges = v.gauges.reduce((n, g) => n + 36 + (g.leaves ? lines(g.leaves) : 0), 0);
-    const actions = v.actions.reduce((n, a) => n + 38 + (a.reason ? lines(a.reason) : 0), 0);
+    const actions = v.actions.reduce(
+      (n, a) =>
+        n + 38 + (a.reason ? lines(a.reason) : 0) + (a.preview ? lines(a.preview) : 0),
+      0,
+    );
     return 36 + gauges + actions;
   });
 

@@ -4,7 +4,6 @@ import {
   effect,
   ElementRef,
   inject,
-  signal,
   untracked,
 } from '@angular/core';
 import { VillageSelectionService } from '../../services/village-selection.service';
@@ -14,7 +13,7 @@ import { GameAction } from '../../interfaces/game-action.enum';
 import { GameWebSocketService } from '../../services/game-web-socket.service';
 import { DecimalPipe } from '@angular/common';
 import { Quarter } from '../../interfaces/game-state';
-import { TomeId, TradeId, TradePreview } from '../../interfaces/village';
+import { TomeId, TradeId } from '../../interfaces/village';
 
 const QUARTER_NAME: Record<Quarter, string> = {
   SPRING: 'Spring',
@@ -127,21 +126,6 @@ export class VillageManagement {
   readonly materials = computed(() => this.gameState().resources.MATERIALS);
   readonly relics = computed(() => this.gameState().resources.RELICS);
 
-  /** The non-Fields Trades, as the assignment rows. */
-  readonly trades = computed(() =>
-    this.gameState().tradeViews.filter((view) => view.trade !== 'TILLER'),
-  );
-  readonly tillers = computed(
-    () =>
-      this.gameState().tradeViews.find((view) => view.trade === 'TILLER')
-        ?.hands ?? this.villagersCount(),
-  );
-  readonly emergencyTilling = computed(
-    () => this.gameState().village.emergencyTilling,
-  );
-  readonly yieldPercent = computed(() =>
-    Math.round(this.gameState().yieldBonus * 100),
-  );
   readonly tomes = computed(() => this.gameState().tomeViews);
   readonly ring = computed(() => this.gameState().ring);
   readonly trustHeld = computed(() => this.gameState().trustHeld);
@@ -149,55 +133,6 @@ export class VillageManagement {
   readonly theCount = computed(() => this.gameState().theCount);
   readonly tally = computed(() => this.gameState().tally);
   readonly ledger = computed(() => this.gameState().ledger.slice(-5));
-
-  /** The move the player is pointing at; its margin is stated under the rows. */
-  private readonly pointedAt = signal<{ trade: TradeId; delta: 1 | -1 } | null>(
-    null,
-  );
-
-  readonly preview = computed<TradePreview | null>(() => {
-    const pointed = this.pointedAt();
-    if (!pointed) {
-      return null;
-    }
-    return (
-      this.gameState().tradePreviews.find(
-        (p) => p.trade === pointed.trade && p.delta === pointed.delta,
-      ) ?? null
-    );
-  });
-
-  point(trade: TradeId, delta: 1 | -1) {
-    this.pointedAt.set({ trade, delta });
-  }
-
-  unpoint() {
-    this.pointedAt.set(null);
-  }
-
-  previewFor(trade: TradeId, delta: 1 | -1): TradePreview | undefined {
-    return this.gameState().tradePreviews.find(
-      (p) => p.trade === trade && p.delta === delta,
-    );
-  }
-
-  /** Output per second of a Trade, in its own good. */
-  output(trade: TradeId): number {
-    switch (trade) {
-      case 'BREAKER':
-        return this.gameState().quarryRate;
-      case 'SALTER':
-        return this.gameState().saltRate;
-      case 'SPOREWARDEN':
-        return this.gameState().sporeRate;
-      default:
-        return this.gameState().studyRate;
-    }
-  }
-
-  onClickAssign(trade: TradeId, delta: 1 | -1) {
-    this.ws.sendAction(GameAction.ASSIGN_TRADE, { trade, delta });
-  }
 
   onClickBuyTome(tome: TomeId) {
     this.ws.sendAction(GameAction.BUY_TOME, { tome });
@@ -209,10 +144,6 @@ export class VillageManagement {
 
   onClickBuyPosts(trade: TradeId) {
     this.ws.sendAction(GameAction.BUY_POSTS, { trade });
-  }
-
-  onClickBuyVillager() {
-    this.ws.sendAction(GameAction.BUY_VILLAGERS);
   }
 
   onClickSellFood() {

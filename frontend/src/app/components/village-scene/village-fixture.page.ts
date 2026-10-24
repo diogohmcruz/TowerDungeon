@@ -90,7 +90,7 @@ export class VillageFixturePage {
       setTimeout(() => popover.openFor({ kind: 'building', id: open }), 1500);
     }
     game.update({
-      village: { ...game.state().village, food },
+      village: { ...game.state().village, food, villagersCount: 20, productionRate: 7.5 },
       netFoodPerSecond: 1.2,
       // The Gate's popover reads the Loadout: a Party of six with Salt, Reserves to carry the Pack.
       loadout: {
@@ -123,6 +123,25 @@ export class VillageFixturePage {
           nextCost: { MATERIALS: 30 },
         },
       ],
+      // The Trades, so the Annexes and the Silo have something to offer.
+      foodUpkeep: 8,
+      pantryHoldSeconds: 99,
+      quarryRate: 0.75,
+      highestFloor: 12,
+      yieldBonus: 0.24,
+      villageTierLevel: 2,
+      villageTierName: 'Sheltered',
+      tradeViews: [
+        { trade: 'TILLER', plural: 'Tillers', workplace: 'Fields', hands: 16, posts: null, settling: 0, settlingSeconds: 0 },
+        { trade: 'BREAKER', plural: 'Breakers', workplace: 'Quarry', hands: 3, posts: 10, settling: 1, settlingSeconds: 7 },
+        { trade: 'SCRIBE', plural: 'Scribes', workplace: "Scribe's Study", hands: 1, posts: 10, settling: 0, settlingSeconds: 0 },
+        { trade: 'SALTER', plural: 'Salters', workplace: 'Salt Pans', hands: 0, posts: 10, settling: 0, settlingSeconds: 0 },
+        { trade: 'SPOREWARDEN', plural: 'Sporewardens', workplace: 'Spore Cellar', hands: 0, posts: 10, settling: 0, settlingSeconds: 0 },
+      ],
+      tradePreviews: (['BREAKER', 'SCRIBE', 'SALTER', 'SPOREWARDEN'] as const).flatMap((trade) => [
+        { trade, delta: 1 as const, fields: 7.5, upkeep: 8, fieldsCoverUpkeep: false, pantryHoldSeconds: 99, blocked: null },
+        { trade, delta: -1 as const, fields: 8, upkeep: 8, fieldsCoverUpkeep: true, pantryHoldSeconds: null, blocked: trade === 'BREAKER' ? 'Settling 7 s.' : null },
+      ]),
     });
   }
 
