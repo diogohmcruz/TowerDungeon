@@ -508,22 +508,33 @@ describe('village layout', () => {
     it('matches today\'s picture with no Upgrades', () => {
       const base = buildVillage(EMPTY_VILLAGE);
       expect(ids(base).some((i) => i.startsWith('grow:'))).toBe(false);
-      expect(buildVillage({ ...EMPTY_VILLAGE, upgrades: { SUPPLY_LINES: 0 } })).toEqual(base);
-      // Unknown ids and negative levels show nothing.
-      expect(
-        buildVillage({ ...EMPTY_VILLAGE, upgrades: { NOPE: 3, SHARPENED_ARMS: -1 } }),
-      ).toEqual(base);
+      // An Upgrade not offered, or unknown, shows nothing.
+      expect(buildVillage({ ...EMPTY_VILLAGE, upgrades: { NOPE: 3 } })).toEqual(base);
+      // One offered and not bought shows only its footing and its pad, never a module.
+      const offered = buildVillage({ ...EMPTY_VILLAGE, upgrades: { SUPPLY_LINES: 0 } });
+      expect(ids(offered).some((i) => i.startsWith('grow:'))).toBe(false);
+      expect(ids(offered).filter((i) => !ids(base).includes(i)).sort()).toEqual([
+        'upgrade-footing:SUPPLY_LINES:e',
+        'upgrade-footing:SUPPLY_LINES:n',
+        'upgrade-footing:SUPPLY_LINES:s',
+        'upgrade-footing:SUPPLY_LINES:w',
+        'upgrade-hit:SUPPLY_LINES',
+      ]);
+      expect(buildVillage({ ...EMPTY_VILLAGE, upgrades: { SHARPENED_ARMS: -1 } })).toEqual(
+        buildVillage({ ...EMPTY_VILLAGE, upgrades: { SHARPENED_ARMS: 0 } }),
+      );
     });
 
     it('adds exactly one module per level bought, up to the cap', () => {
       for (const [id, m] of Object.entries(UPGRADE_MODULES)) {
-        let before = buildVillage(BUSY);
+        let before = buildVillage({ ...BUSY, upgrades: { [id]: 0 } });
         for (let level = 1; level <= m.cap + 2; level++) {
           const after = buildVillage({ ...BUSY, upgrades: { [id]: level } });
           const added = modules(after).size - modules(before).size;
           expect(added).toBe(level <= m.cap ? 1 : 0);
           // Everything else in the picture is untouched.
-          const rest = (vs: Volume[]) => vs.filter((v) => !v.id.startsWith('grow:'));
+          const rest = (vs: Volume[]) =>
+            vs.filter((v) => !/^(grow:|upgrade-)/.test(v.id));
           expect(rest(after)).toEqual(rest(before));
           before = after;
         }

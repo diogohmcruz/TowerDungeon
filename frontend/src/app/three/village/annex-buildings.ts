@@ -7,7 +7,13 @@
  */
 import { GameAction } from '../../interfaces/game-action.enum';
 import type { GameState } from '../../interfaces/game-state';
-import type { TradeId, TradePreview, TradeView } from '../../interfaces/village';
+import type {
+  PostUpgradeView,
+  TomeView,
+  TradeId,
+  TradePreview,
+  TradeView,
+} from '../../interfaces/village';
 import {
   defineBuilding,
   type ActionSpec,
@@ -184,6 +190,74 @@ function assign(trade: TradeId, delta: 1 | -1, plural: string): ActionSpec {
   };
 }
 
+function postsOf(state: GameState, trade: TradeId): PostUpgradeView | undefined {
+  return (state.postUpgrades ?? []).find((p) => p.trade === trade);
+}
+
+/** Posts are raised at the Annex whose Trade they serve (the Quarry, the Scribe's Study). */
+function raisePosts(trade: TradeId): ActionSpec {
+  return {
+    id: 'raise-posts',
+    label: (s) => {
+      const p = postsOf(s, trade);
+      return p ? `Raise Posts, ${p.cost} Materials (${p.posts} now, ${p.nextPosts} after)` : 'Raise Posts';
+    },
+    visible: (s) => postsOf(s, trade) !== undefined,
+    availability: (s) => {
+      const p = postsOf(s, trade);
+      if (!p) return { usable: false, reason: 'No Posts are raised here.' };
+      return p.blocked ? { usable: false, reason: p.blocked } : { usable: true, reason: null };
+    },
+    preview: (s) => {
+      const p = postsOf(s, trade);
+      return p && !p.blocked
+        ? `Raises the Posts from ${p.posts} to ${p.nextPosts} for ${p.cost} Materials.`
+        : null;
+    },
+    run: (commands) => commands.send(GameAction.BUY_POSTS, { trade }),
+  };
+}
+
+/** What a Tome gives at a level, in words ("Fields output +25%"). */
+function tomeBonus(view: TomeView, level: number): string {
+  return view.bonusFlat > 0
+    ? `${view.effect} +${level * view.bonusFlat}`
+    : `${view.effect} +${level * view.bonusPercent}%`;
+}
+
+/** Tomes are bought with Knowledge at the Scribe's Study, one action per Tome. */
+function tomeActions(state: GameState): readonly ActionSpec[] {
+  return (state.tomeViews ?? []).map((t) => ({
+    id: `tome-${t.tome}`,
+    label: () => `Buy ${t.title}, ${t.cost} Knowledge (level ${t.level})`,
+    availability: () =>
+      t.blocked ? { usable: false, reason: t.blocked } : { usable: true, reason: null },
+    preview: () =>
+      t.blocked
+        ? null
+        : `Level ${t.level}: ${tomeBonus(t, t.level)}. The next level gives ${tomeBonus(t, t.level + 1)} for ${t.cost} Knowledge.`,
+    run: (commands) => commands.send(GameAction.BUY_TOME, { tome: t.tome }),
+  }));
+}
+
+function tomesGauge(): GaugeSpec {
+  return {
+    id: 'tomes',
+    label: 'Tomes',
+    value: (s) => (s.tomeViews ?? []).reduce((n, t) => n + t.level, 0),
+    fill: (s) => {
+      const held = (s.tomeViews ?? []).reduce((n, t) => n + t.level, 0);
+      return held / Math.max(1, held + 3);
+    },
+    leaves: (s) =>
+      (s.tomeViews ?? []).length === 0
+        ? null
+        : (s.tomeViews ?? [])
+            .map((t) => `${t.title} level ${t.level}: ${tomeBonus(t, t.level)}.`)
+            .join(' '),
+  };
+}
+
 const NAMES: Record<TradeId, { title: string; plural: string }> = {
   TILLER: { title: 'The Fields', plural: 'Tillers' },
   BREAKER: { title: 'The Quarry', plural: 'Breakers' },
@@ -199,7 +273,11 @@ function annex(trade: TradeId): BuildingDefinition {
     title,
     // A footing not yet open is not offered (its hover caption still says what opens it).
     visible: (s) => viewOf(s, trade) !== undefined && lockOf(s, trade) === null,
-    gauges: [handsGauge(trade, plural), productGauge(trade)],
+    gauges: [
+      handsGauge(trade, plural),
+      productGauge(trade),
+      ...(trade === 'SCRIBE' ? [tomesGauge()] : []),
+    ],
     // The Fields have no steps of their own: they are what every other Trade gives hands to.
     actions:
       trade === 'TILLER'
@@ -207,9 +285,11 @@ function annex(trade: TradeId): BuildingDefinition {
         : [
             assign(trade, 1, plural),
             assign(trade, -1, plural),
+            raisePosts(trade),
             // Salt is sold where it is made (the Vault sold it before the Pans opened).
             ...(trade === 'SALTER' ? [sellSaltAction()] : []),
           ],
+    ...(trade === 'SCRIBE' ? { moreActions: tomeActions } : {}),
   });
 }
 

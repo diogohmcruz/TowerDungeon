@@ -11,8 +11,10 @@ import { GATE } from './gate-building';
 import { FORT } from './fort-building';
 import { SUCCESSION } from './succession-building';
 import { ANNEXES } from './annex-buildings';
+import { RING } from './ring-building';
 import { REFERENCE_PILLAR } from './reference-pillar-building';
 import { sellSaltAction } from './salt-sale';
+import { UPGRADE_BUILDINGS } from './upgrade-buildings';
 import {
   creditsFill,
   litRelicNotches,
@@ -227,6 +229,8 @@ export const BUILDINGS: readonly BuildingDefinition[] = [
   FORT,
   REFERENCE_PILLAR,
   SUCCESSION,
+  RING,
+  ...UPGRADE_BUILDINGS,
 ];
 
 export function buildingDefinition(

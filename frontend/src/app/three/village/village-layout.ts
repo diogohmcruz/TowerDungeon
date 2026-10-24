@@ -155,6 +155,9 @@ export interface VillageInput {
   bellUsable?: boolean;
   /** The Campaign has ended and waits in OFFER: the Roll stone stands at the Tower's foot. */
   offer?: boolean;
+  /** The Thought-Binding Ring's level and highest level: sides of the ring lit on the stair. */
+  ringLevel?: number;
+  ringMax?: number;
 }
 
 export const EMPTY_VILLAGE: VillageInput = {
@@ -678,7 +681,70 @@ function growth(out: Volume[], upgrades: Record<string, number>): void {
   for (const id of Object.keys(UPGRADE_MODULES)) {
     const n = growthLevels(id, upgrades[id] ?? 0);
     for (let i = 0; i < n; i++) UPGRADE_MODULES[id].build(out, `grow:${id}:${i}`, i);
+    // An Upgrade the Village offers is a thing to point at: its footing until it is bought,
+    // and a pad around where the module stands, for picking.
+    if (upgrades[id] !== undefined) upgradeMarks(out, id, n);
   }
+}
+
+/** The least a footing or a pad is wide, so a thin post can still be pointed at. */
+const MARK_MIN = 0.26;
+const MARK_PAD = 0.08;
+
+/**
+ * The footing of an unbought Upgrade (a hairline rectangle on the ground where its
+ * module will stand, no label) and the invisible pad that makes the module
+ * pickable: `upgrade-footing:<id>:*` and `upgrade-hit:<id>`, both the Upgrade's building.
+ */
+function upgradeMarks(out: Volume[], id: string, owned: number): void {
+  const module = UPGRADE_MODULES[id];
+  const shown: Volume[] = [];
+  for (let i = 0; i < Math.max(1, owned); i++) module.build(shown, `grow:${id}:${i}`, i);
+  const x0 = Math.min(...shown.map((v) => v.x - v.w / 2));
+  const x1 = Math.max(...shown.map((v) => v.x + v.w / 2));
+  const z0 = Math.min(...shown.map((v) => v.z - v.d / 2));
+  const z1 = Math.max(...shown.map((v) => v.z + v.d / 2));
+  const top = Math.max(...shown.map((v) => v.y + v.h / 2));
+  const cx = (x0 + x1) / 2;
+  const cz = (z0 + z1) / 2;
+  const w = Math.max(MARK_MIN, x1 - x0);
+  const d = Math.max(MARK_MIN, z1 - z0);
+  if (owned === 0) {
+    const tone = VILLAGE_TONE.footing + 0.3;
+    box(out, `upgrade-footing:${id}:n`, 'village', cx, 0, cz - d / 2, w, 0.012, 0.012, tone);
+    box(out, `upgrade-footing:${id}:s`, 'village', cx, 0, cz + d / 2, w, 0.012, 0.012, tone);
+    box(out, `upgrade-footing:${id}:w`, 'village', cx - w / 2, 0, cz, 0.012, 0.012, d, tone);
+    box(out, `upgrade-footing:${id}:e`, 'village', cx + w / 2, 0, cz, 0.012, 0.012, d, tone);
+  }
+  // Unbought, the pad reaches no higher than the footing's hairline: nothing stands there to pick.
+  const height = owned === 0 ? 0.3 : top + MARK_PAD;
+  box(out, `upgrade-hit:${id}`, 'village', cx, 0, cz, w + 2 * MARK_PAD, height, d + 2 * MARK_PAD, VILLAGE_TONE.dark, 0);
+}
+
+/** Where the Thought-Binding Ring hangs: on a post set in the stair's third tread. */
+const RING_SPOT = { x: -1.31, bottom: 0.6, z: 0.2 } as const;
+/** Sides of the ring lit for a level: the share of the highest level, in quarters, rounded up. */
+export function litRingSides(level: number, max: number): number {
+  if (!(level > 0) || !(max > 0)) return 0;
+  return Math.min(4, Math.ceil((4 * level) / max));
+}
+
+function ring(out: Volume[], level: number, max: number): void {
+  const { x, bottom, z } = RING_SPOT;
+  const size = 0.28;
+  const t = 0.05;
+  const lit = litRingSides(level, max);
+  box(out, 'ring-post', 'village', x, bottom, z, 0.06, 0.12, 0.06, VILLAGE_TONE.stone);
+  const sides: Array<[string, number, number, number, number]> = [
+    ['n', x, bottom + 0.12 + size - t, size, t],
+    ['e', x + (size - t) / 2, bottom + 0.12, t, size],
+    ['s', x, bottom + 0.12, size, t],
+    ['w', x - (size - t) / 2, bottom + 0.12, t, size],
+  ];
+  sides.forEach(([name, sx, sy, w, h], i) => {
+    box(out, `ring-band-${name}`, 'village', sx, sy, z, w, h, t, i < lit ? VILLAGE_TONE.lit : VILLAGE_TONE.footing);
+  });
+  box(out, 'ring-hit', 'village', x, bottom, z, size + 0.16, 0.12 + size + 0.06, 0.3, VILLAGE_TONE.dark, 0);
 }
 
 function tower(out: Volume[]): void {
@@ -988,6 +1054,7 @@ export function buildVillage(input: VillageInput): Volume[] {
   if (input.offer) rollStone(out);
   bellObject(out, BELL_SPOT, input.bellUsable ?? true);
   gateObject(out, BELL_SPOT);
+  ring(out, input.ringLevel ?? 0, input.ringMax ?? 0);
   growth(out, input.upgrades ?? {});
   reserves(out, input.reserves);
   villagers(out, input.hands, input.tick, input.still);

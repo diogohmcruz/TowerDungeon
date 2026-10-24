@@ -168,19 +168,6 @@
   <app-run-summary-card [summary]="gameState().lastRunSummary!" />
   }
 
-  <section class="upgrade-panel glass-card wide">
-    <h3>Upgrades</h3>
-    <div class="upgrade-list">
-      @for (up of gameState().availableUpgrades; track up.id) {
-      <app-upgrade-card
-        [offer]="up"
-        [affordable]="canAfford(up.nextCost)"
-        (buy)="buyUpgrade($event)"
-      />
-      }
-    </div>
-  </section>
-
   <section class="shortcut-panel glass-card wide">
     <h3>
       Shortcuts
