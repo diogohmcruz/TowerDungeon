@@ -112,9 +112,9 @@ The withdraw dilemma is worked out with a game-theory table: a Rearguard Share w
 
 **Decisions only you can make** are listed at the end of each document (16 for MCP, 29 for multiplayer). The recommendations in each stand until you say otherwise. The two that change the shape of the work most: whether the MCP server is in scope now or after persistence, and whether multiplayer stops at Joint Guardians (Stage 4) or builds the shared front (Stage 5).
 
-## 6. Added later: version 3 (the shore and the year)
+## 6. Added later: 2.1.0 (the shore and the year)
 
-A batch grouped in the "Version 3" milestone: the Tower panel is exactly full height and sticky; the Village grows with every purchased Upgrade; open Shortcuts show as marks on the Tower's flank; hover and click link the diorama to the panels; a Port, a Boat and a named group of Arrivals; the Year with four Quarters; and, last, Voyages. The designs are `village-resources.md` (R31 and R32) and `architecture-and-visual-identity.md` (section 5.2).
+A batch grouped in the "2.1.0" milestone: the Tower panel is exactly full height and sticky; the Village grows with every purchased Upgrade; open Shortcuts show as marks on the Tower's flank; hover and click link the diorama to the panels; a Port, a Boat and a named group of Arrivals; the Year with four Quarters; and, last, Voyages. The designs are `village-resources.md` (R31 and R32) and `architecture-and-visual-identity.md` (section 5.2).
 
 | Decision | Ruling |
 |---|---|
@@ -124,9 +124,9 @@ A batch grouped in the "Version 3" milestone: the Tower panel is exactly full he
 | "Season" already means the long Trial race | The four parts of the Year are Quarters in the glossary and code. The player sees Spring, Summer, Autumn and Winter |
 | Voyage numbers (Port cost, Relic rates, risk scaling) depend on the measured economy | Voyages are blocked by the scaling pass (#8) |
 
-## 7. Added later: version 4 (the full-screen scene)
+## 7. Added later: 2.2.0 (the full-screen scene)
 
-A batch grouped in the "Version 4" milestone: the scene becomes a fixed full-screen backdrop behind a translucent menu column, with an ambient landscape to the left; launching (Set out, Extract, Send Wave, the Start Floor) moves into the picture as objects picked with the raycaster; the Expedition HUD moves into the menu column; Set out becomes a dither dissolve with the camera rise; and the Tower scene gains a full-screen closeup and a single-unit view with a floating card, both of which hold time. The design is `architecture-and-visual-identity.md` section 5.5.
+A batch grouped in the "2.2.0" milestone: the scene becomes a fixed full-screen backdrop behind a translucent menu column, with an ambient landscape to the left; launching (Set out, Extract, Send Wave, the Start Floor) moves into the picture as objects picked with the raycaster; the Expedition HUD moves into the menu column; Set out becomes a dither dissolve with the camera rise; and the Tower scene gains a full-screen closeup and a single-unit view with a floating card, both of which hold time. The design is `architecture-and-visual-identity.md` section 5.5.
 
 | Decision | Ruling |
 |---|---|
