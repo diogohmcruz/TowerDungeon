@@ -175,12 +175,13 @@ class WipeConsequencesTest {
   @Test
   void easingShrinksTheCap() {
     tower.markBossCleared(10);
-    climbTo(7);
+    climbTo(8);
     lose(party(12));
 
     state.raiseRisenOnWipe();
 
-    assertThat(risenOn(7)).hasSize(2);
+    // Floor 8 would hold three unthinned; a quarter less garrison leaves room for two.
+    assertThat(risenOn(8)).hasSize(2);
   }
 
   @Test

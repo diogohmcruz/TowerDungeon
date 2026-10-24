@@ -1,6 +1,7 @@
 package io.github.diogohmcruz.towerdungeon.domain.models;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 
 import java.util.List;
 import java.util.stream.IntStream;
@@ -230,6 +231,46 @@ class TowerTest {
     tower.markBossCleared(20);
     tower.startNewRunAt(11);
 
-    assertThat(slimesOnFloor(tower, 11)).isEqualTo((int) Math.ceil(undiscountedBudget(11) * 0.85));
+    assertThat(slimesOnFloor(tower, 11)).isEqualTo((int) Math.ceil(undiscountedBudget(11) * 0.75));
+  }
+
+  @Test
+  void threeSlainGuardiansThinAFloorToItsFloorAndNoFurther() {
+    var tower = tower(new RandomSource(1), noVariance());
+    tower.markBossCleared(20);
+    tower.markBossCleared(30);
+    tower.markBossCleared(40);
+    var base = tower(new RandomSource(1), noVariance()).easedBaseBudget(11);
+
+    // 0.75^3 is 0.42, below the floor of half the base, so the floor holds.
+    assertThat(tower.easedBaseBudget(11)).isCloseTo(base * 0.5, within(1e-9));
+  }
+
+  @Test
+  void theCapStopsTheThinningWhenItIsStricterThanTheFloor() {
+    var config = new GameProperties().copy();
+    config.getEnemies().setEaseBudgetFloor(0.0);
+    config.getEnemies().setEaseBudgetCap(0.6);
+    var tower = tower(new RandomSource(1), config);
+    var base = tower(new RandomSource(1), config);
+    for (var boss : new int[] {20, 30, 40, 50}) {
+      tower.markBossCleared(boss);
+    }
+    assertThat(tower.easedBaseBudget(11)).isCloseTo(base.easedBaseBudget(11) * 0.4, within(1e-9));
+  }
+
+  @Test
+  void tenSealsBrokenDeepensTheEasingButCannotBreakTheFloor() {
+    var config = new GameProperties().copy();
+    config.getEnemies().setEaseMultiplier(1.25);
+    var tower = tower(new RandomSource(1), config);
+    var base = tower(new RandomSource(1), config);
+    tower.markBossCleared(20);
+    // One Guardian: 0.25 x 1.25 thins by 31.25%, still above the floor.
+    assertThat(tower.easedBaseBudget(11))
+        .isCloseTo(base.easedBaseBudget(11) * 0.6875, within(1e-9));
+    tower.markBossCleared(30);
+    tower.markBossCleared(40);
+    assertThat(tower.easedBaseBudget(11)).isCloseTo(base.easedBaseBudget(11) * 0.5, within(1e-9));
   }
 }

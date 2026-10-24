@@ -68,7 +68,9 @@ game:
     variance: 0.25
     surge-interval: 5
     surge-multiplier: 1.5
-    ease-budget-per-boss: 0.15
+    ease-budget-per-boss: 0.25
+    ease-budget-floor: 0.5
+    ease-budget-cap: 0.6
     ease-difficulty-per-boss: 1
     gentle-floors: 9
     gentle-start-multiplier: 0.45
