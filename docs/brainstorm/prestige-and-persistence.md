@@ -434,7 +434,7 @@ Garrison rolls keep their existing `ThreadLocalRandom` variance. The imposed Mut
 
 The model assumes 4 to 6 seconds per Floor, 15 to 17 full-climb Expeditions per Campaign and 130 to 200 seconds between them. "Planned" minutes are model minutes plus about 25% for recruiting and thinking. I took the Ledger model's counter values and assumed the Roll offsets the Mutations, so the underlying counters stay the same and the Mutations act only through `L` (assuming they are met). Real Generations 2 and later probably run 10 to 20% longer.
 
-**The Highest Floor row (35, 55, 75, 99) is a target, not a prediction.** The Roll adds a head start of about one early Expedition (3.5), and Easing is forgotten each Generation, so the model silently assumes the climb is limited by **time**, so that a faster opening buys more Floors. If it is limited by **strength** (3.11), no Generation will reach the Floors in the table. Treat the table as the shape the scaling pass has to produce.
+**The Highest Floor row follows the pacing target of 3.12.** The other rows of this table (minutes, Legacy) are model figures that the scaling pass refits to it.
 
 **v2 table (with Mutations).** Marks counters use the same sources as 3.4.
 
@@ -442,7 +442,7 @@ The model assumes 4 to 6 seconds per Floor, 15 to 17 full-climb Expeditions per 
 |---|---|---|---|---|
 | Ending | Exodus | Exodus | Exodus | **Victory** |
 | Planned time | 90 min | 80 min | 75 min | 95 min |
-| Highest Floor | 35 | 55 | 75 | 99 then 100 |
+| Highest Floor | 6 | 9 | 12 | 99 then 100 (Generation 12) |
 | Guardians slain, G | 3 | 5 | 7 | 10 |
 | Baseline `B` | 0 | 5 (First Footing, used) | 5 | 5 |
 | Load met (imposed plus Pact) | 0 | 2 + 2 = 4 | 4 + 2 = 6 | 5 + 2 = 7 |
@@ -577,6 +577,29 @@ game:
 Per-Generation overrides (Memory, Hollowing, Long Stair) cannot read the shared `GameProperties` as is. They need a per-Campaign copy of the config objects the `Tower` is built from, or one session's Mutation would leak into another.
 
 ---
+
+### 3.12 The pacing target and the scaling pass
+
+The climb is slow and the Tower stays unknown. Each Generation reaches a little further, and the Roll, Tower Memory and Easing make that so.
+
+| Generation | Highest Floor reached | Legacy earned |
+|---|---|---|
+| 1 | 6 | 3 |
+| 2 | 9 | 4 |
+| 3 | 12 | 5 |
+| 4 | 16 | 6 |
+| 5 | 21 | 8 |
+| 6 | 27 | 10 |
+| 7 to 12 | steady growth to Floor 99 | 10 to 14 |
+
+These figures are placeholders until the scaling pass measures them, but their shape is the target: the first Generation reaches Floor 5 to 7, Blood of the Door (6 Legacy, behind the gate of 12 Legacy spent) is bought in about Generation 6 or 7, the whole Roll (64 Legacy) by about Generation 9, and the summit falls in about Generation 12. The Toll's `par` values and the Roll's prices are refit so each row's Legacy comes out of the Toll and Exodus stays reachable (forecast of at least 3 Legacy) in Generation 1.
+
+- **Guardians.** The Guardian interval stays 10 Floors. Generation 1 meets none, which keeps the Tower unknown; the first falls in about Generation 3.
+- **Easing.** Each cleared Guardian removes 25% of the garrison of every Floor below it and lowers its maximum enemy tier by one, but a garrison never falls below half its base budget and the total thinning is capped at 60%. This makes it easier to return to where the Party struggled. Easing is forgotten each Generation, apart from the Open Breach and the Ten Seals Broken Epitaph. All three numbers are config.
+- **Shortcuts.** A Shortcut's start Floor follows the table, each set near the Highest Floor of the previous Generation (about 5, 9, 12, 16 and so on), so it skips ground already mastered, not ground the Party cannot survive. Narrow Stair's Floor moves to match, and its Legacy gate stays.
+- **Scope.** Floors 1 to 5 are left as measured. Floors 6 to 100 become a smooth curve for garrison and Guardian health, Supplies drain and Carrying Capacity, anchored on the Guardian Floors and the pinned Floors (50, 59, 60, 80 and 100); the Floor 80 Dragon stays the hardest fight, but beatable.
+- **Method.** A floor duel harness takes any Party, Upgrades and Supplies plan and runs the real combat code against any Floor many times, to report the win rate and the Supplies spent, so Floors 6 to 100 can be sized without a playthrough. A reference plan per Generation (Units, Upgrades, Supplies, Carrying Capacity) comes from the table.
+- **Done means a test.** For each Generation's reference plan, the Party beats a normal Floor at least about 70% of the time and a Guardian Floor at least about 50% of the time, up to the Floor that Generation is meant to reach. A failing Floor fails the build.
 
 ## 4. How Prestige and persistence depend on each other, and the build plan
 

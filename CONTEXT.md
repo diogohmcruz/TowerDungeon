@@ -423,6 +423,22 @@ _Avoid_: Calendar, cycle, day
 One of the four equal parts of the Year: Spring, Summer, Autumn and Winter. Spring eases the drains on Sanity, Summer eases the drain on Supplies, Autumn raises what the Fields yield, and Winter raises Attrition. The danger at sea rises and falls across the Year as a wave, lowest in mid-Summer and highest in mid-Winter. No Quarter lowers Food or adds to Starvation. Planned.
 _Avoid_: Season (reserved for the long Trial race), month, weather
 
+**Strongbox**:
+At Village Tier IV, the building that shows and sells credits alone, after the vault is split. At lower tiers the vault annex shows credits, materials and relics together. Planned.
+_Avoid_: Bank, treasury, wallet
+
+**Reliquary**:
+At Village Tier IV, the building that shows and sells relics alone, after the vault is split. Planned.
+_Avoid_: Shrine, relic store
+
+**Wall of Names**:
+At Village Tier IV, the building that lists the fallen units, so the scribe's study keeps only the ledger. Planned.
+_Avoid_: Memorial, graveyard
+
+**Stone of Count**:
+At Village Tier IV, the stone that shows the toll forecast and offers the exodus, so the reference pillar keeps only the highest floor and the milestones. Its words are "The Tower keeps count." Planned.
+_Avoid_: Scoreboard, tally board
+
 **Stockroom**:
 The village's store of goods its own villagers make (salt, dragon spores, knowledge). Unlike the vault, trades fill it and extraction does not. Planned.
 _Avoid_: Storehouse, warehouse, inventory
