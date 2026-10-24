@@ -402,39 +402,69 @@ function silo(out: Volume[], food: number): void {
   box(out, 'silo-hit', 'village', (left + right) / 2, 0, SILO_Z, right - left, 1.9, 0.3, VILLAGE_TONE.dark, 0);
 }
 
+/**
+ * The causeway stair (#138): a narrow spine of many shallow treads, a party's width, climbing
+ * from the Gate's foot to a landing before the Base door. A low parapet runs along its front edge
+ * with the Tier lamps on it, and dark ground lies on every side of the spine and its landing,
+ * which stand across a drop from the Tower's foot.
+ */
+export const STAIR = {
+  x0: -1.85,
+  run: 1.0,
+  steps: 12,
+  rise: 0.95,
+  z: 0.2,
+  d: 0.4,
+  landing: { x0: -0.85, x1: -0.25 },
+} as const;
+/** The treads that carry a lamp, foot to head (12 is the landing): the Ring hangs between the second and third. */
+const LAMP_TREADS = [1, 4, 10, 12] as const;
+
 function stair(out: Volume[], tier: number, flicker: number): void {
-  // One steep flight as one extruded stepped profile (rise 1.6, run 1.9).
-  const steps = 8;
-  const run = 1.9;
-  const rise = 1.6;
-  const x0 = -1.9;
+  const { x0, run, steps, rise, z, d, landing } = STAIR;
+  const tw = run / steps;
+  const frontZ = z + d / 2 - 0.03;
   for (let i = 0; i < steps; i++) {
     const h = (rise * (i + 1)) / steps;
-    box(out, `stair-${i}`, 'village', x0 + (run / steps) * (i + 0.5), 0, 0.2, run / steps, h, 0.4, VILLAGE_TONE.stone);
-    // A tread line: a thin bright strip on each step.
-    box(out, `tread-${i}`, 'village', x0 + (run / steps) * (i + 0.5), h, 0.2, run / steps, 0.012, 0.4, 0.9);
+    const x = x0 + tw * (i + 0.5);
+    box(out, `stair-${i}`, 'village', x, 0, z, tw, h, d, VILLAGE_TONE.stone);
+    // A tread line: a thin bright strip across the step's leading edge, and a dark one at its
+    // heel where the next tread rises, so the many shallow treads read from the front.
+    box(out, `tread-${i}`, 'village', x - tw / 2 + 0.014, h, z, 0.028, 0.012, d, 0.9);
+    box(out, `tread-heel-${i}`, 'village', x + tw / 2 - 0.01, h, z, 0.02, 0.012, d, VILLAGE_TONE.dark);
+    // A dark seam on the front face at this tread's height, running on under the next treads and
+    // the landing: the many treads read as courses seen from the front.
+    const seamX0 = x - tw / 2;
+    const seamX1 = landing.x1;
+    box(out, `seam-${i}`, 'village', (seamX0 + seamX1) / 2, h - 0.012, z + d / 2 + 0.004, seamX1 - seamX0, 0.012, 0.01, VILLAGE_TONE.dark);
+    // The parapet: a low wall along the front edge, in the dull footing tone.
+    box(out, `parapet-${i}`, 'village', x, h, frontZ, tw, 0.07, 0.06, VILLAGE_TONE.footing);
   }
-  // Village Tier as lamps along the stair, one more lit per level.
+  // The landing before the Base door, flush with the Tower's foot: the threshold stands on it.
+  const lx = (landing.x0 + landing.x1) / 2;
+  box(out, 'stair-landing', 'village', lx, 0, 0.1, landing.x1 - landing.x0, rise - 0.05, 0.6, VILLAGE_TONE.stone);
+  box(out, 'parapet-landing', 'village', lx, rise, frontZ, landing.x1 - landing.x0, 0.07, 0.06, VILLAGE_TONE.footing);
+  // The drop: dark ground on every side of the spine and the landing.
+  const left = x0 - 0.1;
+  const right = landing.x1 + 0.1;
+  const dark = (id: string, x: number, zz: number, w: number, dd: number) =>
+    box(out, `chasm-${id}`, 'tower', x, 0, zz, w, 0.01, dd, VILLAGE_TONE.dark);
+  dark('front', (left + right) / 2, z + d / 2 + 0.05, right - left, 0.1);
+  dark('back', (left + x0 + run) / 2, -0.15, x0 + run - left, 0.1);
+  dark('foot', left + 0.05, z, 0.1, d);
+  dark('side', right - 0.05, 0.1, 0.1, 0.6);
+  // Village Tier as lamps on the parapet, one more lit per level.
   const lit = litLamps(tier);
   for (let i = 0; i < VILLAGE_TIERS; i++) {
-    const step = 1 + i * 2;
-    const h = (rise * (step + 1)) / steps;
+    const step = LAMP_TREADS[i];
+    const onLanding = step >= steps;
+    const x = onLanding ? landing.x0 + 0.08 : x0 + tw * (step + 0.5);
+    const h = onLanding ? rise : (rise * (step + 1)) / steps;
     // Plus or minus 8% on a slow noise of about 0.3 Hz, per lamp.
     const wobble = 1 + 0.08 * Math.sin(flicker * 2 * Math.PI * 0.3 + i * 2.1);
     const on = i < lit;
-    box(
-      out,
-      `lamp-${i}`,
-      'village',
-      x0 + (run / steps) * (step + 0.5),
-      h + 0.1,
-      0.42,
-      0.07,
-      0.12,
-      0.07,
-      on ? Math.min(1, VILLAGE_TONE.lit * wobble) : VILLAGE_TONE.lampOff,
-    );
-    box(out, `lamp-post-${i}`, 'village', x0 + (run / steps) * (step + 0.5), h, 0.42, 0.02, 0.1, 0.02, VILLAGE_TONE.timber);
+    box(out, `lamp-${i}`, 'village', x, h + 0.17, frontZ, 0.07, 0.12, 0.07, on ? Math.min(1, VILLAGE_TONE.lit * wobble) : VILLAGE_TONE.lampOff);
+    box(out, `lamp-post-${i}`, 'village', x, h + 0.07, frontZ, 0.02, 0.1, 0.02, VILLAGE_TONE.timber);
   }
 }
 
@@ -844,8 +874,8 @@ function upgradeMarks(out: Volume[], id: string, owned: number): void {
   box(out, `upgrade-hit:${id}`, 'village', cx, 0, cz, w + 2 * MARK_PAD, height, d + 2 * MARK_PAD, VILLAGE_TONE.dark, 0);
 }
 
-/** Where the Thought-Binding Ring hangs: on a post set in the stair's third tread. */
-const RING_SPOT = { x: -1.31, bottom: 0.6, z: 0.2 } as const;
+/** Where the Thought-Binding Ring hangs: on a post set in the stair's eighth tread, between the lamps. */
+const RING_SPOT = { x: STAIR.x0 + (STAIR.run / STAIR.steps) * 7.5, bottom: (STAIR.rise * 8) / STAIR.steps, z: 0.2 } as const;
 /** Sides of the ring lit for a level: the share of the highest level, in quarters, rounded up. */
 export function litRingSides(level: number, max: number): number {
   if (!(level > 0) || !(max > 0)) return 0;
@@ -901,9 +931,8 @@ function shortcutMarks(out: Volume[], shortcuts: VillageShortcut[]): void {
 
 /** Where the bell's gate stands: at the foot of the stair, in front of it. */
 export const BELL_SPOT = { x: -1.95, bottom: 0, z: 0.8 } as const;
-/** The Base door: on the Base slab's front face, clear of the stair. */
-export const BASE_DOOR_X = 0.9;
-const BASE_DOOR_BOTTOM = 0.62;
+/** The Base door: cut in the Base slab's front face, over the landing at the stair's head. */
+export const BASE_DOOR_X = (STAIR.landing.x0 + STAIR.landing.x1) / 2;
 const BASE_FRONT_Z = -0.2;
 
 /**
@@ -944,9 +973,80 @@ function rollStone(out: Volume[]): void {
   box(out, 'roll-hit', 'tower', x, 0, z, 0.78, 1.3, 0.5, VILLAGE_TONE.dark, 0);
 }
 
-/** The Start Floor 0 choice: the Base door, drawn as a doorway in the slab's face. */
+/** The Base slab's top: the door's slot climbs past it into the Tower's face. */
+const SLAB_TOP = BASE_GAP + 1.25;
+/** The Tower's own face, in front of which the door's upper blocks stand. */
+const TOWER_FACE_Z = -0.3;
+/** The Base slab's face is built of great blocks in these courses: `[bottom, top]`. */
+const FACE_COURSES: ReadonlyArray<readonly [number, number]> = [
+  [BASE_GAP + 0.02, 0.92],
+  [STAIR.rise, 1.27],
+  [1.3, SLAB_TOP],
+];
+/** Widths the great blocks of a course cycle through, so the joints never line up. */
+const FACE_WIDTHS: ReadonlyArray<readonly number[]> = [
+  [0.9, 0.6, 1.1, 0.7],
+  [0.7, 1.0, 0.6, 0.9],
+  [1.1, 0.6, 0.8, 0.7],
+];
+/** The door's frame, in world units: the slot's width and ends, and the width of one jamb block. */
+const BASE_SLOT = { w: 0.26, bottom: STAIR.rise, top: 1.95, jamb: 0.46 } as const;
+
+/**
+ * The Start Floor 0 choice, the Base door (#138): a tall, narrow, dark slot cut between two
+ * jambs of great stacked blocks, a lintel block over it and a threshold ledge at its sill, set
+ * in a face of great blocks with dark joints. The slot climbs past the slab into the Tower's
+ * face. Every part of the door is the one `base-door` subject; the blocks around it are the Tower's.
+ */
 function baseDoor(out: Volume[]): void {
-  doorway(out, BASE_DOOR_ID, BASE_DOOR_X, BASE_DOOR_BOTTOM, BASE_FRONT_Z);
+  const id = BASE_DOOR_ID;
+  const x = BASE_DOOR_X;
+  const z = BASE_FRONT_Z;
+  const { w, bottom, top, jamb } = BASE_SLOT;
+  const part = (n: string, px: number, py: number, pw: number, ph: number, pd: number, pz: number, tone: number) =>
+    box(out, `${id}:${n}`, 'tower', px, py, pz, pw, ph, pd, tone);
+  const doorLeft = x - w / 2 - jamb;
+  const doorRight = x + w / 2 + jamb;
+  // The face's dark joints: a dark panel the blocks sit on, with a gap of one joint between them.
+  box(out, 'base-face', 'tower', 0, BASE_GAP, z, 4.8, 1.25, 0.02, VILLAGE_TONE.dark);
+  FACE_COURSES.forEach(([lo, hi], c) => {
+    let bx = -2.4;
+    for (let i = 0; bx < 2.39; i++) {
+      const bw = Math.min(FACE_WIDTHS[c][i % FACE_WIDTHS[c].length], 2.4 - bx);
+      const a0 = bx + 0.015;
+      const a1 = bx + bw - 0.015;
+      bx += bw;
+      // The door's own blocks stand where the door is: the courses above the plinth give way to it.
+      const pieces: Array<[number, number]> = [];
+      if (c === 0 || a1 <= doorLeft || a0 >= doorRight) {
+        pieces.push([a0, a1]);
+      } else {
+        if (a0 < doorLeft - 0.05) pieces.push([a0, doorLeft - 0.015]);
+        if (a1 > doorRight + 0.05) pieces.push([doorRight + 0.015, a1]);
+      }
+      pieces.forEach(([x0, x1], k) => {
+        box(out, `base-block-${c}-${i}-${k}`, 'tower', (x0 + x1) / 2, lo, z + 0.03, x1 - x0, hi - lo - 0.03, 0.06, 0.56 + 0.08 * ((i + c) % 2));
+      });
+    }
+  });
+  // The slot: dark, in the slab's face and on up the Tower's own.
+  part('opening', x, bottom, w, SLAB_TOP - bottom, 0.03, z - 0.005, VILLAGE_TONE.dark);
+  part('opening-up', x, SLAB_TOP, w, top - SLAB_TOP, 0.04, TOWER_FACE_Z + 0.02, VILLAGE_TONE.dark);
+  // Each jamb is three great blocks stacked with a dark joint between, the top one on the Tower.
+  const blocks: ReadonlyArray<readonly [number, number, number, number]> = [
+    [bottom, 1.27, z + 0.05, 0.66],
+    [1.3, SLAB_TOP, z + 0.05, 0.6],
+    [SLAB_TOP + 0.03, top, TOWER_FACE_Z + 0.1, 0.66],
+  ];
+  for (const side of [-1, 1]) {
+    const jx = x + side * (w / 2 + jamb / 2);
+    blocks.forEach(([lo, hi, bz, tone], k) => {
+      part(`jamb-${side < 0 ? 'w' : 'e'}-${k}`, jx - (k === 1 ? side * 0.03 : 0), lo, jamb - (k === 1 ? 0.06 : 0), hi - lo, 0.12, bz, tone);
+    });
+  }
+  // The lintel: one huge block across both jambs, and the threshold ledge under the slot.
+  part('lintel', x, top + 0.03, doorRight - doorLeft, 0.2, 0.14, TOWER_FACE_Z + 0.1, 0.62);
+  part('ledge', x, bottom - 0.05, 0.5, 0.05, 0.24, z + 0.1, VILLAGE_TONE.stone);
 }
 
 /** The shore starts here: the right-hand 20% of the frame, beyond the Village's 60%. */
