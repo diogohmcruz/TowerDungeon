@@ -118,6 +118,26 @@ describe('the Village closeup camera (#130)', () => {
         }
       });
 
+      it('spans at least three quarters of the width, so the margins are not empty (#143)', () => {
+        for (const [w, h] of [
+          [1440, 900],
+          [1920, 1080],
+        ]) {
+          const cam = new THREE.PerspectiveCamera();
+          applyStageView(cam, w, h, false, 1);
+          fitVillageCamera(cam, 1, closeupFrame(buildVillage(input)));
+          cam.updateMatrixWorld();
+          const rs = volumeRegions(cam, buildVillage(input), w, h).filter((r) =>
+            isBuilding(r.subject.kind),
+          );
+          const left = Math.min(...rs.map((r) => r.rects[0].left));
+          const right = Math.max(...rs.map((r) => r.rects[0].right));
+          expect((right - left) / w).withContext(`${w}x${h}`).toBeGreaterThanOrEqual(0.75);
+          expect(left).toBeGreaterThanOrEqual(-1);
+          expect(right).toBeLessThanOrEqual(w + 1);
+        }
+      });
+
       it('leaves some rectangles overlapping where a building stands in another (the Gate frames the Fort), a small share of the screen', () => {
         const rs = volumeRegions(camera(1, input), buildVillage(input), W, H).filter(
           (r) => isBuilding(r.subject.kind) && !r.direct,
