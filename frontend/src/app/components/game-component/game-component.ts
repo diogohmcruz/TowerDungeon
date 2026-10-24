@@ -1,5 +1,13 @@
-import { Component, computed, inject, signal, Signal } from '@angular/core';
+import {
+  Component,
+  computed,
+  inject,
+  OnDestroy,
+  signal,
+  Signal,
+} from '@angular/core';
 import { StageService } from '../../services/stage.service';
+import { ZoomService } from '../../services/zoom.service';
 import {
   MENU_MARGIN,
   MENU_WIDTH,
@@ -61,8 +69,9 @@ import { SuccessionScreen } from '../succession-screen/succession-screen';
     '(document:keydown)': 'onKey($event)',
   },
 })
-export class GameComponent {
+export class GameComponent implements OnDestroy {
   protected readonly stage = inject(StageService);
+  protected readonly zoom = inject(ZoomService);
   protected readonly MENU_WIDTH = MENU_WIDTH;
   protected readonly MENU_MARGIN = MENU_MARGIN;
   protected readonly PANEL_OPACITY = PANEL_OPACITY;
@@ -71,10 +80,16 @@ export class GameComponent {
   protected readonly NARROW_DIM = NARROW_DIM;
   protected readonly SCRIM_FADE = SCRIM_FADE;
 
-  /** H hides and restores the menus (not while typing, and not with a modifier). */
+  ngOnDestroy(): void {
+    // Leaving the page releases a closeup's hold.
+    this.zoom.release();
+  }
+
+  /** H hides and restores the menus; Escape steps the zoom back (not while typing, and not with a modifier). */
   protected onKey(event: KeyboardEvent): void {
+    const key = event.key.toLowerCase();
     if (
-      event.key.toLowerCase() !== 'h' ||
+      (key !== 'h' && key !== 'escape') ||
       event.ctrlKey ||
       event.metaKey ||
       event.altKey ||
@@ -88,6 +103,13 @@ export class GameComponent {
       (target.isContentEditable ||
         ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
     ) {
+      return;
+    }
+    if (key === 'escape') {
+      if (this.zoom.level() !== 'battle') {
+        event.preventDefault();
+        this.zoom.back();
+      }
       return;
     }
     this.stage.toggleMenus();

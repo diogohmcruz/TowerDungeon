@@ -95,6 +95,11 @@
   }
 }
 
+/* The closeup button sits left of the hide button. */
+.menus-toggle.closeup-toggle {
+  right: 340px;
+}
+
 /* Slot for the launch controls on narrow screens (they move into the picture in a later
    issue); it takes no room until something is put in it. */
 .launch-bar {

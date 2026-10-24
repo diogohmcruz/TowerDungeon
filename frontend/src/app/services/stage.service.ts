@@ -65,6 +65,10 @@ export class StageService {
     this._menusHidden.update((hidden) => !hidden);
   }
 
+  setMenusHidden(hidden: boolean): void {
+    this._menusHidden.set(hidden);
+  }
+
   showMenus(): void {
     this._menusHidden.set(false);
   }

@@ -80,6 +80,42 @@ describe('GameComponent', () => {
       expect(button.textContent).toContain('Hide menus');
     });
 
+    describe('the closeup', () => {
+      const button = () =>
+        host().querySelector('.closeup-toggle') as HTMLButtonElement | null;
+      const held = (value: boolean) => ({
+        resumed: false,
+        savedAt: null,
+        schema: 1,
+        notices: [],
+        held: value,
+      });
+
+      it('offers the HUD button only while an Expedition is out', () => {
+        expect(button()).toBeNull();
+        stateService.update({ expeditionActive: true });
+        fixture.detectChanges();
+        expect(button()?.textContent).toContain('Closeup');
+      });
+
+      it('holds time and hides the menus, and Escape steps back', () => {
+        stateService.update({ expeditionActive: true });
+        fixture.detectChanges();
+        button()!.click();
+        fixture.detectChanges();
+        expect(sendAction).toHaveBeenCalledWith(GameAction.HOLD, null);
+        expect(hidden()).toBeTrue();
+        expect(button()?.getAttribute('aria-pressed')).toBe('true');
+
+        stateService.setSession(held(true));
+        press('Escape');
+        fixture.detectChanges();
+        expect(sendAction).toHaveBeenCalledWith(GameAction.RESUME, null);
+        expect(hidden()).toBeFalse();
+        expect(button()?.getAttribute('aria-pressed')).toBe('false');
+      });
+    });
+
     it('ignores H while typing and with a modifier', () => {
       press('h', { ctrlKey: true });
       press('h', { metaKey: true });

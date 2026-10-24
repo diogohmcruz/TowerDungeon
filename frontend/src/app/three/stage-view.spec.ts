@@ -60,4 +60,21 @@ describe('stage view', () => {
     expect(applyStageView(camera, 1000, 900, true)).toBeTrue();
     expect(applyStageView(camera, 0, 0, false)).toBeFalse();
   });
+
+  it('widens the region toward the whole screen with the shot spread', () => {
+    expect(towerRegion(1600, false, 0)).toEqual(towerRegion(1600, false));
+    expect(towerRegion(1600, false, 1)).toEqual({ left: 0, width: 1600 });
+    const half = towerRegion(1600, false, 0.5);
+    expect(half.left).toBeGreaterThan(0);
+    expect(half.left + half.width).toBeCloseTo(1600, 6);
+  });
+
+  it('centres the Tower axis on the screen at full spread', () => {
+    const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 200);
+    camera.position.set(0, 0, 5);
+    camera.lookAt(0, 0, 0);
+    applyStageView(camera, 1600, 900, false, 1);
+    camera.updateMatrixWorld();
+    expect(new THREE.Vector3().project(camera).x).toBeCloseTo(0, 5);
+  });
 });

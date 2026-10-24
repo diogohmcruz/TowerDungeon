@@ -1,4 +1,4 @@
-import { Component, computed, input, isDevMode } from '@angular/core';
+import { Component, computed, inject, input, isDevMode } from '@angular/core';
 import { LowerCasePipe } from '@angular/common';
 import { Tower } from '../../interfaces/tower';
 import { Member } from '../../interfaces/member';
@@ -9,6 +9,7 @@ import { ExpeditionLoot } from '../expedition-loot/expedition-loot';
 import { Supplies } from '../supplies/supplies';
 import { TowerScene } from '../tower-scene/tower-scene.component';
 import { VillageScene } from '../village-scene/village-scene.component';
+import { ZoomService } from '../../services/zoom.service';
 import { readFixtureParams } from '../../three/ink/ink-fixture';
 
 @Component({
@@ -18,6 +19,7 @@ import { readFixtureParams } from '../../three/ink/ink-fixture';
   styleUrl: './tower-display.component.scss',
 })
 export class TowerDisplay {
+  protected readonly zoom = inject(ZoomService);
   tower = input<Tower | undefined>();
   party = input<Squad>();
   supplies = input<number>(0);

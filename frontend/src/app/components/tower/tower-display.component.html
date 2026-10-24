@@ -1,4 +1,4 @@
-<div class="enemies">
+<div class="enemies" [class.zoomed]="zoom.level() !== 'battle'">
   <div class="depth-header">
     <div class="depth-title">
       <span class="depth-current">Floor {{ currentFloor() }}</span>

@@ -38,6 +38,11 @@
     left: 0;
   }
 
+  /* A zoomed view fills the screen with the picture alone. */
+  &.zoomed {
+    display: none;
+  }
+
   .exp-block {
     margin: 0 0 12px;
   }

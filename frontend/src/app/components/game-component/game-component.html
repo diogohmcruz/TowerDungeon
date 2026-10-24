@@ -10,6 +10,18 @@
 >
   {{ stage.menusHidden() ? 'Show menus' : 'Hide menus' }}
 </button>
+@if (gameState().expeditionActive) {
+<button
+  type="button"
+  class="menus-toggle closeup-toggle"
+  (click)="zoom.toggleCloseup()"
+  [attr.aria-pressed]="zoom.closeup()"
+  aria-label="Closeup of the current Floor. Holds the Party and the Village clock. Escape steps back."
+  title="Closeup of the current Floor (holds time; Escape steps back)"
+>
+  {{ zoom.closeup() ? 'Leave closeup' : 'Closeup' }}
+</button>
+}
 <article class="flex-wrapper menu-column" [class.menus-hidden]="stage.menusHidden()">
   @if (gameOver()) {
   <section

@@ -89,6 +89,13 @@ import '../../three/catalogue';
 import { figureBoost } from '../../three/ink/pixel-scale';
 import { applyStageView, towerRegion } from '../../three/stage-view';
 import { StageService } from '../../services/stage.service';
+import { ZoomService } from '../../services/zoom.service';
+import {
+  dampFactor,
+  prefersReducedMotion,
+  SHOTS,
+  ShotBlend,
+} from '../../three/camera-shots';
 
 /** Instances of the box mesh: the foundation and the backdrop wall. */
 const BOX_CAPACITY = 4;
@@ -97,6 +104,10 @@ const FOG_NEAR = 13;
 
 /** Specks and figures are tinted by ink density only; this is the tone of a figure over the cap. */
 const SPECK_TONE = 0.85;
+
+/** A press that moves farther than this, or lasts longer, is a drag or a hold, not a click. */
+const CLICK_SLOP_PX = 5;
+const CLICK_MAX_MS = 500;
 
 /** World Y of the walkable surface of floor `n` (figures stand here, before the lift). */
 function floorSurfaceY(n: number): number {
@@ -456,6 +467,9 @@ export class TowerSceneGraph {
 
   private readonly store = injectStore();
   private readonly stage = inject(StageService);
+  private readonly zoom = inject(ZoomService);
+  private readonly shot = new ShotBlend();
+  private readonly reducedMotion = prefersReducedMotion();
 
   constructor() {
     const host = document.documentElement;
@@ -513,7 +527,11 @@ export class TowerSceneGraph {
 
     injectBeforeRender(({ camera, delta }) => {
       const focusY = floorToY(this.anchorFloor());
-      const damp = 1 - Math.pow(0.001, delta);
+      // Reduced motion cuts instead of easing; the damped approach never overshoots.
+      const damp = this.reducedMotion ? 1 : dampFactor(delta);
+      this.shot.step(SHOTS[this.zoom.level()], damp);
+      const pose = this.shot.current;
+      const zoomed = this.zoom.level() !== 'battle';
 
       // Keep the panned view within the discovered tower (floor 1 → top floor).
       const floorsArr = this.floors();
@@ -529,18 +547,25 @@ export class TowerSceneGraph {
       );
 
       // Recenter on the current floor once the player stops interacting.
-      if (performance.now() - this.lastPanMs > 2500 && !this.pointerDown) {
+      if (zoomed) {
+        // The closeup follows the Party and nothing else.
+        this.panY = 0;
+      } else if (
+        performance.now() - this.lastPanMs > 2500 &&
+        !this.pointerDown
+      ) {
         this.panY = THREE.MathUtils.lerp(this.panY, 0, damp * 0.6);
       }
 
       const viewY = focusY + this.panY;
-      this.camTarget.set(0, viewY + 1.3, 0);
-      this.camPos.set(0, viewY + 7, 12.5);
+      this.camTarget.set(0, viewY + pose.lookUp, 0);
+      this.camPos.set(0, viewY + pose.camUp, pose.distance);
 
       // Both the position and the look-at target ease, so the view never snaps.
       camera.position.lerp(this.camPos, damp);
       this.lookAtSmooth.lerp(this.camTarget, damp);
       camera.lookAt(this.lookAtSmooth);
+      const cam = camera as THREE.PerspectiveCamera;
 
       // The canvas fills the screen; the Tower is framed where the old panel was.
       const el = this.store.snapshot.gl.domElement;
@@ -549,7 +574,12 @@ export class TowerSceneGraph {
         el.clientWidth,
         el.clientHeight,
         this.stage.narrow(),
+        pose.spread,
       );
+      if (pose.fov !== cam.fov) {
+        cam.fov = pose.fov;
+        cam.updateProjectionMatrix();
+      }
     });
   }
 
@@ -726,6 +756,7 @@ export class TowerSceneGraph {
   /** Mouse-wheel and drag on the canvas pan the camera vertically. */
   private bindPanControls(): void {
     const nudge = (deltaWorldY: number) => {
+      if (this.zoom.level() !== 'battle') return;
       this.panY += deltaWorldY;
       this.lastPanMs = performance.now();
     };
@@ -734,9 +765,23 @@ export class TowerSceneGraph {
       e.preventDefault();
       nudge(-e.deltaY * 0.01);
     };
+    // A press that barely moves and soon lifts is a click on empty space: the closeup toggle.
+    let press: { x: number; y: number; at: number } | null = null;
     const onPointerDown = (e: PointerEvent) => {
       this.pointerDown = true;
       this.lastPointerY = e.clientY;
+      press = e.button === 0 ? { x: e.clientX, y: e.clientY, at: e.timeStamp } : null;
+    };
+    const onClick = (e: MouseEvent) => {
+      const p = press;
+      press = null;
+      if (
+        p &&
+        Math.hypot(e.clientX - p.x, e.clientY - p.y) <= CLICK_SLOP_PX &&
+        e.timeStamp - p.at <= CLICK_MAX_MS
+      ) {
+        this.zoom.toggleCloseup();
+      }
     };
     const onPointerMove = (e: PointerEvent) => {
       if (!this.pointerDown) return;
@@ -762,6 +807,7 @@ export class TowerSceneGraph {
       bound = el;
       el.addEventListener('wheel', onWheel, { passive: false });
       el.addEventListener('pointerdown', onPointerDown);
+      el.addEventListener('click', onClick);
       window.addEventListener('pointermove', onPointerMove);
       window.addEventListener('pointerup', onPointerUp);
       updateAspect(el);
@@ -774,6 +820,7 @@ export class TowerSceneGraph {
       resizeObs?.disconnect();
       bound?.removeEventListener('wheel', onWheel);
       bound?.removeEventListener('pointerdown', onPointerDown);
+      bound?.removeEventListener('click', onClick);
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
     });

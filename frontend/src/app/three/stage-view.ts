@@ -33,13 +33,20 @@ export const ENEMIES_GAP = 12;
 export function towerRegion(
   canvasWidth: number,
   narrow: boolean,
+  spread = 0,
 ): { left: number; width: number } {
   if (narrow) {
     return { left: 0, width: canvasWidth };
   }
   const panel = Math.max(canvasWidth * TOWER_SHARE, TOWER_MIN);
   const width = Math.max(1, Math.min(canvasWidth, panel - ENEMIES_WIDTH - ENEMIES_GAP));
-  return { left: canvasWidth - width, width };
+  const left = canvasWidth - width;
+  if (spread <= 0) {
+    return { left, width };
+  }
+  // A zoomed Shot widens the region toward the whole screen: 1 centres the Tower on it.
+  const t = Math.min(1, spread);
+  return { left: left * (1 - t), width: width + (canvasWidth - width) * t };
 }
 
 /**
@@ -54,11 +61,12 @@ export function applyStageView(
   canvasWidth: number,
   canvasHeight: number,
   narrow: boolean,
+  spread = 0,
 ): boolean {
   if (!(canvasWidth > 0) || !(canvasHeight > 0)) {
     return false;
   }
-  const region = towerRegion(canvasWidth, narrow);
+  const region = towerRegion(canvasWidth, narrow, spread);
   const aspect = region.width / canvasHeight;
   const view = camera.view;
   if (
