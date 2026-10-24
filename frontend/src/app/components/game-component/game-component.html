@@ -131,15 +131,7 @@
     }
   </section>
 
-  <app-loadout
-    [preview]="gameState().loadout"
-    [disabled]="gameState().expeditionActive || gameOver()"
-    [(salt)]="saltToUse"
-    [(pack)]="packSalt"
-    [(bearer)]="packBearer"
-    [(panacea)]="panaceaChosen"
-  />
-
+  <!-- The Loadout is chosen at the Gate in the picture (and in the list view). -->
   <div class="launch-buttons">
     <button
       (click)="this.sendInvadeAction()"

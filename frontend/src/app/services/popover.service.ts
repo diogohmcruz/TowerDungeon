@@ -9,6 +9,7 @@ import {
 
 import { ScreenRect } from '../three/figures/figure-pick';
 import {
+  actionSpecs,
   BuildingCommands,
   BuildingDefinition,
   buildingViews,
@@ -204,8 +205,8 @@ export class PopoverService {
    */
   perform(buildingId: string, actionId: string): boolean {
     const def = this.registry.find((d) => d.id === buildingId);
-    const action = def?.actions.find((a) => a.id === actionId);
     const state = this.stateService.state();
+    const action = def && actionSpecs(def, state).find((a) => a.id === actionId);
     if (!def || !action || !action.availability(state).usable) {
       return false;
     }

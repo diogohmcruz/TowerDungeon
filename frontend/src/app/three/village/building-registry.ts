@@ -59,6 +59,19 @@ export interface BuildingDefinition {
   visible?(state: GameState): boolean;
   gauges: readonly GaugeSpec[];
   actions: readonly ActionSpec[];
+  /**
+   * Actions that depend on the state (one per kind of Unit, a label that says what
+   * a click would do now). Shown after `actions`; looked up by id like them.
+   */
+  moreActions?(state: GameState): readonly ActionSpec[];
+}
+
+/** Every action of a building now: the fixed ones, then the state's own. */
+export function actionSpecs(
+  def: BuildingDefinition,
+  state: GameState,
+): readonly ActionSpec[] {
+  return def.moreActions ? [...def.actions, ...def.moreActions(state)] : def.actions;
 }
 
 /** Identity helper that keeps a definition typed where it is written. */
@@ -136,7 +149,7 @@ export function buildingView(def: BuildingDefinition, state: GameState): Buildin
     id: def.id,
     title: def.title,
     gauges: def.gauges.map((g) => gaugeView(g, state)),
-    actions: def.actions.map((a) => actionView(a, state)),
+    actions: actionSpecs(def, state).map((a) => actionView(a, state)),
   };
 }
 

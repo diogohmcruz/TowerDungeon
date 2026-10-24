@@ -8,7 +8,7 @@
 import type { PortState } from '../../interfaces/game-state';
 import type { Quarter } from '../../interfaces/game-state';
 import type { TradeId } from '../../interfaces/village';
-import { bellObject } from '../launch/launch-objects';
+import { bellObject, gateObject } from '../launch/launch-objects';
 import { slitGauge } from './gauge-kit';
 import {
   BASE_DOOR_ID,
@@ -844,6 +844,7 @@ export function buildVillage(input: VillageInput): Volume[] {
   shortcutMarks(out, input.shortcuts);
   baseDoor(out);
   bellObject(out, BELL_SPOT, input.bellUsable ?? true);
+  gateObject(out, BELL_SPOT);
   growth(out, input.upgrades ?? {});
   reserves(out, input.reserves);
   villagers(out, input.hands, input.tick, input.still);

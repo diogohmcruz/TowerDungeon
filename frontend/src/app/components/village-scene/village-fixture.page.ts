@@ -50,6 +50,20 @@ export class VillageFixturePage {
     game.update({
       village: { ...game.state().village, food },
       netFoodPerSecond: 1.2,
+      // The Gate's popover reads the Loadout: a Party of six with Salt, Reserves to carry the Pack.
+      loadout: {
+        ...game.state().loadout,
+        carryingCapacity: 160,
+        suppliesTaken: 100,
+        pantryAfter: Math.max(0, food - 100),
+        partySize: 6,
+        pantryHoldSeconds: 90,
+        saltUseful: 10,
+        saltHeld: 4,
+        saltPansOpen: true,
+        trustHeld: 12,
+        bearerTypes: ['TANK', 'WARRIOR'],
+      },
     });
   }
 
