@@ -1,7 +1,7 @@
 /**
  * The Expedition HUD as objects (architecture doc 5.6): Supplies is a gauge post
- * beside the recall lamp, Credits, Materials and Relics carried are crates at the
- * Party's feet, and the Party and each enemy group answer a hover with their exact
+ * beside the recall lamp, Credits, Materials and Relics carried are crates on the
+ * back wall behind the Party, and the Party and each enemy group answer a hover with their exact
  * figures. Built from the same box kit and gauge kit as the Village. Pure layout and
  * pure captions, no three.js and no Angular.
  *
@@ -34,10 +34,14 @@ export const CRATE_ID = 'carried-';
 /** The post stands just outside the recall lamp, on the same Floor. */
 export const SUPPLIES_X = TOWER_RECALL_X + 0.7;
 export const SUPPLIES_POST = { h: 1.5 } as const;
-/** Depth of the crates: in front of the Party's feet, clear of the figures. */
-export const CRATE_Z = 2.15;
-/** A crate nearer the camera than the figures reads lower on a pitched view; this lifts its foot back onto the feet's line. */
-export const CRATE_LIFT = 0.2;
+/** Depth of the crates: the rear of the Floor, in front of the strip's lip and well behind the rear rank of the Party and the garrison (#127). */
+export const CRATE_Z = 0.35;
+/**
+ * How far above the figures' feet line the crates' shelf stands. The crates read
+ * as stored goods on the back wall; high enough that no figure's hit area
+ * (a figure's drawn rectangle grown to 22 px and a margin) reaches them.
+ */
+export const CRATE_RISE = 0.6;
 /** Gap between crates along x. */
 const CRATE_STEP = 0.26;
 const CRATE = { w: 0.17, h: 0.1, d: 0.12 } as const;
@@ -138,7 +142,7 @@ export function crateStack(
   amount: number,
 ): void {
   const id = `${CRATE_ID}${kind.toLowerCase()}`;
-  surfaceY += CRATE_LIFT;
+  surfaceY += CRATE_RISE;
   const n = crateCount(kind, amount);
   box(out, `${id}-base`, x, surfaceY, CRATE_Z, CRATE.w + 0.06, 0.03, CRATE.d + 0.06, TONE.dark);
   for (let i = 0; i < n; i++) {

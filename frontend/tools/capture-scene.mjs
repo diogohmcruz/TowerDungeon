@@ -26,7 +26,7 @@ const [
 const CHROME =
   process.env.CHROME ??
   "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
-const PORT = 9333;
+const PORT = Number(process.env.CDP_PORT ?? 9333);
 mkdirSync(outDir, { recursive: true });
 
 const profile = mkdtempSync(join(tmpdir(), "td-chrome-"));
