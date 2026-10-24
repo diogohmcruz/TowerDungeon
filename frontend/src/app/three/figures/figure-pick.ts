@@ -82,6 +82,11 @@ export interface PickOptions {
   margin?: number;
   /** The hit area is never smaller than this, CSS px. */
   minSize?: number;
+  /**
+   * How far past its projected bounds a figure is drawn, CSS px: the canvas snaps it to its
+   * own coarser grid. Defaults to the margin beyond `PICK_MARGIN`.
+   */
+  snap?: number;
 }
 
 /** The area that counts as a hit on a figure drawn in `rect`. */
@@ -101,11 +106,27 @@ export function hitRect(
   };
 }
 
+/** Whether a point is inside a rectangle grown by `grow` on every side. */
+function within(r: ScreenRect, x: number, y: number, grow = 0): boolean {
+  return (
+    x >= r.left - grow &&
+    x <= r.right + grow &&
+    y >= r.top - grow &&
+    y <= r.bottom + grow
+  );
+}
+
 /**
  * The member figure under a click at (`x`, `y`) on the canvas. Only the sprites are
  * given: specks, Wave columns and numerals are not clickable, so a click on them is a
- * click on empty space. Where hit areas overlap the nearest figure wins (by distance
- * from the click to the middle of its drawn bounds), then the front-most.
+ * click on empty space.
+ *
+ * What the pointer is over is what is drawn there, so a figure whose drawn bounds hold the
+ * point comes first, and where several do the front-most wins (it is drawn over the others:
+ * a front rank stands over the rank behind it, and the figures are far wider than the gaps
+ * between ranks). Failing that, the point is in some figures' grown hit areas (the minimum
+ * size and the margin, for the figures too small to aim at) and the nearest wins, by distance
+ * from the point to the middle of the drawn bounds, then the front-most.
  */
 export function pickFigure(
   camera: THREE.Camera,
@@ -116,27 +137,36 @@ export function pickFigure(
   canvasHeight: number,
   options: PickOptions = {},
 ): FigureInstance | null {
+  const snap =
+    options.snap ?? Math.max(0, (options.margin ?? PICK_MARGIN) - PICK_MARGIN);
   let best: FigureInstance | null = null;
+  let bestOnIt = false;
   let bestDistance = Infinity;
   for (const figure of sprites) {
     if (!parseFigureId(figure.id)) {
       continue;
     }
     const drawn = figureRect(camera, figure, canvasWidth, canvasHeight);
-    const r = hitRect(drawn, options);
-    if (x < r.left || x > r.right || y < r.top || y > r.bottom) {
+    const onIt = within(drawn, x, y, snap);
+    if (!onIt && !within(hitRect(drawn, options), x, y)) {
       continue;
     }
     const distance = Math.hypot(
       x - (drawn.left + drawn.right) / 2,
       y - (drawn.top + drawn.bottom) / 2,
     );
-    if (
-      !best ||
-      distance < bestDistance - 0.5 ||
-      (distance <= bestDistance + 0.5 && figure.z > best.z)
-    ) {
+    const better = !best
+      ? true
+      : onIt !== bestOnIt
+        ? onIt
+        : onIt
+          ? figure.z > best.z + 1e-6 ||
+            (Math.abs(figure.z - best.z) <= 1e-6 && distance < bestDistance)
+          : distance < bestDistance - 0.5 ||
+            (distance <= bestDistance + 0.5 && figure.z > best.z);
+    if (better) {
       best = figure;
+      bestOnIt = onIt;
       bestDistance = distance;
     }
   }
@@ -181,7 +211,15 @@ export function pickSpriteSteady(
   pixelScale: number,
   holdId: string | null,
 ): FigureInstance | null {
-  const hit = pickSprite(camera, sprites, x, y, canvasWidth, canvasHeight, pixelScale);
+  const hit = pickSprite(
+    camera,
+    sprites,
+    x,
+    y,
+    canvasWidth,
+    canvasHeight,
+    pixelScale,
+  );
   const held = holdId ? sprites.find((f) => f.id === holdId) : undefined;
   if (!held || !parseFigureId(held.id) || hit?.id === held.id) {
     return hit;
@@ -194,6 +232,13 @@ export function pickSpriteSteady(
     x <= area.right + grow &&
     y >= area.top - grow &&
     y <= area.bottom + grow;
+  // A figure drawn right under the pointer is what the pointer is over, held or not: a front figure
+  // is not given up to the one behind it only because the pointer came from there (#128).
+  const drawnAt = (f: FigureInstance) =>
+    within(figureRect(camera, f, canvasWidth, canvasHeight), x, y, pixelScale);
+  if (hit && drawnAt(hit) && !drawnAt(held)) {
+    return hit;
+  }
   // Inside its own area it stays; just outside it stays only while nothing else is under the pointer.
   return inside(0) || (!hit && inside(SPRITE_HOLD_PX)) ? held : hit;
 }
