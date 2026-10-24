@@ -2,6 +2,7 @@ package io.github.diogohmcruz.towerdungeon.agent.balance;
 
 import java.util.Collections;
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
@@ -9,6 +10,7 @@ import java.util.TreeSet;
 import io.github.diogohmcruz.towerdungeon.domain.models.Aim;
 import io.github.diogohmcruz.towerdungeon.domain.models.UnitStats;
 import io.github.diogohmcruz.towerdungeon.domain.models.upgrade.UpgradeType;
+import io.github.diogohmcruz.towerdungeon.domain.prestige.InheritanceType;
 
 /**
  * Everything a balance tool says about a Party, with nothing of the Village behind it: who goes,
@@ -40,6 +42,11 @@ import io.github.diogohmcruz.towerdungeon.domain.models.upgrade.UpgradeType;
  *     rest of each type are recruits
  * @param risen Risen already standing on the Floor dueled, as a Wipe there leaves them (the
  *     garrison of a Floor the Party has failed on before)
+ * @param startFloor the Floor the Expedition sets out from (a Shortcut's, or 1); the pacing table
+ *     records it, a duel names its own Floor
+ * @param dowry the Dowry choice (CREDITS, MATERIALS or RELICS), null when the Roll holds none
+ * @param inheritances the Inheritances of the Roll held, in the order bought; the duel applies
+ *     Whetstone Habit (the damage bonus), the rest is the pacing table's record of the plan
  */
 public record PartyPlan(
     Map<UnitStats, Integer> units,
@@ -51,7 +58,38 @@ public record PartyPlan(
     Set<Integer> easing,
     Map<UnitStats, Map<Aim, Double>> aim,
     int risen,
-    boolean founders) {
+    boolean founders,
+    int startFloor,
+    String dowry,
+    List<InheritanceType> inheritances) {
+
+  /** A plan with no Floor, Dowry or Roll to record: the first ten fields only. */
+  public PartyPlan(
+      Map<UnitStats, Integer> units,
+      Map<UpgradeType, Integer> upgrades,
+      Double carryingCapacity,
+      Double supplies,
+      double saltedSupplies,
+      int towerMemoryStep,
+      Set<Integer> easing,
+      Map<UnitStats, Map<Aim, Double>> aim,
+      int risen,
+      boolean founders) {
+    this(
+        units,
+        upgrades,
+        carryingCapacity,
+        supplies,
+        saltedSupplies,
+        towerMemoryStep,
+        easing,
+        aim,
+        risen,
+        founders,
+        1,
+        null,
+        List.of());
+  }
 
   public PartyPlan {
     units = ordered(units, UnitStats.class);
@@ -62,6 +100,8 @@ public record PartyPlan(
       aim.forEach((type, weights) -> aims.put(type, Map.copyOf(weights)));
     }
     aim = Collections.unmodifiableMap(aims);
+    startFloor = Math.max(1, startFloor);
+    inheritances = inheritances == null ? List.of() : List.copyOf(inheritances);
     if (towerMemoryStep < 0 || saltedSupplies < 0 || risen < 0) {
       throw new IllegalArgumentException("A step or a quantity of Salt cannot be negative");
     }
@@ -69,7 +109,8 @@ public record PartyPlan(
 
   /** A first-Generation Party of these Units, with nothing else. */
   public static PartyPlan of(Map<UnitStats, Integer> units) {
-    return new PartyPlan(units, Map.of(), null, null, 0, 0, Set.of(), Map.of(), 0, false);
+    return new PartyPlan(
+        units, Map.of(), null, null, 0, 0, Set.of(), Map.of(), 0, false, 1, null, List.of());
   }
 
   /** A Party of {@code count} Units of one type. */
@@ -93,7 +134,10 @@ public record PartyPlan(
         easing,
         aim,
         risen,
-        founders);
+        founders,
+        startFloor,
+        dowry,
+        inheritances);
   }
 
   public PartyPlan withUpgrades(Map<UpgradeType, Integer> now) {
@@ -107,7 +151,10 @@ public record PartyPlan(
         easing,
         aim,
         risen,
-        founders);
+        founders,
+        startFloor,
+        dowry,
+        inheritances);
   }
 
   public PartyPlan withCarryingCapacity(Double now) {
@@ -121,7 +168,10 @@ public record PartyPlan(
         easing,
         aim,
         risen,
-        founders);
+        founders,
+        startFloor,
+        dowry,
+        inheritances);
   }
 
   public PartyPlan withSupplies(Double now) {
@@ -135,7 +185,10 @@ public record PartyPlan(
         easing,
         aim,
         risen,
-        founders);
+        founders,
+        startFloor,
+        dowry,
+        inheritances);
   }
 
   public PartyPlan withSaltedSupplies(double now) {
@@ -149,7 +202,10 @@ public record PartyPlan(
         easing,
         aim,
         risen,
-        founders);
+        founders,
+        startFloor,
+        dowry,
+        inheritances);
   }
 
   public PartyPlan withTowerMemoryStep(int now) {
@@ -163,7 +219,10 @@ public record PartyPlan(
         easing,
         aim,
         risen,
-        founders);
+        founders,
+        startFloor,
+        dowry,
+        inheritances);
   }
 
   public PartyPlan withEasing(Set<Integer> now) {
@@ -177,7 +236,10 @@ public record PartyPlan(
         now,
         aim,
         risen,
-        founders);
+        founders,
+        startFloor,
+        dowry,
+        inheritances);
   }
 
   public PartyPlan withAim(Map<UnitStats, Map<Aim, Double>> now) {
@@ -191,7 +253,10 @@ public record PartyPlan(
         easing,
         now,
         risen,
-        founders);
+        founders,
+        startFloor,
+        dowry,
+        inheritances);
   }
 
   public PartyPlan withRisen(int now) {
@@ -205,7 +270,10 @@ public record PartyPlan(
         easing,
         aim,
         now,
-        founders);
+        founders,
+        startFloor,
+        dowry,
+        inheritances);
   }
 
   public PartyPlan withFounders(boolean now) {
@@ -219,7 +287,71 @@ public record PartyPlan(
         easing,
         aim,
         risen,
+        now,
+        startFloor,
+        dowry,
+        inheritances);
+  }
+
+  public PartyPlan withStartFloor(int now) {
+    return copy(
+        units,
+        upgrades,
+        carryingCapacity,
+        supplies,
+        saltedSupplies,
+        towerMemoryStep,
+        easing,
+        aim,
+        risen,
+        founders,
+        now,
+        dowry,
+        inheritances);
+  }
+
+  public PartyPlan withDowry(String now) {
+    return copy(
+        units,
+        upgrades,
+        carryingCapacity,
+        supplies,
+        saltedSupplies,
+        towerMemoryStep,
+        easing,
+        aim,
+        risen,
+        founders,
+        startFloor,
+        now,
+        inheritances);
+  }
+
+  public PartyPlan withInheritances(List<InheritanceType> now) {
+    return copy(
+        units,
+        upgrades,
+        carryingCapacity,
+        supplies,
+        saltedSupplies,
+        towerMemoryStep,
+        easing,
+        aim,
+        risen,
+        founders,
+        startFloor,
+        dowry,
         now);
+  }
+
+  /** How many Units of a type the Party holds, 0 when none. */
+  public int count(UnitStats type) {
+    return units.getOrDefault(type, 0);
+  }
+
+  /** The Upgrade's level, 0 when not bought. */
+  public int level(UpgradeType type) {
+    return upgrades.getOrDefault(type, 0);
   }
 
   private static PartyPlan copy(
@@ -232,7 +364,10 @@ public record PartyPlan(
       Set<Integer> easing,
       Map<UnitStats, Map<Aim, Double>> aim,
       int risen,
-      boolean founders) {
+      boolean founders,
+      int startFloor,
+      String dowry,
+      List<InheritanceType> inheritances) {
     return new PartyPlan(
         units,
         upgrades,
@@ -243,7 +378,10 @@ public record PartyPlan(
         easing,
         aim,
         risen,
-        founders);
+        founders,
+        startFloor,
+        dowry,
+        inheritances);
   }
 
   private static <K extends Enum<K>> Map<K, Integer> ordered(Map<K, Integer> in, Class<K> type) {
