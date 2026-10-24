@@ -1,0 +1,133 @@
+:host {
+  display: block;
+  /* Sticky at the top of the menu column: the Expedition stays in view while
+     the menus scroll under it. */
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+.expedition-hud {
+  max-height: 55vh;
+  overflow-y: auto;
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  /* Translucent, but denser than the column's panels: menus scroll beneath this one, so a
+     lighter glass would let their text ghost through the HUD's. Denser than a panel only
+     raises the contrast the stage-contrast test already holds at 7:1. */
+  background: color-mix(in srgb, var(--void) 94%, transparent);
+  border: 1px solid var(--rule);
+  border-bottom: 2px solid var(--muted);
+  color: var(--bone);
+  .exp-block {
+    margin: 0 0 12px;
+  }
+
+  .expedition-party {
+    margin: 0 0 12px;
+
+    .exp-head {
+      font-family: var(--font-pixel);
+      font-size: 12px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+  }
+
+  .depth-header {
+    margin: 0 0 12px;
+  }
+
+  .depth-title {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    font-family: var(--font-pixel);
+    color: var(--bone);
+
+    .depth-current {
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+    }
+  }
+
+  .boss-flag {
+    display: inline-block;
+    margin-left: 6px;
+    font-size: 12px;
+    color: var(--ember-text);
+    border: 1px solid var(--ember);
+    padding: 0 6px;
+  }
+
+  .cleared {
+    color: var(--muted);
+    margin: 4px 0;
+  }
+
+  .enemy-groups {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 4px 0;
+  }
+
+  .enemy-group {
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    padding: 8px 10px;
+
+    .group-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 6px;
+      margin-bottom: 6px;
+
+      .enemy-type {
+        flex: 1 1 auto;
+        min-width: 0;
+        overflow-wrap: anywhere;
+        font-family: var(--font-pixel);
+        font-size: 12px;
+        text-transform: capitalize;
+        color: var(--ember-text);
+      }
+
+      .enemy-count {
+        flex: 0 0 auto;
+        color: var(--muted);
+        font-variant-numeric: tabular-nums;
+      }
+    }
+
+    .member-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+  }
+}
+
+.pillar-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 6px;
+  font-family: var(--font-pixel);
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* A small stone pillar, drawn in tokens; the words beside it carry the meaning. */
+.pillar-glyph {
+  display: inline-block;
+  width: 4px;
+  height: 12px;
+  background: var(--muted);
+  border-top: 2px solid var(--bone);
+}

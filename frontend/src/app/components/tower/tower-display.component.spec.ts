@@ -20,17 +20,11 @@ describe('Tower', () => {
     expect(component).toBeTruthy();
   });
 
-  it('draws the pillar mark only on a Finish Floor the server lists', () => {
-    const mark = () => (fixture.nativeElement as HTMLElement).querySelector('.pillar-mark');
-    fixture.componentRef.setInput('tower', { currentFloor: 10, floors: {} } as any);
-    fixture.componentRef.setInput('pillarMarks', []);
+  it('no longer carries the Expedition HUD, which lives in the menu column', () => {
+    fixture.componentRef.setInput('active', true);
     fixture.detectChanges();
-    expect(mark()).toBeNull();
-    fixture.componentRef.setInput('pillarMarks', [10]);
-    fixture.detectChanges();
-    expect(mark()?.textContent).toContain('Finish Floor');
-    fixture.componentRef.setInput('tower', { currentFloor: 9, floors: {} } as any);
-    fixture.detectChanges();
-    expect(mark()).toBeNull();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('app-enemy-card')).toBeNull();
+    expect(el.textContent).not.toContain('Floor');
   });
 });

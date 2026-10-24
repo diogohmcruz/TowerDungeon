@@ -63,6 +63,8 @@ export class CharacterCard {
   atHome = input(false);
   remedy = output<number>();
   reattach = output<{ unitId: number; part: BodyPartKind }>();
+  /** The unit was chosen (its name pressed): the hook the unit view will use. */
+  choose = output<number>();
 
   /** Whether any part still attached is hurt. */
   wounded = computed(() =>
@@ -128,6 +130,7 @@ export class CharacterCard {
 
   toggle(): void {
     this.expanded.update((open) => !open);
+    this.choose.emit(this.member().id);
   }
 
   show(text: string): void {

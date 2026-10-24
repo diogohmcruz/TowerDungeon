@@ -1,0 +1,51 @@
+@if (active()) {
+<section class="expedition-hud" aria-label="Expedition">
+  <div class="depth-header">
+    <div class="depth-title">
+      <span class="depth-current">Floor {{ currentFloor() }}</span>
+      @if (currentFloorMarked()) {
+        <span class="pillar-mark" title="The Finish Floor of a Race you have run">
+          <span class="pillar-glyph" aria-hidden="true"></span>
+          Finish Floor
+        </span>
+      }
+      @if (currentFloorIsBoss()) {
+        <span class="boss-flag">GUARDIAN</span>
+      }
+    </div>
+  </div>
+    <app-expedition-loot
+      class="exp-block"
+      [credits]="carriedCredits()"
+      [materials]="carriedLoot()?.MATERIALS ?? 0"
+      [relics]="carriedLoot()?.RELICS ?? 0"
+    />
+    <app-supplies
+      class="exp-block"
+      [supplies]="supplies()"
+      [maxSupplies]="maxSupplies()"
+    />
+    <section class="expedition-party">
+      <header class="exp-head">Party</header>
+      <app-army [army]="party()" />
+    </section>
+    @if (enemyCount() === 0) {
+      <p class="cleared">Floor clear. Advancing.</p>
+    }
+    <div class="enemy-groups">
+      @for (group of groupedEnemyEntries(); track group[0]) {
+        <section class="enemy-group">
+          <header class="group-head">
+            <span class="enemy-type">{{ group[0] | lowercase }}</span>
+            <span class="enemy-count">×{{ group[1].length }}</span>
+          </header>
+          <div class="member-list">
+            @for (enemy of group[1]; track enemy.id) {
+              <app-enemy-card [enemy]="enemy" />
+            }
+          </div>
+        </section>
+      }
+    </div>
+</section>
+}
