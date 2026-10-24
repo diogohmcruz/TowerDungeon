@@ -69,6 +69,7 @@ export const VOLUME_SUBJECTS: ReadonlyArray<{
   { prefix: 'gate-', kind: 'building', id: 'GATE' },
   { prefix: 'fort-', kind: 'building', id: 'FORT' },
   { prefix: 'reserve-', kind: 'building', id: 'FORT' },
+  { prefix: 'pillar', kind: 'building', id: 'PILLAR' },
 ];
 
 const TRADES: readonly TradeId[] = [

@@ -266,13 +266,14 @@ const building: CaptionBuilder = (subject, state) => {
   const def = buildingDefinition(subject.id, BUILDINGS);
   if (!def || !isVisible(def, state)) return null;
   const view = buildingView(def, state);
-  const leaves = view.gauges.map((g) => g.leaves).filter((t): t is string => !!t);
-  const rates = view.gauges
+  const shown = view.gauges.filter((g) => g.caption);
+  const leaves = shown.map((g) => g.leaves).filter((t): t is string => !!t);
+  const rates = shown
     .filter((g) => g.rate !== null)
     .map((g) => `${g.label} ${g.rate}`);
   return {
     name: view.title,
-    status: view.gauges.map((g) => `${g.label} ${g.figure}`).join(', ') + '.',
+    status: shown.map((g) => `${g.label} ${g.figure}`).join(', ') + '.',
     makes: '',
     lock: null,
     ...(rates.length ? { rates: rates.join(', ') } : {}),

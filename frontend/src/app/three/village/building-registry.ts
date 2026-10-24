@@ -38,6 +38,28 @@ export interface GaugeSpec {
   rate?(state: GameState): number | null;
   /** One sentence on what spending leaves behind; null when nothing is asked. */
   leaves?(state: GameState): string | null;
+  /** The figure as text when a bare number is not enough ("3 of 8"); replaces `value` and `format`. */
+  figure?(state: GameState): string;
+  /** False keeps it out of the hover caption (the popover and the list still show it). Default true. */
+  caption?: boolean;
+}
+
+/** One row of words a building shows besides its gauges: a Milestone, a line of the Toll. */
+export interface LineSpec {
+  id: string;
+  /** A heading the row sits under; consecutive rows with the same group share one. */
+  group?: string;
+  label: string;
+  value: string;
+  /** A second, quieter sentence under the row. */
+  detail?: string;
+}
+
+/** The question an action asks before it runs, and the two answers. */
+export interface ConfirmSpec {
+  prompt: string;
+  confirmLabel: string;
+  cancelLabel: string;
 }
 
 /** A click on a building's popover or a row of the list view. */
@@ -51,6 +73,8 @@ export interface ActionSpec {
   availability(state: GameState): Availability;
   /** What the action would leave, in words, shown before the click (hover or focus). */
   preview?(state: GameState): string | null;
+  /** When present, the action asks once more, in words, before it runs. */
+  confirm?(state: GameState): ConfirmSpec;
   /** Sends the command. Only called when `availability` says usable. */
   run(commands: BuildingCommands, state: GameState): void;
 }
@@ -63,6 +87,8 @@ export interface BuildingDefinition {
   /** False hides the building (a gate not yet open). Absent means always shown. */
   visible?(state: GameState): boolean;
   gauges: readonly GaugeSpec[];
+  /** Rows of words besides the gauges; absent when there are none. */
+  lines?(state: GameState): readonly LineSpec[];
   actions: readonly ActionSpec[];
   /**
    * Actions that depend on the state (one per kind of Unit, a label that says what
@@ -93,6 +119,17 @@ export interface GaugeView {
   rate: string | null;
   leaves: string | null;
   fill: number;
+  /** Whether the hover caption states it. */
+  caption: boolean;
+}
+
+export interface LineView {
+  id: string;
+  /** The heading to show above this row, or null when it continues the group above. */
+  heading: string | null;
+  label: string;
+  value: string;
+  detail: string | null;
 }
 
 export interface ActionView {
@@ -103,12 +140,15 @@ export interface ActionView {
   reason: string | null;
   /** What it would leave, in words; null when the action states none. */
   preview: string | null;
+  /** The question asked before it runs; null when it runs at once. */
+  confirm: ConfirmSpec | null;
 }
 
 export interface BuildingView {
   id: string;
   title: string;
   gauges: GaugeView[];
+  lines: LineView[];
   actions: ActionView[];
 }
 
@@ -139,11 +179,27 @@ export function gaugeView(spec: GaugeSpec, state: GameState): GaugeView {
   return {
     id: spec.id,
     label: spec.label,
-    figure: (spec.format ?? formatFigure)(value),
+    figure: spec.figure ? spec.figure(state) : (spec.format ?? formatFigure)(value),
     rate: rate === null ? null : formatRate(rate),
     leaves: spec.leaves?.(state) ?? null,
     fill: Math.min(1, Math.max(0, spec.fill(state))),
+    caption: spec.caption !== false,
   };
+}
+
+export function lineViews(lines: readonly LineSpec[]): LineView[] {
+  let group: string | undefined;
+  return lines.map((l) => {
+    const heading = l.group !== undefined && l.group !== group ? l.group : null;
+    group = l.group;
+    return {
+      id: l.id,
+      heading,
+      label: l.label,
+      value: l.value,
+      detail: l.detail ?? null,
+    };
+  });
 }
 
 export function actionView(spec: ActionSpec, state: GameState): ActionView {
@@ -155,6 +211,7 @@ export function actionView(spec: ActionSpec, state: GameState): ActionView {
     usable: can.usable,
     reason: can.reason,
     preview: spec.preview?.(state) ?? null,
+    confirm: can.usable ? (spec.confirm?.(state) ?? null) : null,
   };
 }
 
@@ -163,6 +220,7 @@ export function buildingView(def: BuildingDefinition, state: GameState): Buildin
     id: def.id,
     title: def.title,
     gauges: def.gauges.map((g) => gaugeView(g, state)),
+    lines: lineViews(def.lines?.(state) ?? []),
     actions: actionSpecs(def, state)
       .filter((a) => (a.visible ? a.visible(state) : true))
       .map((a) => actionView(a, state)),

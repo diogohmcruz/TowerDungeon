@@ -83,6 +83,30 @@ export class VillageFixturePage {
     // The popover and the list read the game's state, which the fixture has no backend to fill.
     const food = Number(new URLSearchParams(location.search).get('food') ?? 400);
     const game = inject(GameStateService);
+    const toll = {
+      foodMarks: 2,
+      materialsMarks: 3,
+      creditsMarks: 1.5,
+      relicsMarks: 0.5,
+      expeditionsMarks: 4,
+      ascentMarks: 10,
+      guardianMarks: 3,
+      marks: 24,
+      toll: 24,
+      newGround: 2,
+      legacy: 2,
+      residueNext: 6,
+    };
+    const milestone = (id: string, name: string, achieved: boolean) => ({
+      id,
+      name,
+      description: `${name}: the Tower remembers.`,
+      trigger: `Reach ${name}`,
+      achieved,
+      companion: false,
+    });
+    // `?exodus=1` opens Exodus (the forecast reaches its minimum).
+    const exodusOpen = new URLSearchParams(location.search).has('exodus');
     // `?open=FORT` opens that building's popover, for a capture with no pointer to click with.
     const open = new URLSearchParams(location.search).get('open');
     if (open) {
@@ -127,7 +151,6 @@ export class VillageFixturePage {
       foodUpkeep: 8,
       pantryHoldSeconds: 99,
       quarryRate: 0.75,
-      highestFloor: 12,
       yieldBonus: 0.24,
       villageTierLevel: 2,
       villageTierName: 'Sheltered',
@@ -142,6 +165,21 @@ export class VillageFixturePage {
         { trade, delta: 1 as const, fields: 7.5, upkeep: 8, fieldsCoverUpkeep: false, pantryHoldSeconds: 99, blocked: null },
         { trade, delta: -1 as const, fields: 8, upkeep: 8, fieldsCoverUpkeep: true, pantryHoldSeconds: null, blocked: trade === 'BREAKER' ? 'Settling 7 s.' : null },
       ]),
+      // The reference pillar: the Highest Floor, the Milestones and the Toll with Exodus.
+      highestFloor: 37,
+      milestones: [
+        milestone('a', 'First Floor', true),
+        milestone('b', 'Floor Ten', true),
+        milestone('c', 'Floor Twenty', false),
+        milestone('d', 'First Guardian', false),
+      ],
+      forecast: {
+        toll,
+        pointsDivisor: 9,
+        nextLegacyAt: 27,
+        exodusMinimum: exodusOpen ? 2 : 3,
+        canExodus: exodusOpen,
+      },
     });
   }
 
@@ -161,6 +199,12 @@ export class VillageFixturePage {
         materials: 300,
         relics: 3,
         villageTierLevel: 2,
+        pillar: {
+          highestFloor: 37,
+          milestonesEarned: 2,
+          milestonesTotal: 4,
+          tollShare: 0.67,
+        },
         upgrades: {
           UNLOCK_HEALER: 1,
           UNLOCK_ROGUE: 1,

@@ -55,6 +55,7 @@ describe('building registry', () => {
       usable: true,
       reason: null,
       preview: null,
+      confirm: null,
     });
   });
 

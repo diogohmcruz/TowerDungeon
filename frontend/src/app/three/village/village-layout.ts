@@ -10,6 +10,7 @@ import type { Quarter } from '../../interfaces/game-state';
 import type { TradeId } from '../../interfaces/village';
 import { bellObject, gateObject } from '../launch/launch-objects';
 import { barGauge, slitGauge } from './gauge-kit';
+import { EMPTY_PILLAR, referencePillar, type PillarInput } from './reference-pillar';
 import {
   BASE_DOOR_ID,
   BASE_DOOR_SUBJECT,
@@ -144,6 +145,8 @@ export interface VillageInput {
   selected?: string | null;
   /** The Start Floor chosen: 0 is the Base door, otherwise an open Shortcut's Floor. Wears the bone outline. */
   startFloor?: number;
+  /** What the reference pillar is carved with: the Highest Floor, the Milestones and the Toll. */
+  pillar?: PillarInput;
   /** The gate bell can be rung (set out); false draws it dark with a dashed outline. Default true. */
   bellUsable?: boolean;
 }
@@ -856,6 +859,7 @@ export function buildVillage(input: VillageInput): Volume[] {
   fort(out, input.reserves, input.wounded ?? 0);
   silo(out, input.food);
   stair(out, input.villageTierLevel, input.still ? 0 : input.flicker);
+  referencePillar(out, input.pillar ?? EMPTY_PILLAR);
   fields(out, quarter);
   quarry(out, input.quarryHeap, input.quarryHeapCap);
   study(out, input.hands.SCRIBE, input.posts.SCRIBE);

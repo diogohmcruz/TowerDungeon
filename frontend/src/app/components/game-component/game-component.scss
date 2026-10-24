@@ -50,7 +50,6 @@
 
   > app-expedition-hud,
   > app-village-management,
-  > app-toll-bar,
   > app-succession-screen {
     display: contents;
   }
@@ -289,38 +288,6 @@
 
   app-upgrade-card {
     flex: 1 1 200px;
-    min-width: 0;
-    max-width: 20em;
-  }
-}
-
-.milestone-panel {
-
-  h3 {
-    font-family: var(--font-pixel);
-    font-size: 12px;
-    color: var(--bone);
-    margin: 0 0 8px;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 8px;
-  }
-
-  .progress-note {
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--muted);
-  }
-
-  .milestone-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-  }
-
-  app-milestone-card {
-    flex: 1 1 220px;
     min-width: 0;
     max-width: 20em;
   }
