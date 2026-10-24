@@ -102,13 +102,13 @@ export class CharacterCard {
   detail = signal('');
 
   maxHealth = computed(
-    () => this.member().maxHealth ?? this.member().stats.health,
+    () => this.member().maxHealth ?? this.member().stats?.health ?? 0,
   );
   healthPct = computed(() => {
     const max = this.maxHealth();
     return max ? (this.member().currentHealth / max) * 100 : 0;
   });
-  damage = computed(() => this.member().damage ?? this.member().stats.damage);
+  damage = computed(() => this.member().damage ?? this.member().stats?.damage ?? 0);
   maxMana = computed(() => this.member().maxMana ?? 0);
   manaPct = computed(() => {
     const max = this.maxMana();
@@ -186,7 +186,7 @@ export class CharacterCard {
   });
 
   typeName = computed(() => {
-    const type = this.member().stats.type ?? '';
+    const type = this.member().stats?.type ?? '';
     return type.charAt(0) + type.slice(1).toLowerCase().replace(/_/g, ' ');
   });
 

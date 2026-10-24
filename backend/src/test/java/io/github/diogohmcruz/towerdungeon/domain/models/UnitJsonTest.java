@@ -47,4 +47,14 @@ class UnitJsonTest {
     assertThat(worn.get("tier").asText()).isEqualTo("LEFTOVER");
     assertThat(worn.get("stats").get("ARMOUR").asDouble()).isEqualTo(1.5);
   }
+
+  @Test
+  void aUnitAlwaysCarriesItsStatsForTheCards() {
+    JsonNode stats = mapper.valueToTree(new Unit(UnitStats.WARRIOR, cosmetic())).get("stats");
+
+    assertThat(stats.get("type").asText()).isEqualTo("WARRIOR");
+    assertThat(stats.get("health").isNumber()).isTrue();
+    assertThat(stats.get("damage").isNumber()).isTrue();
+    assertThat(stats.get("attackType").asText()).isEqualTo("MELEE");
+  }
 }
