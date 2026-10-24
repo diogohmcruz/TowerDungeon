@@ -229,6 +229,7 @@ export function listKeyIntent(event: KeyboardEvent): 'toggle' | 'close' | null {
       color: var(--bone);
       background: var(--panel);
       border: 1px solid var(--bone);
+      pointer-events: auto;
     }
     .skip:focus {
       left: 8px;
@@ -243,6 +244,9 @@ export function listKeyIntent(event: KeyboardEvent): 'toggle' | 'close' | null {
       padding: 52px 24px 16px;
       color: var(--text);
       background: var(--panel);
+      /* The game page's host is pointer-events: none and that is inherited: the list is a fixed
+         overlay over the canvas, and without this every press in it falls through to the scene. */
+      pointer-events: auto;
     }
     header {
       display: flex;
