@@ -6,6 +6,7 @@ import {
   signal,
   Signal,
 } from '@angular/core';
+import { LaunchService } from '../../services/launch.service';
 import { StageService } from '../../services/stage.service';
 import { ZoomService } from '../../services/zoom.service';
 import {
@@ -136,17 +137,20 @@ export class GameComponent implements OnDestroy {
     ),
   );
 
+  /** The launch commands and what the Loadout has chosen; shared with the scene's bell, lamp and doorways. */
+  protected readonly launch = inject(LaunchService);
+
   /** Floor the next expedition begins on: 0 = base of the tower, otherwise an open shortcut. */
-  readonly selectedStartFloor = signal(0);
+  readonly selectedStartFloor = this.launch.startFloor;
 
   /** Salt the Loadout has chosen; 0 unless the player opened it and chose some. */
-  readonly saltToUse = signal(0);
+  readonly saltToUse = this.launch.saltToUse;
 
   /** Salt the Loadout has chosen for the Salt Pack, and the Unit type that carries it. */
-  readonly packSalt = signal(0);
-  readonly packBearer = signal('');
+  readonly packSalt = this.launch.packSalt;
+  readonly packBearer = this.launch.packBearer;
   /** Whether the Loadout has chosen to carry a Panacea. */
-  readonly panaceaChosen = signal(false);
+  readonly panaceaChosen = this.launch.panaceaChosen;
 
   /** Whole Dragon Spores in the Stockroom. */
   readonly sporesHeld = computed(() =>
@@ -182,32 +186,7 @@ export class GameComponent implements OnDestroy {
   }
 
   sendInvadeAction() {
-    const units = new Map();
-    const loadout = this.gameState().loadout;
-    const salt = Math.min(
-      this.saltToUse(),
-      loadout?.saltHeld ?? 0,
-      loadout?.saltUseful ?? 0,
-    );
-    const bearers = loadout?.bearerTypes ?? [];
-    const bearer = bearers.includes(this.packBearer())
-      ? this.packBearer()
-      : (bearers[0] ?? '');
-    const pack = bearer
-      ? Math.min(this.packSalt(), Math.max(0, (loadout?.saltHeld ?? 0) - salt))
-      : 0;
-    const panacea = this.panaceaChosen() && loadout?.panaceaBlocked === null;
-    const payload = {
-      units,
-      startFloor: this.selectedStartFloor(),
-      salt,
-      ...(pack > 0 ? { saltPack: pack, saltBearer: bearer } : {}),
-      panacea,
-    };
-    this.ws.sendAction(GameAction.INVADE, payload);
-    this.saltToUse.set(0);
-    this.packSalt.set(0);
-    this.panaceaChosen.set(false);
+    this.launch.sendInvade();
   }
 
   giveRemedy(unitId: number) {
@@ -247,11 +226,11 @@ export class GameComponent implements OnDestroy {
   }
 
   extract() {
-    this.ws.sendAction(GameAction.EXTRACT, null);
+    this.launch.sendExtract();
   }
 
   sendReinforcements() {
-    this.ws.sendAction(GameAction.REINFORCE, { units: {} });
+    this.launch.sendWave();
   }
 
   waveSize(wave: Reinforcement): number {

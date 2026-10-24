@@ -11,7 +11,27 @@
 import type { TradeId } from '../../interfaces/village';
 import type { Volume } from './village-layout';
 
-export type SubjectKind = 'annex' | 'villagers' | 'upgrade' | 'port' | 'shortcut';
+export type SubjectKind =
+  | 'annex'
+  | 'villagers'
+  | 'upgrade'
+  | 'port'
+  | 'shortcut'
+  | 'bell'
+  | 'recall'
+  | 'base-door';
+
+/**
+ * The launch controls (architecture doc 5.5). The bell and the recall lamp are
+ * one each; the Base door is the Start Floor 0 choice, as a doorway is for a Shortcut.
+ */
+export const BELL_SUBJECT = 'BELL';
+export const RECALL_SUBJECT = 'RECALL';
+export const BASE_DOOR_SUBJECT = 'BASE';
+/** Volume id prefixes of the launch objects. */
+export const BELL_ID = 'bell-';
+export const RECALL_ID = 'recall-';
+export const BASE_DOOR_ID = 'base-door';
 
 /** The id of the Port subject: the footing, the pier and the Boat are one thing. */
 export const PORT_SUBJECT = 'PORT';
@@ -67,7 +87,17 @@ export function subjectOfVolume(volumeId: string): VillageSubject | null {
   if (volumeId.startsWith(OUTLINE)) {
     const id = volumeId.slice(OUTLINE.length).split(':')[0];
     if (volumeId.includes(':shortcut-')) return { kind: 'shortcut', id };
+    if (id === BELL_SUBJECT) return { kind: 'bell', id };
+    if (id === RECALL_SUBJECT) return { kind: 'recall', id };
+    if (id === BASE_DOOR_SUBJECT) return { kind: 'base-door', id };
     return { kind: id === PORT_SUBJECT ? 'port' : 'annex', id };
+  }
+  if (volumeId.startsWith(BELL_ID)) return { kind: 'bell', id: BELL_SUBJECT };
+  if (volumeId.startsWith(RECALL_ID)) {
+    return { kind: 'recall', id: RECALL_SUBJECT };
+  }
+  if (volumeId.startsWith(BASE_DOOR_ID)) {
+    return { kind: 'base-door', id: BASE_DOOR_SUBJECT };
   }
   if (volumeId.startsWith(SHORTCUT_MARK_ID)) {
     return { kind: 'shortcut', id: volumeId.slice(SHORTCUT_MARK_ID.length).split(':')[0] };
@@ -92,6 +122,19 @@ function ofSubject(volumes: Volume[], id: string, kind: SubjectKind): Volume[] {
 /** One virtual pixel in world units; a hairline is one, the selected line two. */
 const PIXEL = 11 / 220;
 const PAD = 0.06;
+/** Dash length and gap of a dashed frame, in world units (about three and two pixels). */
+const DASH = 0.15;
+const GAP = 0.1;
+
+const OUTLINED_KINDS: readonly SubjectKind[] = [
+  'annex',
+  'villagers',
+  'port',
+  'shortcut',
+  'bell',
+  'recall',
+  'base-door',
+];
 
 /**
  * Frames of thin boxes around a thing: its Annex and its Villagers' lane. Only
@@ -102,11 +145,12 @@ export function outlineVolumes(
   volumes: Volume[],
   id: string,
   weight: 1 | 2,
-  tag: 'hover' | 'select',
+  tag: 'hover' | 'select' | 'start' | 'unlit',
+  style: 'solid' | 'dashed' = 'solid',
 ): Volume[] {
   const out: Volume[] = [];
   const t = PIXEL * weight;
-  for (const kind of ['annex', 'villagers', 'port', 'shortcut'] as const) {
+  for (const kind of OUTLINED_KINDS) {
     const parts = ofSubject(volumes, id, kind);
     if (parts.length === 0) continue;
     const x0 = Math.min(...parts.map((v) => v.x - v.w / 2)) - PAD;
@@ -115,19 +159,35 @@ export function outlineVolumes(
     const y1 = Math.max(...parts.map((v) => v.y + v.h / 2)) + PAD;
     const z = Math.max(...parts.map((v) => v.z + v.d / 2)) + 0.03;
     const name = `${OUTLINE}${id}:${tag}:${kind}`;
-    const edge = (suffix: string, x: number, y: number, w: number, h: number) =>
-      out.push({
-        id: `${name}-${suffix}`,
-        group: 'village',
-        x,
-        y,
-        z,
-        w,
-        h,
-        d: 0.01,
-        tone: 1,
-        alpha: 1,
-      });
+    const edge = (
+      suffix: string,
+      x: number,
+      y: number,
+      w: number,
+      h: number,
+    ) => {
+      const base = { group: 'village' as const, z, d: 0.01, tone: 1, alpha: 1 };
+      if (style === 'solid') {
+        out.push({ id: `${name}-${suffix}`, x, y, w, h, ...base });
+        return;
+      }
+      // A dashed edge: runs of dash separated by gaps along its long side.
+      const horizontal = w >= h;
+      const length = horizontal ? w : h;
+      const runs = Math.max(1, Math.round((length + GAP) / (DASH + GAP)));
+      const dash = (length + GAP) / runs - GAP;
+      for (let i = 0; i < runs; i++) {
+        const along = -length / 2 + dash / 2 + i * (dash + GAP);
+        out.push({
+          id: `${name}-${suffix}${i}`,
+          x: horizontal ? x + along : x,
+          y: horizontal ? y : y + along,
+          w: horizontal ? dash : w,
+          h: horizontal ? h : dash,
+          ...base,
+        });
+      }
+    };
     const cx = (x0 + x1) / 2;
     const cy = (y0 + y1) / 2;
     edge('n', cx, y1, x1 - x0, t);

@@ -7,6 +7,11 @@
  */
 import type { GameState } from '../../interfaces/game-state';
 import type { TradeId, TradeView } from '../../interfaces/village';
+import {
+  bellAvailability,
+  bellCommand,
+  extractAvailability,
+} from '../launch/launch-controls';
 import type { SubjectKind, VillageSubject } from './village-subjects';
 
 export interface VillageCaption {
@@ -19,9 +24,15 @@ export interface VillageCaption {
   lock: string | null;
 }
 
+/** What the captions need besides the frame: the Start Floor the panel and the picture share. */
+export interface CaptionContext {
+  startFloor: number;
+}
+
 type CaptionBuilder = (
   subject: VillageSubject,
   state: GameState,
+  context: CaptionContext,
 ) => VillageCaption | null;
 
 /** Trades whose Annex opens with a Village Tier: the level and its name. */
@@ -166,14 +177,85 @@ const port: CaptionBuilder = (_subject, state) => {
  * A Shortcut mark: only an open Shortcut has one. Says what stands there in words,
  * and names the Start Floor, which the mark itself never shows.
  */
-const shortcut: CaptionBuilder = (subject, state) => {
+const shortcut: CaptionBuilder = (subject, state, context) => {
   const sc = (state.shortcuts ?? []).find((s) => s.id === subject.id);
   if (!sc || !sc.unlocked) return null;
+  const chosen = context.startFloor === sc.floor;
   return {
     name: sc.name,
     status: 'A Shortcut stands open. An Expedition can start from here.',
-    makes: `Start Floor ${sc.floor}`,
-    lock: null,
+    makes: chosen ? `Start Floor ${sc.floor}. Chosen` : `Start Floor ${sc.floor}`,
+    lock: state.expeditionActive ? CHANGE_REFUSED : null,
+  };
+};
+
+const CHANGE_REFUSED = 'An Expedition is out. The Start Floor cannot change.';
+
+/** The Floor an Expedition begins on: the Base door starts at Floor 1. */
+export function startFloorLabel(startFloor: number): number {
+  return startFloor > 0 ? startFloor : 1;
+}
+
+/** The Base door: the default Start Floor. */
+const baseDoor: CaptionBuilder = (_subject, state, context) => ({
+  name: 'The Base door',
+  status:
+    context.startFloor > 0
+      ? 'An Expedition can start here, at the foot of the Tower.'
+      : 'Chosen. An Expedition starts here, at the foot of the Tower.',
+  makes: 'Start Floor 1',
+  lock: state.expeditionActive ? CHANGE_REFUSED : null,
+});
+
+const whole = (n: number) => Math.floor(n).toLocaleString('en-US');
+
+/**
+ * The gate bell. While no Expedition is out it sets the Party out: its caption
+ * says who goes, from where, what they carry and what the Pantry holds after.
+ * While one is out it sends a Reinforcement Wave. When it cannot be rung, it is
+ * dark and the caption says why.
+ */
+const bell: CaptionBuilder = (_subject, state, context) => {
+  const can = bellAvailability(state);
+  if (bellCommand(state) === 'wave') {
+    return {
+      name: 'The bell',
+      status: can.usable
+        ? 'Ring it to send every Reserve up after the Party.'
+        : 'The bell hangs dark.',
+      makes: can.usable
+        ? `${state.homeUnitCount} Reserves climb from the Base, carrying supplies from the Pantry`
+        : '',
+      lock: can.reason,
+    };
+  }
+  const plan = state.loadout;
+  return {
+    name: 'The gate bell',
+    status: can.usable
+      ? 'Ring it to set the Party out.'
+      : 'The bell hangs dark.',
+    makes: can.usable
+      ? `Party ${plan.partySize}. Start Floor ${startFloorLabel(context.startFloor)}. ` +
+        `Supplies carried ${whole(plan.suppliesTaken)}. ` +
+        `The Pantry holds ${whole(plan.pantryAfter)} Food after leaving`
+      : '',
+    lock: can.reason,
+  };
+};
+
+/** The recall lamp: lighting it calls the Party home. */
+const recall: CaptionBuilder = (_subject, state) => {
+  const can = extractAvailability(state);
+  return {
+    name: 'The recall lamp',
+    status: can.usable
+      ? 'Light it to call the Party home.'
+      : 'The lamp stands dark.',
+    makes: can.usable
+      ? 'The survivors come home, leftover supplies return to the Pantry and carried loot is banked'
+      : '',
+    lock: can.reason,
   };
 };
 
@@ -183,14 +265,18 @@ export const CAPTION_BUILDERS: Partial<Record<SubjectKind, CaptionBuilder>> = {
   upgrade,
   port,
   shortcut,
+  bell,
+  recall,
+  'base-door': baseDoor,
 };
 
 export function captionFor(
   subject: VillageSubject | null,
   state: GameState,
+  context: CaptionContext = { startFloor: 0 },
 ): VillageCaption | null {
   if (!subject) return null;
-  return CAPTION_BUILDERS[subject.kind]?.(subject, state) ?? null;
+  return CAPTION_BUILDERS[subject.kind]?.(subject, state, context) ?? null;
 }
 
 /** The caption as one plain sentence run, for the scene and for assistive tech. */

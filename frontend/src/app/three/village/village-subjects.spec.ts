@@ -36,13 +36,18 @@ describe('village subjects', () => {
   it('draws no outline when nothing is hovered or selected', () => {
     const ids = buildVillage(busy).map((v) => v.id);
 
-    expect(ids.some((id) => id.startsWith('outline-'))).toBeFalse();
+    // Only the chosen Start Floor, the Base door, wears a line.
+    expect(
+      ids.filter((id) => id.startsWith('outline-') && !id.includes(':start:')),
+    ).toEqual([]);
   });
 
   it('outlines the Annex and the lane of a hovered Trade, and nothing scales', () => {
     const plain = buildVillage(busy);
     const hovered = buildVillage({ ...busy, hovered: 'BREAKER' });
-    const outline = hovered.filter((v) => v.id.startsWith('outline-'));
+    const outline = hovered.filter(
+      (v) => v.id.startsWith('outline-') && !v.id.includes(':start:'),
+    );
 
     expect(outline.length).toBe(8);
     expect(hovered.length).toBe(plain.length + 8);

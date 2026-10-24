@@ -17,12 +17,18 @@ import {
   readFixtureParams,
 } from '../../three/ink/ink-fixture';
 import { StageService } from '../../services/stage.service';
+import { GameStateService } from '../../services/game-state.service';
+import { LaunchService } from '../../services/launch.service';
+import { VillageSelectionService } from '../../services/village-selection.service';
+import { captionFor, captionText } from '../../three/village/village-captions';
+import { towerRegion } from '../../three/stage-view';
+import { SceneLines } from '../scene-lines/scene-lines';
 import { TowerSceneGraph } from './tower-scene-graph.component';
 
 @Component({
   selector: 'app-tower-scene',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgtCanvas, TowerSceneGraph],
+  imports: [NgtCanvas, TowerSceneGraph, SceneLines],
   template: `
     <ngt-canvas
       [camera]="camera"
@@ -36,12 +42,21 @@ import { TowerSceneGraph } from './tower-scene-graph.component';
         [party]="shownParty()"
         [active]="fixture ? true : active()"
         [reinforcements]="fixture?.reinforcements ?? reinforcements()"
+        [launchOverride]="launchOverride"
       />
     </ngt-canvas>
+    <app-scene-lines
+      [caption]="caption()"
+      [locked]="locked()"
+      [refusal]="refusal()"
+      [left]="region().left"
+      [width]="region().width"
+    />
   `,
   styles: `
     :host {
       display: block;
+      position: relative;
       width: 100%;
       height: 100%;
     }
@@ -76,4 +91,37 @@ export class TowerScene {
     far: 200,
   };
   protected readonly stage = inject(StageService);
+
+  /** Dev only: `?launch=lit` or `?launch=dark` draws the bell and the lamp so, for capture. */
+  protected readonly launchOverride: { bell: boolean; recall: boolean } | null =
+    (() => {
+      const v = isDevMode()
+        ? new URLSearchParams(location.search).get('launch')
+        : null;
+      return v === 'lit' || v === 'dark'
+        ? { bell: v === 'lit', recall: v === 'lit' }
+        : null;
+    })();
+
+  private readonly game = inject(GameStateService).state;
+  private readonly selection = inject(VillageSelectionService);
+  private readonly launch = inject(LaunchService);
+
+  /** Where the words sit: inside the Tower's region, clear of the menus. */
+  protected readonly region = computed(() =>
+    towerRegion(this.stage.viewport().width, this.stage.narrow()),
+  );
+  private readonly captionOf = computed(() =>
+    captionFor(this.selection.hovered(), this.game(), {
+      startFloor: this.launch.startFloor(),
+    }),
+  );
+  protected readonly caption = computed(() => {
+    const c = this.captionOf();
+    return c ? captionText(c) : null;
+  });
+  protected readonly locked = computed(() => !!this.captionOf()?.lock);
+  protected readonly refusal = computed(
+    () => this.launch.refusal()?.text ?? null,
+  );
 }

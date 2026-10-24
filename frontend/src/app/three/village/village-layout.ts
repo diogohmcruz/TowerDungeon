@@ -8,7 +8,14 @@
 import type { PortState } from '../../interfaces/game-state';
 import type { Quarter } from '../../interfaces/game-state';
 import type { TradeId } from '../../interfaces/village';
-import { outlineVolumes, SHORTCUT_MARK_ID } from './village-subjects';
+import { bellObject } from '../launch/launch-objects';
+import {
+  BASE_DOOR_ID,
+  BASE_DOOR_SUBJECT,
+  BELL_SUBJECT,
+  outlineVolumes,
+  SHORTCUT_MARK_ID,
+} from './village-subjects';
 
 export { SHORTCUT_MARK_ID };
 
@@ -132,6 +139,10 @@ export interface VillageInput {
   hovered?: string | null;
   /** The id of the thing chosen by a click or a row; its outline is two pixels. */
   selected?: string | null;
+  /** The Start Floor chosen: 0 is the Base door, otherwise an open Shortcut's Floor. Wears the bone outline. */
+  startFloor?: number;
+  /** The gate bell can be rung (set out); false draws it dark with a dashed outline. Default true. */
+  bellUsable?: boolean;
 }
 
 export const EMPTY_VILLAGE: VillageInput = {
@@ -564,24 +575,40 @@ export function shortcutMarkHeight(floor: number): number {
  * leave nothing, not even a hairline. Hover outlines come from the subjects module.
  */
 function shortcutMarks(out: Volume[], shortcuts: VillageShortcut[]): void {
-  const d = SHORTCUT_DOOR;
   for (const sc of shortcuts) {
     if (sc.floor <= 0) continue;
-    const id = `${SHORTCUT_MARK_ID}${sc.id}`;
-    const x = SHORTCUT_MARK_X;
-    const y = shortcutMarkHeight(sc.floor);
-    const z = SHORTCUT_MARK_Z;
-    const part = (n: string, px: number, py: number, w: number, h: number, depth: number, pz: number, tone: number) =>
-      box(out, `${id}:${n}`, 'tower', px, py, pz, w, h, depth, tone);
-    part('opening', x, y, d.opening.w, d.opening.h, 0.04, z, VILLAGE_TONE.lit);
-    const jamb = (d.lintel.w - d.opening.w) / 2;
-    const jx = (d.opening.w + jamb) / 2;
-    part('jamb-w', x - jx, y, jamb, d.opening.h, 0.05, z - 0.005, VILLAGE_TONE.dark);
-    part('jamb-e', x + jx, y, jamb, d.opening.h, 0.05, z - 0.005, VILLAGE_TONE.dark);
-    part('lintel', x, y + d.opening.h, d.lintel.w, d.lintel.h, 0.07, z + 0.01, VILLAGE_TONE.dark);
-    part('ledge', x, y - d.ledge.h, d.ledge.w, d.ledge.h, 0.2, z + 0.08, VILLAGE_TONE.stone);
-    part('step', x - d.step.dx, y - d.ledge.h - d.step.h, d.step.w, d.step.h, 0.16, z + 0.06, VILLAGE_TONE.stone);
+    doorway(out, `${SHORTCUT_MARK_ID}${sc.id}`, SHORTCUT_MARK_X, shortcutMarkHeight(sc.floor), SHORTCUT_MARK_Z);
   }
+}
+
+/** Where the bell's gate stands: at the foot of the stair, in front of it. */
+export const BELL_SPOT = { x: -1.95, bottom: 0, z: 0.8 } as const;
+/** The Base door: on the Base slab's front face, clear of the stair. */
+export const BASE_DOOR_X = 0.9;
+const BASE_DOOR_BOTTOM = 0.62;
+const BASE_FRONT_Z = -0.2;
+
+/**
+ * The doorway kit shared by an open Shortcut and the Base door: a lit opening in a
+ * dark frame of two jambs and a lintel, a ledge at the sill and a stair stub below.
+ */
+function doorway(out: Volume[], id: string, x: number, y: number, z: number): void {
+  const d = SHORTCUT_DOOR;
+  const part = (n: string, px: number, py: number, w: number, h: number, depth: number, pz: number, tone: number) =>
+    box(out, `${id}:${n}`, 'tower', px, py, pz, w, h, depth, tone);
+  part('opening', x, y, d.opening.w, d.opening.h, 0.04, z, VILLAGE_TONE.lit);
+  const jamb = (d.lintel.w - d.opening.w) / 2;
+  const jx = (d.opening.w + jamb) / 2;
+  part('jamb-w', x - jx, y, jamb, d.opening.h, 0.05, z - 0.005, VILLAGE_TONE.dark);
+  part('jamb-e', x + jx, y, jamb, d.opening.h, 0.05, z - 0.005, VILLAGE_TONE.dark);
+  part('lintel', x, y + d.opening.h, d.lintel.w, d.lintel.h, 0.07, z + 0.01, VILLAGE_TONE.dark);
+  part('ledge', x, y - d.ledge.h, d.ledge.w, d.ledge.h, 0.2, z + 0.08, VILLAGE_TONE.stone);
+  part('step', x - d.step.dx, y - d.ledge.h - d.step.h, d.step.w, d.step.h, 0.16, z + 0.06, VILLAGE_TONE.stone);
+}
+
+/** The Start Floor 0 choice: the Base door, drawn as a doorway in the slab's face. */
+function baseDoor(out: Volume[]): void {
+  doorway(out, BASE_DOOR_ID, BASE_DOOR_X, BASE_DOOR_BOTTOM, BASE_FRONT_Z);
 }
 
 /** The shore starts here: the right-hand 20% of the frame, beyond the Village's 60%. */
@@ -806,9 +833,24 @@ export function buildVillage(input: VillageInput): Volume[] {
   pans(out, input.saltPansOpen, input.salt);
   port(out, input.port ?? 'HIDDEN', input.boatDocked ?? false, input.seaRisk);
   shortcutMarks(out, input.shortcuts);
+  baseDoor(out);
+  bellObject(out, BELL_SPOT, input.bellUsable ?? true);
   growth(out, input.upgrades ?? {});
   reserves(out, input.reserves);
   villagers(out, input.hands, input.tick, input.still);
+  // The chosen Start Floor wears the bone outline: the Base door by default.
+  const start = input.startFloor ?? 0;
+  if (start <= 0) {
+    out.push(...outlineVolumes(out, BASE_DOOR_SUBJECT, 2, 'start'));
+  } else {
+    for (const sc of input.shortcuts) {
+      if (sc.floor === start) out.push(...outlineVolumes(out, sc.id, 2, 'start'));
+    }
+  }
+  // A control that cannot be used is dark, with a dashed outline.
+  if (input.bellUsable === false) {
+    out.push(...outlineVolumes(out, BELL_SUBJECT, 1, 'unlit', 'dashed'));
+  }
   if (input.hovered && input.hovered !== input.selected) {
     out.push(...outlineVolumes(out, input.hovered, 1, 'hover'));
   }

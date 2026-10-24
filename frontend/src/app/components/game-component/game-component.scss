@@ -100,8 +100,7 @@
   right: 340px;
 }
 
-/* Slot for the launch controls on narrow screens (they move into the picture in a later
-   issue); it takes no room until something is put in it. */
+/* The launch controls on narrow screens, where the picture is dimmed behind the menus. */
 .launch-bar {
   display: none;
 }
@@ -111,7 +110,7 @@
   .menu-column {
     width: 100%;
     margin: 0;
-    padding-bottom: 24px;
+    padding-bottom: 96px;
     background: transparent;
   }
 
@@ -132,6 +131,24 @@
     right: 0;
     bottom: 0;
     pointer-events: auto;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--panel);
+    border-top: 1px solid var(--rule);
+
+    .launch-line {
+      flex-basis: 100%;
+      margin: 0;
+      font-size: 12px;
+      color: var(--bone);
+    }
+
+    [aria-disabled='true'] {
+      opacity: 0.55;
+      border-style: dashed;
+    }
   }
 }
 

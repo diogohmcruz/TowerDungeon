@@ -96,14 +96,44 @@ import {
   SHOTS,
   ShotBlend,
 } from '../../three/camera-shots';
+import { GameStateService } from '../../services/game-state.service';
+import { LaunchService } from '../../services/launch.service';
+import { VillageSelectionService } from '../../services/village-selection.service';
+import {
+  bellAvailability,
+  extractAvailability,
+} from '../../three/launch/launch-controls';
+import { towerLaunchVolumes } from '../../three/launch/launch-objects';
+import { subjectOfVolume } from '../../three/village/village-subjects';
+import type { Volume } from '../../three/village/village-layout';
 
 /** Instances of the box mesh: the foundation and the backdrop wall. */
 const BOX_CAPACITY = 4;
+/** Boxes the launch objects and their outlines can use (about 80 are drawn). */
+const LAUNCH_CAPACITY = 128;
 /** Fog starts to eat the ink beyond the focal distance of the battle shot. */
 const FOG_NEAR = 13;
 
 /** Specks and figures are tinted by ink density only; this is the tone of a figure over the cap. */
 const SPECK_TONE = 0.85;
+
+/**
+ * A press that barely moves and soon lifts, and did not land on a launch control
+ * (the bell or the lamp act on their own), is a click on empty space.
+ */
+export function isEmptySpaceClick(
+  press: { x: number; y: number; at: number } | null,
+  click: { clientX: number; clientY: number; timeStamp: number },
+  onLaunchControl: boolean,
+): boolean {
+  return (
+    !!press &&
+    !onLaunchControl &&
+    Math.hypot(click.clientX - press.x, click.clientY - press.y) <=
+      CLICK_SLOP_PX &&
+    click.timeStamp - press.at <= CLICK_MAX_MS
+  );
+}
 
 /** A press that moves farther than this, or lasts longer, is a drag or a hold, not a click. */
 const CLICK_SLOP_PX = 5;
@@ -219,6 +249,33 @@ function floorSurfaceY(n: number): number {
       />
     </ngt-instanced-mesh>
 
+    <!-- The bell and the recall lamp beside the Party's Floor: launching from the picture. -->
+    <ngt-instanced-mesh
+      #launchMesh
+      *args="[undefined, undefined, LAUNCH_CAPACITY]"
+      [frustumCulled]="false"
+    >
+      <ngt-box-geometry *args="[1, 1, 1]">
+        <ngt-instanced-buffer-attribute
+          attach="attributes.aTone"
+          *args="[launchTone, 1]"
+        />
+        <ngt-instanced-buffer-attribute
+          attach="attributes.aAlpha"
+          *args="[launchAlpha, 1]"
+        />
+        <ngt-instanced-buffer-attribute
+          attach="attributes.aRole"
+          *args="[launchRole, 1]"
+        />
+      </ngt-box-geometry>
+      <ngt-shader-material
+        [vertexShader]="inkVertex"
+        [fragmentShader]="inkFragment"
+        [uniforms]="inkUniforms"
+      />
+    </ngt-instanced-mesh>
+
     @if (pickProbe) {
       <!-- Spike #15: pointer events on ngt-primitive (see docs/research/ink-spike.md). -->
       <ngt-primitive #probe *args="[pickProbe]" />
@@ -268,6 +325,8 @@ export class TowerSceneGraph {
   party = input<Squad>();
   active = input<boolean>(false);
   reinforcements = input<Reinforcement[]>([]);
+  /** Dev tooling: draws the bell and the lamp lit or dark whatever the game says. */
+  launchOverride = input<{ bell: boolean; recall: boolean } | null>(null);
 
   private readonly dark = signal(this.readTheme());
 
@@ -338,6 +397,10 @@ export class TowerSceneGraph {
   protected readonly bodyTone = new Float32Array(BOX_CAPACITY);
   protected readonly bodyAlpha = new Float32Array(BOX_CAPACITY);
   protected readonly bodyRole = new Float32Array(BOX_CAPACITY);
+  protected readonly LAUNCH_CAPACITY = LAUNCH_CAPACITY;
+  protected readonly launchTone = new Float32Array(LAUNCH_CAPACITY);
+  protected readonly launchAlpha = new Float32Array(LAUNCH_CAPACITY);
+  protected readonly launchRole = new Float32Array(LAUNCH_CAPACITY);
   protected readonly pillarTone = new Float32Array(PILLAR_COUNT);
   protected readonly pillarAlpha = new Float32Array(PILLAR_COUNT);
   protected readonly pillarRole = new Float32Array(PILLAR_COUNT);
@@ -348,6 +411,8 @@ export class TowerSceneGraph {
     viewChild<ElementRef<THREE.InstancedMesh>>('numerals');
   private readonly pillarsRef =
     viewChild<ElementRef<THREE.InstancedMesh>>('pillars');
+  private readonly launchRef =
+    viewChild<ElementRef<THREE.InstancedMesh>>('launchMesh');
   private readonly bodiesRef =
     viewChild<ElementRef<THREE.InstancedMesh>>('bodies');
   private readonly marksRef =
@@ -462,6 +527,8 @@ export class TowerSceneGraph {
   /** Vertical world offset from scroll-to-pan; decays back to 0 when idle. */
   private panY = 0;
   private lastPanMs = 0;
+  /** Timestamp of the pointer press that landed on a launch control; such a click never toggles the closeup. */
+  private launchPressAt = -1;
   private pointerDown = false;
   private lastPointerY = 0;
 
@@ -470,6 +537,32 @@ export class TowerSceneGraph {
   private readonly zoom = inject(ZoomService);
   private readonly shot = new ShotBlend();
   private readonly reducedMotion = prefersReducedMotion();
+  private readonly game = inject(GameStateService).state;
+  private readonly launch = inject(LaunchService);
+  private readonly selection = inject(VillageSelectionService);
+
+  /** What the bell and the lamp can do now: the game's rule, unless a fixture overrides it. */
+  private readonly usable = computed(() => {
+    const o = this.launchOverride();
+    if (o) return { bell: o.bell, recall: o.recall };
+    const state = this.game();
+    return {
+      bell: bellAvailability(state).usable,
+      recall: extractAvailability(state).usable,
+    };
+  });
+
+  /** The launch objects as boxes, beside the Floor the Party fights on. */
+  private readonly launchVolumes = computed<Volume[]>(() => {
+    if (!this.active()) return [];
+    const u = this.usable();
+    return towerLaunchVolumes({
+      surfaceY: floorSurfaceY(this.anchorFloor()) + SURFACE_LIFT,
+      bellUsable: u.bell,
+      recallUsable: u.recall,
+      hovered: this.selection.hovered()?.id ?? null,
+    });
+  });
 
   constructor() {
     const host = document.documentElement;
@@ -503,6 +596,35 @@ export class TowerSceneGraph {
 
     effect(() => setInkTheme(this.inkUniforms, this.theme()));
     effect(() => this.writeInstances());
+    effect(() => this.writeLaunch());
+
+    // The bell and the lamp act (architecture doc 5.5) through the LaunchService,
+    // the same route as the panel's buttons.
+    injectObjectEvents(() => this.launchRef()?.nativeElement, {
+      pointermove: (event) => {
+        event.stopPropagation();
+        const subject = this.launchSubjectAt(event.instanceId);
+        this.selection.hover(subject);
+        this.store.snapshot.gl.domElement.style.cursor = subject ? 'pointer' : '';
+      },
+      pointerout: () => {
+        this.selection.hover(null);
+        this.store.snapshot.gl.domElement.style.cursor = '';
+      },
+      // A press on a launch control is not a click on empty space: remember which
+      // press it was, so the closeup toggle on the canvas lets it pass.
+      pointerdown: (event) => {
+        event.stopPropagation();
+        if (this.launchSubjectAt(event.instanceId)) {
+          this.launchPressAt = (event.nativeEvent as Event).timeStamp;
+        }
+      },
+      click: (event) => {
+        event.stopPropagation();
+        const subject = this.launchSubjectAt(event.instanceId);
+        if (subject) this.launch.activate(subject);
+      },
+    });
 
     if (isDevMode()) {
       // Spike #15 measurement hook: renderer.info of the last frame.
@@ -695,6 +817,23 @@ export class TowerSceneGraph {
     body.finish();
   }
 
+  private launchSubjectAt(instanceId: number | undefined) {
+    const volume =
+      instanceId === undefined ? undefined : this.launchVolumes()[instanceId];
+    return volume ? subjectOfVolume(volume.id) : null;
+  }
+
+  /** Rewrites the launch mesh from its boxes. */
+  private writeLaunch(): void {
+    const mesh = this.launchRef()?.nativeElement;
+    if (!mesh?.isInstancedMesh) return;
+    const writer = new InstanceWriter(mesh);
+    for (const v of this.launchVolumes()) {
+      writer.add([v.x, v.y, v.z], [v.w, v.h, v.d], v.tone, v.alpha, false);
+    }
+    writer.finish();
+  }
+
   /** Rewrites the figure and speck meshes from the figure plan. */
   private writeFigures(): void {
     const plan = this.figurePlan();
@@ -775,11 +914,9 @@ export class TowerSceneGraph {
     const onClick = (e: MouseEvent) => {
       const p = press;
       press = null;
-      if (
-        p &&
-        Math.hypot(e.clientX - p.x, e.clientY - p.y) <= CLICK_SLOP_PX &&
-        e.timeStamp - p.at <= CLICK_MAX_MS
-      ) {
+      const onLaunch = !!p && p.at === this.launchPressAt;
+      this.launchPressAt = -1;
+      if (isEmptySpaceClick(p, e, onLaunch)) {
         this.zoom.toggleCloseup();
       }
     };

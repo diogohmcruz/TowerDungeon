@@ -73,6 +73,9 @@ export class VillageFixturePage {
         ),
         boatDocked:
           new URLSearchParams(location.search).get('boat') === 'docked',
+        // `?bell=dark` draws the bell unlit; `?start=10` chooses the Shortcut at Floor 10.
+        bellUsable: new URLSearchParams(location.search).get('bell') !== 'dark',
+        startFloor: Number(new URLSearchParams(location.search).get('start') ?? 0),
         still: false,
       };
 }

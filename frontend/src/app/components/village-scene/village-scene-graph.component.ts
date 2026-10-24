@@ -19,6 +19,7 @@ import {
 } from 'angular-three';
 import * as THREE from 'three';
 
+import { LaunchService } from '../../services/launch.service';
 import { VillageSelectionService } from '../../services/village-selection.service';
 import { createInkUniforms, setInkTheme } from '../../three/ink/ink-material';
 import { INK_FRAGMENT, INK_VERTEX } from '../../three/ink/ink.glsl';
@@ -84,6 +85,7 @@ export class VillageSceneGraph {
 
   private readonly store = injectStore();
   private readonly selection = inject(VillageSelectionService);
+  private readonly launch = inject(LaunchService);
   private readonly stage = inject(StageService);
   private readonly dark = signal(this.readTheme());
 
@@ -130,7 +132,8 @@ export class VillageSceneGraph {
       this.store.snapshot.invalidate();
     });
 
-    // The scene points and picks; it never acts. `ngt-primitive` and the mesh
+    // The scene points and picks; only the launch controls act (architecture doc 5.5),
+    // and they do it through the LaunchService, the panel's own route. `ngt-primitive` and the mesh
     // take no pointer outputs in a template, so events go through injectObjectEvents.
     injectObjectEvents(() => this.meshRef()?.nativeElement, {
       pointermove: (event) => {
@@ -148,7 +151,7 @@ export class VillageSceneGraph {
       click: (event) => {
         event.stopPropagation();
         const subject = this.subjectAt(event.instanceId);
-        if (subject) {
+        if (subject && !this.launch.activate(subject)) {
           this.selection.selectFromScene(subject);
         }
       },

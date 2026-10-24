@@ -10,6 +10,7 @@ import {
 import { NgtCanvas } from 'angular-three/dom';
 import type { NgtCameraParameters } from 'angular-three';
 
+import { LaunchService } from '../../services/launch.service';
 import { VillageSelectionService } from '../../services/village-selection.service';
 import { captionFor, captionText } from '../../three/village/village-captions';
 import { GameStateService } from '../../services/game-state.service';
@@ -17,6 +18,7 @@ import { StageService } from '../../services/stage.service';
 import { VillageInput } from '../../three/village/village-layout';
 import { towerRegion } from '../../three/stage-view';
 import { VILLAGE_FOV } from '../../three/village/village-camera';
+import { SceneLines } from '../scene-lines/scene-lines';
 import { VillageSceneGraph } from './village-scene-graph.component';
 
 /** Villagers take one step per tick: four a second. */
@@ -30,7 +32,7 @@ const STEP_MS = 250;
 @Component({
   selector: 'app-village-scene',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgtCanvas, VillageSceneGraph],
+  imports: [NgtCanvas, VillageSceneGraph, SceneLines],
   template: `
     <ngt-canvas
       [camera]="camera"
@@ -41,16 +43,13 @@ const STEP_MS = 250;
     >
       <app-village-scene-graph *canvasContent [village]="shown()" />
     </ngt-canvas>
-    @if (caption(); as text) {
-      <p
-        class="village-caption"
-        [class.locked]="locked()"
-        [style.left.px]="region().left + 8"
-        [style.width.px]="region().width - 16"
-      >
-        {{ text }}
-      </p>
-    }
+    <app-scene-lines
+      [caption]="caption()"
+      [locked]="locked()"
+      [refusal]="refusal()"
+      [left]="region().left"
+      [width]="region().width"
+    />
   `,
   styles: `
     :host {
@@ -58,20 +57,6 @@ const STEP_MS = 250;
       position: relative;
       width: 100%;
       height: 100%;
-    }
-    .village-caption {
-      position: absolute;
-      bottom: 8px;
-      margin: 0;
-      padding: 4px 8px;
-      background: var(--panel);
-      border: 1px solid var(--rule);
-      color: var(--text);
-      font-size: 12px;
-      pointer-events: none;
-    }
-    .village-caption.locked {
-      color: var(--bone);
     }
     :host ::ng-deep canvas {
       image-rendering: pixelated;
@@ -81,6 +66,7 @@ const STEP_MS = 250;
 export class VillageScene {
   private readonly state = inject(GameStateService).state;
   private readonly selection = inject(VillageSelectionService);
+  private readonly launch = inject(LaunchService);
   private readonly tick = signal(0);
   /** Dev tooling: draws this state instead of the game's (see `/village-fixture`). */
   readonly fixture = input<VillageInput | null>(null);
@@ -106,13 +92,21 @@ export class VillageScene {
     () => this.selection.hovered() ?? this.selection.selected(),
   );
   private readonly captionOf = computed(() =>
-    captionFor(this.subject(), this.state()),
+    captionFor(this.subject(), this.state(), {
+      startFloor: this.startFloor(),
+    }),
   );
   protected readonly caption = computed(() => {
     const c = this.captionOf();
     return c ? captionText(c) : null;
   });
   protected readonly locked = computed(() => !!this.captionOf()?.lock);
+  /** The one line a refused launch leaves, beside the caption. */
+  protected readonly refusal = computed(() => this.launch.refusal()?.text ?? null);
+  /** The Start Floor chosen: the fixture's own, or the one the panel's radios show. */
+  private readonly startFloor = computed(
+    () => this.fixture()?.startFloor ?? this.launch.startFloor(),
+  );
 
   /** The state the Village draws; the renderer wakes only when this changes. */
   protected readonly shown = computed<VillageInput>(() => {
@@ -123,6 +117,7 @@ export class VillageScene {
         ...fixed,
         tick: t,
         flicker: (t * STEP_MS) / 1000,
+        startFloor: this.startFloor(),
         hovered: this.selection.hovered()?.id ?? null,
         selected: this.selection.selected()?.id ?? null,
       };
@@ -168,6 +163,8 @@ export class VillageScene {
       tick,
       flicker: (tick * STEP_MS) / 1000,
       still: this.still,
+      startFloor: this.startFloor(),
+      bellUsable: this.launch.setOut().usable,
       hovered: this.selection.hovered()?.id ?? null,
       selected: this.selection.selected()?.id ?? null,
     };

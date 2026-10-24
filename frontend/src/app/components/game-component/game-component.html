@@ -125,16 +125,16 @@
 
   <button
     (click)="this.sendInvadeAction()"
-    [disabled]="gameState().expeditionActive || gameOver()"
+    [disabled]="!launch.setOut().usable"
   >
     Set out
   </button>
-  <button (click)="this.extract()" [disabled]="!gameState().expeditionActive">
+  <button (click)="this.extract()" [disabled]="!launch.extractControl().usable">
     Extract
   </button>
   <button
     (click)="this.sendReinforcements()"
-    [disabled]="!gameState().expeditionActive || gameState().homeUnitCount === 0"
+    [disabled]="!launch.wave().usable"
     title="Send every Reserve up after the Party. They carry supplies from the Pantry and climb from the Base. If their supplies run out before they catch up, climbers are lost."
   >
     Send Reinforcement Wave
@@ -236,9 +236,19 @@
   }
 </article>
 
-<!-- Narrow screens move the launch controls (Set out, Extract, Send Wave) to this bar; it is
-     empty until launching moves into the picture. -->
-<div class="launch-bar" aria-hidden="true"></div>
+<!-- Narrow screens cannot show the picture behind the menus, so the bell and the lamp
+     are repeated here as plain buttons: the same commands, the same refusals. -->
+<div class="launch-bar">
+  @if (launch.refusal(); as refusal) {
+  <p class="launch-line" role="status">{{ refusal.text }}</p>
+  }
+  <button type="button" class="btn" (click)="launch.ring()" [attr.aria-disabled]="!launch.bell().usable">
+    {{ launch.bell().command === 'wave' ? 'Ring the bell: send a Wave' : 'Ring the bell: set out' }}
+  </button>
+  <button type="button" class="btn" (click)="launch.light()" [attr.aria-disabled]="!launch.extractControl().usable">
+    Light the lamp: extract
+  </button>
+</div>
 
 <app-tower
   class="tower"
