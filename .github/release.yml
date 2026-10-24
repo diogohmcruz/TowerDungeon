@@ -1,0 +1,24 @@
+changelog:
+  exclude:
+    labels:
+      - ignore-for-release
+      - duplicate
+      - invalid
+      - question
+      - wontfix
+    authors:
+      - dependabot
+      - github-actions
+  categories:
+    - title: New in the game
+      labels:
+        - enhancement
+    - title: Fixes
+      labels:
+        - bug
+    - title: Documentation
+      labels:
+        - documentation
+    - title: Other changes
+      labels:
+        - "*"
