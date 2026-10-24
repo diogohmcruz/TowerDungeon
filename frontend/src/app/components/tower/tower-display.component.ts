@@ -6,11 +6,12 @@ import { VillageScene } from '../village-scene/village-scene.component';
 import { TransitionService } from '../../services/transition.service';
 import { TransitionVeil } from '../transition-veil/transition-veil.component';
 import { UnitFocusCard } from '../unit-focus/unit-focus';
+import { BuildingPopover } from '../building-popover/building-popover';
 import { readFixtureParams } from '../../three/ink/ink-fixture';
 
 @Component({
   selector: 'app-tower',
-  imports: [TowerScene, VillageScene, TransitionVeil, UnitFocusCard],
+  imports: [TowerScene, VillageScene, TransitionVeil, UnitFocusCard, BuildingPopover],
   templateUrl: './tower-display.component.html',
   styleUrl: './tower-display.component.scss',
 })

@@ -55,6 +55,15 @@ describe('card placement', () => {
     }
   });
 
+  it('slides up to show the height it wants, and never off the top', () => {
+    const low = { left: 300, top: 600, right: 340, bottom: 700 };
+    expect(placeCard(low, 1280, 720).top).toBe(720 - 120 - 12);
+    const tall = placeCard(low, 1280, 720, 260);
+    expect(tall.top).toBe(720 - 260 - 12);
+    expect(tall.top + 260).toBeLessThanOrEqual(720);
+    expect(placeCard(low, 1280, 200, 500).top).toBe(CARD_MARGIN);
+  });
+
   it('shrinks to the screen on a very narrow viewport', () => {
     const p = placeCard(figure, 200, 400);
     expect(p.width).toBe(200 - 2 * CARD_MARGIN);

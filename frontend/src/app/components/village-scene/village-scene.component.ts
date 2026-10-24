@@ -11,6 +11,7 @@ import { NgtCanvas } from 'angular-three/dom';
 import type { NgtCameraParameters } from 'angular-three';
 
 import { LaunchService } from '../../services/launch.service';
+import { PopoverService } from '../../services/popover.service';
 import { VillageSelectionService } from '../../services/village-selection.service';
 import { captionFor, captionText } from '../../three/village/village-captions';
 import { GameStateService } from '../../services/game-state.service';
@@ -67,6 +68,7 @@ export class VillageScene {
   private readonly state = inject(GameStateService).state;
   private readonly selection = inject(VillageSelectionService);
   private readonly launch = inject(LaunchService);
+  private readonly popover = inject(PopoverService);
   private readonly tick = signal(0);
   /** Dev tooling: draws this state instead of the game's (see `/village-fixture`). */
   readonly fixture = input<VillageInput | null>(null);
@@ -91,11 +93,14 @@ export class VillageScene {
   private readonly subject = computed(
     () => this.selection.hovered() ?? this.selection.selected(),
   );
-  private readonly captionOf = computed(() =>
-    captionFor(this.subject(), this.state(), {
+  private readonly captionOf = computed(() => {
+    const subject = this.subject();
+    // A building with its popover open says it there, so the caption steps aside.
+    if (subject && this.popover.openId() === subject.id) return null;
+    return captionFor(subject, this.state(), {
       startFloor: this.startFloor(),
-    }),
-  );
+    });
+  });
   protected readonly caption = computed(() => {
     const c = this.captionOf();
     return c ? captionText(c) : null;

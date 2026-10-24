@@ -1,9 +1,12 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 
 import {
   EMPTY_VILLAGE,
   VillageInput,
 } from '../../three/village/village-layout';
+import { GameStateService } from '../../services/game-state.service';
+import { BuildingPopover } from '../building-popover/building-popover';
+import { ListView } from '../list-view/list-view';
 import { VillageScene } from './village-scene.component';
 
 /**
@@ -24,8 +27,12 @@ function quarterParam(): VillageInput['quarter'] {
 
 @Component({
   selector: 'app-village-fixture',
-  imports: [VillageScene],
-  template: `<app-village-scene [fixture]="state" />`,
+  imports: [VillageScene, BuildingPopover, ListView],
+  template: `
+    <app-village-scene [fixture]="state" />
+    <app-building-popover />
+    <app-list-view />
+  `,
   styles: `
     :host {
       position: fixed;
@@ -36,6 +43,16 @@ function quarterParam(): VillageInput['quarter'] {
   `,
 })
 export class VillageFixturePage {
+  constructor() {
+    // The popover and the list read the game's state, which the fixture has no backend to fill.
+    const food = Number(new URLSearchParams(location.search).get('food') ?? 400);
+    const game = inject(GameStateService);
+    game.update({
+      village: { ...game.state().village, food },
+      netFoodPerSecond: 1.2,
+    });
+  }
+
   protected readonly state: VillageInput = new URLSearchParams(
     location.search,
   ).has('empty')

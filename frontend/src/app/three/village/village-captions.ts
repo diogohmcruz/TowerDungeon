@@ -12,6 +12,8 @@ import {
   bellCommand,
   extractAvailability,
 } from '../launch/launch-controls';
+import { buildingDefinition, BUILDINGS } from './buildings';
+import { buildingView, isVisible } from './building-registry';
 import type { SubjectKind, VillageSubject } from './village-subjects';
 
 export interface VillageCaption {
@@ -22,6 +24,10 @@ export interface VillageCaption {
   makes: string;
   /** Set when the footing is locked: what opens it. */
   lock: string | null;
+  /** A building's rate, "Food +1.20/s"; read like `makes`. */
+  rates?: string;
+  /** What spending would leave, in one sentence (a building's gauges declare it). */
+  leaves?: string;
 }
 
 /** What the captions need besides the frame: the Start Floor the panel and the picture share. */
@@ -259,7 +265,31 @@ const recall: CaptionBuilder = (_subject, state) => {
   };
 };
 
+/**
+ * A registered building (`building-registry.ts`): its gauges state the exact
+ * figure and its rate, and say what spending would leave. The same text
+ * everywhere a figure is read, so the scene, the popover and the list agree.
+ */
+const building: CaptionBuilder = (subject, state) => {
+  const def = buildingDefinition(subject.id, BUILDINGS);
+  if (!def || !isVisible(def, state)) return null;
+  const view = buildingView(def, state);
+  const leaves = view.gauges.map((g) => g.leaves).filter((t): t is string => !!t);
+  const rates = view.gauges
+    .filter((g) => g.rate !== null)
+    .map((g) => `${g.label} ${g.rate}`);
+  return {
+    name: view.title,
+    status: view.gauges.map((g) => `${g.label} ${g.figure}`).join(', ') + '.',
+    makes: '',
+    lock: null,
+    ...(rates.length ? { rates: rates.join(', ') } : {}),
+    ...(leaves.length ? { leaves: leaves.join(' ') } : {}),
+  };
+};
+
 export const CAPTION_BUILDERS: Partial<Record<SubjectKind, CaptionBuilder>> = {
+  building,
   annex,
   villagers,
   upgrade,
@@ -281,7 +311,14 @@ export function captionFor(
 
 /** The caption as one plain sentence run, for the scene and for assistive tech. */
 export function captionText(c: VillageCaption): string {
-  return [c.name + '.', c.status, c.makes ? c.makes + '.' : '', c.lock ?? '']
+  return [
+    c.name + '.',
+    c.status,
+    c.makes ? c.makes + '.' : '',
+    c.rates ? c.rates + '.' : '',
+    c.leaves ?? '',
+    c.lock ?? '',
+  ]
     .filter((s) => s)
     .join(' ');
 }

@@ -25,6 +25,8 @@ export function placeCard(
   anchor: ScreenRect | null,
   viewportWidth: number,
   viewportHeight: number,
+  /** The height the card wants; it is slid up to fit that much on screen, and scrolls past it. */
+  minHeight = CARD_MIN_HEIGHT,
 ): CardPlacement {
   const width = Math.max(
     1,
@@ -49,7 +51,7 @@ export function placeCard(
   }
   const maxTop = Math.max(
     CARD_MARGIN,
-    viewportHeight - CARD_MIN_HEIGHT - CARD_MARGIN,
+    viewportHeight - minHeight - CARD_MARGIN,
   );
   top = Math.min(maxTop, Math.max(CARD_MARGIN, top));
   return {

@@ -38,6 +38,7 @@ import { Reinforcement } from '../../interfaces/game-state';
 import { Loadout } from '../loadout/loadout';
 import { TollBar } from '../toll-bar/toll-bar';
 import { SuccessionScreen } from '../succession-screen/succession-screen';
+import { ListView } from '../list-view/list-view';
 
 @Component({
   selector: 'app-game-component',
@@ -56,6 +57,7 @@ import { SuccessionScreen } from '../succession-screen/succession-screen';
     Loadout,
     TollBar,
     SuccessionScreen,
+    ListView,
   ],
   templateUrl: './game-component.html',
   styleUrls: ['./game-component.scss'],

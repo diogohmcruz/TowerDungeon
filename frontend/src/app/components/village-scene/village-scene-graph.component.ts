@@ -8,6 +8,7 @@ import {
   ElementRef,
   inject,
   input,
+  isDevMode,
   signal,
   viewChild,
 } from '@angular/core';
@@ -20,6 +21,7 @@ import {
 import * as THREE from 'three';
 
 import { LaunchService } from '../../services/launch.service';
+import { PopoverService } from '../../services/popover.service';
 import { VillageSelectionService } from '../../services/village-selection.service';
 import { createInkUniforms, setInkTheme } from '../../three/ink/ink-material';
 import { INK_FRAGMENT, INK_VERTEX } from '../../three/ink/ink.glsl';
@@ -29,6 +31,7 @@ import {
   VillageInput,
   Volume,
 } from '../../three/village/village-layout';
+import { subjectRect } from '../../three/village/subject-rect';
 import { subjectOfVolume } from '../../three/village/village-subjects';
 import { applyStageView } from '../../three/stage-view';
 import { StageService } from '../../services/stage.service';
@@ -97,6 +100,7 @@ export class VillageSceneGraph {
   private readonly store = injectStore();
   private readonly selection = inject(VillageSelectionService);
   private readonly launch = inject(LaunchService);
+  private readonly popover = inject(PopoverService);
   private readonly stage = inject(StageService);
   private readonly dark = signal(this.readTheme());
 
@@ -161,14 +165,44 @@ export class VillageSceneGraph {
         this.selection.hover(null);
         this.store.snapshot.gl.domElement.style.cursor = '';
       },
+      // A press on a scene volume is that volume's click: remember which press it was,
+      // so the canvas's own click (empty space: the sky) lets it pass.
+      pointerdown: (event) => {
+        event.stopPropagation();
+        this.popover.noteMeshPress((event.nativeEvent as Event).timeStamp);
+      },
       click: (event) => {
         event.stopPropagation();
         const subject = this.subjectAt(event.instanceId);
+        // A registered building opens its popover (within the click limits); the scene
+        // carries on with the launch controls and the selection for everything else.
+        if (this.popover.sceneClick(subject, event.nativeEvent as MouseEvent)) {
+          return;
+        }
         if (subject && !this.launch.activate(subject)) {
           this.selection.selectFromScene(subject);
         }
       },
     });
+    this.bindCanvasClicks();
+
+    if (isDevMode()) {
+      // Capture tooling (#99): where a subject is on the page, in CSS px.
+      (window as unknown as Record<string, unknown>)['__village'] = {
+        rect: (kind: string, id: string) => {
+          const el = this.store.snapshot.gl.domElement;
+          const box = el.getBoundingClientRect();
+          const r = subjectRect(
+            this.store.snapshot.camera,
+            this.volumes(),
+            { kind: kind as 'building', id },
+            el.clientWidth,
+            el.clientHeight,
+          );
+          return r && { left: box.left + r.left, top: box.top + r.top, right: box.left + r.right, bottom: box.top + r.bottom };
+        },
+      };
+    }
 
     // A fixed vantage: only the framing follows the canvas aspect.
     // The canvas fills the screen; the Village is framed in the Tower's region of it.
@@ -180,6 +214,42 @@ export class VillageSceneGraph {
       if (applyStageView(cam, w, h, this.stage.narrow())) {
         fitVillageCamera(cam);
       }
+      // The open building's popover follows it: report where it is on the canvas.
+      const open = this.popover.open();
+      this.popover.setAnchor(
+        open
+          ? subjectRect(cam, this.volumes(), { kind: 'building', id: open.id }, w, h)
+          : null,
+      );
+    });
+  }
+
+  /**
+   * The canvas's own press and click. The press gives the click its limits; a
+   * click whose press did not land on a scene volume is on empty space and closes
+   * the popover. (The scene's pointer events run on the canvas's wrapper, so the
+   * order of the two click handlers is not relied on: the press is.)
+   */
+  private bindCanvasClicks(): void {
+    const onDown = (e: PointerEvent) =>
+      this.popover.notePress(
+        e.button === 0 ? { x: e.clientX, y: e.clientY, at: e.timeStamp } : null,
+      );
+    const onClick = (e: MouseEvent) => {
+      if (!this.popover.takeMeshPress()) this.popover.emptyClick(e);
+    };
+    let bound: HTMLElement | undefined;
+    const stop = effect(() => {
+      const el = this.store.gl()?.domElement as HTMLElement | undefined;
+      if (!el || el === bound) return;
+      bound = el;
+      el.addEventListener('pointerdown', onDown);
+      el.addEventListener('click', onClick);
+    });
+    inject(DestroyRef).onDestroy(() => {
+      stop.destroy();
+      bound?.removeEventListener('pointerdown', onDown);
+      bound?.removeEventListener('click', onClick);
     });
   }
 
