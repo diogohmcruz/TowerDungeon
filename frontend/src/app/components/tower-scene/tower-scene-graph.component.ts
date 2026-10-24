@@ -118,6 +118,7 @@ import {
   extractAvailability,
 } from '../../three/launch/launch-controls';
 import { towerLaunchVolumes } from '../../three/launch/launch-objects';
+import { LAUNCH_CAPACITY, rimVolumes } from '../../three/launch/object-rim';
 import { subjectOfVolume } from '../../three/village/village-subjects';
 import type { VillageSubject } from '../../three/village/village-subjects';
 import {
@@ -137,8 +138,6 @@ import { LandscapeGraph } from '../landscape/landscape-graph.component';
 
 /** Instances of the box mesh: the foundation and the backdrop wall. */
 const BOX_CAPACITY = 4;
-/** Boxes the launch objects and their outlines can use (about 80 are drawn). */
-const LAUNCH_CAPACITY = 256;
 /** Fog starts to eat the ink beyond the focal distance of the battle shot. */
 const FOG_NEAR = 13;
 
@@ -683,7 +682,7 @@ export class TowerSceneGraph {
     const surfaceY = floorSurfaceY(this.anchorFloor()) + SURFACE_LIFT;
     const hovered = this.selection.hovered()?.id ?? null;
     const c = this.carried();
-    return [
+    const volumes = [
       ...towerLaunchVolumes({
         surfaceY,
         bellUsable: u.bell,
@@ -701,6 +700,9 @@ export class TowerSceneGraph {
         hovered,
       }),
     ];
+    // A rim of clear ground behind each part, so the objects read against the landscape (#122).
+    // Appended last: the indices of the parts and their marks do not move.
+    return [...volumes, ...rimVolumes(volumes)];
   });
 
   constructor() {
