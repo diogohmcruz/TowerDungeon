@@ -25,10 +25,7 @@ import io.github.diogohmcruz.towerdungeon.domain.models.Unit;
  */
 @Component
 public class FloorBundle {
-  private final GameProperties.Items.Bundle config;
-  private final GameProperties.Items.Affinity affinity;
   private final LeftoverGenerator generator;
-  private final ItemRating rating;
   private final TalismanGenerator talismans;
   private final ArtifactProvider artifacts;
 
@@ -48,11 +45,7 @@ public class FloorBundle {
       ArtifactProvider artifacts) {
     this.talismans = talismans;
     this.artifacts = artifacts;
-    this.config = properties.getItems().getBundle();
-    this.affinity = properties.getItems().getAffinity();
     this.generator = generator;
-    this.rating =
-        new ItemRating(properties.getItems().getWeights(), affinity.getRatingMultiplier());
   }
 
   /**
@@ -80,6 +73,11 @@ public class FloorBundle {
       boolean guardian,
       RandomGenerator random,
       RandomGenerator offer) {
+    // The Campaign's own copy of the configuration, so a Sandbox override of items.* takes effect.
+    var items = gameState.getConfig().getItems();
+    var config = items.getBundle();
+    var affinity = items.getAffinity();
+    var rating = new ItemRating(items.getWeights(), affinity.getRatingMultiplier());
     var store = gameState.floorGear();
     var stored = new ArrayList<>(store.takeAll(floor));
     var pool = new ArrayList<>(stored);
@@ -105,14 +103,14 @@ public class FloorBundle {
         continue;
       }
       if (roll < config.getFindChance()) {
-        give(gameState, finder, pool.remove(random.nextInt(pool.size())));
+        give(gameState, finder, pool.remove(random.nextInt(pool.size())), rating, config);
       } else if (roll < config.getFindChance() * affinity.getFindMultiplier()) {
         // Only the unit's affinity makes this find possible, so it can only be of that category.
         var liked = pool.stream().filter(item -> item.category() == finder.getAffinity()).toList();
         if (!liked.isEmpty()) {
           var item = liked.get(random.nextInt(liked.size()));
           pool.remove(item);
-          give(gameState, finder, item);
+          give(gameState, finder, item, rating, config);
         }
       }
     }
@@ -123,7 +121,12 @@ public class FloorBundle {
     }
   }
 
-  private void give(GameState gameState, Unit finder, Item item) {
+  private void give(
+      GameState gameState,
+      Unit finder,
+      Item item,
+      ItemRating rating,
+      GameProperties.Items.Bundle config) {
     if (item.tier() == ItemTier.ARTIFACT) {
       gameState.recordArtifactTaken(item.id());
     }

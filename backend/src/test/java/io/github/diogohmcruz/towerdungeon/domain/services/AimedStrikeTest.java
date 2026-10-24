@@ -72,6 +72,20 @@ class AimedStrikeTest {
   }
 
   @Test
+  void aStrikeBuiltOnACampaignCopyOfTheAimingFollowsItsOverrideAndNotAnotherCampaigns() {
+    var campaign = new GameProperties();
+    var sandbox = campaign.copy();
+    sandbox.getAiming().setHeadMiss(70);
+    var other = campaign.copy();
+
+    assertThat(new AimedStrike(script(), sandbox.getAiming()).missChance(BodyPart.HEAD, 0, 0))
+        .isEqualTo(70);
+    assertThat(new AimedStrike(script(), other.getAiming()).missChance(BodyPart.HEAD, 0, 0))
+        .isEqualTo(50);
+    assertThat(campaign.getAiming().getHeadMiss()).isEqualTo(50);
+  }
+
+  @Test
   void missChanceIsClampedBetweenFiveAndNinety() {
     var strike = new AimedStrike(script(), config);
 
