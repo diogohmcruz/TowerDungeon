@@ -31,8 +31,12 @@ server:
   shutdown: graceful
   compression:
     enabled: true
+  # Off until the Undertow servlet bridge is fixed (issue #72, docs/research/undertow-starter-large-responses.md):
+  # over HTTP/2, including the cleartext upgrade java.net.http.HttpClient asks for, a response body
+  # of 16 KiB or more can come back truncated or padded with NUL bytes. HTTP/1.1 is not affected below
+  # about 256 KiB. Turn it on again together with the disabled LargeResponseTest cases.
   http2:
-    enabled: true
+    enabled: false
   port: 8080
 
 game:

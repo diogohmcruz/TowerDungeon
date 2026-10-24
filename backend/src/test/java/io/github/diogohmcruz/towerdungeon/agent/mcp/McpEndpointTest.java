@@ -3,6 +3,10 @@ package io.github.diogohmcruz.towerdungeon.agent.mcp;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -467,6 +471,44 @@ class McpEndpointTest {
   }
 
   // ---------------------------------------------------------------- resources
+
+  /**
+   * Issue #72: the glossary is over 16 KiB, and a response that size came back padded with NUL
+   * bytes when the client asked for the cleartext HTTP/2 upgrade (the default of the JDK client).
+   * Read over both, the bytes must be the same and must parse.
+   */
+  @Test
+  void aResourceOverSixteenKibIsIntactWhateverTheClientAsksFor() throws Exception {
+    var body =
+        "{\"jsonrpc\":\"2.0\",\"id\":%d,\"method\":\"resources/read\",\"params\":{\"uri\":\"td://glossary\"}}"
+            .formatted(nextId++);
+    byte[] http11 = readOver(HttpClient.Version.HTTP_1_1, body);
+    byte[] http2 = readOver(HttpClient.Version.HTTP_2, body);
+    assertThat(http2).isEqualTo(http11);
+    assertThat(
+            mapper
+                .readTree(new String(http2, java.nio.charset.StandardCharsets.UTF_8))
+                .at("/result/contents/0/text")
+                .asString())
+        .contains("**");
+  }
+
+  private byte[] readOver(HttpClient.Version version, String body) throws Exception {
+    var request =
+        HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/mcp"))
+            .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+            .header(HttpHeaders.ACCEPT, "application/json, text/event-stream")
+            .header(HttpHeaders.AUTHORIZATION, "Bearer " + TOKEN)
+            .POST(HttpRequest.BodyPublishers.ofString(body))
+            .build();
+    var response =
+        HttpClient.newBuilder()
+            .version(version)
+            .build()
+            .send(request, HttpResponse.BodyHandlers.ofByteArray());
+    assertThat(response.statusCode()).isEqualTo(200);
+    return response.body();
+  }
 
   @Test
   void resourcesListAndReadAndTheGlossaryIsFiltered() {
