@@ -45,6 +45,7 @@ import { TowerSceneGraph } from './tower-scene-graph.component';
         [reinforcements]="fixture?.reinforcements ?? reinforcements()"
         [launchOverride]="launchOverride"
         [carried]="carried()"
+        [pillarMarks]="pillarMarks()"
       />
     </ngt-canvas>
     <app-scene-lines
@@ -100,6 +101,11 @@ export class TowerScene {
       relics: s.carriedLoot?.RELICS ?? 0,
     };
   });
+
+  /** Finish Floors of Races run (a fixture's `&finish=`, or the frame's `pillarMarks`). */
+  protected readonly pillarMarks = computed<number[]>(
+    () => this.fixture?.pillarMarks ?? this.game().pillarMarks ?? [],
+  );
 
   protected readonly camera: NgtCameraParameters = {
     position: [0, 4.8, 12.5],

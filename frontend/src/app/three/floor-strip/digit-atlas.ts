@@ -23,11 +23,27 @@ export const FONT: readonly (readonly string[])[] = [
   ['01110', '10001', '10001', '01111', '00001', '00010', '01100'],
 ];
 
-/** The strip of ten cells, ramp slots (row 0 first). */
+/**
+ * The Finish Floor mark (#123), the eleventh cell: two stones, a cairn, so it
+ * reads as a mark set on the pillar and never as a digit.
+ */
+export const MARK_GLYPH: readonly string[] = [
+  '00100',
+  '01110',
+  '00000',
+  '01110',
+  '11111',
+  '11111',
+  '01110',
+];
+export const MARK_DIGIT = FONT.length;
+const GLYPHS: readonly (readonly string[])[] = [...FONT, MARK_GLYPH];
+
+/** The strip of eleven cells, ramp slots (row 0 first). */
 export function buildDigitSlots(): Uint8Array {
-  const w = DIGIT_W * FONT.length;
+  const w = DIGIT_W * GLYPHS.length;
   const data = new Uint8Array(w * DIGIT_H).fill(1);
-  FONT.forEach((glyph, d) => {
+  GLYPHS.forEach((glyph, d) => {
     glyph.forEach((row, y) => {
       for (let x = 0; x < 5; x++) {
         if (row[x] === '1') data[(y + 1) * w + d * DIGIT_W + x + 1] = 3;
@@ -43,7 +59,7 @@ export function createDigitTexture(): THREE.DataTexture {
   for (let i = 0; i < slots.length; i++) bytes[i] = slots[i] * 85;
   const tex = new THREE.DataTexture(
     bytes,
-    DIGIT_W * FONT.length,
+    DIGIT_W * GLYPHS.length,
     DIGIT_H,
     THREE.RedFormat,
     THREE.UnsignedByteType,
@@ -57,4 +73,4 @@ export function createDigitTexture(): THREE.DataTexture {
   return tex;
 }
 
-export const DIGIT_COUNT = FONT.length;
+export const DIGIT_COUNT = GLYPHS.length;

@@ -73,6 +73,7 @@ import {
 import {
   createDigitTexture,
   DIGIT_COUNT,
+  MARK_DIGIT,
   DIGIT_H,
   DIGIT_W,
 } from '../../three/floor-strip/digit-atlas';
@@ -90,6 +91,7 @@ import {
   NUMERAL_Z,
   PILLAR_COUNT,
   PILLAR_SPACING,
+  planFinishMarks,
   planFloorStrips,
   STRIP_CAPACITY,
   STRIP_H,
@@ -120,6 +122,7 @@ import { subjectOfVolume } from '../../three/village/village-subjects';
 import type { VillageSubject } from '../../three/village/village-subjects';
 import {
   expeditionVolumes,
+  finishSubject,
   groupAt,
   groupKey,
   groupSubject,
@@ -407,6 +410,8 @@ export class TowerSceneGraph {
   launchOverride = input<{ bell: boolean; recall: boolean } | null>(null);
   /** Supplies and the loads carried, drawn as the Supplies post and the crates. */
   carried = input<CarriedFigures | null>(null);
+  /** Finish Floors of Races the player has run, from the frame; only listed Floors wear the mark (#123). */
+  pillarMarks = input<number[]>([]);
 
   private readonly dark = signal(this.readTheme());
   private readonly gameState = inject(GameStateService).state;
@@ -537,6 +542,11 @@ export class TowerSceneGraph {
     this.layoutKey();
     return untracked(() => planFloorStrips(this.tower()));
   });
+
+  /** The Finish Floor marks to draw: listed by the server and discovered. */
+  protected readonly finishMarks = computed(() =>
+    planFinishMarks(this.tower(), this.pillarMarks()),
+  );
 
   private readonly floors = computed<[number, TowerFloor][]>(() => {
     const map = this.tower()?.floors ?? {};
@@ -942,7 +952,17 @@ export class TowerSceneGraph {
       );
       this.numeralDigit.set([n.digit, n.struck ? 1 : 0], i * 2);
     });
-    numerals.count = plan.numerals.length;
+    // The Finish Floor marks follow the numerals in the same draw call.
+    const marks = this.finishMarks();
+    marks.forEach((k, j) => {
+      const i = plan.numerals.length + j;
+      numerals.setMatrixAt(
+        i,
+        m.compose(p.set(k.x, k.y, NUMERAL_Z), IDENTITY_QUATERNION, size),
+      );
+      this.numeralDigit.set([MARK_DIGIT, 0], i * 2);
+    });
+    numerals.count = plan.numerals.length + marks.length;
     numerals.instanceMatrix.needsUpdate = true;
     markAttributes(numerals, ['aDigit']);
 
@@ -1266,7 +1286,16 @@ export class TowerSceneGraph {
         ),
       }))
       .filter((f): f is { subject: VillageSubject; rect: typeof f.rect } => !!f.subject);
-    return unionRects(figures);
+    const marks = this.finishMarks().map((k) => ({
+      subject: finishSubject(k.floor),
+      rect: figureRect(
+        this.store.snapshot.camera,
+        { x: k.x, y: k.y, z: NUMERAL_Z, w: NUMERAL_SIZE[0], h: NUMERAL_SIZE[1] },
+        el.clientWidth,
+        el.clientHeight,
+      ),
+    }));
+    return [...unionRects(figures), ...marks];
   }
 
   /** The member whose sprite is under a click, if any. */

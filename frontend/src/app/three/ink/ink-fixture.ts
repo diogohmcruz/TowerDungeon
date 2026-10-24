@@ -15,6 +15,8 @@ export interface InkFixture {
   reinforcements: Reinforcement[];
   /** What the Expedition carries, for the Supplies post and the crates. */
   carried: CarriedFigures;
+  /** Finish Floors marked on the pillar (`&finish=10,30`). */
+  pillarMarks: number[];
 }
 
 /** Supplies and the three loads the Party carries (`&supplies=`, `&maxSupplies=`, `&credits=`, `&materials=`, `&relics=`). */
@@ -91,6 +93,7 @@ export function readFixtureParams(search: string): {
   party: number;
   waves: number;
   carried: CarriedFigures;
+  finish: number[];
 } | null {
   const q = new URLSearchParams(search);
   const floors = Number(q.get('inkFixture'));
@@ -103,6 +106,10 @@ export function readFixtureParams(search: string): {
     garrison: Number(q.get('garrison') ?? 5),
     party: Number(q.get('party') ?? 8),
     waves: Number(q.get('waves') ?? 0),
+    finish: (q.get('finish') ?? '')
+      .split(',')
+      .map(Number)
+      .filter((n) => Number.isInteger(n) && n > 0),
     carried: {
       supplies: Number(q.get('supplies') ?? 120),
       maxSupplies: Number(q.get('maxSupplies') ?? 200),
@@ -120,6 +127,7 @@ export function buildFixture(p: {
   party: number;
   waves?: number;
   carried?: CarriedFigures;
+  finish?: number[];
 }): InkFixture {
   const floors: Record<number, TowerFloor> = {};
   for (let n = 1; n <= p.floors; n++) {
@@ -145,6 +153,7 @@ export function buildFixture(p: {
     party[t].push(member(i + 1, t));
   }
   return {
+    pillarMarks: p.finish ?? [],
     carried: p.carried ?? {
       supplies: 120,
       maxSupplies: 200,
