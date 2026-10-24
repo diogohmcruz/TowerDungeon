@@ -128,12 +128,36 @@ describe('Expedition objects', () => {
       const id = `carried-${kind.toLowerCase()}`;
       const shelf = volumes.find((v) => v.id === `${id}-base`)!;
       const hit = volumes.find((v) => v.id === `${id}-hit`)!;
-      for (const v of volumes.filter((x) => x.id.startsWith(`${id}-`) && x.alpha > 0 && x !== shelf)) {
+      for (const v of volumes.filter((x) => x.id.startsWith(`${id}-`) && x.alpha > 0 && x !== shelf && !x.id.includes('-support-'))) {
         expect(v.x - v.w / 2).withContext(v.id).toBeGreaterThanOrEqual(shelf.x - shelf.w / 2 - 1e-9);
         expect(v.x + v.w / 2).withContext(v.id).toBeLessThanOrEqual(shelf.x + shelf.w / 2 + 1e-9);
         // Nothing stands taller than the pick pad, so the hover reaches the whole pile.
         expect(v.y + v.h / 2).withContext(v.id).toBeLessThanOrEqual(hit.y + hit.h / 2 + 1e-9);
         expect(v.y - v.h / 2).withContext(v.id).toBeGreaterThanOrEqual(shelf.y - shelf.h / 2 - 1e-9);
+      }
+    }
+  });
+
+  it('slings the shelf from the ceiling: a rod at every place boundary, from the plank up to the ceiling (#142)', () => {
+    const ceilingY = input.surfaceY + 1.5;
+    const volumes = expeditionVolumes({ ...input, credits: 5000, materials: 500, relics: 9, crateCeilingY: ceilingY });
+    const rods = volumes.filter((v) => v.id.includes('-support-'));
+    expect(rods.length).toBe(4);
+    const shelves = CRATE_KINDS.map((k) => volumes.find((v) => v.id === `carried-${k.toLowerCase()}-base`)!);
+    // The three shelves meet edge to edge, so they read as one plank.
+    for (let i = 1; i < shelves.length; i++) {
+      expect(shelves[i].x - shelves[i].w / 2).toBeLessThanOrEqual(shelves[i - 1].x + shelves[i - 1].w / 2 + 1e-9);
+    }
+    const plankTop = shelves[0].y + shelves[0].h / 2;
+    for (const rod of rods) {
+      expect(rod.y - rod.h / 2).toBeCloseTo(plankTop, 6);
+      expect(rod.y + rod.h / 2).toBeCloseTo(ceilingY, 6);
+    }
+    // No two rods stand in the same place, and none cuts through a pile.
+    expect(new Set(rods.map((r) => r.x.toFixed(4))).size).toBe(4);
+    for (const rod of rods) {
+      for (const v of volumes.filter((x) => /-(coin|block|casket)/.test(x.id) && x.alpha > 0)) {
+        expect(Math.abs(v.x - rod.x) >= (v.w + rod.w) / 2 - 1e-9).withContext(`${rod.id} vs ${v.id}`).toBeTrue();
       }
     }
   });
