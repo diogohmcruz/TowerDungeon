@@ -22,6 +22,11 @@ import { UnitViewService } from './unit-view.service';
  * the screen, hiding the menus (the list view and the launch bar draw nothing while zoomed, and what the player had open is there again on the way out), and stops time: it sends
  * `HOLD` on the way in and `RESUME` on the way out, the same accepted pause as
  * a Held Party. `overview` is its own toggle and is not part of this ladder.
+ *
+ * The Village has its own first rung (#130): the Village closeup, a click on empty ground or
+ * `C`. It is only a view: it holds no time, hides no menu and closes no popover (a building is
+ * picked in it), and Escape or a second click steps back to the far view. It and the Tower's
+ * rungs are exclusive: the Village is not on screen during an Expedition.
  */
 @Injectable({ providedIn: 'root' })
 export class ZoomService {
@@ -33,6 +38,10 @@ export class ZoomService {
   /** The Shot the camera is heading for. */
   readonly level = this._level.asReadonly();
   readonly closeup = computed(() => this._level() === 'closeup');
+
+  private readonly _village = signal(false);
+  /** The Village is framed in its closeup (#130). Never with a Tower rung, and it holds no time. */
+  readonly villageCloseup = this._village.asReadonly();
 
   private readonly _focus = signal<UnitFocus | null>(null);
   /** The figure the unit view is on; null at the other rungs. */
@@ -52,6 +61,12 @@ export class ZoomService {
   readonly holding = this._holding.asReadonly();
 
   constructor() {
+    // The Village gives way to the Tower when an Expedition sets out: its closeup is gone with it.
+    effect(() => {
+      if (this.stateService.state().expeditionActive) {
+        untracked(() => this._village.set(false));
+      }
+    });
     // The server has confirmed the Party moves again (or the Expedition is over): the hold is gone.
     effect(() => {
       const held = this.stateService.session()?.held === true;
@@ -90,9 +105,11 @@ export class ZoomService {
     }
   }
 
-  /** A click on empty space, or the HUD button: into the closeup, or one rung back. */
+  /** A click on empty space, or the top bar's button: into the closeup, or one rung back. */
   toggleCloseup(): void {
-    if (this._level() === 'battle') {
+    if (!this.stateService.state().expeditionActive) {
+      this.toggleVillageCloseup();
+    } else if (this._level() === 'battle') {
       this.enter();
     } else {
       this.back();
@@ -117,9 +134,19 @@ export class ZoomService {
     this._level.set('unit');
   }
 
+  /** The Village closeup, in or out. Not while the Tower is the scene. */
+  toggleVillageCloseup(): void {
+    if (this._level() !== 'battle' || this.stateService.state().expeditionActive) {
+      return;
+    }
+    this._village.update((on) => !on);
+  }
+
   /** Escape, or a click on empty space: one rung back toward the normal view. */
   back(): void {
-    if (this._level() === 'unit') {
+    if (this._village()) {
+      this._village.set(false);
+    } else if (this._level() === 'unit') {
       this._focus.set(null);
       this._anchor.set(null);
       this._level.set('closeup');
@@ -149,6 +176,7 @@ export class ZoomService {
 
   /** Back to battle, `RESUME` if this service held. Safe to call anywhere. */
   release(): void {
+    this._village.set(false);
     if (this._level() === 'battle') {
       return;
     }

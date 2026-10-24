@@ -205,6 +205,11 @@ export class PopoverService {
     return false;
   }
 
+  /** Whether this click, with the press that began it, is a click (not a drag or a hold). */
+  wasClick(click: { clientX: number; clientY: number; timeStamp: number }): boolean {
+    return isClick(this.press, click);
+  }
+
   /** A click on empty space (the sky, the dark): the popover closes. */
   emptyClick(click: { clientX: number; clientY: number; timeStamp: number }): void {
     if (isClick(this.press, click)) {

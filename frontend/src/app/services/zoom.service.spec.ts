@@ -234,4 +234,40 @@ describe('ZoomService', () => {
     expect(menus.showing()).toBeTrue();
     expect(sendAction).toHaveBeenCalledTimes(1);
   });
+
+  describe('the Village closeup (#130)', () => {
+    beforeEach(() => {
+      state.update({ expeditionActive: false });
+      TestBed.flushEffects();
+    });
+
+    it('toggles on a click, holds no time and hides no menu', () => {
+      zoom.toggleCloseup();
+      expect(zoom.villageCloseup()).toBeTrue();
+      expect(zoom.level()).toBe('battle');
+      expect(sendAction).not.toHaveBeenCalled();
+      expect(menus.showing()).toBeTrue();
+      zoom.toggleCloseup();
+      expect(zoom.villageCloseup()).toBeFalse();
+      expect(sendAction).not.toHaveBeenCalled();
+    });
+
+    it('is one step back with Escape', () => {
+      zoom.toggleVillageCloseup();
+      zoom.back();
+      expect(zoom.villageCloseup()).toBeFalse();
+    });
+
+    it('is gone when an Expedition sets out, and the Tower ladder is as before', () => {
+      zoom.toggleVillageCloseup();
+      state.update({ expeditionActive: true });
+      TestBed.flushEffects();
+      expect(zoom.villageCloseup()).toBeFalse();
+      zoom.toggleVillageCloseup();
+      expect(zoom.villageCloseup()).toBeFalse();
+      zoom.toggleCloseup();
+      expect(zoom.level()).toBe('closeup');
+      expect(sendAction).toHaveBeenCalledOnceWith(GameAction.HOLD, null);
+    });
+  });
 });

@@ -16,6 +16,7 @@ import { VillageSelectionService } from '../../services/village-selection.servic
 import { captionFor, captionText } from '../../three/village/village-captions';
 import { GameStateService } from '../../services/game-state.service';
 import { StageService } from '../../services/stage.service';
+import { ZoomService } from '../../services/zoom.service';
 import { woundedTotal } from '../../three/village/fort-building';
 import { pillarInput } from '../../three/village/reference-pillar-building';
 import { VillageInput } from '../../three/village/village-layout';
@@ -71,6 +72,7 @@ export class VillageScene {
   private readonly selection = inject(VillageSelectionService);
   private readonly launch = inject(LaunchService);
   private readonly popover = inject(PopoverService);
+  private readonly zoom = inject(ZoomService);
   private readonly tick = signal(0);
   /** Dev tooling: draws this state instead of the game's (see `/village-fixture`). */
   readonly fixture = input<VillageInput | null>(null);
@@ -88,7 +90,8 @@ export class VillageScene {
   /** Where the Village is framed: the caption sits inside it, clear of the menus. */
   protected readonly region = computed(() => {
     const { width } = this.stage.viewport();
-    return towerRegion(width, this.stage.narrow());
+    // The closeup takes the whole screen, and the caption goes with it.
+    return towerRegion(width, this.stage.narrow(), this.zoom.villageCloseup() ? 1 : 0);
   });
 
   /** The caption of what is hovered, or else what is selected. */

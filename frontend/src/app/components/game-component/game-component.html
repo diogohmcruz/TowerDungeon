@@ -10,7 +10,19 @@
 >
   {{ menus.showing() ? 'Hide menus' : 'Show menus' }}
 </button>
-@if (gameState().expeditionActive) {
+@if (!gameState().expeditionActive) {
+<button
+  type="button"
+  class="menus-toggle closeup-toggle"
+  (click)="zoom.toggleCloseup()"
+  [attr.aria-pressed]="zoom.villageCloseup()"
+  aria-keyshortcuts="C"
+  aria-label="Closeup of the Village, to choose a building. A view only: time runs on. Escape steps back."
+  title="Closeup of the Village (C; Escape steps back)"
+>
+  {{ zoom.villageCloseup() ? 'Leave closeup' : 'Village closeup' }}
+</button>
+} @else {
 <button
   type="button"
   class="menus-toggle closeup-toggle"

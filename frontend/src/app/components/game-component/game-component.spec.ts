@@ -258,11 +258,25 @@ describe('GameComponent', () => {
         held: value,
       });
 
-      it('offers the HUD button only while an Expedition is out', () => {
-        expect(button()).toBeNull();
+      it('offers the button in both scenes: the Village closeup, and during an Expedition the Floor closeup', () => {
+        expect(button()?.textContent).toContain('Village closeup');
         stateService.update({ expeditionActive: true });
         fixture.detectChanges();
-        expect(button()?.textContent).toContain('Closeup');
+        expect(button()?.textContent?.trim()).toBe('Closeup');
+      });
+
+      it('takes the Village closeup with the button and C, holds no time, and Escape steps back', () => {
+        button()!.click();
+        fixture.detectChanges();
+        expect(TestBed.inject(ZoomService).villageCloseup()).toBeTrue();
+        expect(button()?.getAttribute('aria-pressed')).toBe('true');
+        expect(sendAction).not.toHaveBeenCalled();
+        press('Escape');
+        expect(TestBed.inject(ZoomService).villageCloseup()).toBeFalse();
+        press('c');
+        expect(TestBed.inject(ZoomService).villageCloseup()).toBeTrue();
+        press('c');
+        expect(TestBed.inject(ZoomService).villageCloseup()).toBeFalse();
       });
 
       it('holds time and hides the menus, and Escape steps back and restores them', () => {

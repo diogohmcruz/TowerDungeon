@@ -14,6 +14,9 @@ import { PopoverService } from '../../services/popover.service';
 import { GameStateService } from '../../services/game-state.service';
 import { BuildingPopover } from '../building-popover/building-popover';
 import { ListView } from '../list-view/list-view';
+import { ListViewService } from '../../services/list-view.service';
+import { ZoomService } from '../../services/zoom.service';
+import { closeupKey } from '../game-component/closeup-key';
 import { VillageScene } from './village-scene.component';
 
 /**
@@ -180,6 +183,7 @@ function fixtureSuccession(): SessionMeta {
 @Component({
   selector: 'app-village-fixture',
   imports: [VillageScene, BuildingPopover, ListView],
+  host: { '(document:keydown)': 'onKey($event)' },
   template: `
     <app-village-scene [fixture]="state" />
     <app-building-popover />
@@ -195,7 +199,20 @@ function fixtureSuccession(): SessionMeta {
   `,
 })
 export class VillageFixturePage {
+  private readonly zoom = inject(ZoomService);
+  private readonly popoverService = inject(PopoverService);
+  private readonly listView = inject(ListViewService);
+
+  /** The game page's keys for the zoom ladder: C and Escape (#130). */
+  protected onKey(event: KeyboardEvent): void {
+    closeupKey(event, this.zoom, this.popoverService, this.listView);
+  }
+
   constructor() {
+    // `?closeup=1` starts in the Village closeup.
+    if (new URLSearchParams(location.search).has('closeup')) {
+      setTimeout(() => this.zoom.toggleVillageCloseup(), 1000);
+    }
     // The popover and the list read the game's state, which the fixture has no backend to fill.
     const food = Number(new URLSearchParams(location.search).get('food') ?? 400);
     const game = inject(GameStateService);
