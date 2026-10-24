@@ -42,15 +42,20 @@ describe('building registry', () => {
     load({ village: { ...state.village, food: 400.25 }, netFoodPerSecond: 1.2 });
     const [view] = buildingViews(BUILDINGS, state);
     expect(view.title).toBe('The Pantry silo');
-    expect(view.gauges.length).toBe(1);
+    expect(view.gauges.map((g) => g.id)).toEqual(['food', 'upkeep', 'pantry-hold', 'villagers']);
     expect(view.gauges[0]).toEqual(
       jasmine.objectContaining({ label: 'Food', figure: '400.25', rate: '+1.20/s' }),
     );
     expect(view.gauges[0].fill).toBeGreaterThan(0.8);
     expect(view.gauges[0].leaves).toContain('0.25');
-    expect(view.actions).toEqual([
-      { id: 'sell-food', label: 'Sell Food', usable: true, reason: null },
-    ]);
+    expect(view.actions.map((a) => a.id)).toEqual(['sell-food', 'buy-villager']);
+    expect(view.actions[0]).toEqual({
+      id: 'sell-food',
+      label: 'Sell Food',
+      usable: true,
+      reason: null,
+      preview: null,
+    });
   });
 
   it('says in words why Selling Food cannot be used', () => {
@@ -114,12 +119,12 @@ describe('building registry', () => {
       expect(caption).toEqual(
         jasmine.objectContaining({
           name: 'The Pantry silo',
-          status: 'Food 400.25.',
+          status: jasmine.stringContaining('Food 400.25'),
           rates: 'Food +1.20/s',
         }),
       );
       const text = captionText(caption!);
-      expect(text).toContain('Food 400.25.');
+      expect(text).toContain('Food 400.25');
       expect(text).toContain('Food +1.20/s.');
       expect(text).toContain('leaves 0.25 in the Pantry');
     });

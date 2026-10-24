@@ -66,106 +66,6 @@
     } @else { Pantry holds {{ this.pantryHoldSeconds() }} s at current rates. }
   </p>
 
-  <div class="trades">
-    <div
-      class="trade-row"
-      [class.linked]="this.selection.isHovered('TILLER')"
-      [class.chosen]="this.selection.isSelected('TILLER')"
-      [attr.aria-current]="this.selection.isSelected('TILLER') ? 'true' : null"
-      role="group"
-      [attr.aria-label]="'Fields'"
-      tabindex="0"
-      [attr.data-row]="'annex:' + 'TILLER'"
-      (mouseenter)="this.hoverRow('annex', 'TILLER')"
-      (mouseleave)="this.hoverRow(null)"
-      (focusin)="this.hoverRow('annex', 'TILLER')"
-      (focusout)="this.hoverRow(null)"
-      (click)="this.pickRow('annex', 'TILLER', $event)"
-      (keydown)="this.onRowKey($event, 'annex', 'TILLER')"
-    >
-      <span class="trade-name">Fields</span>
-      <span class="trade-hands">Tillers {{ this.tillers() }}</span>
-      <span class="trade-note">
-        @if (this.emergencyTilling()) { Held at the Fields until the Pantry
-        passes 60. } @else { Food, no cap on Posts. }
-      </span>
-    </div>
-    @for (view of this.trades(); track view.trade) {
-    <div
-      class="trade-row"
-      [class.linked]="this.selection.isHovered(view.trade)"
-      [class.chosen]="this.selection.isSelected(view.trade)"
-      [attr.aria-current]="this.selection.isSelected(view.trade) ? 'true' : null"
-      role="group"
-      [attr.aria-label]="view.workplace"
-      tabindex="0"
-      [attr.data-row]="'annex:' + view.trade"
-      (mouseenter)="this.hoverRow('annex', view.trade)"
-      (mouseleave)="this.hoverRow(null)"
-      (focusin)="this.hoverRow('annex', view.trade)"
-      (focusout)="this.hoverRow(null)"
-      (click)="this.pickRow('annex', view.trade, $event)"
-      (keydown)="this.onRowKey($event, 'annex', view.trade)"
-    >
-      <span class="trade-name">{{ view.workplace }}</span>
-      <span class="trade-hands"
-        >{{ view.plural }} {{ view.hands }} of {{ view.posts }} Posts</span
-      >
-      <span class="trade-stepper">
-        <button
-          class="btn btn-ghost step"
-          type="button"
-          [attr.aria-label]="'Send one ' + view.plural + ' to the Fields'"
-          [disabled]="!!this.previewFor(view.trade, -1)?.blocked"
-          (click)="this.onClickAssign(view.trade, -1)"
-          (mouseenter)="this.point(view.trade, -1)"
-          (mouseleave)="this.unpoint()"
-          (focus)="this.point(view.trade, -1)"
-          (blur)="this.unpoint()"
-        >
-          -
-        </button>
-        <button
-          class="btn btn-ghost step"
-          type="button"
-          [attr.aria-label]="'Assign one more to ' + view.workplace"
-          [disabled]="!!this.previewFor(view.trade, 1)?.blocked"
-          (click)="this.onClickAssign(view.trade, 1)"
-          (mouseenter)="this.point(view.trade, 1)"
-          (mouseleave)="this.unpoint()"
-          (focus)="this.point(view.trade, 1)"
-          (blur)="this.unpoint()"
-        >
-          +
-        </button>
-      </span>
-      <span class="trade-note">
-        @if (view.settling > 0) { Settling {{ view.settlingSeconds }} s. } @if
-        (view.trade === 'BREAKER') { +{{ this.output(view.trade) | number:
-        '1.0-2' }} Materials/s into the Heap } @else if (view.trade ===
-        'SALTER') { +{{ this.output(view.trade) | number: '1.0-2' }} Salt/s }
-        @else if (view.trade === 'SPOREWARDEN') { +{{ this.output(view.trade) |
-        number: '1.0-2' }} Spores/s } @else { +{{ this.output(view.trade) |
-        number: '1.0-2' }} Knowledge/s }
-      </span>
-    </div>
-    }
-    <p class="trade-yield">
-      Highest Floor {{ this.gameState().highestFloor }}. Quarry and Study yield
-      +{{ this.yieldPercent() }}%.
-    </p>
-    <p
-      class="trade-preview"
-      [class.short]="this.preview()?.fieldsCoverUpkeep === false"
-    >
-      @if (this.preview(); as p) { @if (p.blocked) { {{ p.blocked }} } @else {
-      After this move: Fields +{{ p.fields | number: '1.0-1' }}. Upkeep -{{
-      p.upkeep | number: '1.0-1' }}. @if (p.fieldsCoverUpkeep) { Fields cover
-      Upkeep. } @else { Pantry holds {{ p.pantryHoldSeconds }} s. } } } @else {
-      Point at a stepper to see the margin after the move. }
-    </p>
-  </div>
-
   <div class="stores">
     <p>
       Stockroom: Knowledge {{ this.gameState().village.knowledge | number:
@@ -199,9 +99,6 @@
   </div>
 
   <div class="village-actions">
-    <button class="btn btn-primary" (click)="this.onClickBuyVillager()">
-      Take in Villager
-    </button>
     <button class="btn btn-ghost" (click)="this.onClickSellFood()">
       Sell Food
     </button>

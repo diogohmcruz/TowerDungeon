@@ -107,6 +107,8 @@ export function listKeyIntent(event: KeyboardEvent): 'toggle' | 'close' | null {
                 <span class="reason" [id]="reasonId(b.id, a)">
                   {{ a.reason }}
                 </span>
+              } @else if (a.preview) {
+                <span class="reason">{{ a.preview }}</span>
               }
             }
           </section>

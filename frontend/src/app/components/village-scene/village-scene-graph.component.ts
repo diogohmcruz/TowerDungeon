@@ -218,7 +218,7 @@ export class VillageSceneGraph {
       const open = this.popover.open();
       this.popover.setAnchor(
         open
-          ? subjectRect(cam, this.volumes(), { kind: 'building', id: open.id }, w, h)
+          ? subjectRect(cam, this.volumes(), this.popover.openSubject() ?? { kind: 'building', id: open.id }, w, h)
           : null,
       );
     });

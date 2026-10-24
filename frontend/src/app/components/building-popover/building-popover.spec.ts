@@ -139,7 +139,7 @@ describe('BuildingPopover', () => {
     });
 
     it('follows the building as it moves', () => {
-      stage.setViewport({ width: 1280, height: 720 });
+      stage.setViewport({ width: 1280, height: 1400 });
       popover.openFor(silo);
       popover.setAnchor({ left: 100, top: 200, right: 140, bottom: 400 });
       show();

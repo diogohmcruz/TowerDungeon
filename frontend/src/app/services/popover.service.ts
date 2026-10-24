@@ -46,6 +46,16 @@ export function isClick(
 }
 
 /**
+ * The kinds of subject a building answers to: a registered building, an Annex
+ * (its id is the Trade id) and its Villagers' lane, which is the Annex's too.
+ */
+const BUILDING_KINDS: readonly VillageSubject['kind'][] = [
+  'building',
+  'annex',
+  'villagers',
+];
+
+/**
  * The popover and the list view's one model (architecture doc 5.6). A building
  * is a registered definition (`three/village/buildings.ts`); this service holds
  * which one is open (only one ever is), where it is on screen, and performs a
@@ -83,6 +93,10 @@ export class PopoverService {
     () => this.buildings().find((b) => b.id === this._openId()) ?? null,
   );
 
+  private readonly _openSubject = signal<VillageSubject | null>(null);
+  /** The subject (kind and id) of the open building, for finding it in the scene. */
+  readonly openSubject = this._openSubject.asReadonly();
+
   private readonly _anchor = signal<ScreenRect | null>(null);
   /** Where the open building is on the canvas now, for the popover that follows it. */
   readonly anchor = this._anchor.asReadonly();
@@ -107,7 +121,7 @@ export class PopoverService {
   isBuilding(subject: VillageSubject | null): boolean {
     return (
       !!subject &&
-      subject.kind === 'building' &&
+      BUILDING_KINDS.includes(subject.kind) &&
       this.buildings().some((b) => b.id === subject.id)
     );
   }
@@ -168,14 +182,18 @@ export class PopoverService {
   openFor(subject: VillageSubject): void {
     if (!this.isBuilding(subject)) return;
     this._anchor.set(null);
-    this._openId.set(subject.id);
-    this.selection.selected.set(subject);
+    const shown: VillageSubject =
+      subject.kind === 'villagers' ? { kind: 'annex', id: subject.id } : subject;
+    this._openId.set(shown.id);
+    this._openSubject.set(shown);
+    this.selection.selected.set(shown);
   }
 
   close(): void {
     const id = this._openId();
     if (id === null) return;
     this._openId.set(null);
+    this._openSubject.set(null);
     this._anchor.set(null);
     if (this.selection.selected()?.id === id) {
       this.selection.selected.set(null);

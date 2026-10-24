@@ -9,6 +9,7 @@ import type { GameState } from '../../interfaces/game-state';
 import { defineBuilding, type BuildingDefinition } from './building-registry';
 import { GATE } from './gate-building';
 import { FORT } from './fort-building';
+import { ANNEXES } from './annex-buildings';
 import { siloFill } from './village-layout';
 
 /** What Selling Food leaves in the Pantry: it sells while more than one Food is held. */
@@ -16,7 +17,33 @@ export function foodAfterSale(food: number): number {
   return food > 1 ? food - Math.ceil(food - 1) : food;
 }
 
+function credits(n: number): string {
+  return `${n} Credit${n === 1 ? '' : 's'}`;
+}
+
 export const SILO_ID = 'SILO';
+
+/** What the Vault pays for the next Villager: one Credit more than the Villagers held. */
+export function nextVillagerPrice(state: GameState): number {
+  return state.village.villagersCount + 1;
+}
+
+/** How many Villagers one purchase takes in, and what is left: it buys while the Vault can pay. */
+export function villagerPurchase(state: GameState): {
+  count: number;
+  spent: number;
+  left: number;
+} {
+  let n = state.village.villagersCount;
+  let credit = state.credit;
+  let count = 0;
+  while (n < credit) {
+    n++;
+    credit -= n;
+    count++;
+  }
+  return { count, spent: state.credit - credit, left: credit };
+}
 
 /**
  * The Pantry silo, the demonstration building: Tier I shows one gauge on it,
@@ -37,6 +64,29 @@ export const SILO = defineBuilding({
           ? `Selling Food sells every whole Food and leaves ${foodAfterSale(s.village.food).toFixed(2)} in the Pantry.`
           : null,
     },
+    {
+      id: 'upkeep',
+      label: 'Upkeep',
+      value: (s: GameState) => s.foodUpkeep,
+      fill: (s: GameState) =>
+        s.foodUpkeep / Math.max(1, s.village.productionRate),
+    },
+    {
+      id: 'pantry-hold',
+      label: 'The Pantry holds',
+      value: (s: GameState) => s.pantryHoldSeconds ?? Number.POSITIVE_INFINITY,
+      format: (v: number) => (Number.isFinite(v) ? `${Math.round(v)} s` : 'for good'),
+      fill: (s: GameState) =>
+        s.pantryHoldSeconds === null ? 1 : s.pantryHoldSeconds / 300,
+    },
+    {
+      id: 'villagers',
+      label: 'Villagers',
+      value: (s: GameState) => s.village.villagersCount,
+      fill: (s: GameState) => s.credit / Math.max(1, nextVillagerPrice(s)),
+      leaves: (s: GameState) =>
+        `The next Villager costs ${credits(nextVillagerPrice(s))}. The Vault holds ${Math.floor(s.credit)}.`,
+    },
   ],
   actions: [
     {
@@ -51,11 +101,29 @@ export const SILO = defineBuilding({
             },
       run: (commands) => commands.send(GameAction.SELL_FOOD),
     },
+    {
+      id: 'buy-villager',
+      label: 'Take in Villagers',
+      availability: (s: GameState) =>
+        s.village.villagersCount < s.credit
+          ? { usable: true, reason: null }
+          : {
+              usable: false,
+              reason: `The Vault holds ${credits(Math.floor(s.credit))}. The next Villager costs ${nextVillagerPrice(s)}.`,
+            },
+      preview: (s: GameState) => {
+        const p = villagerPurchase(s);
+        return p.count === 0
+          ? null
+          : `Takes in ${p.count} Villager${p.count === 1 ? '' : 's'} for ${Math.round(p.spent)} Credits, the next at ${nextVillagerPrice(s)}, and leaves ${Math.floor(p.left)} in the Vault. Each arrives as a Tiller.`;
+      },
+      run: (commands) => commands.send(GameAction.BUY_VILLAGERS),
+    },
   ],
 });
 
 /** Every registered building, in the order the list view shows them. */
-export const BUILDINGS: readonly BuildingDefinition[] = [SILO, GATE, FORT];
+export const BUILDINGS: readonly BuildingDefinition[] = [SILO, ...ANNEXES, GATE, FORT];
 
 export function buildingDefinition(
   id: string,
