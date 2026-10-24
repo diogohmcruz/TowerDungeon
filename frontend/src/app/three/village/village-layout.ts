@@ -910,6 +910,75 @@ function tower(out: Volume[]): void {
   }
 }
 
+/** The shaft's tiers (#137): each is one brick band under a stretch of fluted columns. */
+export const SHAFT_TIERS = 3;
+/** Columns across the Tower's face; their edges are spaced round a cylinder, so the outer ones narrow. */
+export const SHAFT_COLUMNS = 5;
+/** The shaft's reliefs stand at most this far in front of the Tower's face: the Shortcut marks sit before them. */
+export const SHAFT_RELIEF = 0.025;
+/** The first band stands above the Base door's lintel, so the door's blocks never meet the brickwork. */
+const SHAFT_FOOT = TOWER_FOOT + 0.65;
+const SHAFT_BAND_H = 0.4;
+const SHAFT_BRICKS = 8;
+const SHAFT_HALF_ARC = 80;
+
+/**
+ * Alpha of the shaft's reliefs at a height: the Tower's own dither fade, thinned faster still, so
+ * the colonnade dissolves into the plain Tower before its last tier ends and has no cut-off edge.
+ */
+function towerAlphaAt(y: number): number {
+  const tower = Math.max(0.06, 1 - ((y - TOWER_FOOT) / TOWER_SEGMENT) * 0.075);
+  const rise = (y - SHAFT_FOOT) / (SHAFT_TIERS * TOWER_SEGMENT);
+  return Math.max(0.06, tower * (1 - 0.85 * Math.min(1, Math.max(0, rise))));
+}
+
+/**
+ * The shaft of the Tower (#137), a vast cylinder of fluted columns built from the box kit: flat
+ * reliefs on the Tower's face, so no Shortcut mark is ever buried. Each tier is a band of
+ * brickwork (a lit lip, a row of blocks on dark joints) and, under it, columns whose edges are
+ * spaced round a cylinder: each column is a lit strip, the Tower's own face left as its shade,
+ * and between columns a dark recess topped by an arch of stepped boxes.
+ */
+function shaft(out: Volume[]): void {
+  const layerD = SHAFT_RELIEF / 3;
+  // Layer 0 is the deepest; every layer's front is at most SHAFT_RELIEF before the face.
+  const flat = (id: string, x: number, y: number, w: number, h: number, layer: number, tone: number) =>
+    box(out, id, 'tower', x, y, TOWER_FACE_Z + (layer + 0.5) * layerD, w, h, layerD, tone, towerAlphaAt(y + h / 2));
+  const edge = (j: number) =>
+    2.2 * Math.sin(((-SHAFT_HALF_ARC + (j * 2 * SHAFT_HALF_ARC) / SHAFT_COLUMNS) * Math.PI) / 180);
+  for (let t = 0; t < SHAFT_TIERS; t++) {
+    const y0 = SHAFT_FOOT + t * TOWER_SEGMENT;
+    // The band: dark joints behind, a course of blocks, a lit lip along its top.
+    flat(`shaft-${t}-joint`, 0, y0, 4.4, SHAFT_BAND_H, 0, VILLAGE_TONE.dark);
+    const brick = 4.4 / SHAFT_BRICKS;
+    for (let b = 0; b <= SHAFT_BRICKS; b++) {
+      const bx = -2.2 + (t % 2 === 0 ? 0 : 0.5 * brick) + b * brick;
+      const x0 = Math.max(-2.2, bx + 0.015);
+      const x1 = Math.min(2.2, bx + brick - 0.015);
+      if (x1 - x0 < 0.08) continue;
+      flat(`shaft-${t}-brick-${b}`, (x0 + x1) / 2, y0 + 0.05, x1 - x0, SHAFT_BAND_H - 0.1, 1, 0.58 + 0.1 * ((b + t) % 2));
+    }
+    flat(`shaft-${t}-lip`, 0, y0 + SHAFT_BAND_H - 0.04, 4.4, 0.04, 2, VILLAGE_TONE.lit);
+    // The columns under the band: a lit strip each, the recesses between them reaching to an arch.
+    const bottom = y0 + SHAFT_BAND_H + 0.05;
+    const top = y0 + TOWER_SEGMENT;
+    const archH = 0.2;
+    for (let c = 0; c < SHAFT_COLUMNS; c++) {
+      const a = edge(c);
+      const cell = edge(c + 1) - a;
+      const lit = cell * 0.58;
+      flat(`shaft-${t}-col-${c}`, a + cell * 0.12 + lit / 2, bottom, lit, top - bottom, 1, 0.84);
+    }
+    for (let j = 1; j < SHAFT_COLUMNS; j++) {
+      const w = (edge(j + 1) - edge(j - 1)) * 0.2;
+      const x = edge(j);
+      flat(`shaft-${t}-recess-${j}`, x, bottom, w, top - bottom - archH, 2, VILLAGE_TONE.dark);
+      flat(`shaft-${t}-arch-${j}-0`, x, top - archH, w * 0.8, archH / 2, 2, VILLAGE_TONE.dark);
+      flat(`shaft-${t}-arch-${j}-1`, x, top - archH / 2, w * 0.5, archH / 2, 2, VILLAGE_TONE.dark);
+    }
+  }
+}
+
 /** Height above the ground of the mark for a Floor (relative to the drawn Tower). */
 export function shortcutMarkHeight(floor: number): number {
   const rel = Math.min(1, Math.max(0, floor) / SHORTCUT_FLOOR_SPAN);
@@ -1264,6 +1333,7 @@ export function buildVillage(input: VillageInput): Volume[] {
   ground(out, quarter);
   quarterMarks(out, quarter);
   tower(out);
+  shaft(out);
   fort(out, input.reserves, input.wounded ?? 0);
   silo(out, input.food);
   stair(out, input.villageTierLevel, input.still ? 0 : input.flicker);
