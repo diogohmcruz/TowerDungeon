@@ -27,7 +27,6 @@ import io.github.diogohmcruz.towerdungeon.domain.models.Unit;
 import io.github.diogohmcruz.towerdungeon.domain.models.UnitStats;
 import io.github.diogohmcruz.towerdungeon.domain.models.VillageTier;
 import io.github.diogohmcruz.towerdungeon.domain.models.architecture.ArchitecturePlan;
-import io.github.diogohmcruz.towerdungeon.domain.models.shortcut.ShortcutType;
 import io.github.diogohmcruz.towerdungeon.domain.models.upgrade.UpgradeType;
 import io.github.diogohmcruz.towerdungeon.domain.random.RandomSource;
 import tools.jackson.databind.json.JsonMapper;
@@ -246,10 +245,7 @@ class SnapshotRoundTripTest {
   @Test
   void aShortcutOnceOpenedStaysOpen() throws Exception {
     var original = midCampaign();
-    assertThat(
-            original.isStartFloorUnlocked(
-                config.getShortcuts().floorOf(ShortcutType.VANGUARD_CAMP)))
-        .isTrue();
+    assertThat(original.isStartFloorUnlocked(5)).isTrue();
     var snapshot = original.toSnapshot();
     var stripped =
         new GameSnapshot(
@@ -285,10 +281,7 @@ class SnapshotRoundTripTest {
 
     var restored = GameState.restore(stripped, config, new RandomSource(5), plan);
 
-    assertThat(
-            restored.isStartFloorUnlocked(
-                config.getShortcuts().floorOf(ShortcutType.VANGUARD_CAMP)))
-        .isTrue();
+    assertThat(restored.isStartFloorUnlocked(5)).isTrue();
   }
 
   @Test

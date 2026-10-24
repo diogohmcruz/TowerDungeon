@@ -41,10 +41,6 @@ game:
   # seed-secret: ${GAME_SEED_SECRET}
   start:
     credit: 10.0
-  # The Floor each Shortcut starts the Party on: the start Floor of the pacing table's plan for the
-  # Generation that opens it, set near the Highest Floor of the Generation before.
-  shortcuts:
-    floors: {VANGUARD_CAMP: 6, SUPPLY_LIFT: 9, KNIGHTS_WAYSTATION: 12, DEEP_ANCHOR: 16}
   loop:
     lifecycle-ms: 1000
     invasion-tick-ms: 10
@@ -298,9 +294,8 @@ game:
       heavier-packs: {capacity: 25.0}
       village-charter: {tier: 2}
       heir: {health-multiplier: 1.5}
-      # Floor 27 is the pacing table's start Floor for Generation 7, which buys it; the Party limit is
-      # a placeholder (two thirds of that Generation's plan) until the harness measures it.
-      narrow-stair: {floor: 27, max-party: 24}
+      # Placeholders: survivable on paper, to be replaced by the measured figures.
+      narrow-stair: {floor: 21, max-party: 12}
       overreach: {supply-drain-multiplier: 1.3, starvation-damage-multiplier: 2.0, loot-multiplier: 1.5}
       quartermasters-tally: {slots: 3}
       # Relics still in the Vault at the end of a Campaign: 300 is +1 Legacy, at most +3 a

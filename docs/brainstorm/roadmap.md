@@ -156,6 +156,6 @@ The scaling pass of 3.11 was stuck: the scripted bots never climb past Floor 5, 
 | How to size the upper Tower | A floor duel harness with reference plans per Generation, not smarter bots and not hand-tuning |
 | First Guardian | Stays at Floor 10, so Generation 1 meets none; the Tower stays unknown |
 | Easing | 25% of the garrison per Guardian and one tier lower, never below half the base garrison, capped at 60%; forgotten each Generation |
-| Shortcut Floors | Follow the Highest Floor of the previous Generation |
+| Shortcut Floors | Unchanged by the pacing target |
 | Done | A test: about 70% on normal Floors and 50% on Guardian Floors for each Generation's reference plan, up to that Generation's Floor |
 

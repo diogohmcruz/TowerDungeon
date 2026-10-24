@@ -362,10 +362,7 @@ class TrialTest {
     var id = enter(ALICE);
     var state = service.playerState(id);
     state.getOpenedShortcuts().add(ShortcutType.SUPPLY_LIFT);
-    service.execute(
-        id,
-        new Command.StartExpedition(
-            Map.of(), config.getShortcuts().floorOf(ShortcutType.SUPPLY_LIFT)));
+    service.execute(id, new Command.StartExpedition(Map.of(), ShortcutType.SUPPLY_LIFT.getFloor()));
     state.getTower().moveToNextFloor();
     state.getTower().moveToNextFloor();
 
