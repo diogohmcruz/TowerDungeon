@@ -41,6 +41,7 @@ import {
   SPECK_CAPACITY,
 } from '../../three/figures/figure-layout';
 import {
+  DECK_LINE_RISE,
   DeckView,
   deckViewOf,
   sameDeckView,
@@ -138,6 +139,8 @@ import { resolveHover, type HoverRegion } from '../../three/hover-resolver';
 import { volumeRegions } from '../../three/village/volume-regions';
 import type { VillageSubject } from '../../three/village/village-subjects';
 import {
+  CRATE_CEILING_RISE,
+  CRATE_Z,
   expeditionVolumes,
   finishSubject,
   GROUP_SLACK_PX,
@@ -780,6 +783,8 @@ export class TowerSceneGraph {
     const surface = floorSurfaceY(this.anchorFloor());
     const surfaceY = standFeetY(view, surface, TOWER_LAUNCH_Z);
     const crateSurfaceY = standFeetY(view, surface, FIGURE_Z);
+    // The rods of the shelf end in the Floor's ceiling slab, at the crates' depth (#142).
+    const crateCeilingY = standFeetY(view, surface + CRATE_CEILING_RISE - DECK_LINE_RISE, CRATE_Z);
     const hovered = this.selection.hovered()?.id ?? null;
     const c = this.carried();
     const volumes = [
@@ -792,6 +797,7 @@ export class TowerSceneGraph {
       ...expeditionVolumes({
         surfaceY,
         crateSurfaceY,
+        crateCeilingY,
         supplies: c?.supplies ?? 0,
         maxSupplies: c?.maxSupplies ?? 0,
         credits: c?.credits ?? 0,

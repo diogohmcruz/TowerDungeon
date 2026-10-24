@@ -7,7 +7,7 @@ import {
   FIGURE_Z,
   planFigures,
 } from '../figures/figure-layout';
-import { deckViewOf, standCentreY, standFeetY } from '../figures/figure-anchor';
+import { DECK_LINE_RISE, deckViewOf, standCentreY, standFeetY } from '../figures/figure-anchor';
 import { figureRect, hitRect, PICK_MARGIN, ScreenRect } from '../figures/figure-pick';
 import { SHOTS, ShotName } from '../camera-shots';
 import { figureBoost } from '../ink/pixel-scale';
@@ -15,7 +15,7 @@ import { applyStageView, towerRegion } from '../stage-view';
 import { rimVolumes } from '../launch/object-rim';
 import { TOWER_LAUNCH_Z } from '../launch/launch-objects';
 import type { Volume } from '../village/village-layout';
-import { CRATE_ID, expeditionVolumes } from './expedition-objects';
+import { CRATE_CEILING_RISE, CRATE_ID, CRATE_Z, expeditionVolumes } from './expedition-objects';
 
 /** The battle view, the closeup and the unit view, as the scene frames them (#127). */
 
@@ -137,6 +137,7 @@ describe('The crates stand behind the figures (#127)', () => {
               const volumes = expeditionVolumes({
                 surfaceY: standFeetY(view, SURFACE, TOWER_LAUNCH_Z),
                 crateSurfaceY: standFeetY(view, SURFACE, FIGURE_Z),
+                crateCeilingY: standFeetY(view, SURFACE + CRATE_CEILING_RISE - DECK_LINE_RISE, CRATE_Z),
                 supplies: 100,
                 maxSupplies: 200,
                 credits: 5000,

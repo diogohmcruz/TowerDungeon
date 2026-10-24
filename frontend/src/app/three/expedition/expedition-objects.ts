@@ -19,6 +19,7 @@ import type { Volume } from '../village/village-layout';
 import { outlineVolumes } from '../village/village-subjects';
 import type { VillageSubject } from '../village/village-subjects';
 import { TOWER_RECALL_X } from '../launch/launch-objects';
+import { STRIP_H } from '../floor-strip/floor-strip-plan';
 import type { ScreenRect } from '../figures/figure-pick';
 
 export const SUPPLIES_SUBJECT = 'SUPPLIES';
@@ -44,12 +45,23 @@ export const CRATE_Z = 0.35;
  * and a margin) reaches them, and the tallest pile (0.17) still stops under the Floor's ceiling.
  */
 export const CRATE_RISE = 0.66;
+/**
+ * How far above a Floor's deck surface the underside of the ceiling slab drawn at the top of its room
+ * is (the room is `STRIP_H` high, its top edge a slab about 0.08 thick): the rods of the shelf end
+ * here, a hair into the slab.
+ */
+export const CRATE_CEILING_RISE = STRIP_H - 0.1;
 /** Gap between the three treasures along x: each has room for its widest pile and a margin. */
 const CRATE_STEP = 0.36;
 /** Width of a treasure's shelf and the most its pile ever spans. */
-const SHELF_W = 0.34;
+const SHELF_W = CRATE_STEP;
 const SHELF_H = 0.03;
 const SHELF_D = 0.1;
+/** The hanging rods of the shelf: bone links, thin and shallow (no rim: they are line work). */
+/** How far above the shelf the rods reach when the caller gives no ceiling. */
+const DEFAULT_REACH = 0.6;
+const ROD_W = 0.02;
+const ROD_D = 0.04;
 /**
  * The ink densities of the treasures, all from the Village's own tokens. The shader turns a density
  * into one of four ramp slots, dithering the levels in between, so a tone that lands between two
@@ -67,6 +79,7 @@ const TONE = {
   block: VILLAGE_TONE.salt,
   cap: VILLAGE_TONE.lit,
   shelf: VILLAGE_TONE.timber,
+  rod: VILLAGE_TONE.salt,
   casket: VILLAGE_TONE.timber,
   lid: VILLAGE_TONE.salt,
   slit: VILLAGE_TONE.lit,
@@ -110,6 +123,8 @@ export interface ExpeditionObjectsInput {
    * measured against (`CRATE_RISE`). Default `surfaceY`.
    */
   crateSurfaceY?: number;
+  /** World Y of the Floor's ceiling at the crates' depth, where the shelf's rods end. Default a short reach above the shelf. */
+  crateCeilingY?: number;
   supplies: number;
   maxSupplies: number;
   credits: number;
@@ -240,6 +255,21 @@ function reliquaries(out: Volume[], id: string, x: number, bottom: number, tier:
 }
 
 /**
+ * What holds the shelf up (#142): it is one plank across the three places, slung from the Floor's
+ * ceiling by a hanging rod at each place's ends (the middle two are shared). The rods run up from
+ * the plank to `ceilingY`, where they meet the ceiling's slab, clear of every pile and of the figures
+ * far below. Ids are `<id>-support-*`.
+ */
+function hangers(out: Volume[], id: string, index: number, x: number, shelfTop: number, ceilingY: number): void {
+  const sides = index === CRATE_KINDS.length - 1 ? [-1, 1] : [-1];
+  for (const side of sides) {
+    const h = ceilingY - shelfTop;
+    if (!(h > 0)) continue;
+    box(out, `${id}-support-${side < 0 ? 'l' : 'r'}`, x + side * (SHELF_W / 2), shelfTop, CRATE_Z, ROD_W, h, ROD_D, TONE.rod);
+  }
+}
+
+/**
  * One treasure place: a shelf always (so an empty place is still a place), and on it, by kind,
  * a pile of coins (Credits), a heap of blocks (Materials) or reliquaries (Relics), growing
  * through three tiers with the load. Ids begin `carried-<kind>-`.
@@ -247,15 +277,17 @@ function reliquaries(out: Volume[], id: string, x: number, bottom: number, tier:
 export function crateStack(
   out: Volume[],
   kind: CrateKind,
-  _index: number,
+  index: number,
   x: number,
   surfaceY: number,
   amount: number,
+  ceilingY = surfaceY + CRATE_RISE + DEFAULT_REACH,
 ): void {
   const id = `${CRATE_ID}${kind.toLowerCase()}`;
   surfaceY += CRATE_RISE;
   const tier = crateCount(kind, amount);
   box(out, `${id}-base`, x, surfaceY, CRATE_Z, SHELF_W, SHELF_H, SHELF_D, TONE.shelf);
+  hangers(out, id, index, x, surfaceY + SHELF_H, ceilingY);
   const top = surfaceY + SHELF_H;
   if (kind === 'CREDITS') coinPile(out, id, x, top, tier);
   else if (kind === 'MATERIALS') blockHeap(out, id, x, top, tier);
@@ -273,7 +305,7 @@ export function expeditionVolumes(input: ExpeditionObjectsInput): Volume[] {
     RELICS: input.relics,
   };
   CRATE_KINDS.forEach((kind, i) =>
-    crateStack(out, kind, i, crateX(input.partyX, i), input.crateSurfaceY ?? input.surfaceY, amounts[kind]),
+    crateStack(out, kind, i, crateX(input.partyX, i), input.crateSurfaceY ?? input.surfaceY, amounts[kind], input.crateCeilingY),
   );
   const marks: Volume[] = [];
   for (const id of [SUPPLIES_SUBJECT, ...CRATE_KINDS]) {
