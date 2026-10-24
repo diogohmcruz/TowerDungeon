@@ -152,10 +152,10 @@ class CourseThreeTest {
   // ---- Narrow Stair
 
   @Test
-  void withoutNarrowStairItsFloorIsLocked() {
+  void withoutNarrowStairFloorTwentyOneIsLocked() {
     var next = playing();
 
-    var result = service.execute(PLAYER, setOut(Map.of(UnitStats.WARRIOR, 2), 27, false));
+    var result = service.execute(PLAYER, setOut(Map.of(UnitStats.WARRIOR, 2), 21, false));
 
     assertThat(result.reason()).isEqualTo(Reason.START_FLOOR_LOCKED);
     assertThat(next.isExpeditionActive()).isFalse();
@@ -171,17 +171,17 @@ class CourseThreeTest {
             .filter(shortcut -> shortcut.id().equals("NARROW_STAIR"))
             .findFirst()
             .orElseThrow();
-    assertThat(offer.floor()).isEqualTo(27);
-    assertThat(offer.maxParty()).isEqualTo(24);
+    assertThat(offer.floor()).isEqualTo(21);
+    assertThat(offer.maxParty()).isEqualTo(12);
     assertThat(offer.unlocked()).isTrue();
 
-    var result = service.execute(PLAYER, setOut(Map.of(UnitStats.WARRIOR, 2), 27, false));
+    var result = service.execute(PLAYER, setOut(Map.of(UnitStats.WARRIOR, 2), 21, false));
 
     assertThat(result.outcome()).isEqualTo(Outcome.APPLIED);
     assertThat(next.isExpeditionActive()).isTrue();
-    assertThat(next.getTower().getCurrentFloor()).isEqualTo(27);
-    assertThat(next.getRunStartFloor()).isEqualTo(27);
-    assertThat(next.getInheritedStartFloor()).isEqualTo(27);
+    assertThat(next.getTower().getCurrentFloor()).isEqualTo(21);
+    assertThat(next.getRunStartFloor()).isEqualTo(21);
+    assertThat(next.getInheritedStartFloor()).isEqualTo(21);
   }
 
   @Test
@@ -190,7 +190,7 @@ class CourseThreeTest {
     config.getPrestige().getRoll().getNarrowStair().setMaxParty(3);
     var next = playing(InheritanceType.NARROW_STAIR);
 
-    assertThat(service.execute(PLAYER, setOut(Map.of(UnitStats.WARRIOR, 2), 27, false)).reason())
+    assertThat(service.execute(PLAYER, setOut(Map.of(UnitStats.WARRIOR, 2), 21, false)).reason())
         .isEqualTo(Reason.START_FLOOR_LOCKED);
     assertThat(service.execute(PLAYER, setOut(Map.of(UnitStats.WARRIOR, 2), 25, false)).outcome())
         .isEqualTo(Outcome.APPLIED);
@@ -204,7 +204,7 @@ class CourseThreeTest {
     var reserves = next.getUnits().values().stream().mapToInt(List::size).sum();
     assertThat(reserves).isGreaterThan(3);
 
-    var everyone = service.execute(PLAYER, setOut(Map.of(), 27, false));
+    var everyone = service.execute(PLAYER, setOut(Map.of(), 21, false));
 
     assertThat(everyone.outcome()).isEqualTo(Outcome.REJECTED);
     assertThat(everyone.reason()).isEqualTo(Reason.PARTY_TOO_LARGE);
@@ -213,7 +213,7 @@ class CourseThreeTest {
     assertThat(next.getUnits().values().stream().mapToInt(List::size).sum()).isEqualTo(reserves);
     assertThat(next.getUnitsOnTower().values().stream().mapToInt(List::size).sum()).isZero();
 
-    var asked = service.execute(PLAYER, setOut(Map.of(UnitStats.WARRIOR, 4), 27, false));
+    var asked = service.execute(PLAYER, setOut(Map.of(UnitStats.WARRIOR, 4), 21, false));
     assertThat(asked.reason()).isEqualTo(Reason.PARTY_TOO_LARGE);
   }
 
@@ -230,14 +230,14 @@ class CourseThreeTest {
   @Test
   void startingFromNarrowStairLowersWhatTheTollPaysForAscent() {
     var next = playing(InheritanceType.NARROW_STAIR);
-    service.execute(PLAYER, setOut(Map.of(UnitStats.WARRIOR, 2), 27, false));
+    service.execute(PLAYER, setOut(Map.of(UnitStats.WARRIOR, 2), 21, false));
     next.recordFloorReached(30);
     var slot = service.slotOf(PLAYER);
 
     var stair = next.getInheritedStartFloor();
     var ascent = config.getPrestige().getAscentMarksPerFloor();
 
-    assertThat(stair).isEqualTo(27);
+    assertThat(stair).isEqualTo(21);
     assertThat(next.tollTally(0).highestFloor()).isEqualTo(30);
     assertThat(
             io.github.diogohmcruz.towerdungeon.domain.prestige.TollCalculator.calculate(
@@ -246,18 +246,18 @@ class CourseThreeTest {
                         0, 0, 0, 0, stair),
                     config.getPrestige())
                 .ascentMarks())
-        .isEqualTo(ascent * (30 - stair));
+        .isEqualTo(ascent * 9);
     assertThat(slot.meta()).isNotNull();
   }
 
   @Test
   void theBaselineSurvivesASaveAndALoad() {
     var next = playing(InheritanceType.NARROW_STAIR);
-    service.execute(PLAYER, setOut(Map.of(UnitStats.WARRIOR, 2), 27, false));
+    service.execute(PLAYER, setOut(Map.of(UnitStats.WARRIOR, 2), 21, false));
 
     var restored = GameState.restore(next.toSnapshot(), config.copy(), new RandomSource(1), plan());
 
-    assertThat(restored.getInheritedStartFloor()).isEqualTo(27);
+    assertThat(restored.getInheritedStartFloor()).isEqualTo(21);
   }
 
   // ---- Overreach

@@ -2167,7 +2167,7 @@ public class GameState {
               shortcut.getDisplayName(),
               shortcut.getDescription(),
               shortcut.getTriggerLabel(),
-              config.getShortcuts().floorOf(shortcut),
+              shortcut.getFloor(),
               isShortcutOpen(shortcut)));
     }
     if (narrowStair != null) {
@@ -2175,8 +2175,8 @@ public class GameState {
           new ShortcutOffer(
               NARROW_STAIR_ID,
               "Narrow Stair",
-              "A spiral stair too narrow for an army: a small Party can climb it straight past the"
-                  + " twentieth guardian.",
+              "A spiral stair too narrow for an army: a small Party can climb it straight to the"
+                  + " floor above the twentieth guardian.",
               "Inherited; a Party of at most " + narrowStair.maxParty(),
               narrowStair.floor(),
               true,
@@ -2193,9 +2193,7 @@ public class GameState {
     return narrowStair != null
         && floor == narrowStair.floor()
         && Arrays.stream(ShortcutType.values())
-            .noneMatch(
-                shortcut ->
-                    config.getShortcuts().floorOf(shortcut) == floor && isShortcutOpen(shortcut));
+            .noneMatch(shortcut -> shortcut.getFloor() == floor && isShortcutOpen(shortcut));
   }
 
   /**
@@ -2235,9 +2233,7 @@ public class GameState {
     return (narrowStair != null && requestedFloor == narrowStair.floor())
         || Arrays.stream(ShortcutType.values())
             .anyMatch(
-                shortcut ->
-                    config.getShortcuts().floorOf(shortcut) == requestedFloor
-                        && isShortcutOpen(shortcut));
+                shortcut -> shortcut.getFloor() == requestedFloor && isShortcutOpen(shortcut));
   }
 
   public Integer buyVillager() {
