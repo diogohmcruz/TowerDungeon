@@ -1,5 +1,9 @@
 import { INK_DITHER } from '../ink/ink.glsl';
-import { PARTY_DAY_SLOTS, PARTY_RIM_PAD } from './figure-tone';
+import {
+  PARTY_DAY_SLOTS,
+  PARTY_EDGE_SLOT_DAY,
+  PARTY_EDGE_SLOT_NIGHT,
+} from './figure-tone';
 
 /**
  * Figure shader: instanced camera-facing quads that sample a ramp-slot texel
@@ -7,11 +11,9 @@ import { PARTY_DAY_SLOTS, PARTY_RIM_PAD } from './figure-tone';
  * dither, so figures are ink like everything else (ADR 0003, no lights).
  * The instance matrix carries the centre and the width and height.
  *   aCell = (atlas column, atlas row, role 0 ramp | 1 Guardian crimson | 2 Party, tone 0..1)
- * A Party quad is `PARTY_RIM_PAD` texels larger on each side (it carries a rim) and
- * stands a hair behind, so the unit-view outline, drawn at the sprite's depth, wins.
+ * A Party figure has a lit edge inside its silhouette (its left side), and no border outside it.
  */
 export const FIGURE_VERTEX = /* glsl */ `
-#define RIM_PAD ${PARTY_RIM_PAD.toFixed(1)}
 attribute vec4 aCell;
 uniform vec2 uCellPx;
 
@@ -24,18 +26,14 @@ void main() {
   vCell = aCell;
   mat4 m = modelMatrix * instanceMatrix;
   vec2 size = vec2(length(m[0].xyz), length(m[1].xyz));
-  bool party = aCell.z > 1.5;
-  if (party) size *= (uCellPx + 2.0 * RIM_PAD) / uCellPx;
   vec4 viewPos = viewMatrix * vec4(m[3].xyz, 1.0);
   viewPos.xy += position.xy * size;
-  if (party) viewPos.z -= 0.01;
   vDepth = -viewPos.z;
   gl_Position = projectionMatrix * viewPos;
 }
 `;
 
 export const FIGURE_FRAGMENT = /* glsl */ `
-#define RIM_PAD ${PARTY_RIM_PAD.toFixed(1)}
 // The slot a Party texel value is drawn as by day (see figure-tone.ts).
 const float PARTY_DAY[4] = float[4](${PARTY_DAY_SLOTS.map((n) => n.toFixed(1)).join(', ')});
 uniform sampler2D uFigures;
@@ -64,25 +62,18 @@ float luma(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
 
 void main() {
   bool party = vCell.z > 1.5;
-  float pad = party ? RIM_PAD : 0.0;
-  vec2 px = min(floor(vec2(vUv.x, 1.0 - vUv.y) * (uCellPx + 2.0 * pad)), uCellPx + 2.0 * pad - 1.0) - pad;
+  vec2 px = min(floor(vec2(vUv.x, 1.0 - vUv.y) * uCellPx), uCellPx - 1.0);
   float v = texelAt(px);
-  if (party && v < 0.5) {
-    // The Party's rim: slot 0 on every empty texel beside the figure, diagonals included.
-    float near = 0.0;
-    for (int dy = -1; dy <= 1; dy++) {
-      for (int dx = -1; dx <= 1; dx++) {
-        near += texelAt(px + vec2(float(dx), float(dy))) > 0.5 ? 1.0 : 0.0;
-      }
-    }
-    if (near < 0.5) discard;
-    gl_FragColor = vec4(uRamp[0], 1.0);
-    #include <colorspace_fragment>
-    return;
-  }
   if (v < 0.5) discard;
-  // By day (ink darker than the ground) the Party's body is drawn in the ink.
-  if (party && v < 3.5 && luma(uRamp[3]) < luma(uRamp[0])) v = PARTY_DAY[int(v)];
+  if (party && v < 3.5) {
+    // By day (ink darker than the ground) the Party's body is drawn in the ink.
+    bool day = luma(uRamp[3]) < luma(uRamp[0]);
+    if (day) v = PARTY_DAY[int(v)];
+    // The lit edge: a texel with nothing to its left is drawn one step off the body.
+    if (texelAt(px + vec2(-1.0, 0.0)) < 0.5) {
+      v = day ? ${PARTY_EDGE_SLOT_DAY.toFixed(1)} : ${PARTY_EDGE_SLOT_NIGHT.toFixed(1)};
+    }
+  }
 
   float threshold = mix(0.5, bayer4(gl_FragCoord.xy / uCell), uAmount);
   // Value 4 is the plate: the clear colour, so a numeral sits on a patch of void.
