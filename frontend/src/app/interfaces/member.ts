@@ -61,4 +61,11 @@ export interface Member {
   maxMana?: number;
   currentMana?: number;
   boss?: boolean;
+  /** How well the unit lands hits and avoids them now, in percentage points (Party units only). */
+  accuracy?: number;
+  evasion?: number;
+  /** The item category the unit has a gift for, if any (Party units only). */
+  affinity?: string | null;
+  /** An enemy the Party's Salt Pack has salted. */
+  salted?: boolean;
 }

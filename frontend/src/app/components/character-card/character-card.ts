@@ -8,6 +8,7 @@ import {
   SlotName,
 } from '../../interfaces/member';
 import { Card } from '../card/card';
+import { effectText } from './item-effects';
 
 interface Region {
   kind: BodyPartKind;
@@ -36,6 +37,17 @@ const REGIONS: Region[] = [
   { kind: 'RIGHT_LEG', label: 'Right leg', x: 20, y: 52, w: 9, h: 44 },
   { kind: 'LEFT_LEG', label: 'Left leg', x: 31, y: 52, w: 9, h: 44 },
 ];
+
+/** A part's state in words: whole, wounded, lost, or absent (this body never had it). */
+export function partState(part?: BodyPart): 'whole' | 'wounded' | 'lost' | 'absent' {
+  if (!part) {
+    return 'absent';
+  }
+  if (part.lost) {
+    return 'lost';
+  }
+  return part.currentHealth < part.maxHealth - 1e-9 ? 'wounded' : 'whole';
+}
 
 const SLOTS: Omit<SlotView, 'item'>[] = [
   { name: 'HEAD', label: 'Head', column: '3 / span 2', row: 1 },
@@ -79,7 +91,13 @@ export class CharacterCard {
       ),
     ),
   );
+  /**
+   * The unit view's form: open for good, with every figure the frame carries spelled out in words
+   * (parts and items by name, state and effect), instead of the army list's collapsed summary.
+   */
+  detailed = input(false);
   expanded = signal(false);
+  open = computed(() => this.detailed() || this.expanded());
   /** The region or slot under the pointer or focus, spelled out for the readout. */
   detail = signal('');
 
@@ -128,7 +146,61 @@ export class CharacterCard {
     return SLOTS.map((slot) => ({ ...slot, item: worn[slot.name] }));
   });
 
+  /** Every part with its health and a state in words, never by colour alone. */
+  partRows = computed(() => {
+    const parts = this.member().parts ?? [];
+    return REGIONS.map((region) => {
+      const part = parts.find((p) => p.kind === region.kind);
+      return {
+        kind: region.kind,
+        label: region.label,
+        state: partState(part),
+        health: part && !part.lost
+          ? `${this.round(part.currentHealth)} / ${this.round(part.maxHealth)}`
+          : '',
+      };
+    }).filter((row) => row.state !== 'absent');
+  });
+
+  /** Whether a limb is gone for good: the unit lives on weaker (Maimed). */
+  maimed = computed(() =>
+    (this.member().parts ?? []).some(
+      (part) => part.lost && part.kind !== 'HEAD' && part.kind !== 'TORSO',
+    ),
+  );
+
+  /** Every slot with what it holds; an item on a lost part is gone, and the row says so. */
+  itemRows = computed(() => {
+    const parts = this.member().parts ?? [];
+    return this.slots().map((slot) => {
+      const partLost = parts.some((p) => p.kind === slot.name && p.lost);
+      return {
+        name: slot.name,
+        label: slot.label,
+        item: slot.item,
+        partLost,
+        stats: slot.item ? this.statsText(slot.item) : '',
+        effect: slot.item ? effectText(slot.item.effectId) : '',
+      };
+    });
+  });
+
+  typeName = computed(() => {
+    const type = this.member().stats.type ?? '';
+    return type.charAt(0) + type.slice(1).toLowerCase().replace(/_/g, ' ');
+  });
+
+  affinityText = computed(() => {
+    const affinity = this.member().affinity;
+    return affinity
+      ? affinity.charAt(0) + affinity.slice(1).toLowerCase().replace(/_/g, ' ')
+      : 'none';
+  });
+
   toggle(): void {
+    if (this.detailed()) {
+      return;
+    }
     this.expanded.update((open) => !open);
     this.choose.emit(this.member().id);
   }

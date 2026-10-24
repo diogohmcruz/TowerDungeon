@@ -54,9 +54,9 @@ export function focusedMember(
         [attr.aria-label]="v.member.name"
       >
         @if (v.kind === 'unit') {
-          <app-character-card [member]="v.member" />
+          <app-character-card [member]="v.member" [detailed]="true" />
         } @else {
-          <app-enemy-card [enemy]="v.member" />
+          <app-enemy-card [enemy]="v.member" [detailed]="true" />
         }
       </aside>
     }
@@ -65,7 +65,10 @@ export function focusedMember(
     .unit-focus {
       position: absolute;
       z-index: 2;
+      overflow-x: hidden;
       overflow-y: auto;
+      padding: 8px;
+      box-sizing: border-box;
       /* The same hard-edged panel as the rest: ink on ink, no rounding. */
       border: 1px solid var(--bone);
       background: var(--panel);

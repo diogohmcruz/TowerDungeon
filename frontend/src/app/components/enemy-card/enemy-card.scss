@@ -72,3 +72,47 @@ app-card.boss {
     border-color: var(--ember);
   }
 }
+
+.salted-tag {
+  color: var(--bone);
+  border-color: var(--bone);
+}
+
+.part-list {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+}
+
+.part-row {
+  display: grid;
+  grid-template-columns: 5.5em 1fr auto;
+  gap: 6px;
+
+  .row-name {
+    color: var(--muted);
+  }
+
+  .row-health {
+    font-family: var(--font-pixel);
+    color: var(--bone);
+  }
+
+  &[data-state='wounded'] .row-state {
+    border-bottom: 1px dotted var(--bone);
+  }
+
+  &[data-state='lost'],
+  &[data-state='none'] {
+    color: var(--muted);
+  }
+
+  &[data-state='lost'] .row-state {
+    text-decoration: line-through;
+    text-decoration-style: double;
+  }
+}
