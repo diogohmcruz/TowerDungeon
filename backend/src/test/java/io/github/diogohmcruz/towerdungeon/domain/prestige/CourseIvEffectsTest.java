@@ -140,14 +140,20 @@ class CourseIvEffectsTest {
   void firstFootingOpensTheVanguardCampFromTheStart() {
     var config = new GameProperties().copy();
     var state = new GameState(config, new RandomSource(1));
-    assertThat(state.getShortcuts()).noneMatch(offer -> offer.floor() == 5 && offer.unlocked());
+    assertThat(state.getShortcuts())
+        .noneMatch(
+            offer ->
+                offer.floor() == config.getShortcuts().floorOf(ShortcutType.VANGUARD_CAMP)
+                    && offer.unlocked());
 
     RollEffects.of(meta(List.of(), List.of("FIRST_FOOTING"), Map.of(), 0), config)
         .start(state, Map.of());
 
     assertThat(state.getShortcuts())
         .anyMatch(
-            offer -> offer.floor() == ShortcutType.VANGUARD_CAMP.getFloor() && offer.unlocked());
+            offer ->
+                offer.floor() == config.getShortcuts().floorOf(ShortcutType.VANGUARD_CAMP)
+                    && offer.unlocked());
   }
 
   @Test

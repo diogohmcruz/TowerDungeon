@@ -46,7 +46,7 @@ public final class RuleViews {
     switch (name) {
       case "units" -> view.put("units", units());
       case "upgrades" -> view.put("upgrades", upgrades());
-      case "shortcuts" -> view.put("shortcuts", shortcuts());
+      case "shortcuts" -> view.put("shortcuts", shortcuts(config));
       case "milestones" -> view.put("milestones", milestones());
       case "tick" -> view.put("tick", tick(config));
       case ENEMIES -> {
@@ -95,14 +95,14 @@ public final class RuleViews {
     return out;
   }
 
-  private static List<Map<String, Object>> shortcuts() {
+  private static List<Map<String, Object>> shortcuts(GameProperties config) {
     return Arrays.stream(ShortcutType.values())
         .map(
             s ->
                 Map.<String, Object>of(
                     "id", s.name(),
                     "name", s.getDisplayName(),
-                    "floor", s.getFloor(),
+                    "floor", config.getShortcuts().floorOf(s),
                     "trigger", s.getTriggerLabel()))
         .toList();
   }

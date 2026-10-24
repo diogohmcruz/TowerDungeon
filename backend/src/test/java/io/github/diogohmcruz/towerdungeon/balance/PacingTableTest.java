@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 
 import io.github.diogohmcruz.towerdungeon.config.GameProperties;
 import io.github.diogohmcruz.towerdungeon.domain.models.UnitStats;
+import io.github.diogohmcruz.towerdungeon.domain.models.shortcut.ShortcutType;
 import io.github.diogohmcruz.towerdungeon.domain.models.upgrade.UpgradeType;
 import io.github.diogohmcruz.towerdungeon.domain.prestige.InheritanceType;
 import io.github.diogohmcruz.towerdungeon.domain.prestige.PlayerMeta;
@@ -54,6 +55,39 @@ class PacingTableTest {
           .as("legacy %d", row.generation())
           .isGreaterThanOrEqualTo(before.legacy());
     }
+  }
+
+  @Test
+  void eachShortcutStartsWhereTheReferencePlanOfTheGenerationThatOpensItStarts() {
+    var floors = props.getShortcuts();
+    var order =
+        List.of(
+            ShortcutType.VANGUARD_CAMP,
+            ShortcutType.SUPPLY_LIFT,
+            ShortcutType.KNIGHTS_WAYSTATION,
+            ShortcutType.DEEP_ANCHOR);
+    for (var i = 0; i < order.size(); i++) {
+      var generation = i + 2;
+      var row = table.rows().get(generation - 1);
+      assertThat(floors.floorOf(order.get(i)))
+          .as("%s opens Generation %d", order.get(i), generation)
+          .isEqualTo(row.plan().startFloor())
+          .isEqualTo(table.rows().get(generation - 2).highestFloor());
+    }
+  }
+
+  @Test
+  void narrowStairStartsWhereTheGenerationThatBuysItStartsAndItsGateStays() {
+    var stair = props.getPrestige().getRoll().getNarrowStair();
+    var buys =
+        table.rows().stream()
+            .filter(row -> row.rollBuysAtStart().contains(InheritanceType.NARROW_STAIR))
+            .findFirst()
+            .orElseThrow();
+    assertThat(stair.getFloor()).isEqualTo(buys.plan().startFloor());
+    assertThat(stair.getMaxParty()).isLessThan(buys.plan().partySize());
+    assertThat(props.getPrestige().getRoll().getCosts().get(InheritanceType.NARROW_STAIR))
+        .isEqualTo(5);
   }
 
   @Test

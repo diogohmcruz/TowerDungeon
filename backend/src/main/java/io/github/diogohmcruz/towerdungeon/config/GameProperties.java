@@ -16,6 +16,7 @@ import io.github.diogohmcruz.towerdungeon.domain.models.Aim;
 import io.github.diogohmcruz.towerdungeon.domain.models.BodyPart;
 import io.github.diogohmcruz.towerdungeon.domain.models.EnemyStats;
 import io.github.diogohmcruz.towerdungeon.domain.models.UnitStats;
+import io.github.diogohmcruz.towerdungeon.domain.models.shortcut.ShortcutType;
 import io.github.diogohmcruz.towerdungeon.domain.prestige.InheritanceType;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -61,6 +62,32 @@ public class GameProperties {
   private final Agent agent = new Agent();
   private final Trial trial = new Trial();
   private final Year year = new Year();
+  private final Shortcuts shortcuts = new Shortcuts();
+
+  /**
+   * The Floor each Shortcut starts the Party on. Each is the start Floor of the reference plan of
+   * the Generation that opens it (the pacing table, {@code prestige-and-persistence.md} 3.12): near
+   * the Highest Floor of the Generation before, so a Shortcut skips ground already mastered and not
+   * ground the Party cannot survive.
+   */
+  @Data
+  public static class Shortcuts {
+    private Map<ShortcutType, Integer> floors = defaultFloors();
+
+    private static Map<ShortcutType, Integer> defaultFloors() {
+      var out = new EnumMap<ShortcutType, Integer>(ShortcutType.class);
+      out.put(ShortcutType.VANGUARD_CAMP, 6);
+      out.put(ShortcutType.SUPPLY_LIFT, 9);
+      out.put(ShortcutType.KNIGHTS_WAYSTATION, 12);
+      out.put(ShortcutType.DEEP_ANCHOR, 16);
+      return out;
+    }
+
+    /** The Floor {@code shortcut} deposits the Party on. */
+    public int floorOf(ShortcutType shortcut) {
+      return floors.getOrDefault(shortcut, 1);
+    }
+  }
 
   /**
    * An independent deep copy of the whole configuration, so one Campaign's overrides never reach
@@ -1344,8 +1371,8 @@ public class GameProperties {
      */
     @Data
     public static class NarrowStair {
-      private int floor = 21;
-      private int maxParty = 12;
+      private int floor = 27;
+      private int maxParty = 24;
     }
 
     /** Overreach: what the per-Expedition switch multiplies. */
