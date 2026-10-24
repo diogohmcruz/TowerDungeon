@@ -592,6 +592,8 @@ The climb is slow and the Tower stays unknown. Each Generation reaches a little 
 | 6 | 27 | 10 |
 | 7 to 12 | steady growth to Floor 99 | 10 to 14 |
 
+The table is now data: `backend/src/test/resources/balance/pacing-table.json` holds Generations 1 to 12 (Highest Floor, Legacy, the Roll bought at the start, and a reference plan with a rationale per row), and `PacingTableTest` checks it is complete, monotonic, buys the Roll legally and is paid for by its own Generation's Expeditions at the config loot and sell prices. Generations 7 to 12 read 34, 42, 52, 64, 78 and 100 Floors with 10, 10, 11, 12, 13 and 14 Legacy; Blood of the Door is bought at the start of Generation 6 and the 55 Legacy of the v1 Roll are spent by Generation 9.
+
 These figures are placeholders until the scaling pass measures them, but their shape is the target: the first Generation reaches Floor 5 to 7, Blood of the Door (6 Legacy, behind the gate of 12 Legacy spent) is bought in about Generation 6 or 7, the whole Roll (64 Legacy) by about Generation 9, and the summit falls in about Generation 12. The Toll's `par` values and the Roll's prices are refit so each row's Legacy comes out of the Toll and Exodus stays reachable (forecast of at least 3 Legacy) in Generation 1.
 
 - **Guardians.** The Guardian interval stays 10 Floors. Generation 1 meets none, which keeps the Tower unknown; the first falls in about Generation 3.

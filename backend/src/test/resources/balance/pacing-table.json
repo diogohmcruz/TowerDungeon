@@ -1,0 +1,540 @@
+{
+  "assumptions": {
+    "expeditionsPerGeneration": 12,
+    "relicLoreCapacity": 25.0,
+    "relicsPerExpedition": 0.0
+  },
+  "rows": [
+    {
+      "generation": 1,
+      "highestFloor": 6,
+      "legacy": 3,
+      "rationale": "Founders plus ten recruits, four of them Porters; Supply Lines 1 only, since the Materials of a Floor 1 to 5 climb buy little else. Reaches Floor 6, past the Floor 5 Surge, with no Guardian met.",
+      "rollBuysAtStart": [],
+      "plan": {
+        "startFloor": 1,
+        "units": {
+          "WARRIOR": 6,
+          "ARCHER": 4,
+          "PORTER": 4
+        },
+        "upgrades": {
+          "SUPPLY_LINES": 1
+        },
+        "dowry": null,
+        "supplies": 390,
+        "carryingCapacity": 390,
+        "aim": "BODY",
+        "towerMemoryStep": 0,
+        "easingSteps": 0,
+        "inheritances": []
+      }
+    },
+    {
+      "generation": 2,
+      "highestFloor": 9,
+      "legacy": 4,
+      "rationale": "Healer unlocked (40 Materials) to keep the larger Party alive; Seed Grain and Hardy Stock held. The Shortcut sits at Floor 6, so the Campaign works Floors 6 to 9 only.",
+      "rollBuysAtStart": [
+        "SEED_GRAIN",
+        "HARDY_STOCK"
+      ],
+      "plan": {
+        "startFloor": 6,
+        "units": {
+          "WARRIOR": 6,
+          "ARCHER": 5,
+          "HEALER": 1,
+          "PORTER": 4
+        },
+        "upgrades": {
+          "UNLOCK_HEALER": 1,
+          "SUPPLY_LINES": 2,
+          "SHARPENED_ARMS": 1
+        },
+        "dowry": null,
+        "supplies": 415,
+        "carryingCapacity": 415,
+        "aim": "BODY",
+        "towerMemoryStep": 1,
+        "easingSteps": 0,
+        "inheritances": [
+          "SEED_GRAIN",
+          "HARDY_STOCK"
+        ]
+      }
+    },
+    {
+      "generation": 3,
+      "highestFloor": 12,
+      "legacy": 5,
+      "rationale": "Tank unlocked (85 Materials); Whetstone Habit adds 5% damage. Tower Memory step 2 starts to bite on garrisons.",
+      "rollBuysAtStart": [
+        "WHETSTONE_HABIT",
+        "MUSTER_ROLL"
+      ],
+      "plan": {
+        "startFloor": 9,
+        "units": {
+          "WARRIOR": 6,
+          "ARCHER": 5,
+          "HEALER": 1,
+          "TANK": 2,
+          "PORTER": 5
+        },
+        "upgrades": {
+          "UNLOCK_HEALER": 1,
+          "UNLOCK_TANK": 1,
+          "SUPPLY_LINES": 3,
+          "SHARPENED_ARMS": 2
+        },
+        "dowry": null,
+        "supplies": 500,
+        "carryingCapacity": 500,
+        "aim": "BODY",
+        "towerMemoryStep": 2,
+        "easingSteps": 1,
+        "inheritances": [
+          "SEED_GRAIN",
+          "HARDY_STOCK",
+          "WHETSTONE_HABIT",
+          "MUSTER_ROLL"
+        ]
+      }
+    },
+    {
+      "generation": 4,
+      "highestFloor": 16,
+      "legacy": 6,
+      "rationale": "Rogue unlocked (110 Materials): the damage dealers of the climb. Heavier Packs and the Heir held. The start Floor 12 is the previous Generation's Highest Floor, as 3.12 sets the Shortcuts.",
+      "rollBuysAtStart": [
+        "HEAVIER_PACKS",
+        "THE_HEIR"
+      ],
+      "plan": {
+        "startFloor": 12,
+        "units": {
+          "WARRIOR": 4,
+          "ARCHER": 4,
+          "HEALER": 1,
+          "TANK": 3,
+          "ROGUE": 4,
+          "PORTER": 6
+        },
+        "upgrades": {
+          "UNLOCK_HEALER": 1,
+          "UNLOCK_TANK": 1,
+          "UNLOCK_ROGUE": 1,
+          "SUPPLY_LINES": 3,
+          "SHARPENED_ARMS": 3
+        },
+        "dowry": null,
+        "supplies": 585,
+        "carryingCapacity": 585,
+        "aim": "BODY",
+        "towerMemoryStep": 3,
+        "easingSteps": 0,
+        "inheritances": [
+          "SEED_GRAIN",
+          "HARDY_STOCK",
+          "WHETSTONE_HABIT",
+          "MUSTER_ROLL",
+          "HEAVIER_PACKS",
+          "THE_HEIR"
+        ]
+      }
+    },
+    {
+      "generation": 5,
+      "highestFloor": 21,
+      "legacy": 8,
+      "rationale": "Village Charter and the Dowry held (Courses I and II complete, 18 Legacy spent). First row at Tower Memory step 4, the cap: later rows are harder through their Floors only.",
+      "rollBuysAtStart": [
+        "VILLAGE_CHARTER",
+        "THE_DOWRY"
+      ],
+      "plan": {
+        "startFloor": 16,
+        "units": {
+          "WARRIOR": 6,
+          "ARCHER": 4,
+          "HEALER": 2,
+          "TANK": 3,
+          "ROGUE": 5,
+          "PORTER": 6
+        },
+        "upgrades": {
+          "UNLOCK_HEALER": 1,
+          "UNLOCK_TANK": 1,
+          "UNLOCK_ROGUE": 1,
+          "SUPPLY_LINES": 4,
+          "SHARPENED_ARMS": 4
+        },
+        "dowry": "CREDITS",
+        "supplies": 610,
+        "carryingCapacity": 610,
+        "aim": "BODY",
+        "towerMemoryStep": 4,
+        "easingSteps": 1,
+        "inheritances": [
+          "SEED_GRAIN",
+          "HARDY_STOCK",
+          "WHETSTONE_HABIT",
+          "MUSTER_ROLL",
+          "HEAVIER_PACKS",
+          "THE_HEIR",
+          "VILLAGE_CHARTER",
+          "THE_DOWRY"
+        ]
+      }
+    },
+    {
+      "generation": 6,
+      "highestFloor": 27,
+      "legacy": 10,
+      "rationale": "Blood of the Door bought at the start of this Generation (24 Legacy spent: Courses I and II first, then the Door). Floor 27 is past the Floor 20 Guardian and short of the Floor 30 Chimera.",
+      "rollBuysAtStart": [
+        "BLOOD_OF_THE_DOOR"
+      ],
+      "plan": {
+        "startFloor": 21,
+        "units": {
+          "WARRIOR": 6,
+          "ARCHER": 5,
+          "HEALER": 2,
+          "TANK": 4,
+          "ROGUE": 6,
+          "PORTER": 8
+        },
+        "upgrades": {
+          "UNLOCK_HEALER": 1,
+          "UNLOCK_TANK": 1,
+          "UNLOCK_ROGUE": 1,
+          "SUPPLY_LINES": 5,
+          "SHARPENED_ARMS": 5
+        },
+        "dowry": "CREDITS",
+        "supplies": 755,
+        "carryingCapacity": 755,
+        "aim": "BODY",
+        "towerMemoryStep": 4,
+        "easingSteps": 0,
+        "inheritances": [
+          "SEED_GRAIN",
+          "HARDY_STOCK",
+          "WHETSTONE_HABIT",
+          "MUSTER_ROLL",
+          "HEAVIER_PACKS",
+          "THE_HEIR",
+          "VILLAGE_CHARTER",
+          "THE_DOWRY",
+          "BLOOD_OF_THE_DOOR"
+        ]
+      }
+    },
+    {
+      "generation": 7,
+      "highestFloor": 34,
+      "legacy": 10,
+      "rationale": "Narrow Stair, Overreach and Quartermaster's Tally held (Course III done). The Dowry is taken as 3 Relics, the exact cost of the Necromancer. Floor 34 is past the Floor 30 Chimera.",
+      "rollBuysAtStart": [
+        "NARROW_STAIR",
+        "OVERREACH",
+        "QUARTERMASTERS_TALLY"
+      ],
+      "plan": {
+        "startFloor": 27,
+        "units": {
+          "WARRIOR": 4,
+          "ARCHER": 4,
+          "HEALER": 2,
+          "TANK": 4,
+          "ROGUE": 11,
+          "NECROMANCER": 2,
+          "PORTER": 9
+        },
+        "upgrades": {
+          "UNLOCK_HEALER": 1,
+          "UNLOCK_TANK": 1,
+          "UNLOCK_ROGUE": 1,
+          "UNLOCK_NECROMANCER": 1,
+          "SUPPLY_LINES": 6,
+          "SHARPENED_ARMS": 6
+        },
+        "dowry": "RELICS",
+        "supplies": 840,
+        "carryingCapacity": 840,
+        "aim": "BODY",
+        "towerMemoryStep": 4,
+        "easingSteps": 1,
+        "inheritances": [
+          "SEED_GRAIN",
+          "HARDY_STOCK",
+          "WHETSTONE_HABIT",
+          "MUSTER_ROLL",
+          "HEAVIER_PACKS",
+          "THE_HEIR",
+          "VILLAGE_CHARTER",
+          "THE_DOWRY",
+          "BLOOD_OF_THE_DOOR",
+          "NARROW_STAIR",
+          "OVERREACH",
+          "QUARTERMASTERS_TALLY"
+        ]
+      }
+    },
+    {
+      "generation": 8,
+      "highestFloor": 42,
+      "legacy": 10,
+      "rationale": "Hard-Won Habits pre-grants the Milestones, so Relic Lore and the Captain come free from the first Expedition. Floor 42 is past the Floor 40 Chymus Insect.",
+      "rollBuysAtStart": [
+        "HARD_WON_HABITS"
+      ],
+      "plan": {
+        "startFloor": 34,
+        "units": {
+          "WARRIOR": 5,
+          "ARCHER": 4,
+          "HEALER": 3,
+          "TANK": 5,
+          "ROGUE": 13,
+          "NECROMANCER": 2,
+          "PORTER": 10
+        },
+        "upgrades": {
+          "UNLOCK_HEALER": 1,
+          "UNLOCK_TANK": 1,
+          "UNLOCK_ROGUE": 1,
+          "UNLOCK_NECROMANCER": 1,
+          "SUPPLY_LINES": 7,
+          "SHARPENED_ARMS": 7
+        },
+        "dowry": "RELICS",
+        "supplies": 925,
+        "carryingCapacity": 925,
+        "aim": "BODY",
+        "towerMemoryStep": 4,
+        "easingSteps": 1,
+        "inheritances": [
+          "SEED_GRAIN",
+          "HARDY_STOCK",
+          "WHETSTONE_HABIT",
+          "MUSTER_ROLL",
+          "HEAVIER_PACKS",
+          "THE_HEIR",
+          "VILLAGE_CHARTER",
+          "THE_DOWRY",
+          "BLOOD_OF_THE_DOOR",
+          "NARROW_STAIR",
+          "OVERREACH",
+          "QUARTERMASTERS_TALLY",
+          "HARD_WON_HABITS"
+        ]
+      }
+    },
+    {
+      "generation": 9,
+      "highestFloor": 52,
+      "legacy": 11,
+      "rationale": "Open Breach and Offering Stone held: the whole v1 Roll (55 Legacy) is spent by the start of this Generation. Floor 52 is past the Floor 50 Stone Golem.",
+      "rollBuysAtStart": [
+        "THE_OPEN_BREACH",
+        "OFFERING_STONE"
+      ],
+      "plan": {
+        "startFloor": 42,
+        "units": {
+          "WARRIOR": 6,
+          "ARCHER": 5,
+          "HEALER": 3,
+          "TANK": 6,
+          "ROGUE": 15,
+          "NECROMANCER": 2,
+          "PORTER": 12
+        },
+        "upgrades": {
+          "UNLOCK_HEALER": 1,
+          "UNLOCK_TANK": 1,
+          "UNLOCK_ROGUE": 1,
+          "UNLOCK_NECROMANCER": 1,
+          "SUPPLY_LINES": 8,
+          "SHARPENED_ARMS": 8
+        },
+        "dowry": "RELICS",
+        "supplies": 1070,
+        "carryingCapacity": 1070,
+        "aim": "BODY",
+        "towerMemoryStep": 4,
+        "easingSteps": 1,
+        "inheritances": [
+          "SEED_GRAIN",
+          "HARDY_STOCK",
+          "WHETSTONE_HABIT",
+          "MUSTER_ROLL",
+          "HEAVIER_PACKS",
+          "THE_HEIR",
+          "VILLAGE_CHARTER",
+          "THE_DOWRY",
+          "BLOOD_OF_THE_DOOR",
+          "NARROW_STAIR",
+          "OVERREACH",
+          "QUARTERMASTERS_TALLY",
+          "HARD_WON_HABITS",
+          "THE_OPEN_BREACH",
+          "OFFERING_STONE"
+        ]
+      }
+    },
+    {
+      "generation": 10,
+      "highestFloor": 64,
+      "legacy": 12,
+      "rationale": "Floor 64 is past the Floor 60 Necromancer. Both repeatable Upgrades near their last levels; Rogues are 30% of the Party.",
+      "rollBuysAtStart": [],
+      "plan": {
+        "startFloor": 52,
+        "units": {
+          "WARRIOR": 8,
+          "ARCHER": 6,
+          "HEALER": 3,
+          "TANK": 7,
+          "ROGUE": 17,
+          "NECROMANCER": 3,
+          "PORTER": 14
+        },
+        "upgrades": {
+          "UNLOCK_HEALER": 1,
+          "UNLOCK_TANK": 1,
+          "UNLOCK_ROGUE": 1,
+          "UNLOCK_NECROMANCER": 1,
+          "SUPPLY_LINES": 9,
+          "SHARPENED_ARMS": 9
+        },
+        "dowry": "RELICS",
+        "supplies": 1215,
+        "carryingCapacity": 1215,
+        "aim": "BODY",
+        "towerMemoryStep": 4,
+        "easingSteps": 1,
+        "inheritances": [
+          "SEED_GRAIN",
+          "HARDY_STOCK",
+          "WHETSTONE_HABIT",
+          "MUSTER_ROLL",
+          "HEAVIER_PACKS",
+          "THE_HEIR",
+          "VILLAGE_CHARTER",
+          "THE_DOWRY",
+          "BLOOD_OF_THE_DOOR",
+          "NARROW_STAIR",
+          "OVERREACH",
+          "QUARTERMASTERS_TALLY",
+          "HARD_WON_HABITS",
+          "THE_OPEN_BREACH",
+          "OFFERING_STONE"
+        ]
+      }
+    },
+    {
+      "generation": 11,
+      "highestFloor": 78,
+      "legacy": 13,
+      "rationale": "Floor 78 stops short of the Floor 80 Dragon, the hardest fight, which this Generation sets up for the next.",
+      "rollBuysAtStart": [],
+      "plan": {
+        "startFloor": 64,
+        "units": {
+          "WARRIOR": 9,
+          "ARCHER": 7,
+          "HEALER": 4,
+          "TANK": 8,
+          "ROGUE": 20,
+          "NECROMANCER": 3,
+          "PORTER": 17
+        },
+        "upgrades": {
+          "UNLOCK_HEALER": 1,
+          "UNLOCK_TANK": 1,
+          "UNLOCK_ROGUE": 1,
+          "UNLOCK_NECROMANCER": 1,
+          "SUPPLY_LINES": 10,
+          "SHARPENED_ARMS": 10
+        },
+        "dowry": "RELICS",
+        "supplies": 1420,
+        "carryingCapacity": 1420,
+        "aim": "BODY",
+        "towerMemoryStep": 4,
+        "easingSteps": 1,
+        "inheritances": [
+          "SEED_GRAIN",
+          "HARDY_STOCK",
+          "WHETSTONE_HABIT",
+          "MUSTER_ROLL",
+          "HEAVIER_PACKS",
+          "THE_HEIR",
+          "VILLAGE_CHARTER",
+          "THE_DOWRY",
+          "BLOOD_OF_THE_DOOR",
+          "NARROW_STAIR",
+          "OVERREACH",
+          "QUARTERMASTERS_TALLY",
+          "HARD_WON_HABITS",
+          "THE_OPEN_BREACH",
+          "OFFERING_STONE"
+        ]
+      }
+    },
+    {
+      "generation": 12,
+      "highestFloor": 100,
+      "legacy": 14,
+      "rationale": "The summit: Floor 99 through the Door, then the Floor 100 Guardian. A Party near the 80 Units that 3.11's sizing rule asks of a 20,000 hp Dragon.",
+      "rollBuysAtStart": [],
+      "plan": {
+        "startFloor": 78,
+        "units": {
+          "WARRIOR": 9,
+          "ARCHER": 8,
+          "HEALER": 5,
+          "TANK": 10,
+          "ROGUE": 24,
+          "NECROMANCER": 4,
+          "PORTER": 20
+        },
+        "upgrades": {
+          "UNLOCK_HEALER": 1,
+          "UNLOCK_TANK": 1,
+          "UNLOCK_ROGUE": 1,
+          "UNLOCK_NECROMANCER": 1,
+          "SUPPLY_LINES": 10,
+          "SHARPENED_ARMS": 10
+        },
+        "dowry": "RELICS",
+        "supplies": 1600,
+        "carryingCapacity": 1600,
+        "aim": "BODY",
+        "towerMemoryStep": 4,
+        "easingSteps": 2,
+        "inheritances": [
+          "SEED_GRAIN",
+          "HARDY_STOCK",
+          "WHETSTONE_HABIT",
+          "MUSTER_ROLL",
+          "HEAVIER_PACKS",
+          "THE_HEIR",
+          "VILLAGE_CHARTER",
+          "THE_DOWRY",
+          "BLOOD_OF_THE_DOOR",
+          "NARROW_STAIR",
+          "OVERREACH",
+          "QUARTERMASTERS_TALLY",
+          "HARD_WON_HABITS",
+          "THE_OPEN_BREACH",
+          "OFFERING_STONE"
+        ]
+      }
+    }
+  ]
+}
