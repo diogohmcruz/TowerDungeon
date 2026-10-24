@@ -67,7 +67,7 @@ const STEP_MS = 250;
   `,
 })
 export class VillageScene {
-  private readonly state = inject(GameStateService).state;
+  private readonly state = inject(GameStateService).registryState;
   private readonly selection = inject(VillageSelectionService);
   private readonly launch = inject(LaunchService);
   private readonly popover = inject(PopoverService);
@@ -177,6 +177,7 @@ export class VillageScene {
       still: this.still,
       startFloor: this.startFloor(),
       bellUsable: this.launch.setOut().usable,
+      offer: s.phase === 'OFFER',
       hovered: this.selection.hovered()?.id ?? null,
       selected: this.selection.selected()?.id ?? null,
     };

@@ -7,6 +7,8 @@ import {
 import type { GameState } from '../../interfaces/game-state';
 import type { Member } from '../../interfaces/member';
 import type { UnitStats } from '../../interfaces/unit.enum';
+import type { SessionMeta } from '../../interfaces/game-frame';
+import type { SuccessionNode } from '../../interfaces/succession';
 import { PopoverService } from '../../services/popover.service';
 import { GameStateService } from '../../services/game-state.service';
 import { BuildingPopover } from '../building-popover/building-popover';
@@ -67,6 +69,66 @@ function tierParam(): number {
   return Number.isFinite(v) ? Math.min(4, Math.max(1, Math.round(v))) : 2;
 }
 
+function fixtureReport(): NonNullable<GameState['pending']> {
+  return {
+    outcome: 'EXODUS',
+    generation: 3,
+    toll: {
+      foodMarks: 12.4, materialsMarks: 8.2, creditsMarks: 3.5, relicsMarks: 1, expeditionsMarks: 6,
+      ascentMarks: 18, guardianMarks: 3, marks: 52.1, toll: 52.1, newGround: 2, legacy: 9, residueNext: 2.3,
+    },
+    legacy: 9,
+    pity: false,
+    guardiansSlain: 1,
+    highestFloor: 12,
+    expeditions: 6,
+  };
+}
+
+function fixtureSuccession(): SessionMeta {
+  const node = (id: string, name: string, course: number, kind: string, cost: number, over: Partial<SuccessionNode> = {}): SuccessionNode => ({
+    id, name, course, kind, cost, available: true, held: false, paid: 0, whyNot: null, refundable: false, ...over,
+  });
+  return {
+    resumed: false,
+    savedAt: null,
+    schema: 1,
+    notices: [],
+    held: false,
+    succession: {
+      generation: 3,
+      legacy: 9,
+      spent: 3,
+      courses: [
+        { course: 1, gate: 0, spentBelow: 0, open: true },
+        { course: 2, gate: 8, spentBelow: 3, open: false },
+        { course: 3, gate: 20, spentBelow: 3, open: false },
+        { course: 4, gate: 40, spentBelow: 3, open: false },
+      ],
+      inheritances: [
+        node('SEED_GRAIN', 'Seed Grain', 1, 'POWER', 2),
+        node('HARDY_STOCK', 'Hardy Stock', 1, 'POWER', 3, { held: true, paid: 3, refundable: true }),
+        node('LONG_MEMORY', 'Long Memory', 1, 'REACH', 4),
+        node('THE_DOWRY', 'The Dowry', 2, 'POWER', 5, { whyNot: 'COURSE_CLOSED' }),
+        node('NARROW_STAIR', 'Narrow Stair', 3, 'REACH', 8, { available: false, whyNot: 'UNAVAILABLE' }),
+        node('SECOND_PACT', 'Second Pact', 4, 'POWER', 13, { available: false, whyNot: 'UNAVAILABLE' }),
+      ],
+      choices: [
+        { id: 'DOWRY_CREDITS', group: 'DOWRY', selected: false, isDefault: true },
+        { id: 'DOWRY_MATERIALS', group: 'DOWRY', selected: false, isDefault: false },
+        { id: 'DOWRY_RELICS', group: 'DOWRY', selected: false, isDefault: false },
+        { id: 'HEIR_WARRIOR', group: 'HEIR', selected: false, isDefault: true },
+        { id: 'HEIR_ARCHER', group: 'HEIR', selected: true, isDefault: false },
+        { id: 'HEIR_PORTER', group: 'HEIR', selected: false, isDefault: false },
+      ],
+      chronicle: [
+        { generation: 1, outcome: 'DEFEAT', toll: 14, legacy: 3, highestFloor: 5, guardiansSlain: 0, expeditions: 2, fallen: [] },
+        { generation: 2, outcome: 'VICTORY', toll: 61.3, legacy: 11, highestFloor: 20, guardiansSlain: 2, expeditions: 7, fallen: [{ name: 'Aldric', type: 'WARRIOR' }, { name: 'Brisa', type: 'ARCHER' }] },
+      ],
+    },
+  };
+}
+
 @Component({
   selector: 'app-village-fixture',
   imports: [VillageScene, BuildingPopover, ListView],
@@ -119,7 +181,13 @@ export class VillageFixturePage {
       const popover = inject(PopoverService);
       setTimeout(() => popover.openFor({ kind: 'building', id: open }), 1500);
     }
+    // `?offer=1` shows the Campaign ended and waiting in OFFER: the Roll stone and the Succession popover.
+    const waiting = new URLSearchParams(location.search).has('offer');
+    if (waiting) {
+      game.setSession(fixtureSuccession());
+    }
     game.update({
+      ...(waiting ? { phase: 'OFFER', gameOutcome: 'EXODUS', pending: fixtureReport(), raceRecords: [] } : {}),
       village: {
         ...game.state().village,
         food,
@@ -253,6 +321,7 @@ export class VillageFixturePage {
         // `?bell=dark` draws the bell unlit; `?start=10` chooses the Shortcut at Floor 10.
         bellUsable: new URLSearchParams(location.search).get('bell') !== 'dark',
         startFloor: Number(new URLSearchParams(location.search).get('start') ?? 0),
+        offer: new URLSearchParams(location.search).has('offer'),
         still: false,
       };
 }

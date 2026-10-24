@@ -73,17 +73,8 @@
     <button class="btn" (click)="resume()">Resume</button>
   </section>
   }
-  @if (offer() && succession(); as view) {
-  <app-succession-screen
-    [view]="view"
-    [report]="gameState().pending ?? null"
-    [raceRecords]="gameState().raceRecords ?? []"
-    (buy)="rollBuy($event)"
-    (refund)="rollRefund($event)"
-    (choose)="choose($event)"
-    (begin)="beginGeneration()"
-  />
-  } @else {
+  <!-- The Succession is the popover at the Tower's foot (and in the list view); while it waits, the cards below rest. -->
+  @if (!(offer() && succession())) {
   <app-village-management />
 
 

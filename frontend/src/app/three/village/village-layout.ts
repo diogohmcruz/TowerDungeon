@@ -153,6 +153,8 @@ export interface VillageInput {
   pillar?: PillarInput;
   /** The gate bell can be rung (set out); false draws it dark with a dashed outline. Default true. */
   bellUsable?: boolean;
+  /** The Campaign has ended and waits in OFFER: the Roll stone stands at the Tower's foot. */
+  offer?: boolean;
 }
 
 export const EMPTY_VILLAGE: VillageInput = {
@@ -733,6 +735,26 @@ function doorway(out: Volume[], id: string, x: number, y: number, z: number): vo
   part('step', x - d.step.dx, y - d.ledge.h - d.step.h, d.step.w, d.step.h, 0.16, z + 0.06, VILLAGE_TONE.stone);
 }
 
+/** Where the Roll stone stands: at the Tower's foot, in front of the Quarry, clear of the lanes. */
+export const ROLL_STONE = { x: 0.05, z: 0.62 } as const;
+
+/**
+ * The Roll stone, only while the Succession waits: a tall pale slab on a plinth
+ * with a timber cap, set at the Tower's foot, and a column of dark notches cut in
+ * it, one per Course, the last one lit. Ids begin `roll-`; `roll-hit` is the
+ * near-miss pad.
+ */
+function rollStone(out: Volume[]): void {
+  const { x, z } = ROLL_STONE;
+  box(out, 'roll-plinth', 'tower', x, 0, z, 0.62, 0.14, 0.4, VILLAGE_TONE.stone);
+  box(out, 'roll-slab', 'tower', x, 0.14, z, 0.44, 1.0, 0.2, 0.9);
+  box(out, 'roll-cap', 'tower', x, 1.14, z, 0.54, 0.08, 0.28, VILLAGE_TONE.timber);
+  for (let i = 0; i < 4; i++) {
+    box(out, `roll-notch-${i}`, 'tower', x, 0.32 + i * 0.2, z + 0.11, 0.28, 0.07, 0.02, i === 3 ? VILLAGE_TONE.lit : VILLAGE_TONE.dark);
+  }
+  box(out, 'roll-hit', 'tower', x, 0, z, 0.78, 1.3, 0.5, VILLAGE_TONE.dark, 0);
+}
+
 /** The Start Floor 0 choice: the Base door, drawn as a doorway in the slab's face. */
 function baseDoor(out: Volume[]): void {
   doorway(out, BASE_DOOR_ID, BASE_DOOR_X, BASE_DOOR_BOTTOM, BASE_FRONT_Z);
@@ -963,6 +985,7 @@ export function buildVillage(input: VillageInput): Volume[] {
   port(out, input.port ?? 'HIDDEN', input.boatDocked ?? false, input.seaRisk);
   shortcutMarks(out, input.shortcuts);
   baseDoor(out);
+  if (input.offer) rollStone(out);
   bellObject(out, BELL_SPOT, input.bellUsable ?? true);
   gateObject(out, BELL_SPOT);
   growth(out, input.upgrades ?? {});

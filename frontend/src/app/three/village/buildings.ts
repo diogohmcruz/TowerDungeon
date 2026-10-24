@@ -9,6 +9,7 @@ import type { GameState } from '../../interfaces/game-state';
 import { defineBuilding, type BuildingDefinition } from './building-registry';
 import { GATE } from './gate-building';
 import { FORT } from './fort-building';
+import { SUCCESSION } from './succession-building';
 import { ANNEXES } from './annex-buildings';
 import { REFERENCE_PILLAR } from './reference-pillar-building';
 import { sellSaltAction } from './salt-sale';
@@ -225,6 +226,7 @@ export const BUILDINGS: readonly BuildingDefinition[] = [
   GATE,
   FORT,
   REFERENCE_PILLAR,
+  SUCCESSION,
 ];
 
 export function buildingDefinition(

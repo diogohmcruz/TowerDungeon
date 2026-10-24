@@ -463,41 +463,21 @@ describe('GameComponent', () => {
       succession,
     };
 
-    it('shows the screen only in OFFER', () => {
+    it('leaves the cards at rest in OFFER and keeps the screen out of the card layer', () => {
       stateService.setSession(meta);
       stateService.update({ phase: 'ACTIVE' });
       fixture.detectChanges();
-      expect(host().querySelector('app-succession-screen')).toBeNull();
+      expect(host().querySelector('app-village-management')).not.toBeNull();
 
       stateService.update({ phase: 'OFFER', gameOutcome: 'EXODUS' });
       fixture.detectChanges();
-      expect(host().querySelector('app-succession-screen')).not.toBeNull();
+      expect(host().querySelector('app-succession-screen')).toBeNull();
       expect(host().querySelector('app-village-management')).toBeNull();
 
       stateService.update({ phase: 'ACTIVE', gameOutcome: 'PLAYING' });
       stateService.setSession({ ...meta, succession: null });
       fixture.detectChanges();
-      expect(host().querySelector('app-succession-screen')).toBeNull();
-    });
-
-    it('sends the Roll actions and Begin Generation', () => {
-      stateService.setSession(meta);
-      stateService.update({ phase: 'OFFER', gameOutcome: 'EXODUS' });
-      fixture.detectChanges();
-
-      (host().querySelector('.node-buy') as HTMLElement).click();
-      expect(sendAction).toHaveBeenCalledWith(GameAction.ROLL_BUY, {
-        id: 'SEED_GRAIN',
-      });
-
-      fixture.detectChanges();
-      (host().querySelector('.begin') as HTMLElement).click();
-      fixture.detectChanges();
-      (host().querySelector('.begin-yes') as HTMLElement).click();
-      expect(sendAction).toHaveBeenCalledWith(
-        GameAction.BEGIN_GENERATION,
-        null,
-      );
+      expect(host().querySelector('app-village-management')).not.toBeNull();
     });
   });
 

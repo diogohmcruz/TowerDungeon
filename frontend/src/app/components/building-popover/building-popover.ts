@@ -9,7 +9,10 @@ import {
 import { PopoverService } from '../../services/popover.service';
 import { StageService } from '../../services/stage.service';
 import { ActionRow } from '../action-row/action-row';
-import { placeCard } from '../unit-focus/card-placement';
+import { CARD_WIDTH, placeCard } from '../unit-focus/card-placement';
+
+/** The width of a card that asks for more room: a tree of choices to read. */
+const WIDE_CARD_WIDTH = 420;
 
 /**
  * The popover of a building (architecture doc 5.6): one translucent card beside
@@ -145,7 +148,13 @@ export class BuildingPopover {
 
   protected readonly place = computed(() => {
     const { width, height } = this.stage.viewport();
-    return placeCard(this.popover.anchor(), width, height, this.wanted());
+    return placeCard(
+      this.popover.anchor(),
+      width,
+      height,
+      this.wanted(),
+      this.view()?.wide ? WIDE_CARD_WIDTH : CARD_WIDTH,
+    );
   });
 
   /** About how tall the card is, so it slides up to show its actions rather than scroll them away. */

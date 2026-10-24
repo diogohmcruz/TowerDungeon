@@ -1,4 +1,4 @@
-import { Injectable, Signal, signal } from '@angular/core';
+import { computed, Injectable, Signal, signal } from '@angular/core';
 import { GameState } from '../interfaces/game-state';
 import { Unit, UnitStats } from '../interfaces/unit.enum';
 import { SessionMeta } from '../interfaces/game-frame';
@@ -140,6 +140,18 @@ export class GameStateService {
   private _session = signal<SessionMeta | null>(null);
   /** The latest frame's session facts (resumed, notices, held), or null before the first frame. */
   readonly session: Signal<SessionMeta | null> = this._session.asReadonly();
+
+  /**
+   * The state with the Succession's Roll and choices beside it, while the Campaign
+   * waits in OFFER (the frame's session facts are kept apart from the state). What
+   * the buildings, the popover, the hover caption and the list view read.
+   */
+  readonly registryState: Signal<GameState> = computed(() => {
+    const succession = this._session()?.succession;
+    return succession
+      ? { ...this._state(), session: this._session() as SessionMeta }
+      : this._state();
+  });
 
   private catalog: Record<string, UnitStats> | undefined;
 
