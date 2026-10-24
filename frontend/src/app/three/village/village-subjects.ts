@@ -6,7 +6,8 @@
  * Extending: a new kind of thing adds its volume id prefix to `VOLUME_SUBJECTS`
  * (or a branch in `subjectOfVolume` when the id is in the volume id, as the
  * Shortcut marks do), its kind to `SubjectKind`, and a builder to
- * `CAPTION_BUILDERS` in `village-captions.ts`.
+ * `CAPTION_BUILDERS` in `village-captions.ts`. A building with a popover needs
+ * none of that: see `building-registry.ts`.
  */
 import type { TradeId } from '../../interfaces/village';
 import type { Volume } from './village-layout';
@@ -19,7 +20,8 @@ export type SubjectKind =
   | 'shortcut'
   | 'bell'
   | 'recall'
-  | 'base-door';
+  | 'base-door'
+  | 'building';
 
 /**
  * The launch controls (architecture doc 5.5). The bell and the recall lamp are
@@ -62,6 +64,8 @@ export const VOLUME_SUBJECTS: ReadonlyArray<{
   { prefix: 'footing-', kind: 'annex', id: 'SALTER' },
   { prefix: 'pan-', kind: 'annex', id: 'SALTER' },
   { prefix: 'port-', kind: 'port', id: PORT_SUBJECT },
+  // Registered buildings (`buildings.ts`): the popover framework's subjects.
+  { prefix: 'silo', kind: 'building', id: 'SILO' },
 ];
 
 const TRADES: readonly TradeId[] = [
@@ -87,6 +91,9 @@ export function subjectOfVolume(volumeId: string): VillageSubject | null {
   if (volumeId.startsWith(OUTLINE)) {
     const id = volumeId.slice(OUTLINE.length).split(':')[0];
     if (volumeId.includes(':shortcut-')) return { kind: 'shortcut', id };
+    if (volumeId.endsWith(':building') || volumeId.includes(':building-')) {
+      return { kind: 'building', id };
+    }
     if (id === BELL_SUBJECT) return { kind: 'bell', id };
     if (id === RECALL_SUBJECT) return { kind: 'recall', id };
     if (id === BASE_DOOR_SUBJECT) return { kind: 'base-door', id };
@@ -111,9 +118,11 @@ export function subjectOfVolume(volumeId: string): VillageSubject | null {
 }
 
 /** Volumes that make up one kind of a thing (not the outlines). */
-function ofSubject(volumes: Volume[], id: string, kind: SubjectKind): Volume[] {
+export function ofSubject(volumes: Volume[], id: string, kind: SubjectKind): Volume[] {
   return volumes.filter((v) => {
     if (v.id.startsWith(OUTLINE)) return false;
+    // A building's invisible near-miss pad is for picking only: its frame and anchor hug what is drawn.
+    if (kind === 'building' && v.alpha === 0) return false;
     const s = subjectOfVolume(v.id);
     return s?.id === id && s.kind === kind;
   });
@@ -134,6 +143,7 @@ const OUTLINED_KINDS: readonly SubjectKind[] = [
   'bell',
   'recall',
   'base-door',
+  'building',
 ];
 
 /**

@@ -9,6 +9,7 @@ import type { PortState } from '../../interfaces/game-state';
 import type { Quarter } from '../../interfaces/game-state';
 import type { TradeId } from '../../interfaces/village';
 import { bellObject } from '../launch/launch-objects';
+import { slitGauge } from './gauge-kit';
 import {
   BASE_DOOR_ID,
   BASE_DOOR_SUBJECT,
@@ -305,11 +306,19 @@ function silo(out: Volume[], food: number): void {
   const w = span(ANNEX_X.silo);
   box(out, 'silo', 'village', x, 0, SILO_Z, w, 1.7, 0.3, VILLAGE_TONE.silo);
   // The slit is a dark channel; the bone fill rises inside it with the food.
-  box(out, 'silo-slit', 'village', x, 0.25, SILO_Z + 0.16, 0.06, 1.2, 0.02, VILLAGE_TONE.dark);
-  const fill = siloFill(food);
-  if (fill > 0) {
-    box(out, 'silo-fill', 'village', x, 0.25, SILO_Z + 0.17, 0.06, 1.2 * fill, 0.02, VILLAGE_TONE.lit);
-  }
+  slitGauge(out, 'silo', {
+    x,
+    bottom: 0.25,
+    z: SILO_Z + 0.16,
+    height: 1.2,
+    fill: siloFill(food),
+  });
+  // The near-miss pad: an invisible box around the silo, taller than it and reaching a
+  // little to the right, so a click just beside its thin shaft still lands on it. The
+  // bell's gate stands in front of its lower left, so the pad grows where nothing does.
+  const left = ANNEX_X.silo[0] - 0.05;
+  const right = ANNEX_X.silo[1] + 0.25;
+  box(out, 'silo-hit', 'village', (left + right) / 2, 0, SILO_Z, right - left, 1.9, 0.3, VILLAGE_TONE.dark, 0);
 }
 
 function stair(out: Volume[], tier: number, flicker: number): void {
