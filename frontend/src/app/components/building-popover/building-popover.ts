@@ -113,7 +113,7 @@ const WIDE_CARD_WIDTH = 420;
       color: var(--text);
       font-size: 12px;
       /* Translucent over the scene: the same hard-edged ink panel, no blur. */
-      background: color-mix(in srgb, var(--panel) 88%, transparent);
+      background: color-mix(in srgb, var(--panel) 92%, transparent);
       border: 1px solid var(--bone);
     }
     h3 {

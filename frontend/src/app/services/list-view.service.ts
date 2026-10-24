@@ -1,6 +1,7 @@
 import { inject, Injectable, signal } from '@angular/core';
 
 import { PopoverService } from './popover.service';
+import { StageService } from './stage.service';
 
 /** The player's choice, kept between visits: `on` always opens it, `off` never opens it by itself. */
 export const LIST_VIEW_STORAGE = 'td-list-view';
@@ -28,6 +29,7 @@ export function listViewWanted(search: string, stored: string | null): boolean {
 @Injectable({ providedIn: 'root' })
 export class ListViewService {
   private readonly popover = inject(PopoverService);
+  private readonly stage = inject(StageService);
 
   private readonly _open = signal(this.wanted());
   readonly open = this._open.asReadonly();
@@ -35,6 +37,8 @@ export class ListViewService {
   show(): void {
     // One surface at a time: the popover gives way to the list.
     this.popover.close();
+    // The list is a menu: opening it shows the menus the hide key put away.
+    this.stage.showMenus();
     this._open.set(true);
   }
 

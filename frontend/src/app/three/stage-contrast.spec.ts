@@ -1,17 +1,12 @@
 import { RAMPS } from './ink/palette';
-import {
-  NARROW_DIM,
-  PANEL_OPACITY,
-  SCRIM_TONE,
-} from './stage-view';
+import { PANEL_OPACITY } from './stage-view';
 
 /**
- * Text on a translucent card must stay readable over the worst-case backdrop.
- * Winter is the worst case: its snow is the palest tone the Village draws
- * (`VILLAGE_TONE.salt`, 0.95), the top of the ink ramp, and the dither can put
- * any ramp colour behind a pixel. So every ramp slot of the theme is tried as
- * the backdrop, behind the scrim at its lightest (the cells the dither leaves
- * clear: only the flat tone), and the weakest result is held to 7:1.
+ * Text on a popover (a translucent panel straight over the scene) must stay
+ * readable over the worst-case backdrop. Winter is the worst case: its snow is
+ * the palest tone the Village draws (`VILLAGE_TONE.salt`, 0.95), the top of the
+ * ink ramp. So every ramp slot of the theme is tried as the backdrop and the
+ * weakest result is held to 7:1. (The list view is opaque and needs no check.)
  */
 type Rgb = [number, number, number];
 
@@ -39,7 +34,7 @@ function contrast(a: Rgb, b: Rgb): number {
   return (hi + 0.05) / (lo + 0.05);
 }
 
-describe('card layer contrast over the Winter backdrop', () => {
+describe('popover contrast over the Winter backdrop', () => {
   const root = document.documentElement;
   const saved = root.dataset['theme'];
   afterEach(() => {
@@ -58,28 +53,13 @@ describe('card layer contrast over the Winter backdrop', () => {
     describe(theme, () => {
       beforeEach(() => (root.dataset['theme'] = dataTheme));
 
-      /** Every layer a line of text can sit on, worst backdrop first. */
+      /** Every layer a line of text can sit on: the panel's glass over each backdrop. */
       function grounds(): { name: string; ground: Rgb }[] {
-        const out: { name: string; ground: Rgb }[] = [];
-        const void_ = token('--void');
         const panel = token('--panel');
-        for (const [slot, hex] of ramp.entries()) {
-          const backdrop = parse(hex);
-          const scrimmed = over(void_, SCRIM_TONE, backdrop);
-          // A card: the panel glass straight over the scrim, nothing else under the text.
-          out.push({
-            name: `card over the scrim, slot ${slot}`,
-            ground: over(panel, PANEL_OPACITY, scrimmed),
-          });
-          // The narrow layout: the whole backdrop dimmed, no ground of its own.
-          const dimmed = over(void_, NARROW_DIM, backdrop);
-          out.push({ name: `narrow dim over slot ${slot}`, ground: dimmed });
-          out.push({
-            name: `narrow card over slot ${slot}`,
-            ground: over(panel, PANEL_OPACITY, dimmed),
-          });
-        }
-        return out;
+        return [...ramp.entries()].map(([slot, hex]) => ({
+          name: `popover over slot ${slot}`,
+          ground: over(panel, PANEL_OPACITY, parse(hex)),
+        }));
       }
 
       for (const ink of ['--text', '--bone']) {

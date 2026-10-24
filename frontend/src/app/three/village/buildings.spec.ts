@@ -86,7 +86,7 @@ describe('the Village Tier buildings', () => {
   it('sends the existing commands for each sale', () => {
     load(stock(1));
     const send = jasmine.createSpy('send');
-    const commands = { send } as BuildingCommands;
+    const commands: BuildingCommands = { send, launch: () => undefined };
     for (const action of ['sell-materials', 'sell-relics', 'sell-salt']) {
       buildingDefinition('VAULT')!.actions.find((a) => a.id === action)!.run(commands, state);
     }
@@ -245,7 +245,7 @@ describe('the Village Tier buildings', () => {
 
     it('sends the same sales as before and refuses an empty store in words', () => {
       const sent: GameAction[] = [];
-      const commands: BuildingCommands = { send: (a) => void sent.push(a) };
+      const commands: BuildingCommands = { send: (a) => void sent.push(a), launch: () => undefined };
       load(stock(4));
       buildingDefinition('RELIQUARY')!.actions[0].run(commands, state);
       buildingDefinition('HEAP')!.actions[0].run(commands, state);

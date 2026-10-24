@@ -37,7 +37,10 @@ describe('the Upgrades, Tomes, Posts and the Ring in the world', () => {
     state = service.state();
   };
   const sent: unknown[][] = [];
-  const commands = { send: (a: GameAction, p?: unknown) => sent.push([a, p]) };
+  const commands = {
+    send: (a: GameAction, p?: unknown) => sent.push([a, p]),
+    launch: () => undefined,
+  };
 
   beforeEach(() => {
     sent.length = 0;

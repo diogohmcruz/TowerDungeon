@@ -9,6 +9,9 @@ import {
 import { GameStateService } from '../../services/game-state.service';
 import { GameWebSocketService } from '../../services/game-web-socket.service';
 import { PopoverService } from '../../services/popover.service';
+import { StageService } from '../../services/stage.service';
+import { actionSpecs, buildingViews } from '../../three/village/building-registry';
+import { BUILDINGS } from '../../three/village/buildings';
 import { ListView, listKeyIntent } from './list-view';
 
 describe('ListView', () => {
@@ -182,6 +185,208 @@ describe('ListView', () => {
       expect(listViewWanted('', 'on')).toBeTrue();
       expect(listViewWanted('?list=1', null)).toBeTrue();
       expect(listViewWanted('?list=0', 'on')).toBeFalse();
+    });
+  });
+
+  describe('the one DOM route (the card layer is gone)', () => {
+    const buttons = (section: Element) =>
+      Array.from(section.querySelectorAll<HTMLButtonElement>('app-action-row button.btn'));
+    const sectionOf = (title: string) =>
+      Array.from(el().querySelectorAll('section.building')).find(
+        (s) => s.querySelector('h3')?.textContent?.trim() === title,
+      );
+
+    it('lists every registered building, every gauge and every action, however the state stands', () => {
+      // Every building made visible, so none hides behind the state: the list must still carry it.
+      const popover = TestBed.inject(PopoverService);
+      popover.registry = BUILDINGS.map((d) => ({ ...d, visible: undefined }));
+      // The registry is a plain field: a change of state makes the service read it again.
+      TestBed.inject(GameStateService).update({ credit: 1 });
+      list.show();
+      settle();
+      const state = TestBed.inject(GameStateService).registryState();
+      const views = buildingViews(popover.registry, state);
+      expect(views.map((v) => v.id)).toEqual(BUILDINGS.map((d) => d.id));
+      for (const def of popover.registry) {
+        const view = views.find((v) => v.id === def.id)!;
+        const section = sectionOf(def.title);
+        expect(section).withContext(def.id).toBeTruthy();
+        for (const gauge of view.gauges) {
+          expect(section!.textContent).withContext(`${def.id} ${gauge.label}`).toContain(gauge.label);
+        }
+        const shown = actionSpecs(def, state).filter((a) => (a.visible ? a.visible(state) : true));
+        expect(buttons(section!).length).withContext(`${def.id} actions`).toBe(shown.length);
+      }
+    });
+
+    it('lists the buildings the state shows, and refuses nothing in silence', () => {
+      list.show();
+      settle();
+      const popover = TestBed.inject(PopoverService);
+      for (const view of popover.buildings()) {
+        const section = sectionOf(view.title);
+        expect(section).withContext(view.id).toBeTruthy();
+        expect(buttons(section!).length).withContext(view.id).toBe(view.actions.length);
+        for (const action of view.actions.filter((a) => !a.usable)) {
+          expect(section!.textContent).withContext(action.label).toContain(action.reason!);
+        }
+      }
+    });
+
+    it('carries the bell, the lamp and the Start Floor at the Gate, as the picture has them', () => {
+      const game = TestBed.inject(GameStateService);
+      game.update({
+        shortcuts: [
+          { id: 'NARROW_STAIR', name: 'Narrow Stair', description: 'A quicker way.', trigger: 'Slay 10', floor: 10, unlocked: true },
+        ],
+        homeUnitCount: 3,
+      });
+      list.show();
+      settle();
+      const gate = sectionOf('The Gate: the Loadout')!;
+      const labels = buttons(gate).map((b) => b.textContent!.trim());
+      expect(labels).toContain('Ring the bell: set out');
+      expect(labels).toContain('Ring the bell: send a Reinforcement Wave');
+      expect(labels).toContain('Light the lamp: extract');
+      expect(labels).toContain('Start at Floor 1, the Base (chosen)');
+      expect(labels).toContain('Start at Floor 10, Narrow Stair');
+
+      // Choosing a Start Floor and ringing the bell send what the picture sends.
+      buttons(gate).find((b) => b.textContent!.includes('Narrow Stair'))!.click();
+      settle();
+      expect(gate.textContent).toContain('Start at Floor 10, Narrow Stair (chosen)');
+      buttons(gate).find((b) => b.textContent!.includes('Ring the bell: set out'))!.click();
+      expect(sendAction).toHaveBeenCalledWith(
+        GameAction.INVADE,
+        jasmine.objectContaining({ startFloor: 10 }),
+      );
+    });
+
+    it('says why the bell, the lamp and the Wave cannot be used, and sends nothing', () => {
+      list.show();
+      settle();
+      const gate = sectionOf('The Gate: the Loadout')!;
+      expect(gate.textContent).toContain('No Expedition is out. There is no one to call home.');
+      expect(gate.textContent).toContain('No Expedition is out. There is no one to follow.');
+      buttons(gate).find((b) => b.textContent!.includes('extract'))!.click();
+      buttons(gate).find((b) => b.textContent!.includes('Wave'))!.click();
+      expect(sendAction).not.toHaveBeenCalled();
+    });
+
+    it('lights the lamp and sends a Wave from the list while an Expedition is out', () => {
+      TestBed.inject(GameStateService).update({ expeditionActive: true, homeUnitCount: 2 });
+      list.show();
+      settle();
+      const gate = sectionOf('The Gate: the Loadout')!;
+      buttons(gate).find((b) => b.textContent!.includes('extract'))!.click();
+      expect(sendAction).toHaveBeenCalledWith(GameAction.EXTRACT, null);
+      buttons(gate).find((b) => b.textContent!.includes('Wave'))!.click();
+      expect(sendAction).toHaveBeenCalledWith(GameAction.REINFORCE, { units: {} });
+    });
+
+    it('offers Resume for a Held Party, and only then', () => {
+      list.show();
+      settle();
+      expect(el().textContent).not.toContain('The Party has not moved.');
+      TestBed.inject(GameStateService).setSession({
+        resumed: true, savedAt: null, schema: 1, notices: [], held: true,
+      });
+      settle();
+      expect(el().textContent).toContain('The Party has not moved.');
+      const resume = Array.from(el().querySelectorAll('button')).find(
+        (b) => b.textContent!.trim() === 'Resume',
+      )!;
+      resume.click();
+      expect(sendAction).toHaveBeenCalledWith(GameAction.RESUME, null);
+    });
+
+    it('writes each ending in words, with the Toll, and never congratulates', () => {
+      const game = TestBed.inject(GameStateService);
+      for (const [outcome, heading] of [
+        ['VICTORY', 'The Heirs'],
+        ['DEFEAT', 'The Second Company'],
+        ['EXODUS', 'The Flight'],
+      ]) {
+        game.update({ gameOutcome: outcome, pending: null });
+        list.show();
+        settle();
+        const section = Array.from(el().querySelectorAll('section.building')).find(
+          (s) => s.getAttribute('aria-label') === 'The Campaign has ended',
+        )!;
+        expect(section.querySelector('h3')?.textContent).toBe(heading);
+        expect(section.textContent).not.toMatch(/Ignelia is free|Conquered|Prestige/);
+      }
+      game.update({
+        gameOutcome: 'EXODUS',
+        pending: {
+          outcome: 'EXODUS', generation: 1, legacy: 3, pity: false, guardiansSlain: 0,
+          highestFloor: 12, expeditions: 5,
+          toll: { toll: 30, legacy: 3 } as never,
+        },
+      });
+      settle();
+      expect(el().textContent).toContain('Toll 30.0. Legacy 3.');
+    });
+
+    it('states what the Stock card stated: food flows, the Stockroom, the lost, the Tier and the Tally', () => {
+      list.show();
+      settle();
+      const text = el().textContent!;
+      for (const words of [
+        'Fields +',
+        'Upkeep (',
+        'Stockroom: Knowledge',
+        'Lost to Starvation:',
+        'Village Tier',
+        'Tally (this Campaign)',
+        'enemies slain',
+      ]) {
+        expect(text).withContext(words).toContain(words);
+      }
+    });
+
+    it('lists the Shortcuts, open or not, and the Army with its Spore Doses', () => {
+      const game = TestBed.inject(GameStateService);
+      game.update({
+        shortcuts: [
+          { id: 'NARROW_STAIR', name: 'Narrow Stair', description: 'A quicker way.', trigger: 'Slay 10', floor: 10, unlocked: true },
+          { id: 'DEEP_DOOR', name: 'Deep Door', description: 'Shut.', trigger: 'Complete 3 Expeditions', floor: 20, unlocked: false },
+        ],
+        units: {
+          ...game.state().units,
+          WARRIOR: [
+            {
+              id: 7, name: 'Edda', currentHealth: 5, maxHealth: 20,
+              stats: { type: 'WARRIOR', health: 20, damage: 4 },
+              parts: [{ kind: 'LEFT_ARM', lost: false, currentHealth: 1, maxHealth: 5 }],
+            } as never,
+          ],
+        },
+        village: { ...game.state().village, spores: 2 },
+      });
+      list.show();
+      settle();
+      expect(el().querySelectorAll('app-shortcut-card').length).toBe(2);
+      expect(el().textContent).toContain('✓ open · Floor 10');
+      expect(el().textContent).toContain('Complete 3 Expeditions');
+      const name = el().querySelector('app-army .toggle') as HTMLButtonElement;
+      expect(name.textContent).toContain('Edda');
+      name.click();
+      settle();
+      (el().querySelector('app-army .dose') as HTMLButtonElement).click();
+      expect(sendAction).toHaveBeenCalledWith(GameAction.REMEDY, { unitId: 7 });
+    });
+
+    it('is hidden with the menus, and comes back open', () => {
+      list.show();
+      settle();
+      const stage = TestBed.inject(StageService);
+      stage.setMenusHidden(true);
+      settle();
+      expect((el().querySelector('.list') as HTMLElement).hidden).toBeTrue();
+      stage.showMenus();
+      settle();
+      expect((el().querySelector('.list') as HTMLElement).hidden).toBeFalse();
     });
   });
 });

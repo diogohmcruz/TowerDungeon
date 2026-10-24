@@ -11,7 +11,11 @@
  */
 import { GameAction } from '../../interfaces/game-action.enum';
 import type { GameState } from '../../interfaces/game-state';
-import { setOutAvailability } from '../launch/launch-controls';
+import {
+  availabilityOf,
+  setOutAvailability,
+  type LaunchCommand,
+} from '../launch/launch-controls';
 import { loadoutChoices } from '../launch/loadout-choices';
 import {
   chosenLoadout,
@@ -103,6 +107,43 @@ function panaceaAction(s: GameState): ActionSpec {
     run: (_commands, state) =>
       loadoutChoices().set({ panacea: !forecast(state).panaceaChosen }),
   };
+}
+
+/** The bell, the lamp and the Wave as actions: the same commands and refusals the objects in the picture give. */
+function launchAction(command: LaunchCommand, label: string, preview?: string): ActionSpec {
+  return {
+    id: command,
+    label,
+    availability: (s) => availabilityOf(command, s),
+    ...(preview ? { preview: () => preview } : {}),
+    run: (commands) => commands.launch(command),
+  };
+}
+
+/** One Start Floor: the Base, or an open Shortcut, as the radios were. */
+function startFloorAction(floor: number, label: string): ActionSpec {
+  return {
+    id: `start-floor-${floor}`,
+    label: () => (loadoutChoices().startFloor() === floor ? `${label} (chosen)` : label),
+    availability: (s) => {
+      const locked = frozen(s);
+      if (locked) return refused(locked);
+      return loadoutChoices().startFloor() === floor
+        ? refused('Already the Start Floor.')
+        : USABLE;
+    },
+    run: () => {
+      loadoutChoices().setStartFloor(floor);
+    },
+  };
+}
+
+function startFloorActions(s: GameState): ActionSpec[] {
+  const open = (s.shortcuts ?? []).filter((sc) => sc.unlocked);
+  return [
+    startFloorAction(0, 'Start at Floor 1, the Base'),
+    ...open.map((sc) => startFloorAction(sc.floor, `Start at Floor ${sc.floor}, ${sc.name}`)),
+  ];
 }
 
 const NO_PARTY = 'No Party has set out yet this Generation.';
@@ -393,6 +434,13 @@ export const GATE = defineBuilding({
     },
   ],
   actions: [
+    launchAction('set-out', 'Ring the bell: set out'),
+    launchAction(
+      'wave',
+      'Ring the bell: send a Reinforcement Wave',
+      'Sends every Reserve up after the Party. They carry supplies from the Pantry and climb from the Base. If their supplies run out before they catch up, climbers are lost.',
+    ),
+    launchAction('extract', 'Light the lamp: extract'),
     stepper('salt-more', 'Use one more Salt on the Supplies', 'salt', 1),
     stepper('salt-less', 'Use one less Salt on the Supplies', 'salt', -1),
     stepper('pack-more', 'Pack one more Salt', 'pack', 1),
@@ -400,7 +448,12 @@ export const GATE = defineBuilding({
   ],
   moreActions: (s: GameState) => {
     if (!s.loadout) return [];
-    const extras = [overreachAction(), ...tallyActions(s), musterAction()];
+    const extras = [
+      ...startFloorActions(s),
+      overreachAction(),
+      ...tallyActions(s),
+      musterAction(),
+    ];
     if (!s.loadout.saltPansOpen) return [panaceaAction(s), ...extras];
     // One choice per Unit type in the Reserves, as the panel's select lists them.
     const bearers = s.loadout.bearerTypes.map(

@@ -8,11 +8,24 @@ import {
   viewChild,
 } from '@angular/core';
 
-import { ExpeditionHud } from '../expedition-hud/expedition-hud';
+import { computed } from '@angular/core';
+import { DecimalPipe } from '@angular/common';
+
+import { GameAction } from '../../interfaces/game-action.enum';
+import { BodyPartKind } from '../../interfaces/member';
 import { GameStateService } from '../../services/game-state.service';
+import { GameWebSocketService } from '../../services/game-web-socket.service';
+import { LaunchService } from '../../services/launch.service';
 import { ListViewService } from '../../services/list-view.service';
 import { PopoverService } from '../../services/popover.service';
+import { StageService } from '../../services/stage.service';
+import { ZoomService } from '../../services/zoom.service';
+import { endingOf, SUCCESSION_ID } from '../../three/village/succession-building';
+import { villageFacts } from '../../three/village/village-facts';
 import { ActionRow } from '../action-row/action-row';
+import { Army } from '../army/army';
+import { ExpeditionHud } from '../expedition-hud/expedition-hud';
+import { ShortcutCard } from '../shortcut-card/shortcut-card';
 
 /** Keys that open the list and close it. Not while typing, and never with a modifier. */
 export function listKeyIntent(event: KeyboardEvent): 'toggle' | 'close' | null {
@@ -47,7 +60,7 @@ export function listKeyIntent(event: KeyboardEvent): 'toggle' | 'close' | null {
 @Component({
   selector: 'app-list-view',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ActionRow, ExpeditionHud],
+  imports: [ActionRow, ExpeditionHud, Army, ShortcutCard, DecimalPipe],
   template: `
     <button
       type="button"
@@ -58,7 +71,12 @@ export function listKeyIntent(event: KeyboardEvent): 'toggle' | 'close' | null {
       Open the list view of buildings and actions (L)
     </button>
     @if (list.open()) {
-      <section class="list" role="region" aria-label="List view of buildings">
+      <section
+        class="list"
+        role="region"
+        aria-label="List view of buildings"
+        [hidden]="stage.menusHidden()"
+      >
         <header>
           <h2>Buildings</h2>
           <button
@@ -79,6 +97,26 @@ export function listKeyIntent(event: KeyboardEvent): 'toggle' | 'close' | null {
           />
           Open this list when the game starts
         </label>
+        <!-- Time: a Held Party waits for the player; the top bar carries the same button. -->
+        @if (held()) {
+          <section class="building" aria-label="The Party">
+            <h3>The Party</h3>
+            <p class="line">The Party has not moved.</p>
+            <button type="button" class="btn" (click)="launch.resume()">Resume</button>
+          </section>
+        }
+        <!-- How the Campaign ended, when the Succession is not open to carry the words. -->
+        @if (ending(); as end) {
+          <section class="building" aria-label="The Campaign has ended">
+            <h3>{{ end.heading }}</h3>
+            <p class="line">{{ end.text }}</p>
+            @if (game().pending; as report) {
+              <p class="line">
+                Toll {{ report.toll.toll | number: '1.1-1' }}. Legacy {{ report.legacy }}.
+              </p>
+            }
+          </section>
+        }
         @for (b of popover.buildings(); track b.id) {
           <section class="building" [attr.aria-labelledby]="'list-' + b.id">
             <h3 [id]="'list-' + b.id">{{ b.title }}</h3>
@@ -136,6 +174,37 @@ export function listKeyIntent(event: KeyboardEvent): 'toggle' | 'close' | null {
         } @empty {
           <p>No building has anything to show yet.</p>
         }
+        <!-- What the Stock card said that no building states. -->
+        @for (g of facts(); track g.id) {
+          <section class="building facts" [attr.aria-labelledby]="'facts-' + g.id">
+            <h3 [id]="'facts-' + g.id">{{ g.heading }}</h3>
+            @for (line of g.lines; track $index) {
+              <p class="line">{{ line }}</p>
+            }
+          </section>
+        }
+        <!-- The Shortcuts: open ones are doorways in the Village; the Start Floor is chosen at the Gate. -->
+        <section class="building shortcuts" aria-labelledby="list-shortcuts">
+          <h3 id="list-shortcuts">Shortcuts</h3>
+          <p class="line leaves">
+            Shortcuts open as the Campaign slays enemies and completes Expeditions.
+            Choose an open Shortcut as the Start Floor at the Gate before setting out.
+          </p>
+          @for (sc of game().shortcuts; track sc.id) {
+            <app-shortcut-card [shortcut]="sc" />
+          }
+        </section>
+        <!-- The Reserves at home: their cards, with the Spore Doses. Choosing a name opens the unit view. -->
+        <section class="building reserves" aria-labelledby="list-reserves">
+          <h3 id="list-reserves">Army</h3>
+          <app-army
+            [army]="game().units"
+            [atHome]="!over()"
+            [sporesHeld]="sporesHeld()"
+            (remedy)="giveRemedy($event)"
+            (reattach)="reattachPart($event)"
+          />
+        </section>
         <!-- The Expedition's objects in the picture (Supplies post, crates, formations), as plain DOM. -->
         <app-expedition-hud
           [tower]="game().tower"
@@ -171,7 +240,8 @@ export function listKeyIntent(event: KeyboardEvent): 'toggle' | 'close' | null {
       z-index: 1050;
       overflow-y: auto;
       box-sizing: border-box;
-      padding: 16px 24px;
+      /* The top bar's own buttons stand over the list: the first line clears them. */
+      padding: 52px 24px 16px;
       color: var(--text);
       background: var(--panel);
     }
@@ -195,6 +265,10 @@ export function listKeyIntent(event: KeyboardEvent): 'toggle' | 'close' | null {
       margin-bottom: 16px;
       padding: 8px 12px;
       border: 1px solid var(--rule);
+    }
+    .facts .line,
+    .shortcuts .line {
+      margin: 0 0 4px;
     }
     .written-lines {
       margin: 0 0 8px;
@@ -250,7 +324,35 @@ export function listKeyIntent(event: KeyboardEvent): 'toggle' | 'close' | null {
 export class ListView {
   protected readonly list = inject(ListViewService);
   protected readonly popover = inject(PopoverService);
-  protected readonly game = inject(GameStateService).state;
+  private readonly stateService = inject(GameStateService);
+  protected readonly game = this.stateService.state;
+  protected readonly stage = inject(StageService);
+  protected readonly launch = inject(LaunchService);
+  private readonly ws = inject(GameWebSocketService);
+  private readonly zoom = inject(ZoomService);
+
+  /** The Party has not moved, and not because the closeup took the hold. */
+  protected readonly held = computed(
+    () => this.stateService.session()?.held === true && !this.zoom.holding(),
+  );
+  /** The ending in words, only when the Succession is not open to carry it. */
+  protected readonly ending = computed(() => {
+    const carried = this.popover.buildings().some((b) => b.id === SUCCESSION_ID);
+    return carried ? null : endingOf(this.game());
+  });
+  protected readonly over = computed(() => endingOf(this.game()) !== null);
+  protected readonly facts = computed(() => villageFacts(this.game()));
+  protected readonly sporesHeld = computed(() =>
+    Math.floor(this.game().village.spores),
+  );
+
+  protected giveRemedy(unitId: number): void {
+    this.ws.sendAction(GameAction.REMEDY, { unitId });
+  }
+
+  protected reattachPart(event: { unitId: number; part: BodyPartKind }): void {
+    this.ws.sendAction(GameAction.REATTACH, event);
+  }
   private readonly closeButton = viewChild<ElementRef<HTMLElement>>('close');
   private opener: HTMLElement | null = null;
 

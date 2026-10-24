@@ -75,7 +75,7 @@ describe('the Fort', () => {
     expect(action('hire-WARRIOR').usable).toBeTrue();
     const sent: unknown[][] = [];
     const spec = FORT.actions.find((a) => a.id === 'hire-ARCHER')!;
-    spec.run({ send: (a, p) => sent.push([a, p]) }, state);
+    spec.run({ send: (a, p) => sent.push([a, p]), launch: () => undefined }, state);
     expect(sent).toEqual([[GameAction.BUY, { unitStats: 'ARCHER', quantity: 1 }]]);
   });
 

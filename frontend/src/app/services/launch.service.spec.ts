@@ -93,6 +93,75 @@ describe('launching from the picture', () => {
       expect(payload.panacea).toBeFalse();
     });
 
+    it('sends a Panacea only when the Loadout chose one and the Village can make it', () => {
+      launch.panaceaChosen.set(true);
+      launch.sendInvade();
+      expect(sendAction).toHaveBeenCalledWith(
+        GameAction.INVADE,
+        jasmine.objectContaining({ panacea: true }),
+      );
+      expect(launch.panaceaChosen()).toBeFalse();
+
+      sendAction.calls.reset();
+      states.update({
+        loadout: {
+          ...states.state().loadout,
+          panaceaBlocked: 'A Panacea takes 4 Spores. The Stockroom holds 0.',
+        },
+      });
+      launch.panaceaChosen.set(true);
+      launch.sendInvade();
+      expect(sendAction).toHaveBeenCalledWith(
+        GameAction.INVADE,
+        jasmine.objectContaining({ panacea: false }),
+      );
+    });
+
+    it('sends the Salt the Loadout chose, never more than is held, then forgets it', () => {
+      states.update({
+        loadout: {
+          ...states.state().loadout,
+          saltHeld: 2,
+          saltUseful: 10,
+          saltPansOpen: true,
+          trustHeld: 0,
+        },
+      });
+      launch.saltToUse.set(5);
+      launch.sendInvade();
+      expect(sendAction).toHaveBeenCalledWith(
+        GameAction.INVADE,
+        jasmine.objectContaining({ salt: 2 }),
+      );
+      expect(launch.saltToUse()).toBe(0);
+    });
+
+    it('sends the Salt Pack with its bearer, from the Salt the Supplies left', () => {
+      states.update({
+        loadout: {
+          ...states.state().loadout,
+          saltHeld: 5,
+          saltUseful: 10,
+          saltPansOpen: true,
+          bearerTypes: ['TANK'],
+        },
+      });
+      launch.saltToUse.set(2);
+      launch.packSalt.set(9);
+      launch.packBearer.set('TANK');
+      launch.sendInvade();
+      expect(sendAction).toHaveBeenCalledWith(
+        GameAction.INVADE,
+        jasmine.objectContaining({ salt: 2, saltPack: 3, saltBearer: 'TANK' }),
+      );
+      expect(launch.packSalt()).toBe(0);
+    });
+
+    it('lets a Held Party go on', () => {
+      launch.resume();
+      expect(sendAction).toHaveBeenCalledWith(GameAction.RESUME, null);
+    });
+
     it('sends a Reinforcement Wave while an Expedition is out', () => {
       states.update({ expeditionActive: true });
       launch.ring();
