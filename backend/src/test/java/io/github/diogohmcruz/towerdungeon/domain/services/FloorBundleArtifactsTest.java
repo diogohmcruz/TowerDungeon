@@ -32,8 +32,8 @@ class FloorBundleArtifactsTest {
         new FloorBundle(config, new LeftoverGenerator(config)), new SplittableRandom(seed));
   }
 
-  private static GameState partyOfOne() {
-    var state = new GameState(new GameProperties());
+  private GameState partyOfOne() {
+    var state = new GameState(config);
     var unit = new Unit(UnitStats.WARRIOR, "W", cosmetic());
     state.getUnitsOnTower().computeIfAbsent(UnitStats.WARRIOR, _ -> new ArrayList<>()).add(unit);
     return state;

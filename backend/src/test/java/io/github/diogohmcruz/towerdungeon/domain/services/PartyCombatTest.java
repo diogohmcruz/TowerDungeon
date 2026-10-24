@@ -105,6 +105,47 @@ class PartyCombatTest {
     }
   }
 
+  private static GameProperties alwaysMissing(GameProperties base) {
+    var copy = base.copy();
+    copy.getAiming().setMinMiss(100);
+    copy.getAiming().setMaxMiss(100);
+    return copy;
+  }
+
+  @Test
+  void aSandboxAimingOverrideChangesHowThePartyStrikesAndDoesNotLeak() {
+    var tuned =
+        new GameState(alwaysMissing(config), RandomSource.scripted(new SplittableRandom(7)));
+    var tunedSlime = enemy(EnemyStats.SLIME);
+    var plainSlime = enemy(EnemyStats.SLIME);
+    var tunedFloor = floorOf(tunedSlime);
+
+    combat.unitsAttack(
+        party(tuned.recruit(UnitStats.WARRIOR, random)),
+        tunedFloor.getEnemies(),
+        tunedFloor,
+        tuned);
+    tick(party(recruited(UnitStats.WARRIOR)), floorOf(plainSlime));
+
+    assertThat(tunedSlime.getCurrentHealth()).isEqualTo(tunedSlime.getMaxHealth());
+    assertThat(plainSlime.getCurrentHealth()).isLessThan(plainSlime.getMaxHealth());
+    assertThat(config.getAiming().getMaxMiss()).isNotEqualTo(100);
+  }
+
+  @Test
+  void aSandboxAimingOverrideChangesHowTheGarrisonStrikesAndDoesNotLeak() {
+    var tuned =
+        new GameState(alwaysMissing(config), RandomSource.scripted(new SplittableRandom(7)));
+    var tunedWarrior = tuned.recruit(UnitStats.WARRIOR, random);
+    var plainWarrior = recruited(UnitStats.WARRIOR);
+
+    combat.enemiesAttack(tuned, List.of(enemy(EnemyStats.SLIME)), party(tunedWarrior));
+    combat.enemiesAttack(state, List.of(enemy(EnemyStats.SLIME)), party(plainWarrior));
+
+    assertThat(tunedWarrior.getCurrentHealth()).isEqualTo(tunedWarrior.getMaxHealth());
+    assertThat(plainWarrior.getCurrentHealth()).isLessThan(plainWarrior.getMaxHealth());
+  }
+
   @Test
   void theSlimeResistsMeleeWithoutBeingImmune() {
     assertThat(EnemyStats.SLIME.getWeaknesses().get(AttackType.MELEE)).isEqualTo(0.5);

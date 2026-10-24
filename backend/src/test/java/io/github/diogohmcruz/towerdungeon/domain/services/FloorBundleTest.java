@@ -49,6 +49,10 @@ class FloorBundleTest {
   }
 
   private GameState partyOf(int size, Item... waiting) {
+    return partyOf(config, size, waiting);
+  }
+
+  private GameState partyOf(GameProperties config, int size, Item... waiting) {
     var state = new GameState(config);
     var plan =
         ArchitecturePlan.generate(
@@ -139,6 +143,23 @@ class FloorBundleTest {
     }
 
     assertThat(found / (double) clears).isCloseTo(0.15, within(0.02));
+  }
+
+  @Test
+  void aSandboxBundleOverrideChangesWhatIsFoundAndDoesNotLeakToAnotherCampaign() {
+    config.getItems().getBundle().setFindChance(0.0);
+    var tunedConfig = config.copy();
+    tunedConfig.getItems().getBundle().setFindChance(1.0);
+    var tuned = partyOf(tunedConfig, 1, weapon("w", 1.0));
+    var plain = partyOf(config.copy(), 1, weapon("w", 1.0));
+    var bundle = bundle(new SplittableRandom(6));
+
+    bundle.resolve(tuned, 3, true);
+    bundle.resolve(plain, 3, true);
+
+    assertThat(worn(members(tuned).getFirst())).isEqualTo(1);
+    assertThat(worn(members(plain).getFirst())).isZero();
+    assertThat(config.getItems().getBundle().getFindChance()).isZero();
   }
 
   @Test
