@@ -11,3 +11,7 @@ Default five-label vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, 
 ### Domain docs
 
 Single-context: one `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
+### Releases
+
+Tags are unprefixed `MAJOR.MINOR.PATCH`, milestones are named after the tag they ship in, and release notes follow a template. See `docs/agents/release-template.md`.
