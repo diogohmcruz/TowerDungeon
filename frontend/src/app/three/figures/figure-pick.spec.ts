@@ -11,6 +11,7 @@ import {
   PICK_MARGIN,
   PICK_MIN_SIZE,
   pickFigure,
+  pickSprite,
 } from './figure-pick';
 
 const W = 800;
@@ -73,6 +74,40 @@ describe('figure picking', () => {
     cam.updateMatrixWorld();
     const after = figureRect(cam, f, W, H);
     expect(after.left).not.toBeCloseTo(before.left, 1);
+  });
+
+  describe('one hit-test for the click and the hover', () => {
+    it('names the same figure to both, wherever the pointer is', () => {
+      const cam = camera();
+      const sprites = [
+        figure('unit-1', -0.2),
+        figure('enemy-2', 0.2),
+        figure('wave-0', 0),
+      ];
+      const scale = 3;
+      for (let x = 300; x <= 500; x += 5) {
+        for (let y = 240; y <= 360; y += 10) {
+          // A click is picked as `pickFigure` with the scene's margin; the hover calls `pickSprite`.
+          const click = pickFigure(cam, sprites, x, y, W, H, {
+            margin: PICK_MARGIN + scale,
+          });
+          const hover = pickSprite(cam, sprites, x, y, W, H, scale);
+          expect(hover?.id).toBe(click?.id);
+        }
+      }
+    });
+
+    it('takes the nearest of two overlapping figures, and nothing off them', () => {
+      const cam = camera();
+      const sprites = [figure('unit-1', -0.05), figure('enemy-2', 0.05)];
+      const left = W / 2 - 4;
+      const right = W / 2 + 4;
+      expect(pickSprite(cam, sprites, left, H / 2, W, H, 2)?.id).toBe('unit-1');
+      expect(pickSprite(cam, sprites, right, H / 2, W, H, 2)?.id).toBe(
+        'enemy-2',
+      );
+      expect(pickSprite(cam, sprites, 5, 5, W, H, 2)).toBeNull();
+    });
   });
 
   describe('the hit area on the real stage', () => {
