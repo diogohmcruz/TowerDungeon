@@ -28,10 +28,6 @@ function over(state: GameState): boolean {
   );
 }
 
-function held(state: GameState): boolean {
-  return state.session?.held === true;
-}
-
 /** Set out: refused when an Expedition is out or the Campaign has ended. */
 export function setOutAvailability(state: GameState): Availability {
   if (over(state)) return refused('The Campaign has ended. No one sets out.');
@@ -41,12 +37,16 @@ export function setOutAvailability(state: GameState): Availability {
   return OK;
 }
 
-/** Send Reinforcement Wave: needs an Expedition, Reserves, and a Party that is not Held. */
-export function waveAvailability(state: GameState): Availability {
+/**
+ * Send Reinforcement Wave: needs an Expedition, Reserves, and a Party that is not Held.
+ * `held` is the Held flag of the session (the state does not carry it) or a hold the
+ * zoom took: a Wave is refused while time is stopped, whoever stopped it.
+ */
+export function waveAvailability(state: GameState, held: boolean): Availability {
   if (!state.expeditionActive) {
     return refused('No Expedition is out. There is no one to follow.');
   }
-  if (held(state)) {
+  if (held) {
     return refused('The Party has not moved. Resume first.');
   }
   if (state.homeUnitCount === 0) {
@@ -68,21 +68,22 @@ export function bellCommand(state: GameState): 'set-out' | 'wave' {
   return state.expeditionActive ? 'wave' : 'set-out';
 }
 
-export function bellAvailability(state: GameState): Availability {
+export function bellAvailability(state: GameState, held: boolean): Availability {
   return bellCommand(state) === 'wave'
-    ? waveAvailability(state)
+    ? waveAvailability(state, held)
     : setOutAvailability(state);
 }
 
 export function availabilityOf(
   command: LaunchCommand,
   state: GameState,
+  held: boolean,
 ): Availability {
   switch (command) {
     case 'set-out':
       return setOutAvailability(state);
     case 'wave':
-      return waveAvailability(state);
+      return waveAvailability(state, held);
     case 'extract':
       return extractAvailability(state);
   }

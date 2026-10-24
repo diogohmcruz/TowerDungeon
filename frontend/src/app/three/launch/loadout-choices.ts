@@ -15,6 +15,8 @@ export interface LoadoutChoiceSource {
   /** Chooses the Floor the next Expedition begins on; false when it is refused (an Expedition is out). */
   setStartFloor(floor: number): boolean;
   set(patch: Partial<LoadoutChoice>): void;
+  /** Whether the Party is Held, by the server or by the zoom: the state does not carry it. */
+  held(): boolean;
 }
 
 const NONE: LoadoutChoiceSource = {
@@ -22,6 +24,7 @@ const NONE: LoadoutChoiceSource = {
   startFloor: () => 0,
   setStartFloor: () => false,
   set: () => undefined,
+  held: () => false,
 };
 
 let source: LoadoutChoiceSource = NONE;

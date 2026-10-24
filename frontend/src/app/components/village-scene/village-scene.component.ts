@@ -101,6 +101,7 @@ export class VillageScene {
     if (subject && this.popover.openId() === subject.id) return null;
     return captionFor(subject, this.state(), {
       startFloor: this.startFloor(),
+      held: this.launch.held(),
     });
   });
   protected readonly caption = computed(() => {

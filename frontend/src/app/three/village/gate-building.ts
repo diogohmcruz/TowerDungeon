@@ -114,7 +114,7 @@ function launchAction(command: LaunchCommand, label: string, preview?: string): 
   return {
     id: command,
     label,
-    availability: (s) => availabilityOf(command, s),
+    availability: (s) => availabilityOf(command, s, loadoutChoices().held()),
     ...(preview ? { preview: () => preview } : {}),
     run: (commands) => commands.launch(command),
   };
