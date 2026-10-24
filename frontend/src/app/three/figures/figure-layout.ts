@@ -6,6 +6,7 @@ import {
   FigureKind,
   SPECK_CELL,
 } from './figure-atlas';
+import { type FigureRole, ROLE_PARTY } from './figure-tone';
 import { DIGIT_PX, NUMERAL_X } from '../floor-strip/floor-strip-plan';
 import { DIGIT_W } from '../floor-strip/digit-atlas';
 
@@ -75,8 +76,8 @@ export interface FigureInstance {
   /** World width and height. */
   w: number;
   h: number;
-  /** 0 ramp, 1 Guardian crimson. */
-  role: 0 | 1;
+  /** 0 ramp, 1 Guardian crimson, 2 Party (a sprite with a rim, #144). */
+  role: FigureRole;
 }
 
 export interface FigurePlan {
@@ -297,7 +298,7 @@ export function planFigures(input: FigureInput): FigurePlan {
         z: p.z,
         w: p.w,
         h: p.h,
-        role: p.member.guardian ? 1 : 0,
+        role: p.kind === 'unit' ? ROLE_PARTY : p.member.guardian ? 1 : 0,
       });
     } else if (specks.length < SPECK_CAPACITY) {
       specks.push({
