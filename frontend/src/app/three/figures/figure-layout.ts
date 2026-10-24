@@ -90,12 +90,25 @@ export interface FigurePlan {
   overflow: number;
 }
 
+/** Centre Y of a figure `h` high standing at depth `z` on the deck at `surfaceY`. */
+export type StandY = (surfaceY: number, z: number, h: number) => number;
+
+/** The lift of the battle Shot, for what has no camera to ask. */
+const BATTLE_STAND: StandY = (surfaceY, _z, h) =>
+  surfaceY + SURFACE_LIFT + h / 2;
+
 export interface FigureInput {
   party: FigureMember[];
   enemies: FigureMember[];
   waves: WaveInput[];
-  /** World Y of the deck the front rank stands on, lift included. */
+  /** World Y of the walkable surface of the deck the front rank stands on, lift not included. */
   surfaceY: number;
+  /**
+   * World Y of the centre of a figure `h` high that stands on the deck whose surface is at `surfaceY`,
+   * at depth `z`: its feet on the deck line as the camera sees it now (`figure-anchor.ts`). Default:
+   * the fixed lift of the battle Shot.
+   */
+  standY?: StandY;
   /** World Y of a floor's walkable surface (waves climb the front of the tower). */
   floorSurfaceY: (floor: number) => number;
   /** Width over height of the region the fight is framed in. */
@@ -105,6 +118,8 @@ export interface FigureInput {
    * scale grows them instead of blurring them. Default 1.
    */
   figureBoost?: number;
+  /** The id of the figure whose feet define the height of the deck (a unit view's); default, the front rank. */
+  standOn?: string;
   /** Highest floor a Wave column is drawn on (the floor the fight is drawn on). */
   anchorFloor: number;
 }
@@ -114,7 +129,8 @@ interface Placed {
   kind: FigureKind;
   x: number;
   z: number;
-  feetY: number;
+  /** World Y of the centre. */
+  y: number;
   w: number;
   h: number;
   order: number;
@@ -154,7 +170,7 @@ function layoutGroup(
       kind,
       x: centerX + c * colStep - rowWidth / 2 + diag,
       z: FIGURE_Z - r * rowStepZ,
-      feetY: surfaceY,
+      y: surfaceY,
       w: h * FIGURE_ASPECT,
       h,
       order: i,
@@ -213,6 +229,7 @@ function pickSprites(
 export function planFigures(input: FigureInput): FigurePlan {
   const { party, enemies, surfaceY } = input;
   const boost = input.figureBoost ?? 1;
+  const standY = input.standY ?? BATTLE_STAND;
 
   const partyCols = gridCols(party.length || 1);
   const enemyCols = gridCols(enemies.length || 1);
@@ -256,18 +273,27 @@ export function planFigures(input: FigureInput): FigurePlan {
     boost,
   );
 
+  // The deck is flat: every figure stands at the height of the one that defines it (the front rank, or
+  // the figure a unit view is on), so the ranks behind rise on the screen and the ranks in front fall.
+  const planeZ =
+    [...placedParty, ...placedEnemies].find(
+      (p) => `${p.kind}-${p.member.id}` === input.standOn,
+    )?.z ?? FIGURE_Z;
+  for (const p of [...placedParty, ...placedEnemies]) {
+    p.y = standY(surfaceY, planeZ, p.h);
+  }
+
   const drawn = pickSprites(placedParty, placedEnemies);
   const marks: FigureInstance[] = [];
   const specks: FigureInstance[] = [];
   for (const p of [...placedParty, ...placedEnemies]) {
     const id = `${p.kind}-${p.member.id}`;
-    const y = p.feetY + p.h / 2;
     if (drawn.has(p)) {
       marks.push({
         id,
         cell: figureCell(p.kind, p.member.typeKey),
         x: p.x,
-        y,
+        y: p.y,
         z: p.z,
         w: p.w,
         h: p.h,
@@ -278,7 +304,7 @@ export function planFigures(input: FigureInput): FigurePlan {
         id,
         cell: SPECK_CELL,
         x: p.x,
-        y: p.feetY + SPECK_SIZE,
+        y: standY(surfaceY, planeZ, SPECK_SIZE),
         z: p.z,
         w: SPECK_SIZE,
         h: SPECK_SIZE,
@@ -288,7 +314,7 @@ export function planFigures(input: FigureInput): FigurePlan {
   }
   const figureCount = marks.length;
 
-  planWaves(input, marks);
+  planWaves(input, standY, marks);
   return {
     marks,
     specks,
@@ -307,20 +333,25 @@ export function columnHeight(size: number): number {
  * marked with their number (1 for the first sent). They carry no hue; the
  * numeral and the height, which grows with the Wave's size, tell them apart.
  */
-function planWaves(input: FigureInput, out: FigureInstance[]): void {
+function planWaves(
+  input: FigureInput,
+  standY: StandY,
+  out: FigureInstance[],
+): void {
   const count = input.waves.length;
   const step = count > 1 ? 2.4 / (count - 1) : 0;
   input.waves.forEach((wave, index) => {
     const floor = Math.min(input.anchorFloor, Math.max(1, wave.floor));
     const h = columnHeight(wave.size);
     const x = count > 1 ? -1.2 + index * step : 0;
-    const base = input.floorSurfaceY(floor) + SURFACE_LIFT;
+    const surface = input.floorSurfaceY(floor);
+    const z = FIGURE_Z + 0.4;
     out.push({
       id: `wave-${index}`,
       cell: COLUMN_CELL,
       x,
-      y: base + h / 2,
-      z: FIGURE_Z + 0.4,
+      y: standY(surface, z, h),
+      z,
       w: h * FIGURE_ASPECT,
       h,
       role: 0,
@@ -335,8 +366,9 @@ function planWaves(input: FigureInput, out: FigureInstance[]): void {
         id: `wave-${index}-n${i}`,
         cell: digitCell(digit),
         x: x + (i - (digits.length - 1) / 2) * nw,
-        y: base + h + 0.08 + nh / 2,
-        z: FIGURE_Z + 0.4,
+        // Above the column, by the same offset whatever the Shot.
+        y: standY(surface, z, h) + h / 2 + 0.08 + nh / 2,
+        z,
         w: nw,
         h: nh,
         role: 0,

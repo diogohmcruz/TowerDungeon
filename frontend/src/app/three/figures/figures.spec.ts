@@ -49,7 +49,7 @@ function input(over: Partial<FigureInput> = {}): FigureInput {
     party: party(6),
     enemies: garrison(4),
     waves: [],
-    surfaceY: floorToY(3) + FLOOR_SURFACE_OFFSET + 0.68,
+    surfaceY: floorToY(3) + FLOOR_SURFACE_OFFSET,
     floorSurfaceY: (n) => floorToY(n) + FLOOR_SURFACE_OFFSET,
     viewAspect: 0.6,
     anchorFloor: 3,

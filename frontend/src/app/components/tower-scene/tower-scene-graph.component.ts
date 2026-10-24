@@ -39,8 +39,14 @@ import {
   FIGURE_Z,
   planFigures,
   SPECK_CAPACITY,
-  SURFACE_LIFT,
 } from '../../three/figures/figure-layout';
+import {
+  DeckView,
+  deckViewOf,
+  sameDeckView,
+  standCentreY,
+  standFeetY,
+} from '../../three/figures/figure-anchor';
 import {
   FIGURE_FRAGMENT,
   FIGURE_VERTEX,
@@ -491,6 +497,25 @@ export class TowerSceneGraph {
   /** Canvas width/height ratio; drives how much the formations shrink to fit. */
   private readonly viewAspect = signal(0.6);
 
+  /**
+   * Where the camera is, as the figures' anchor needs it (#136): the feet are placed on the deck line
+   * as this camera sees it, so they stand on it in every Shot and while the camera moves. The first
+   * frame replaces it with the real camera's.
+   */
+  private readonly deckView = signal<DeckView>(
+    (() => {
+      const { camUp, lookUp, distance } = SHOTS.battle;
+      const pitch = Math.atan2(camUp - lookUp, distance);
+      return {
+        y: floorToY(0) + camUp,
+        z: distance,
+        upY: Math.cos(pitch),
+        upZ: -Math.sin(pitch),
+      };
+    })(),
+    { equal: sameDeckView },
+  );
+
   protected readonly theme = computed<InkTheme>(() =>
     this.dark() ? 'night' : 'day',
   );
@@ -658,6 +683,8 @@ export class TowerSceneGraph {
       });
     }
     const anchor = this.anchorFloor();
+    const view = this.deckView();
+    const focus = this.zoom.focus();
     const floor = this.tower()?.floors?.[this.currentFloor()];
     return planFigures({
       party: this.flattenSquad(this.party()).map((m) =>
@@ -668,7 +695,10 @@ export class TowerSceneGraph {
         size: this.flattenSquad(w.units).length,
         floor: w.currentFloor ?? 1,
       })),
-      surfaceY: floorSurfaceY(anchor) + SURFACE_LIFT,
+      surfaceY: floorSurfaceY(anchor),
+      standY: (surfaceY, z, h) => standCentreY(view, surfaceY, z, h),
+      // A unit view puts the figure it is on on the line; the rest stand on the same flat deck.
+      standOn: focus ? figureId(focus) : undefined,
       floorSurfaceY,
       viewAspect: this.viewAspect(),
       figureBoost: figureBoost(this.stage.scale()),
@@ -744,7 +774,12 @@ export class TowerSceneGraph {
   private readonly launchVolumes = computed<Volume[]>(() => {
     if (!this.active()) return [];
     const u = this.usable();
-    const surfaceY = floorSurfaceY(this.anchorFloor()) + SURFACE_LIFT;
+    // The bell, the lamp and the post stand on the deck line, where they are in front of it; the
+    // crates' shelf rises from the height of the figures' feet (#136).
+    const view = this.deckView();
+    const surface = floorSurfaceY(this.anchorFloor());
+    const surfaceY = standFeetY(view, surface, TOWER_LAUNCH_Z);
+    const crateSurfaceY = standFeetY(view, surface, FIGURE_Z);
     const hovered = this.selection.hovered()?.id ?? null;
     const c = this.carried();
     const volumes = [
@@ -756,6 +791,7 @@ export class TowerSceneGraph {
       }),
       ...expeditionVolumes({
         surfaceY,
+        crateSurfaceY,
         supplies: c?.supplies ?? 0,
         maxSupplies: c?.maxSupplies ?? 0,
         credits: c?.credits ?? 0,
@@ -802,6 +838,7 @@ export class TowerSceneGraph {
 
     effect(() => setInkTheme(this.inkUniforms, this.theme()));
     effect(() => this.writeInstances());
+    effect(() => this.writeFigures());
     effect(() => this.writeLaunch());
 
     // The bell and the lamp act (architecture doc 5.5) through the LaunchService,
@@ -926,7 +963,12 @@ export class TowerSceneGraph {
         // The unit Shot frames the figure itself; without it (gone from the plan) the Party's deck.
         const at = subject ?? {
           x: 0,
-          y: floorSurfaceY(this.anchorFloor()) + SURFACE_LIFT + 0.3,
+          y: standCentreY(
+            this.deckView(),
+            floorSurfaceY(this.anchorFloor()),
+            FIGURE_Z,
+            0.6,
+          ),
           z: FIGURE_Z,
         };
         this.camTarget.set(at.x, at.y - dropY + pose.lookUp, at.z);
@@ -976,10 +1018,20 @@ export class TowerSceneGraph {
         cam.updateProjectionMatrix();
       }
 
+      // The figures and the objects stand on the deck line as this camera sees it (#136): when the
+      // camera has moved, place them again now, so no frame draws them for the camera before.
+      const before = this.deckView();
+      this.deckView.set(deckViewOf(camera));
+      if (this.deckView() !== before) {
+        this.writeFigures();
+        this.writeLaunch();
+      }
+
       // The card follows the figure: tell it where the figure is on the canvas.
+      const placed = unitView ? this.focusSubject() : null;
       this.zoom.setAnchor(
-        subject && el.clientWidth > 0
-          ? figureRect(camera, subject, el.clientWidth, el.clientHeight)
+        placed && el.clientWidth > 0
+          ? figureRect(camera, placed, el.clientWidth, el.clientHeight)
           : null,
       );
 
@@ -1025,8 +1077,6 @@ export class TowerSceneGraph {
     const m = new THREE.Matrix4();
     const p = new THREE.Vector3();
     const sc = new THREE.Vector3(1, 1, 1);
-
-    this.writeFigures();
 
     plan.strips.forEach((s, i) => {
       strips.setMatrixAt(
