@@ -14,7 +14,8 @@ import {
   litSaltNotches,
   VillageInput,
 } from './village-layout';
-import { outlineVolumes, subjectOfVolume } from './village-subjects';
+import { cubeOutlineVolumes } from './cube-outline';
+import { subjectOfVolume } from './village-subjects';
 
 describe('the Village Tier buildings', () => {
   let state: GameState;
@@ -212,7 +213,7 @@ describe('the Village Tier buildings', () => {
         quarryHeapCap: 10,
       });
       for (const id of ['VAULT', 'BREAKER', 'SALTER', 'SPOREWARDEN']) {
-        expect(outlineVolumes(v, id, 1, 'hover').length).toBe(4);
+        expect(cubeOutlineVolumes(v, id, 2, 'select').length).toBe(12);
       }
     });
   });
@@ -311,7 +312,7 @@ describe('the Village Tier buildings', () => {
             expect(ids(v)).toContain(part);
             expect(subjectOfVolume(part)).toEqual({ kind: 'building', id: building });
           }
-          expect(outlineVolumes(v, building, 1, 'hover').length).toBe(4);
+          expect(cubeOutlineVolumes(v, building, 2, 'select').length).toBe(12);
         }
         const lit = v.filter((x) => /^reliquary-relics(-more)?-notch-/.test(x.id) && x.tone === 1);
         expect(lit.length).toBe(3);

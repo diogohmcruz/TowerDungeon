@@ -439,7 +439,7 @@ describe('village layout', () => {
         hovered: 'b',
       });
       const outline = v.filter((x) => x.id.startsWith('outline-b:hover:shortcut'));
-      expect(outline.length).toBe(4);
+      expect(outline.length).toBeGreaterThanOrEqual(12);
       expect(v.some((x) => x.id.startsWith('outline-a'))).toBeFalse();
       const step = v.find((x) => x.id === `${SHORTCUT_MARK_ID}b:step`)!;
       const lintel = v.find((x) => x.id === `${SHORTCUT_MARK_ID}b:lintel`)!;

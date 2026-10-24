@@ -11,6 +11,7 @@ import type { TradeId } from '../../interfaces/village';
 import { bellObject, gateObject } from '../launch/launch-objects';
 import { barGauge, GAUGE_MIN, notchGauge, slitGauge } from './gauge-kit';
 import { RECORDS_TIER, stoneOfCount, wallOfNames } from './tier-four-records';
+import { cubeOutlineVolumes } from './cube-outline';
 import { EMPTY_PILLAR, referencePillar, type PillarInput } from './reference-pillar';
 import {
   BASE_DOOR_ID,
@@ -1181,10 +1182,10 @@ export function buildVillage(input: VillageInput): Volume[] {
     out.push(...outlineVolumes(out, BELL_SUBJECT, 1, 'unlit', 'dashed'));
   }
   if (input.hovered && input.hovered !== input.selected) {
-    out.push(...outlineVolumes(out, input.hovered, 1, 'hover'));
+    out.push(...cubeOutlineVolumes(out, input.hovered, 1, 'hover'));
   }
   if (input.selected) {
-    out.push(...outlineVolumes(out, input.selected, 2, 'select'));
+    out.push(...cubeOutlineVolumes(out, input.selected, 2, 'select'));
   }
   return out;
 }

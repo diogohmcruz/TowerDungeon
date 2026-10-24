@@ -34,7 +34,9 @@ import {
 import { subjectRect } from '../../three/village/subject-rect';
 import { resolveHover } from '../../three/hover-resolver';
 import { volumeRegions } from '../../three/village/volume-regions';
+import { VILLAGE_OVERLAY_CAPACITY } from '../../three/village/cube-outline';
 import {
+  OUTLINE,
   subjectOfVolume,
   type VillageSubject,
 } from '../../three/village/village-subjects';
@@ -45,17 +47,28 @@ import { dampFactor, prefersReducedMotion } from '../../three/camera-shots';
 import {
   closeupFrame,
   fitVillageCamera,
+  focusLineScale,
 } from '../../three/village/village-camera';
 import { LandscapeGraph } from '../landscape/landscape-graph.component';
 import '../../three/catalogue';
 
 /** Instances the Village mesh can hold (about 250 are used at the busiest). */
 const VILLAGE_CAPACITY = 512;
+/**
+ * Ink density of a focus line. Above 1 on purpose: the shader clamps it, so every face of a thin
+ * edge (top, front, side) reaches the line slot of the ramp, and the line reads as one line.
+ */
+const OVERLAY_TONE = 3;
 
 /** The Village's own fog: its depth is about 30 units, the Tower fades by alpha. */
 const VILLAGE_FOG_DENSITY = 0.01;
 /** World y of the Village ground's top face (its box is 0.2 thick, centred on -0.2). */
 const VILLAGE_GROUND_TOP = -0.1;
+
+/** A focus line (a hover, a choice, a Start mark): drawn in the cube's own pass, above the buildings. */
+export function isFocusLine(v: Volume): boolean {
+  return v.id.startsWith(OUTLINE);
+}
 
 /**
  * The Village Elevation: one instanced ink mesh, no lights, a fixed vantage.
@@ -101,6 +114,35 @@ const VILLAGE_GROUND_TOP = -0.1;
         [uniforms]="inkUniforms"
       />
     </ngt-instanced-mesh>
+    <!-- The focus cube (#133): the hovered and the chosen outline, drawn above the buildings so no face hides an edge. -->
+    <ngt-instanced-mesh
+      #cube
+      *args="[undefined, undefined, OVERLAY_CAPACITY]"
+      [frustumCulled]="false"
+      [renderOrder]="10"
+    >
+      <ngt-box-geometry *args="[1, 1, 1]">
+        <ngt-instanced-buffer-attribute
+          attach="attributes.aTone"
+          *args="[overlayTone, 1]"
+        />
+        <ngt-instanced-buffer-attribute
+          attach="attributes.aAlpha"
+          *args="[overlayAlpha, 1]"
+        />
+        <ngt-instanced-buffer-attribute
+          attach="attributes.aRole"
+          *args="[overlayRole, 1]"
+        />
+      </ngt-box-geometry>
+      <ngt-shader-material
+        [vertexShader]="inkVertex"
+        [fragmentShader]="inkFragment"
+        [uniforms]="inkUniforms"
+        [depthTest]="false"
+        [depthWrite]="false"
+      />
+    </ngt-instanced-mesh>
   `,
 })
 export class VillageSceneGraph {
@@ -115,6 +157,8 @@ export class VillageSceneGraph {
   private readonly zoom = inject(ZoomService);
   /** 0 is the far view, 1 the closeup (#130); it eases between them, or cuts under reduced motion. */
   private closeness = 0;
+  /** The thickness the focus lines are written at, as a share of the far view's (`focusLineScale`). */
+  private lineScale = 1;
   /** What the closeup frames: the built Village of this Tier. */
   private readonly frame = computed(() => closeupFrame(this.volumes()));
   private readonly dark = signal(this.readTheme());
@@ -133,11 +177,22 @@ export class VillageSceneGraph {
   protected readonly tone = new Float32Array(VILLAGE_CAPACITY);
   protected readonly alpha = new Float32Array(VILLAGE_CAPACITY);
   protected readonly role = new Float32Array(VILLAGE_CAPACITY);
+  protected readonly OVERLAY_CAPACITY = VILLAGE_OVERLAY_CAPACITY;
+  protected readonly overlayTone = new Float32Array(VILLAGE_OVERLAY_CAPACITY);
+  protected readonly overlayAlpha = new Float32Array(VILLAGE_OVERLAY_CAPACITY);
+  protected readonly overlayRole = new Float32Array(VILLAGE_OVERLAY_CAPACITY);
 
   private readonly meshRef =
     viewChild<ElementRef<THREE.InstancedMesh>>('village');
+  private readonly cubeRef =
+    viewChild<ElementRef<THREE.InstancedMesh>>('cube');
+  /** Every volume of the scene: the buildings first, the focus lines (`outline-`) last. */
   private readonly volumes = computed<Volume[]>(() =>
     buildVillage(this.village()),
+  );
+  /** What the main mesh draws, in instance order: the focus lines are not in it. */
+  private readonly solids = computed(() =>
+    this.volumes().filter((v) => !isFocusLine(v)),
   );
   /** The subject the last press resolved to: the click that follows is on it. */
   private pressSubject: VillageSubject | null = null;
@@ -168,7 +223,8 @@ export class VillageSceneGraph {
       this.store.snapshot.invalidate();
     });
     effect(() => {
-      this.write(this.volumes());
+      this.write(this.solids(), this.meshRef()?.nativeElement, false);
+      this.writeFocus();
       this.store.snapshot.invalidate();
     });
 
@@ -239,6 +295,12 @@ export class VillageSceneGraph {
       const h = el.clientHeight;
       this.easeCloseness(delta);
       this.frameCamera(cam, w, h);
+      // The focus lines keep their thickness in pixels as the camera comes in.
+      const lineScale = focusLineScale(cam.aspect, this.closeness, this.frame());
+      if (Math.abs(lineScale - this.lineScale) > 1e-3) {
+        this.lineScale = lineScale;
+        this.writeFocus();
+      }
       // The open building's popover follows it: report where it is on the canvas.
       const open = this.popover.open();
       this.popover.setAnchor(
@@ -385,27 +447,46 @@ export class VillageSceneGraph {
 
   private subjectAt(instanceId: number | undefined) {
     const volume =
-      instanceId === undefined ? undefined : this.volumes()[instanceId];
+      instanceId === undefined ? undefined : this.solids()[instanceId];
     return volume ? subjectOfVolume(volume.id) : null;
   }
 
-  private write(volumes: Volume[]): void {
-    const mesh = this.meshRef()?.nativeElement;
+  /** Writes the focus lines into the cube mesh at the thickness for the camera now. */
+  private writeFocus(): void {
+    this.write(
+      this.volumes().filter(isFocusLine),
+      this.cubeRef()?.nativeElement,
+      true,
+    );
+  }
+
+  /** Writes volumes into an instanced mesh: the main one, or the focus cube's (`overlay`). */
+  private write(
+    volumes: Volume[],
+    mesh: THREE.InstancedMesh | undefined,
+    overlay: boolean,
+  ): void {
     if (!mesh?.isInstancedMesh) {
       return;
     }
-    const n = Math.min(volumes.length, VILLAGE_CAPACITY);
+    const tone = overlay ? this.overlayTone : this.tone;
+    const alpha = overlay ? this.overlayAlpha : this.alpha;
+    const role = overlay ? this.overlayRole : this.role;
+    const n = Math.min(
+      volumes.length,
+      overlay ? VILLAGE_OVERLAY_CAPACITY : VILLAGE_CAPACITY,
+    );
     for (let i = 0; i < n; i++) {
       const v = volumes[i];
       this.matrix.compose(
         this.position.set(v.x, v.y, v.z),
         this.identity,
-        this.scale.set(v.w, v.h, v.d),
+        overlay ? this.thin(v) : this.scale.set(v.w, v.h, v.d),
       );
       mesh.setMatrixAt(i, this.matrix);
-      this.tone[i] = v.tone;
-      this.alpha[i] = v.alpha;
-      this.role[i] = 0;
+      tone[i] = overlay ? OVERLAY_TONE : v.tone;
+      alpha[i] = v.alpha;
+      role[i] = 0;
     }
     mesh.count = n;
     mesh.instanceMatrix.needsUpdate = true;
@@ -413,6 +494,14 @@ export class VillageSceneGraph {
     for (const name of ['aTone', 'aAlpha', 'aRole']) {
       (attrs[name] as THREE.BufferAttribute).needsUpdate = true;
     }
+  }
+
+  /** The scale of a focus line: its two thinnest sides follow the camera's line scale (`lineScale`). */
+  private thin(v: Volume): THREE.Vector3 {
+    const sides = [v.w, v.h, v.d];
+    const longest = sides.indexOf(Math.max(...sides));
+    const [w, h, d] = sides.map((s, i) => (i === longest ? s : s * this.lineScale));
+    return this.scale.set(w, h, d);
   }
 
   private readTheme(): boolean {

@@ -240,7 +240,7 @@ describe('the reference pillar', () => {
         pillar: pillarInput(state),
         hovered: PILLAR_ID,
       }).filter((v) => v.id.startsWith(`outline-${PILLAR_ID}:hover`));
-      expect(out.length).toBe(4);
+      expect(out.length).toBeGreaterThanOrEqual(12);
     });
   });
 });

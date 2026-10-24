@@ -49,8 +49,12 @@ describe('village subjects', () => {
       (v) => v.id.startsWith('outline-') && !v.id.includes(':start:'),
     );
 
-    expect(outline.length).toBe(8);
-    expect(hovered.length).toBe(plain.length + 8);
+    // A dashed cube each for the Annex and for the lane: twelve edges, cut into dashes.
+    expect(new Set(outline.map((v) => v.id.split(':')[2].split('-')[0]))).toEqual(
+      new Set(['annex', 'villagers']),
+    );
+    expect(outline.length).toBeGreaterThanOrEqual(24);
+    expect(hovered.length).toBe(plain.length + outline.length);
     // The picture itself is unchanged: same volumes, same size, same tone.
     expect(hovered.slice(0, plain.length)).toEqual(plain);
     // Every outline stands for the thing it frames.
@@ -63,8 +67,8 @@ describe('village subjects', () => {
     const thickness = (input: VillageInput) =>
       Math.min(
         ...buildVillage(input)
-          .filter((v) => v.id.startsWith('outline-') && v.id.endsWith('-n'))
-          .map((v) => v.h),
+          .filter((v) => v.id.startsWith('outline-') && !v.id.includes(':start:'))
+          .map((v) => Math.min(v.w, v.h, v.d)),
       );
 
     const hair = thickness({ ...busy, hovered: 'SCRIBE' });
@@ -78,7 +82,7 @@ describe('village subjects', () => {
       v.id.startsWith('outline-SALTER'),
     );
 
-    expect(outline.length).toBe(4);
+    expect(outline.length).toBeGreaterThanOrEqual(12);
   });
 
   it('leaves the Village bounds alone', () => {
@@ -103,7 +107,7 @@ describe('village subjects', () => {
     const v = buildVillage(input);
     const outline = v.filter((x) => x.id.startsWith('outline-PORT:hover:building'));
 
-    expect(outline.length).toBe(4);
+    expect(outline.length).toBeGreaterThanOrEqual(12);
     expect(subjectOfVolume(outline[0].id)).toEqual({ kind: 'building', id: 'PORT' });
     for (const x of outline) expect(x.x + x.w / 2).toBeLessThanOrEqual(5.5);
   });
@@ -123,7 +127,7 @@ describe('village subjects', () => {
       });
     }
     const outline = v.filter((x) => x.id.startsWith('outline-NARROW_STAIR'));
-    expect(outline.length).toBe(4);
+    expect(outline.length).toBeGreaterThanOrEqual(12);
     expect(subjectOfVolume(outline[0].id)).toEqual({
       kind: 'shortcut',
       id: 'NARROW_STAIR',
