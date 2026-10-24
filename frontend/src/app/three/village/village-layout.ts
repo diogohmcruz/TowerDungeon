@@ -75,8 +75,12 @@ export const SHORTCUT_DOOR = {
   step: { w: 0.2, h: 0.05, dx: 0.35 },
 } as const;
 
-/** `port` is the shore: sea, pier and Boat, drawn in the outer right-hand 20% of the frame. */
-export type VolumeGroup = 'village' | 'tower' | 'port';
+/**
+ * `port` is the shore's building: footing, pier and Boat, drawn in the outer right-hand 20% of the
+ * frame. `sea` is scenery: the water, the shore's land and the horizon, which run past the frame to
+ * the screen's edge and stand for nothing the player can point at or the closeup frames.
+ */
+export type VolumeGroup = 'village' | 'tower' | 'port' | 'sea';
 
 /** A box: `x`, `y`, `z` are the centre; `y` is the centre height above the ground top. */
 export interface Volume {
@@ -1127,46 +1131,130 @@ function baseDoor(out: Volume[]): void {
   part('ledge', x, bottom - 0.05, 0.5, 0.05, 0.24, z + 0.1, VILLAGE_TONE.stone);
 }
 
-/** The shore starts here: the right-hand 20% of the frame, beyond the Village's 60%. */
+/**
+ * Instances the Village mesh holds: one draw call whatever the count. Raised from 512 to 640 for the
+ * sea's strips, dashes and the larger Boat (#147); the busiest Village with every Upgrade built, the
+ * Port and the Boat uses about 540.
+ */
+export const VILLAGE_CAPACITY = 640;
+
+/** The Port's land ends here at the bay's deepest: the right-hand 20% of the frame, beyond the Village's 60%. */
 export const SHORE_X0 = FRAME_WIDTH * 0.3;
 export const SHORE_X1 = FRAME_WIDTH / 2;
+/** The sea runs this far to the right, past any screen the frame is drawn on (#147). */
+export const SEA_REACH = 40;
+/** How far back the water runs: it ends in the horizon line. */
+export const SEA_FAR = -46;
+/** The water's top lies this far under the land's, so the shore is a small bank. */
+const SEA_DROP = 0.05;
+/** The bay: its deepest point (z) and how fast the shore falls away from it. */
+const BAY_Z = 1.2;
+const BAY_CURVE = 0.14;
+/** The land and the near water are cut into this many strips across the ground's depth. */
+const SHORE_STRIPS = 8;
+const GROUND_Z0 = -1.5;
+const GROUND_Z1 = 3.5;
 /** The pier starts just past the Vault and runs out over the water. */
 const PIER_X0 = 3.35;
 const PIER_Z = 0.9;
 const PIER_DECK = 0.2;
 
-/**
- * Sea bands: horizontal strips with gaps, no waves, so the ink dither reads as
- * still black water. Each is `[bottom, from, to, tone]`, `from` and `to` as a
- * share of the strip's width.
- */
-const SEA_BANDS: ReadonlyArray<readonly [number, number, number, number]> = [
-  [-0.22, 0.0, 0.7, 0.45],
-  [-0.14, 0.25, 1.0, 0.6],
-  [-0.06, 0.0, 0.45, 0.5],
-  [-0.06, 0.6, 1.0, 0.5],
-  [0.02, 0.15, 0.8, 0.62],
-  [0.1, 0.0, 0.3, 0.4],
-  [0.1, 0.5, 0.9, 0.4],
-];
+/** Where the shore line stands at a depth: a curve, the water biting deepest at the Port. */
+export function shoreX(z: number): number {
+  return SHORE_X0 + 0.04 + BAY_CURVE * (z - BAY_Z) * (z - BAY_Z);
+}
+
+/** Water and its dashes, as ink density: black water, light dashes. */
+const SEA_TONE = 0.05;
+const DASH_TONE = 0.64;
+const HORIZON_TONE = 0.5;
 
 /**
- * The Port. Hidden: nothing, the Village is landlocked. Footing: a hairline
- * rectangle, a short pier and a strip of sea. Built: the full pier, and the Boat's
- * dark hull once it is docked. Everything sits at x >= 3.3 (the outer 20%).
+ * Rows of dashes on the water, `[z, count, spread]`: the nearer rows are few and short, the far
+ * ones wider apart and longer, so they hold their pixel size as the water recedes.
  */
-function port(out: Volume[], state: PortState, boatDocked: boolean, seaRisk: number | null | undefined): void {
+const DASH_ROWS: ReadonlyArray<readonly [number, number, number]> = [
+  [3.2, 3, 4],
+  [2.55, 3, 5],
+  [1.95, 3, 6],
+  [0.2, 3, 6],
+  [-1.2, 3, 8],
+  [-3.5, 3, 12],
+  [-8, 3, 20],
+  [-16, 3, 30],
+  [-28, 2, 34],
+  [-40, 2, 34],
+];
+
+/** A small seeded sequence, so the dashes lie the same way every time. */
+function lcg(seed: number): () => number {
+  let s = seed >>> 0;
+  return () => {
+    s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
+    return s / 4294967296;
+  };
+}
+
+/**
+ * The sea (#147): scenery, in its own group so the Village bounds and the closeup frame do not
+ * count it. Black water from the curved shore to the screen's right edge and back to the horizon,
+ * short light dashes on it that drift slowly with the clock (still under reduced motion, where the
+ * clock is held at 0), and a light line where the water meets the sky. The ground ends at the
+ * bay's deepest point; the land that stands out into the bay is cut in strips, and so is the near
+ * water, so the shore line is a curve.
+ */
+function sea(out: Volume[], unrest: number, flicker: number): void {
+  const top = -SEA_DROP;
+  const water = Math.max(0.01, SEA_TONE - 0.03 * unrest);
+  const landTone = VILLAGE_TONE.ground;
+  const depth = (GROUND_Z1 - GROUND_Z0) / SHORE_STRIPS;
+  for (let i = 0; i < SHORE_STRIPS; i++) {
+    const z = GROUND_Z0 + depth * (i + 0.5);
+    const edge = shoreX(z);
+    // The land that stands out into the bay, then the water beyond it.
+    if (edge > SHORE_X0 + 1e-6) {
+      box(out, `sea-shore-${i}`, 'sea', (SHORE_X0 + edge) / 2, -0.2, z, edge - SHORE_X0, 0.2, depth, landTone);
+    }
+    box(out, `sea-water-${i}`, 'sea', (edge + SEA_REACH) / 2, -0.4, z, SEA_REACH - edge, 0.4 + top, depth, water);
+  }
+  // The water behind the Village, back to the horizon.
+  const backEdge = shoreX(GROUND_Z0);
+  box(out, 'sea-body', 'sea', (backEdge + SEA_REACH) / 2, -0.4, (GROUND_Z0 + SEA_FAR) / 2, SEA_REACH - backEdge, 0.4 + top, GROUND_Z0 - SEA_FAR, water);
+  // The horizon: a pale far bank along the far edge, the whole width of the sea, about a pixel tall from the vantage.
+  box(out, 'sea-horizon', 'sea', (backEdge + SEA_REACH) / 2, top, SEA_FAR + 0.3, SEA_REACH - backEdge, 0.5, 0.06, HORIZON_TONE);
+  // Dashes: thin, wide and flat, each swaying a little about its place.
+  const rand = lcg(147);
+  let n = 0;
+  for (const [z, count, spread] of DASH_ROWS) {
+    const w = 0.22 + 0.04 * (GROUND_Z1 - z);
+    const x0 = Math.max(shoreX(z) + 0.5, SHORE_X0 + 0.9);
+    for (let k = 0; k < count; k++) {
+      const slot = (k + 0.2 + 0.6 * rand()) / count;
+      const phase = rand();
+      const sway = Math.min(0.5, 0.12 + 0.02 * (GROUND_Z1 - z));
+      const x = x0 + slot * spread + sway * Math.sin(flicker * 0.1 + phase * 2 * Math.PI);
+      const tone = Math.min(1, DASH_TONE + 0.3 * unrest);
+      box(out, `sea-band-${n++}`, 'sea', x, top, z, w * (0.8 + 0.5 * rand()), 0.02, 0.04 + 0.006 * (GROUND_Z1 - z), tone);
+    }
+  }
+}
+
+/**
+ * The Port. Hidden: nothing, the Village is landlocked. Footing: a hairline rectangle and a short
+ * pier, over the sea. Built: the full pier, and the Boat once it is docked. The Port's own parts
+ * all sit at x >= 3.3 (the outer 20%); the sea they stand in is scenery (`sea`).
+ */
+function port(
+  out: Volume[],
+  state: PortState,
+  boatDocked: boolean,
+  seaRisk: number | null | undefined,
+  flicker: number,
+): void {
   if (state === 'HIDDEN') return;
-  const w = SHORE_X1 - SHORE_X0 - 0.1;
-  const sx = SHORE_X0 + 0.05;
-  // The sea: a dark body and bands, only in the outer right-hand 20%.
-  // The danger at sea sets its tone: a calm sea is dark and quiet, a dangerous one
-  // is darker still with bolder bands (the number is also in words in the UI).
-  const unrest = seaUnrest(seaRisk);
-  box(out, 'sea-body', 'port', sx + w / 2, -0.3, 1.2, w, 0.4, 2.0, VILLAGE_TONE.ground - 0.1 * unrest);
-  SEA_BANDS.forEach(([bottom, a, b, tone], i) => {
-    box(out, `sea-band-${i}`, 'port', sx + ((a + b) / 2) * w, bottom, 2.205, (b - a) * w, 0.035, 0.01, Math.min(1, tone + 0.3 * unrest));
-  });
+  // The danger at sea sets its tone: a calm sea is dark and quiet, a dangerous one is darker
+  // still with bolder dashes (the number is also in words in the UI).
+  sea(out, seaUnrest(seaRisk), flicker);
   // The footing is a hairline rectangle on the ground, as the Pans' is.
   const fx0 = PIER_X0;
   const fx1 = PIER_X0 + 0.7;
@@ -1190,16 +1278,45 @@ function port(out: Volume[], state: PortState, boatDocked: boolean, seaRisk: num
   if (state !== 'BUILT') return;
   box(out, 'port-pier-bollard', 'port', PIER_X0 + length - 0.1, PIER_DECK + 0.05, PIER_Z, 0.06, 0.1, 0.06, VILLAGE_TONE.stone);
   if (!boatDocked) return;
-  // The Boat: a low dark hull alongside the pier, a raised bow and a bare mast.
-  const hx = PIER_X0 + length - 0.75;
-  box(out, 'port-boat-hull', 'port', hx, 0.02, 1.5, 1.2, 0.2, 0.4, VILLAGE_TONE.dark);
-  box(out, 'port-boat-bow', 'port', hx + 0.55, 0.22, 1.5, 0.2, 0.14, 0.4, VILLAGE_TONE.dark);
-  box(out, 'port-boat-mast', 'port', hx - 0.1, 0.22, 1.5, 0.03, 0.8, 0.03, VILLAGE_TONE.dark);
+  boat(out);
 }
 
-function ground(out: Volume[], quarter: Quarter | null): void {
+/** The Boat's hull, in the ink's dark; it reads by its light gunwale, masts and lit window. */
+const BOAT = { length: 1.8, z: 1.55, depth: 0.5, hull: 0.28 } as const;
+
+/**
+ * The Boat (#147): a long dark hull with a raised bow and stern, a deckhouse with one lit window,
+ * two masts with a yard, and a pale gunwale line so it reads on black water. It lies alongside
+ * the pier and ends inside the frame.
+ */
+function boat(out: Volume[]): void {
+  const { length, z, depth, hull } = BOAT;
+  // The bow ends at the frame's edge.
+  const cx = SHORE_X1 - 0.2 - length / 2;
+  const left = cx - length / 2;
+  const dark = VILLAGE_TONE.dark;
+  box(out, 'port-boat-hull', 'port', cx, 0.02, z, length, hull, depth, dark);
+  box(out, 'port-boat-bow', 'port', cx + length / 2 + 0.1, hull - 0.04, z, 0.2, 0.2, depth * 0.7, dark);
+  box(out, 'port-boat-stern', 'port', left + 0.12, hull + 0.02, z, 0.24, 0.16, depth, dark);
+  box(out, 'port-boat-gunwale', 'port', cx, hull + 0.02, z + depth / 2 - 0.005, length, 0.02, 0.012, 0.7);
+  box(out, 'port-boat-strake', 'port', cx, 0.1, z + depth / 2 + 0.003, length - 0.3, 0.02, 0.008, 0.45);
+  box(out, 'port-boat-house', 'port', cx - 0.1, hull + 0.02, z, 0.55, 0.3, depth * 0.7, dark);
+  box(out, 'port-boat-roof', 'port', cx - 0.1, hull + 0.32, z, 0.62, 0.02, depth * 0.78, 0.4);
+  box(out, 'port-boat-window', 'port', cx - 0.1, hull + 0.14, z + depth * 0.35 + 0.004, 0.1, 0.1, 0.01, VILLAGE_TONE.lit);
+  box(out, 'port-boat-mast-0', 'port', cx + 0.45, hull + 0.02, z, 0.035, 1.25, 0.035, 0.55);
+  box(out, 'port-boat-mast-1', 'port', cx - 0.55, hull + 0.02, z, 0.035, 1.0, 0.035, 0.55);
+  box(out, 'port-boat-yard', 'port', cx + 0.45, hull + 0.95, z, 0.5, 0.025, 0.025, 0.55);
+}
+
+function ground(out: Volume[], quarter: Quarter | null, bay: boolean): void {
   const tone = quarter ? QUARTER_LOOK[quarter].ground : VILLAGE_TONE.ground;
-  box(out, 'ground', 'village', 0, -0.2, 1, FRAME_WIDTH * 2, 0.2, 5, tone);
+  if (!bay) {
+    box(out, 'ground', 'village', 0, -0.2, 1, FRAME_WIDTH * 2, 0.2, 5, tone);
+    return;
+  }
+  // With a Port the ground ends at the bay; the shore's own land and the sea go on from there.
+  const x0 = -FRAME_WIDTH;
+  box(out, 'ground', 'village', (x0 + SHORE_X0) / 2, -0.2, 1, SHORE_X0 - x0, 0.2, 5, tone);
 }
 
 /**
@@ -1339,7 +1456,7 @@ function carried(out: Volume[], trade: TradeId, id: string, x: number, z: number
 export function buildVillage(input: VillageInput): Volume[] {
   const out: Volume[] = [];
   const quarter = input.quarter ?? null;
-  ground(out, quarter);
+  ground(out, quarter, (input.port ?? 'HIDDEN') !== 'HIDDEN');
   quarterMarks(out, quarter);
   tower(out);
   shaft(out);
@@ -1363,7 +1480,7 @@ export function buildVillage(input: VillageInput): Volume[] {
   splitVault(out, input.villageTierLevel, input.materials, input.relics, input.credits ?? 0);
   pans(out, input.saltPansOpen, input.salt);
   if (input.sporeCellarOpen) cellar(out, input.spores ?? 0);
-  port(out, input.port ?? 'HIDDEN', input.boatDocked ?? false, input.seaRisk);
+  port(out, input.port ?? 'HIDDEN', input.boatDocked ?? false, input.seaRisk, input.still ? 0 : input.flicker);
   shortcutMarks(out, input.shortcuts);
   baseDoor(out);
   if (input.offer) rollStone(out);

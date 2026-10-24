@@ -219,7 +219,7 @@ describe('the focus cube (#133)', () => {
   it('frames the Port by its pier and Boat, and the Pillar by its parts, not the sea or the frame', () => {
     const v = buildVillage(rich(1));
     const port = cubeBounds(ofSubject(v, 'PORT', 'building'))!;
-    const sea = v.filter((x) => x.group === 'port' && !x.id.startsWith('port-'));
+    const sea = v.filter((x) => x.group === 'sea');
     expect(sea.length).toBeGreaterThan(0);
     const seaWidth = Math.max(...sea.map((x) => x.w));
     expect(port.x1 - port.x0).toBeLessThan(seaWidth);

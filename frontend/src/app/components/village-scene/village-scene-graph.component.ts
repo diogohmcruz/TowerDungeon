@@ -28,6 +28,7 @@ import { INK_FRAGMENT, INK_VERTEX } from '../../three/ink/ink.glsl';
 import { InkTheme, RAMPS } from '../../three/ink/palette';
 import {
   buildVillage,
+  VILLAGE_CAPACITY,
   VillageInput,
   Volume,
 } from '../../three/village/village-layout';
@@ -52,8 +53,6 @@ import {
 import { LandscapeGraph } from '../landscape/landscape-graph.component';
 import '../../three/catalogue';
 
-/** Instances the Village mesh can hold (about 250 are used at the busiest). */
-const VILLAGE_CAPACITY = 512;
 /**
  * Ink density of a focus line. Above 1 on purpose: the shader clamps it, so every face of a thin
  * edge (top, front, side) reaches the line slot of the ramp, and the line reads as one line.

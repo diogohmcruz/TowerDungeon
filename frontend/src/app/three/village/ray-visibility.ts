@@ -66,7 +66,7 @@ export function covered(
   fitVillageCamera(cam, closeness, closeupFrame(volumes));
   cam.updateMatrixWorld();
   const store = volumes.filter(isTarget);
-  const others = volumes.filter((v) => !isTarget(v) && v.alpha > 0.5 && v.id !== 'ground');
+  const others = volumes.filter((v) => !isTarget(v) && v.alpha > 0.5 && v.id !== 'ground' && v.group !== 'sea');
   const storeBoxes = store.map(boxOf);
   const otherBoxes = others.map(boxOf);
   const hit = new THREE.Vector3();

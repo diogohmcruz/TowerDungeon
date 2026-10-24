@@ -18,18 +18,21 @@ import {
   MAX_VILLAGE_SHARE,
   MAX_VILLAGER_FIGURES,
   QUARTER_LOOK,
+  SEA_REACH,
   seaUnrest,
   SHORE_X0,
+  shoreX,
   SHORTCUT_MARK_ID,
   shortcutMarkHeight,
   siloFill,
   UPGRADE_MODULES,
+  VILLAGE_CAPACITY,
   VillageInput,
   villageBounds,
   vaultCrates,
   Volume,
 } from './village-layout';
-import { VILLAGE_FOV, villagePose } from './village-camera';
+import { closeupFrame, VILLAGE_FOV, villagePose } from './village-camera';
 
 const BUSY: VillageInput = {
   ...EMPTY_VILLAGE,
@@ -101,7 +104,7 @@ describe('village layout', () => {
 
     it('fits the budget: well under the instance capacity, unique ids', () => {
       const v = buildVillage(BUSY);
-      expect(v.length).toBeLessThan(512);
+      expect(v.length).toBeLessThan(VILLAGE_CAPACITY);
       expect(new Set(ids(v)).size).toBe(v.length);
     });
   });
@@ -581,7 +584,7 @@ describe('village layout', () => {
     });
 
     it('stays within the renderer capacity', () => {
-      expect(buildVillage({ ...BUSY, upgrades: full }).length).toBeLessThanOrEqual(512);
+      expect(buildVillage({ ...BUSY, upgrades: full }).length).toBeLessThanOrEqual(VILLAGE_CAPACITY);
     });
   });
 
@@ -620,14 +623,116 @@ describe('village layout', () => {
       expect(ids(buildVillage(BUILT))).toContain('port-pier-bollard');
     });
 
-    it('keeps the sea in the outer right-hand 20% only, inside the frame', () => {
+    describe('the sea (#147)', () => {
+      const seaOf = (v: Volume[]) => v.filter((x) => x.group === 'sea');
+
+      it('is scenery of its own group, drawn only once the Port is there', () => {
+        expect(seaOf(buildVillage(BUSY))).toEqual([]);
+        for (const input of [FOOTING, BUILT]) {
+          const sea = seaOf(buildVillage(input));
+          expect(sea.length).toBeGreaterThan(10);
+          expect(sea.every((x) => x.id.startsWith('sea-'))).toBeTrue();
+        }
+      });
+
+      it('runs to the right edge of the screen, far past the frame', () => {
+        expect(SEA_REACH).toBeGreaterThan(FRAME_WIDTH * 2);
+        for (const input of [FOOTING, BUILT]) {
+          const reach = Math.max(...seaOf(buildVillage(input)).map((x) => x.x + x.w / 2));
+          expect(reach).toBeGreaterThanOrEqual(SEA_REACH - 1e-9);
+        }
+      });
+
+      it('recedes to a horizon: the water runs back to the far distance and ends in a light line', () => {
+        const sea = seaOf(buildVillage(BUILT));
+        expect(Math.min(...sea.map((x) => x.z - x.d / 2))).toBeLessThanOrEqual(-40);
+        const horizon = sea.find((x) => x.id === 'sea-horizon')!;
+        expect(horizon).toBeDefined();
+        expect(horizon.w).toBeGreaterThan(FRAME_WIDTH);
+        expect(horizon.tone).toBeGreaterThan(0.4);
+      });
+
+      it('keeps the Village bounds clear of the water: the water starts at the shore line of its depth', () => {
+        const v = buildVillage({ ...BUILT, boatDocked: true });
+        expect(villageBounds(v).maxX).toBeLessThanOrEqual(SHORE_X0);
+        const water = seaOf(v).filter((x) => x.id.startsWith('sea-water-'));
+        expect(water.length).toBeGreaterThan(5);
+        for (const x of water) {
+          expect(x.x - x.w / 2).toBeGreaterThanOrEqual(shoreX(x.z) - 1e-9);
+        }
+        // The ground stops where the shore starts, so no land lies under the water.
+        const ground = v.find((x) => x.id === 'ground')!;
+        expect(ground.x + ground.w / 2).toBeLessThanOrEqual(SHORE_X0 + 1e-9);
+        // Landlocked, the ground runs the full width.
+        const dry = buildVillage(BUSY).find((x) => x.id === 'ground')!;
+        expect(dry.x + dry.w / 2).toBeGreaterThanOrEqual(FRAME_WIDTH);
+      });
+
+      it('has a curved shore, and the pier meets it', () => {
+        const edges = [-1.5, 0, 0.9, 2, 3.5].map(shoreX);
+        expect(new Set(edges.map((e) => e.toFixed(3))).size).toBeGreaterThan(3);
+        expect(Math.min(...edges)).toBeGreaterThanOrEqual(SHORE_X0);
+        const v = buildVillage(BUILT);
+        const deck = v.find((x) => x.id === 'port-pier-deck')!;
+        expect(Math.abs(deck.x - deck.w / 2 - shoreX(deck.z))).toBeLessThan(0.1);
+        expect(seaOf(v).filter((x) => x.id.startsWith('sea-shore-')).length).toBeGreaterThan(3);
+      });
+
+      it('is left out of the closeup frame, which fits the built Village and the Port alone', () => {
+        const v = buildVillage({ ...BUILT, boatDocked: true });
+        expect(closeupFrame(v)).toEqual(closeupFrame(v.filter((x) => x.group !== 'sea')));
+        const frame = closeupFrame(v);
+        expect(frame.centerX + frame.span / 2).toBeLessThan(FRAME_WIDTH);
+      });
+
+      it('drifts its dashes slowly with the clock and holds them still under reduced motion', () => {
+        const dashes = (flicker: number, still: boolean) =>
+          seaOf(buildVillage({ ...BUILT, flicker, still }))
+            .filter((x) => x.id.startsWith('sea-band-'))
+            .map((x) => x.x);
+        const a = dashes(0, false);
+        const b = dashes(12, false);
+        expect(a.length).toBeGreaterThan(20);
+        expect(b).not.toEqual(a);
+        // Slow: over a second the dashes move by well under 0.08 units.
+        const next = dashes(1, false);
+        a.forEach((x, i) => expect(Math.abs(next[i] - x)).toBeLessThan(0.08));
+        a.forEach((x, i) => expect(Math.abs(b[i] - x)).toBeLessThan(1.5));
+        expect(dashes(12, true)).toEqual(a);
+        expect(dashes(0, true)).toEqual(a);
+      });
+
+      it('keeps the Port hit pad over the pier and the Boat', () => {
+        const hit = buildVillage({ ...BUILT, boatDocked: true }).find((x) => x.id === 'port-hit')!;
+        expect(hit.alpha).toBe(0);
+        expect(hit.x - hit.w / 2).toBeGreaterThanOrEqual(SHORE_X0 - 1e-9);
+        expect(hit.x + hit.w / 2).toBeLessThanOrEqual(FRAME_WIDTH / 2);
+        const boat = buildVillage({ ...BUILT, boatDocked: true }).find((x) => x.id === 'port-boat-hull')!;
+        // The pad (a near-miss margin over the pier and the water beside it) reaches the Boat's depth.
+        expect(boat.z - boat.d / 2).toBeLessThan(hit.z + hit.d / 2);
+        expect(boat.z + boat.d / 2).toBeGreaterThan(hit.z - hit.d / 2);
+      });
+    });
+
+    it('draws a larger Boat with two masts and, lit, one window', () => {
+      const v = buildVillage({ ...BUILT, boatDocked: true });
+      const hull = v.find((x) => x.id === 'port-boat-hull')!;
+      expect(hull.w).toBeGreaterThanOrEqual(1.7);
+      const masts = v.filter((x) => x.id.startsWith('port-boat-mast'));
+      expect(masts.length).toBe(2);
+      for (const m of masts) expect(m.h).toBeGreaterThan(hull.h * 3);
+      const windows = v.filter((x) => x.id.startsWith('port-boat-window'));
+      expect(windows.length).toBe(1);
+      expect(windows[0].tone).toBe(1);
+      for (const x of v.filter((q) => q.id.startsWith('port-boat'))) {
+        expect(x.group).toBe('port');
+        expect(x.x + x.w / 2).toBeLessThanOrEqual(FRAME_WIDTH / 2 + 1e-9);
+      }
+    });
+
+    it('keeps the Port itself (footing, pier, Boat) in the outer right-hand 20% of the frame', () => {
       for (const input of [FOOTING, BUILT, { ...BUILT, boatDocked: true }]) {
         const v = buildVillage(input);
-        const sea = v.filter((x) => x.id.startsWith('sea-'));
-        for (const x of sea) {
-          expect(x.x - x.w / 2).toBeGreaterThanOrEqual(SHORE_X0 - 1e-9);
-          expect(x.x + x.w / 2).toBeLessThanOrEqual(FRAME_WIDTH / 2);
-        }
         for (const x of shore(v)) {
           expect(x.x - x.w / 2).toBeGreaterThanOrEqual(SHORE_X0 - 1e-9);
           expect(x.x + x.w / 2).toBeLessThanOrEqual(FRAME_WIDTH / 2);
@@ -670,7 +775,7 @@ describe('village layout', () => {
     it('stays within the renderer capacity', () => {
       const v = buildVillage({ ...BUSY, port: 'BUILT', boatDocked: true });
 
-      expect(v.length).toBeLessThanOrEqual(512);
+      expect(v.length).toBeLessThanOrEqual(VILLAGE_CAPACITY);
       expect(new Set(ids(v)).size).toBe(v.length);
     });
   });
@@ -722,7 +827,7 @@ describe('village layout', () => {
         const b = villageBounds(v);
         expect(b.maxX - b.minX).toBeLessThanOrEqual(FRAME_WIDTH * MAX_VILLAGE_SHARE);
         expect(b.maxY).toBeLessThanOrEqual(MAX_VILLAGE_HEIGHT);
-        expect(v.length).toBeLessThanOrEqual(512);
+        expect(v.length).toBeLessThanOrEqual(VILLAGE_CAPACITY);
         expect(new Set(v.map((x) => x.id)).size).toBe(v.length);
       }
     });
