@@ -9,6 +9,7 @@ import {
   crateCount,
   CrateKind,
   expeditionCaption,
+  finishSubject,
   expeditionVolumes,
   groupAt,
   groupSubject,
@@ -169,6 +170,18 @@ describe('Expedition captions', () => {
   it('is reached through the shared caption builder', () => {
     const c = captionFor({ kind: 'expedition', id: 'SUPPLIES' }, state());
     expect(c?.name).toBe('The Supplies post');
+  });
+});
+
+describe('Finish Floor mark caption', () => {
+  it('says what the mark is, in words, for a listed Floor', () => {
+    const c = expeditionCaption(finishSubject(30), state({ pillarMarks: [30] }))!;
+    expect(captionText(c)).toContain('The Finish Floor of a Race you have run');
+    expect(isGroupSubject(finishSubject(30))).toBeTrue();
+  });
+
+  it('says nothing for a Floor not listed', () => {
+    expect(expeditionCaption(finishSubject(31), state({ pillarMarks: [30] }))).toBeNull();
   });
 });
 

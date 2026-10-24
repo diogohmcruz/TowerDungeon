@@ -17,6 +17,7 @@ import {
   GHOST_FLOORS_AHEAD,
   MAX_DISCOVERED,
   NUMERAL_CAPACITY,
+  planFinishMarks,
   planFloorStrips,
   STRIP_CAPACITY,
   stripY,
@@ -139,13 +140,13 @@ describe('architecture atlas', () => {
 describe('digit atlas', () => {
   it('has a plate and a glyph in every cell, and only slots 1 and 3', () => {
     const slots = buildDigitSlots();
-    expect(slots.length).toBe(DIGIT_W * 10 * DIGIT_H);
+    expect(slots.length).toBe(DIGIT_W * 11 * DIGIT_H);
     expect(slots.every((t) => t === 1 || t === 3)).toBeTrue();
-    for (let d = 0; d < 10; d++) {
+    for (let d = 0; d < 11; d++) {
       let glyph = 0;
       for (let y = 0; y < DIGIT_H; y++) {
         for (let x = 0; x < DIGIT_W; x++) {
-          if (slots[y * DIGIT_W * 10 + d * DIGIT_W + x] === 3) glyph++;
+          if (slots[y * DIGIT_W * 11 + d * DIGIT_W + x] === 3) glyph++;
         }
       }
       expect(glyph).withContext(`digit ${d}`).toBeGreaterThan(5);
@@ -247,5 +248,34 @@ describe('floor strip plan', () => {
     const plan = planFloorStrips(tower(MAX_DISCOVERED + 30));
     expect(plan.strips.length).toBeLessThanOrEqual(STRIP_CAPACITY);
     expect(plan.numerals.length).toBeLessThanOrEqual(NUMERAL_CAPACITY);
+  });
+});
+
+describe('Finish Floor marks', () => {
+  it('draws a mark only on Floors the frame lists', () => {
+    const marks = planFinishMarks(tower(40), [30, 10]);
+    expect(marks.map((m) => m.floor)).toEqual([10, 30]);
+    expect(planFinishMarks(tower(40), [])).toEqual([]);
+    expect(planFinishMarks(tower(40), undefined)).toEqual([]);
+  });
+
+  it('draws nothing for a Floor that is not discovered, or listed twice', () => {
+    expect(planFinishMarks(tower(5), [9, 3, 3]).map((m) => m.floor)).toEqual([3]);
+    expect(planFinishMarks(undefined, [3])).toEqual([]);
+  });
+
+  it('sits on the strip of its Floor, above the numeral', () => {
+    const [mark] = planFinishMarks(tower(20), [12]);
+    const numeral = planFloorStrips(tower(20)).numerals.find((n) => n.digit === 2)!;
+    expect(mark.y).toBeGreaterThan(numeral.y);
+    expect(mark.y).toBeLessThan(stripY(12) + 0.86);
+  });
+
+  it('fits in the numeral draw call at 120 Floors', () => {
+    const all = Array.from({ length: 120 }, (_, i) => i + 1);
+    const t = tower(120);
+    expect(
+      planFloorStrips(t).numerals.length + planFinishMarks(t, all).length,
+    ).toBeLessThanOrEqual(NUMERAL_CAPACITY);
   });
 });

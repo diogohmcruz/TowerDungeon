@@ -22,6 +22,8 @@ import type { ScreenRect } from '../figures/figure-pick';
 export const SUPPLIES_SUBJECT = 'SUPPLIES';
 export const PARTY_SUBJECT = 'PARTY';
 export const GROUP_PREFIX = 'GROUP:';
+/** The Finish Floor mark of a Floor on the picture (#123): `FINISH:<floor>`. */
+export const FINISH_PREFIX = 'FINISH:';
 export type CrateKind = 'CREDITS' | 'MATERIALS' | 'RELICS';
 export const CRATE_KINDS: readonly CrateKind[] = ['CREDITS', 'MATERIALS', 'RELICS'];
 
@@ -191,13 +193,19 @@ export function groupSubject(key: string): VillageSubject {
   return { kind: 'expedition', id: `${GROUP_PREFIX}${key}` };
 }
 
+export function finishSubject(floor: number): VillageSubject {
+  return { kind: 'expedition', id: `${FINISH_PREFIX}${floor}` };
+}
+
 export const PARTY: VillageSubject = { kind: 'expedition', id: PARTY_SUBJECT };
 
 /** Whether the subject is the Party or an enemy group (hovered by rectangle, not by volume). */
 export function isGroupSubject(subject: VillageSubject | null): boolean {
   return (
     subject?.kind === 'expedition' &&
-    (subject.id === PARTY_SUBJECT || subject.id.startsWith(GROUP_PREFIX))
+    (subject.id === PARTY_SUBJECT ||
+      subject.id.startsWith(GROUP_PREFIX) ||
+      subject.id.startsWith(FINISH_PREFIX))
   );
 }
 
@@ -355,6 +363,17 @@ export function expeditionCaption(
       name: 'The Party',
       status: `${plural(p.size, 'Unit', 'Units')}. Health ${formatFigure(p.health.now)} of ${formatFigure(p.health.max)}.`,
       makes: p.byType,
+      lock: null,
+    };
+  }
+  if (id.startsWith(FINISH_PREFIX)) {
+    const floor = Number(id.slice(FINISH_PREFIX.length));
+    // Only a Floor the server lists wears the mark, so a stale subject says nothing.
+    if (!(state.pillarMarks ?? []).includes(floor)) return null;
+    return {
+      name: `Finish Floor ${formatFigure(floor)}`,
+      status: 'The Finish Floor of a Race you have run.',
+      makes: 'First contact is marked on the pillar',
       lock: null,
     };
   }

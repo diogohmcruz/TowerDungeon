@@ -32,7 +32,8 @@ export const NUMERAL_X = -STRIP_W / 2 + (12 / 128) * STRIP_W;
 
 export const MAX_DISCOVERED = 120;
 export const STRIP_CAPACITY = 3 * MAX_DISCOVERED + GHOST_FLOORS_AHEAD;
-export const NUMERAL_CAPACITY = 3 * MAX_DISCOVERED;
+/** Three digits per discovered Floor, and one Finish Floor mark per Floor at most. */
+export const NUMERAL_CAPACITY = 4 * MAX_DISCOVERED;
 export const PILLAR_COUNT = 12;
 export const PILLAR_SPACING = 3.6;
 
@@ -153,3 +154,35 @@ export const NUMERAL_SIZE: readonly [number, number] = [
   DIGIT_W * DIGIT_PX,
   DIGIT_H * DIGIT_PX,
 ];
+
+/** A Finish Floor mark on a Floor's strip: the stone glyph, set above the Floor numeral. */
+export interface FinishMark {
+  floor: number;
+  x: number;
+  y: number;
+}
+
+/** World gap between the numeral's top edge and the mark. */
+const MARK_GAP = 0.05;
+
+/**
+ * The Finish Floor marks to draw: only Floors the server lists in `pillarMarks`
+ * and that the plan has discovered (an undiscovered Floor has no strip, no
+ * numeral and so no mark). Sorted by Floor, each Floor once.
+ */
+export function planFinishMarks(
+  tower: Tower | undefined,
+  pillarMarks: readonly number[] | null | undefined,
+): FinishMark[] {
+  const floors = tower?.floors ?? {};
+  const listed = new Set(pillarMarks ?? []);
+  return [...listed]
+    .filter((n) => Number.isInteger(n) && n >= 1 && floors[n] !== undefined)
+    .sort((a, b) => a - b)
+    .slice(0, MAX_DISCOVERED)
+    .map((n) => ({
+      floor: n,
+      x: NUMERAL_X,
+      y: stripY(n) + 0.05 + DIGIT_H * DIGIT_PX + MARK_GAP,
+    }));
+}
