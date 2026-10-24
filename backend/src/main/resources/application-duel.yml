@@ -1,0 +1,27 @@
+# The duel profile: runs the floor duel harness on one Party plan, prints a table row per Floor and
+# exits. No web server, no MCP, no Campaign files of the developer's own game. Local runs only.
+#
+#   mvn spring-boot:run -Dspring-boot.run.profiles=duel \
+#     -Dspring-boot.run.arguments="--duel.units=WARRIOR:4,ARCHER:4 --duel.floors=1-5"
+spring:
+  main:
+    web-application-type: none
+    banner-mode: "off"
+  output:
+    ansi:
+      enabled: never
+
+duel:
+  run: true
+
+game:
+  agent:
+    enabled: true
+  persistence:
+    data-dir: ./data/duel
+
+logging:
+  level:
+    # A duel plays thousands of Floors: the game's own INFO lines would bury the output.
+    root: WARN
+    io.github.diogohmcruz.towerdungeon.domain: ERROR
