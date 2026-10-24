@@ -58,6 +58,37 @@ export function bellObject(out: Volume[], at: LaunchSpot, usable: boolean): void
   box(out, 'bell-hit', at.x, at.bottom, at.z, w, h, d, TONE.dark, 0);
 }
 
+/** Id prefix of the Gate frame (the Loadout building): `gate-`, with `gate-hit-*` for picking. */
+export const GATE_PREFIX = 'gate-';
+/** How far the Gate's stone piers stand from the bell's centre, and how tall the frame is. */
+export const GATE_FRAME = { reach: 0.62, pier: 0.16, h: 1.6, lintel: 0.18 } as const;
+
+/**
+ * The Gate: a stone frame around the bell's timber gate, two piers and a lintel
+ * with three bone tally marks (what is chosen here). It is the Loadout building;
+ * the bell inside it still rings. The invisible near-miss pads cover only the
+ * frame (the piers and a strip above the lintel), never the bell's own hit box,
+ * and sit behind it, so a click on the bell rings it and a click on the frame
+ * opens the popover. Ids begin `gate-`.
+ */
+export function gateObject(out: Volume[], at: LaunchSpot): void {
+  const { reach, pier, h, lintel } = GATE_FRAME;
+  const beam = BELL_GATE.h;
+  box(out, 'gate-pier-w', at.x - reach, at.bottom, at.z, pier, h, 0.2, TONE.stone);
+  box(out, 'gate-pier-e', at.x + reach, at.bottom, at.z, pier, h, 0.2, TONE.stone);
+  box(out, 'gate-lintel', at.x, at.bottom + beam, at.z, reach * 2 + pier, lintel, 0.2, TONE.stone);
+  for (const [i, dx] of [-0.2, 0, 0.2].entries()) {
+    box(out, `gate-tally-${i}`, at.x + dx, at.bottom + beam + 0.06, at.z + 0.11, 0.08, 0.06, 0.03, TONE.lit);
+  }
+  // Behind the bell's own hit box (front face at z + 0.1), so the bell wins where they meet.
+  const z = at.z - 0.05;
+  const padH = h + 0.15;
+  for (const [id, dx] of [['w', -reach], ['e', reach]] as const) {
+    box(out, `gate-hit-${id}`, at.x + dx, at.bottom, z, pier + 0.2, padH, 0.2, TONE.dark, 0);
+  }
+  box(out, 'gate-hit-top', at.x, at.bottom + beam, z, (reach + pier) * 2 + 0.2, lintel + 0.27, 0.2, TONE.dark, 0);
+}
+
 /**
  * The recall lamp: a stone foot, a timber post, an arm, and a lamp in a dark
  * housing whose core is lit when it can be used. Ids begin `recall-`.

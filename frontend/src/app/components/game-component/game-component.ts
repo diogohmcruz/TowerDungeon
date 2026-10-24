@@ -37,7 +37,6 @@ import { MilestoneCard } from '../milestone-card/milestone-card';
 import { ShortcutCard } from '../shortcut-card/shortcut-card';
 import { RunSummaryCard } from '../run-summary-card/run-summary-card';
 import { Reinforcement } from '../../interfaces/game-state';
-import { Loadout } from '../loadout/loadout';
 import { TollBar } from '../toll-bar/toll-bar';
 import { SuccessionScreen } from '../succession-screen/succession-screen';
 import { ListView } from '../list-view/list-view';
@@ -56,7 +55,6 @@ import { ListView } from '../list-view/list-view';
     MilestoneCard,
     ShortcutCard,
     RunSummaryCard,
-    Loadout,
     TollBar,
     SuccessionScreen,
     ListView,
@@ -158,13 +156,10 @@ export class GameComponent implements OnDestroy {
   /** Floor the next expedition begins on: 0 = base of the tower, otherwise an open shortcut. */
   readonly selectedStartFloor = this.launch.startFloor;
 
-  /** Salt the Loadout has chosen; 0 unless the player opened it and chose some. */
+  /** What the Loadout (chosen at the Gate) has chosen, which Set out carries. */
   readonly saltToUse = this.launch.saltToUse;
-
-  /** Salt the Loadout has chosen for the Salt Pack, and the Unit type that carries it. */
   readonly packSalt = this.launch.packSalt;
   readonly packBearer = this.launch.packBearer;
-  /** Whether the Loadout has chosen to carry a Panacea. */
   readonly panaceaChosen = this.launch.panaceaChosen;
 
   /** Whole Dragon Spores in the Stockroom. */

@@ -8,6 +8,7 @@ import {
   bellCommand,
   LaunchCommand,
 } from '../three/launch/launch-controls';
+import { bindLoadoutChoices } from '../three/launch/loadout-choices';
 import type { VillageSubject } from '../three/village/village-subjects';
 import { GameStateService } from './game-state.service';
 import { GameWebSocketService } from './game-web-socket.service';
@@ -47,6 +48,25 @@ export class LaunchService {
   /** The latest refusal, as one line; clears by itself. */
   readonly refusal = this._refusal.asReadonly();
   private timer: ReturnType<typeof setTimeout> | null = null;
+
+  constructor() {
+    // The Gate building (the Loadout in the picture) reads and sets the choices here.
+    bindLoadoutChoices({
+      choice: () => ({
+        salt: this.saltToUse(),
+        pack: this.packSalt(),
+        bearer: this.packBearer(),
+        panacea: this.panaceaChosen(),
+      }),
+      startFloor: () => this.startFloor(),
+      set: (patch) => {
+        if (patch.salt !== undefined) this.saltToUse.set(patch.salt);
+        if (patch.pack !== undefined) this.packSalt.set(patch.pack);
+        if (patch.bearer !== undefined) this.packBearer.set(patch.bearer);
+        if (patch.panacea !== undefined) this.panaceaChosen.set(patch.panacea);
+      },
+    });
+  }
 
   /** What the Ledger shows of the latest refusal, until something is launched. */
   readonly ledgerLine = computed<LedgerLine | null>(() => {

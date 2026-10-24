@@ -145,8 +145,9 @@ export class BuildingPopover {
   private readonly wanted = computed(() => {
     const v = this.view();
     if (!v) return 0;
-    const gauges = v.gauges.reduce((n, g) => n + 54 + (g.leaves ? 48 : 0), 0);
-    const actions = v.actions.reduce((n, a) => n + 38 + (a.reason ? 32 : 0), 0);
+    const lines = (text: string) => Math.ceil(text.length / 38) * 18 + 4;
+    const gauges = v.gauges.reduce((n, g) => n + 36 + (g.leaves ? lines(g.leaves) : 0), 0);
+    const actions = v.actions.reduce((n, a) => n + 38 + (a.reason ? lines(a.reason) : 0), 0);
     return 36 + gauges + actions;
   });
 

@@ -343,11 +343,11 @@ describe('GameComponent', () => {
     expect(sendAction).toHaveBeenCalledWith(GameAction.RESUME, null);
   });
 
-  it('keeps the Loadout collapsed, so setting out stays one click', () => {
+  it('leaves the Loadout to the Gate: no Loadout panel in the card layer', () => {
     const root = fixture.nativeElement as HTMLElement;
 
-    expect(root.querySelector('.loadout-toggle')).not.toBeNull();
-    expect(root.querySelector('.loadout-body')).toBeNull();
+    expect(root.querySelector('app-loadout')).toBeNull();
+    expect(root.querySelector('.loadout-toggle')).toBeNull();
   });
 
   it('sets out with the defaults and no Salt on one click without opening the Loadout', () => {
