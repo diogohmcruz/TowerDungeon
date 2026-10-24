@@ -11,7 +11,7 @@
 // JSON line per capture with the renderer.info numbers of the last frame.
 // Defaults: 100 floors, garrison 12, current floor 50.
 import { spawn } from "node:child_process";
-import { mkdirSync, writeFileSync, mkdtempSync } from "node:fs";
+import { mkdirSync, writeFileSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -30,6 +30,28 @@ const PORT = Number(process.env.CDP_PORT ?? 9333);
 mkdirSync(outDir, { recursive: true });
 
 const profile = mkdtempSync(join(tmpdir(), "td-chrome-"));
+
+// Each run starts its own headless Chrome with a throwaway profile (about 500 MB once it
+// has run). Stop the browser and delete the profile on every way out, or the temp folder
+// fills the disk: hundreds of leaked profiles once did.
+let stopped = false;
+async function stopChrome() {
+  if (stopped) return;
+  stopped = true;
+  const exited = new Promise((resolve) => chrome.once("exit", resolve));
+  chrome.kill();
+  await Promise.race([exited, new Promise((resolve) => setTimeout(resolve, 3000))]);
+  try {
+    rmSync(profile, { recursive: true, force: true });
+  } catch {
+    /* a profile that cannot be removed is reported by the next disk check */
+  }
+}
+for (const signal of ["SIGINT", "SIGTERM"]) {
+  process.on(signal, () => {
+    stopChrome().finally(() => process.exit(1));
+  });
+}
 const chrome = spawn(
   CHROME,
   [
@@ -203,5 +225,5 @@ try {
   }
 } finally {
   ws.close();
-  chrome.kill();
+  await stopChrome();
 }
