@@ -16,10 +16,10 @@ export interface CardPlacement {
 }
 
 /**
- * Where the floating card sits: beside the figure (to its right, or to its
- * left when the right has no room), level with the figure's top, and always
- * wholly on screen. With no room beside it on a narrow screen it overlaps the
- * figure instead of leaving the screen. Without an anchor the card is centred.
+ * Where the floating card sits: beside the figure (on the side with more room),
+ * level with the figure's top and slid up to show all its height, and always
+ * wholly on screen. With no room beside it on a narrow screen it goes below or
+ * above the figure, and overlaps it only when there is no room at all. Without an anchor the card is centred.
  */
 export function placeCard(
   anchor: ScreenRect | null,
@@ -30,10 +30,7 @@ export function placeCard(
   /** The width the card asks for (a wide card, such as the Succession's). */
   wanted = CARD_WIDTH,
 ): CardPlacement {
-  const width = Math.max(
-    1,
-    Math.min(wanted, viewportWidth - 2 * CARD_MARGIN),
-  );
+  const width = Math.max(1, Math.min(wanted, viewportWidth - 2 * CARD_MARGIN));
   const maxLeft = Math.max(CARD_MARGIN, viewportWidth - width - CARD_MARGIN);
   const clampLeft = (left: number) =>
     Math.min(maxLeft, Math.max(CARD_MARGIN, left));
@@ -41,13 +38,31 @@ export function placeCard(
   let left = clampLeft((viewportWidth - width) / 2);
   let top = CARD_MARGIN;
   if (anchor) {
-    const right = anchor.right + CARD_GAP;
-    const beside =
-      right + width + CARD_MARGIN <= viewportWidth
-        ? right
-        : anchor.left - CARD_GAP - width;
-    left = clampLeft(beside);
+    // Beside the figure, on the side with more room (the card then covers the
+    // least of the scene); only when neither side fits does it go above or below.
+    const roomRight = viewportWidth - anchor.right - CARD_GAP - CARD_MARGIN;
+    const roomLeft = anchor.left - CARD_GAP - CARD_MARGIN;
+    const fitsRight = roomRight >= width;
+    const fitsLeft = roomLeft >= width;
     top = anchor.top;
+    if (fitsRight && (!fitsLeft || roomRight >= roomLeft)) {
+      left = clampLeft(anchor.right + CARD_GAP);
+    } else if (fitsLeft) {
+      left = clampLeft(anchor.left - CARD_GAP - width);
+    } else {
+      const centre = (anchor.left + anchor.right) / 2 - width / 2;
+      left = clampLeft(centre);
+      const below = anchor.bottom + CARD_GAP;
+      const above = anchor.top - CARD_GAP - minHeight;
+      if (below + minHeight + CARD_MARGIN <= viewportHeight) top = below;
+      else if (above >= CARD_MARGIN) top = above;
+      else
+        left = clampLeft(
+          roomRight >= roomLeft
+            ? anchor.right + CARD_GAP
+            : anchor.left - CARD_GAP - width,
+        );
+    }
   } else {
     top = viewportHeight / 4;
   }

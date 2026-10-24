@@ -59,7 +59,10 @@ describe('BuildingPopover', () => {
     popover.openFor(silo);
     show();
     (el().querySelector('button.btn') as HTMLButtonElement).click();
-    expect(sendAction).toHaveBeenCalledOnceWith(GameAction.SELL_FOOD, undefined);
+    expect(sendAction).toHaveBeenCalledOnceWith(
+      GameAction.SELL_FOOD,
+      undefined,
+    );
   });
 
   it('states a refusal in words and sends nothing', () => {
@@ -69,7 +72,9 @@ describe('BuildingPopover', () => {
     show();
     const button = el().querySelector('button.btn') as HTMLButtonElement;
     expect(button.getAttribute('aria-disabled')).toBe('true');
-    expect(el().querySelector('.reason')?.textContent).toContain('Nothing is sold');
+    expect(el().querySelector('.reason')?.textContent).toContain(
+      'Nothing is sold',
+    );
     button.click();
     expect(sendAction).not.toHaveBeenCalled();
   });
@@ -94,7 +99,9 @@ describe('BuildingPopover', () => {
     expect(popover.open()).not.toBeNull();
     canvas.remove();
 
-    document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+    document.body.dispatchEvent(
+      new PointerEvent('pointerdown', { bubbles: true }),
+    );
     show();
     expect(card()).toBeNull();
   });
@@ -139,6 +146,71 @@ describe('BuildingPopover', () => {
       }
     });
 
+    /** The card as drawn: inside the screen, and scrolling only when the screen is too short for it. */
+    const drawn = (w: number, h: number, what: string) => {
+      const c = card()!;
+      const r = c.getBoundingClientRect();
+      expect(r.left).withContext(what).toBeGreaterThanOrEqual(0);
+      expect(r.top).withContext(what).toBeGreaterThanOrEqual(0);
+      expect(r.right)
+        .withContext(what)
+        .toBeLessThanOrEqual(w + 0.5);
+      expect(r.bottom)
+        .withContext(what)
+        .toBeLessThanOrEqual(h + 0.5);
+      const scrolls = c.scrollHeight > c.clientHeight + 1;
+      if (scrolls) {
+        // Cut off only when it cannot fit, and then it says so.
+        expect(c.classList.contains('more-below')).withContext(what).toBeTrue();
+        expect(r.height)
+          .withContext(what)
+          .toBeGreaterThanOrEqual(h - 2 * 12 - 2);
+      } else {
+        expect(c.scrollHeight).withContext(what).toBeLessThanOrEqual(h);
+      }
+    };
+
+    it('shows every registered building whole on screen at 1280x720, 1440x900 and 440 px wide', () => {
+      const ids = popover.buildings().map((b) => b.id);
+      expect(ids.length).toBeGreaterThan(5);
+      for (const [w, h] of [
+        [1280, 720],
+        [1440, 900],
+        [440, 800],
+        [440, 600],
+      ]) {
+        stage.setViewport({ width: w, height: h });
+        for (const id of ids) {
+          for (const rect of [
+            {
+              left: w * 0.3,
+              top: h * 0.45,
+              right: w * 0.3 + 120,
+              bottom: h * 0.45 + 160,
+            },
+            {
+              left: w * 0.7,
+              top: h * 0.2,
+              right: w * 0.7 + 120,
+              bottom: h * 0.2 + 160,
+            },
+            {
+              left: w / 2 - 60,
+              top: h * 0.8,
+              right: w / 2 + 60,
+              bottom: h - 4,
+            },
+          ]) {
+            popover.openFor({ kind: 'building', id });
+            popover.setAnchor(rect);
+            show();
+            show();
+            drawn(w, h, `${id} at ${w}x${h}, anchor ${rect.left},${rect.top}`);
+          }
+        }
+      }
+    });
+
     it('reads the Ledger at the Study, newest first, and closes on its button', () => {
       TestBed.inject(GameStateService).update({
         tradeViews: [
@@ -160,9 +232,9 @@ describe('BuildingPopover', () => {
       });
       popover.openFor({ kind: 'annex', id: 'SCRIBE' });
       show();
-      const lines = Array.from(card()!.querySelectorAll('.written-lines li')).map(
-        (li) => li.textContent?.trim(),
-      );
+      const lines = Array.from(
+        card()!.querySelectorAll('.written-lines li'),
+      ).map((li) => li.textContent?.trim());
       expect(lines).toEqual([
         '- Starvation. 1 Breaker lost.',
         '. Emergency Tilling. Pantry below 20.',

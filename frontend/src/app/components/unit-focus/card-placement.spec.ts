@@ -74,4 +74,42 @@ describe('card placement', () => {
     const p = placeCard(null, 1000, 800);
     expect(p.left).toBe((1000 - CARD_WIDTH) / 2);
   });
+
+  it('takes the side with more room, so it covers the least', () => {
+    const wide = { left: 400, top: 200, right: 480, bottom: 360 };
+    // Room on both sides of a figure at the middle of 1280: the larger side wins.
+    expect(placeCard(wide, 1280, 720).left).toBe(480 + CARD_GAP);
+    const right = { left: 900, top: 200, right: 980, bottom: 360 };
+    expect(placeCard(right, 1280, 720).left).toBe(900 - CARD_GAP - CARD_WIDTH);
+  });
+
+  it('slides up to show the whole measured height', () => {
+    const p = placeCard(
+      { left: 300, top: 400, right: 340, bottom: 560 },
+      1440,
+      900,
+      560,
+    );
+    expect(p.top + 560 + CARD_MARGIN).toBeLessThanOrEqual(900);
+    expect(p.maxHeight).toBeGreaterThanOrEqual(560);
+  });
+
+  it('goes below or above the figure on a narrow screen, not over it', () => {
+    const above = placeCard(
+      { left: 200, top: 100, right: 260, bottom: 200 },
+      440,
+      800,
+      300,
+    );
+    expect(above.top).toBeGreaterThanOrEqual(200 + CARD_GAP);
+    const below = placeCard(
+      { left: 200, top: 600, right: 260, bottom: 760 },
+      440,
+      800,
+      300,
+    );
+    expect(below.top + 300).toBeLessThanOrEqual(600 - CARD_GAP);
+    onScreen(above, 440, 800);
+    onScreen(below, 440, 800);
+  });
 });

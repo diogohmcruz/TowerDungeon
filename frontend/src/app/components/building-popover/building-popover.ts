@@ -4,11 +4,13 @@ import {
   computed,
   ElementRef,
   inject,
+  viewChild,
 } from '@angular/core';
 
 import { PopoverService } from '../../services/popover.service';
 import { StageService } from '../../services/stage.service';
 import { ActionRow } from '../action-row/action-row';
+import { CardFit } from '../unit-focus/card-fit';
 import { CARD_WIDTH, placeCard } from '../unit-focus/card-placement';
 
 /** The width of a card that asks for more room: a tree of choices to read. */
@@ -23,11 +25,12 @@ const WIDE_CARD_WIDTH = 420;
 @Component({
   selector: 'app-building-popover',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ActionRow],
+  imports: [ActionRow, CardFit],
   template: `
     @if (view(); as v) {
       <aside
         class="popover"
+        appCardFit
         role="dialog"
         [attr.aria-label]="v.title"
         [style.left.px]="place().left"
@@ -115,6 +118,13 @@ const WIDE_CARD_WIDTH = 420;
       /* Translucent over the scene: the same hard-edged ink panel, no blur. */
       background: color-mix(in srgb, var(--panel) 92%, transparent);
       border: 1px solid var(--bone);
+      scrollbar-width: thin;
+      scrollbar-color: var(--bone) transparent;
+    }
+    /* More below: a bone edge at the foot, until the end is scrolled to. */
+    .popover.more-below {
+      box-shadow: inset 0 -14px 10px -10px
+        color-mix(in srgb, var(--bone) 55%, transparent);
     }
     h3 {
       margin: 0 0 6px;
@@ -191,6 +201,8 @@ export class BuildingPopover {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   protected readonly view = this.popover.open;
+  /** The card's measured height, once it is on screen; the estimate below stands in until then. */
+  private readonly fit = viewChild(CardFit);
 
   protected readonly place = computed(() => {
     const { width, height } = this.stage.viewport();
@@ -198,7 +210,7 @@ export class BuildingPopover {
       this.popover.anchor(),
       width,
       height,
-      this.wanted(),
+      this.fit()?.height() || this.wanted(),
       this.view()?.wide ? WIDE_CARD_WIDTH : CARD_WIDTH,
     );
   });
@@ -208,14 +220,21 @@ export class BuildingPopover {
     const v = this.view();
     if (!v) return 0;
     const lines = (text: string) => Math.ceil(text.length / 38) * 18 + 4;
-    const gauges = v.gauges.reduce((n, g) => n + 36 + (g.leaves ? lines(g.leaves) : 0), 0);
+    const gauges = v.gauges.reduce(
+      (n, g) => n + 36 + (g.leaves ? lines(g.leaves) : 0),
+      0,
+    );
     const rows = v.lines.reduce(
-      (n, l) => n + 18 + (l.heading ? 24 : 0) + (l.detail ? lines(l.detail) : 0),
+      (n, l) =>
+        n + 18 + (l.heading ? 24 : 0) + (l.detail ? lines(l.detail) : 0),
       0,
     );
     const actions = v.actions.reduce(
       (n, a) =>
-        n + 38 + (a.reason ? lines(a.reason) : 0) + (a.preview ? lines(a.preview) : 0),
+        n +
+        38 +
+        (a.reason ? lines(a.reason) : 0) +
+        (a.preview ? lines(a.preview) : 0),
       0,
     );
     const written = v.sections.reduce(

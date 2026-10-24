@@ -22,9 +22,16 @@ describe('UnitFocusCard', () => {
       } as unknown as UnitStats,
       currentHealth: 7,
       maxHealth: 10,
-      parts: (['TORSO', 'HEAD', 'LEFT_ARM', 'RIGHT_ARM', 'LEFT_LEG', 'RIGHT_LEG'] as const).map(
-        (kind) => ({ kind, currentHealth: 2, maxHealth: 2, lost: false }),
-      ),
+      parts: (
+        [
+          'TORSO',
+          'HEAD',
+          'LEFT_ARM',
+          'RIGHT_ARM',
+          'LEFT_LEG',
+          'RIGHT_LEG',
+        ] as const
+      ).map((kind) => ({ kind, currentHealth: 2, maxHealth: 2, lost: false })),
     }) as Member;
 
   const party = { WARRIOR: [member(3, 'Maren')] } as unknown as Squad;
@@ -104,6 +111,64 @@ describe('UnitFocusCard', () => {
     expect(getComputedStyle(card).overflowY).toBe('auto');
     expect(card.offsetHeight).toBeLessThanOrEqual(maxHeight || 300);
     expect(card.scrollHeight).toBeGreaterThan(card.clientHeight);
+  });
+
+  it('is drawn whole inside the screen, and scrolls only when it must, saying so', () => {
+    const stage = TestBed.inject(StageService);
+    for (const [w, h] of [
+      [1280, 720],
+      [1440, 900],
+      [440, 800],
+      [440, 600],
+    ]) {
+      stage.setViewport({ width: w, height: h });
+      for (const kind of ['unit', 'enemy'] as const) {
+        zoom.focusUnit({ kind, id: kind === 'unit' ? 3 : 9 });
+        for (const rect of [
+          {
+            left: w * 0.5,
+            top: h * 0.4,
+            right: w * 0.5 + 60,
+            bottom: h * 0.4 + 160,
+          },
+          {
+            left: w * 0.1,
+            top: h * 0.7,
+            right: w * 0.1 + 60,
+            bottom: h * 0.7 + 150,
+          },
+          {
+            left: w * 0.8,
+            top: h * 0.05,
+            right: w * 0.8 + 60,
+            bottom: h * 0.05 + 150,
+          },
+        ]) {
+          zoom.setAnchor(rect);
+          fixture.detectChanges();
+          fixture.detectChanges();
+          const card = el().querySelector('.unit-focus') as HTMLElement;
+          const r = card.getBoundingClientRect();
+          const what = `${kind} at ${w}x${h}, figure ${rect.left},${rect.top}`;
+          expect(r.left).withContext(what).toBeGreaterThanOrEqual(0);
+          expect(r.top).withContext(what).toBeGreaterThanOrEqual(0);
+          expect(r.right)
+            .withContext(what)
+            .toBeLessThanOrEqual(w + 0.5);
+          expect(r.bottom)
+            .withContext(what)
+            .toBeLessThanOrEqual(h + 0.5);
+          if (card.scrollHeight > card.clientHeight + 1) {
+            expect(card.classList.contains('more-below'))
+              .withContext(what)
+              .toBeTrue();
+            expect(r.height)
+              .withContext(what)
+              .toBeGreaterThanOrEqual(h - 2 * 12 - 2);
+          }
+        }
+      }
+    }
   });
 
   it('goes away when the view steps back', () => {
