@@ -30,16 +30,6 @@
 </button>
 }
 <article class="card-layer" [class.menus-hidden]="stage.menusHidden()">
-  <app-expedition-hud
-    [tower]="gameState().tower"
-    [active]="gameState().expeditionActive"
-    [party]="gameState().unitsOnTower"
-    [supplies]="gameState().supplies"
-    [maxSupplies]="gameState().maxSupplies"
-    [carriedLoot]="gameState().carriedLoot"
-    [carriedCredits]="gameState().carriedCredits"
-    [pillarMarks]="gameState().pillarMarks ?? []"
-  />
   @if (gameOver()) {
   <section
     class="campaign-banner glass-card wide"

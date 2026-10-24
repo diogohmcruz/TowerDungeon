@@ -45,6 +45,23 @@ describe('ListView', () => {
     expect(el().querySelector('.list')).toBeNull();
   });
 
+  it('carries the Expedition numbers (the HUD card left the card layer) while one is out', () => {
+    key('l');
+    settle();
+    expect(el().querySelector('.expedition-hud')).toBeNull();
+    TestBed.inject(GameStateService).update({
+      expeditionActive: true,
+      supplies: 120,
+      maxSupplies: 200,
+      carriedCredits: 340,
+      tower: { currentFloor: 4, floors: { 4: { boss: true, enemies: [] } } } as any,
+    });
+    settle();
+    const hud = el().querySelector('.expedition-hud');
+    expect(hud?.textContent).toContain('Floor 4');
+    expect(hud?.textContent).toContain('GUARDIAN');
+  });
+
   it('opens with L and closes with L or Escape', () => {
     key('l');
     settle();

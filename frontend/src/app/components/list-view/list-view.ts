@@ -8,6 +8,8 @@ import {
   viewChild,
 } from '@angular/core';
 
+import { ExpeditionHud } from '../expedition-hud/expedition-hud';
+import { GameStateService } from '../../services/game-state.service';
 import { ListViewService } from '../../services/list-view.service';
 import { PopoverService } from '../../services/popover.service';
 import { ActionRow } from '../action-row/action-row';
@@ -45,7 +47,7 @@ export function listKeyIntent(event: KeyboardEvent): 'toggle' | 'close' | null {
 @Component({
   selector: 'app-list-view',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ActionRow],
+  imports: [ActionRow, ExpeditionHud],
   template: `
     <button
       type="button"
@@ -118,6 +120,17 @@ export function listKeyIntent(event: KeyboardEvent): 'toggle' | 'close' | null {
         } @empty {
           <p>No building has anything to show yet.</p>
         }
+        <!-- The Expedition's objects in the picture (Supplies post, crates, formations), as plain DOM. -->
+        <app-expedition-hud
+          [tower]="game().tower"
+          [active]="game().expeditionActive"
+          [party]="game().unitsOnTower"
+          [supplies]="game().supplies"
+          [maxSupplies]="game().maxSupplies"
+          [carriedLoot]="game().carriedLoot"
+          [carriedCredits]="game().carriedCredits"
+          [pillarMarks]="game().pillarMarks ?? []"
+        />
       </section>
     }
   `,
@@ -212,6 +225,7 @@ export function listKeyIntent(event: KeyboardEvent): 'toggle' | 'close' | null {
 export class ListView {
   protected readonly list = inject(ListViewService);
   protected readonly popover = inject(PopoverService);
+  protected readonly game = inject(GameStateService).state;
   private readonly closeButton = viewChild<ElementRef<HTMLElement>>('close');
   private opener: HTMLElement | null = null;
 

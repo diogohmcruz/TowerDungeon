@@ -13,6 +13,17 @@ export interface InkFixture {
   tower: Tower;
   party: Squad;
   reinforcements: Reinforcement[];
+  /** What the Expedition carries, for the Supplies post and the crates. */
+  carried: CarriedFigures;
+}
+
+/** Supplies and the three loads the Party carries (`&supplies=`, `&maxSupplies=`, `&credits=`, `&materials=`, `&relics=`). */
+export interface CarriedFigures {
+  supplies: number;
+  maxSupplies: number;
+  credits: number;
+  materials: number;
+  relics: number;
 }
 
 /** The pinned Floors of the plan (architecture brainstorm 4.2), so captures show them. */
@@ -79,6 +90,7 @@ export function readFixtureParams(search: string): {
   garrison: number;
   party: number;
   waves: number;
+  carried: CarriedFigures;
 } | null {
   const q = new URLSearchParams(search);
   const floors = Number(q.get('inkFixture'));
@@ -91,6 +103,13 @@ export function readFixtureParams(search: string): {
     garrison: Number(q.get('garrison') ?? 5),
     party: Number(q.get('party') ?? 8),
     waves: Number(q.get('waves') ?? 0),
+    carried: {
+      supplies: Number(q.get('supplies') ?? 120),
+      maxSupplies: Number(q.get('maxSupplies') ?? 200),
+      credits: Number(q.get('credits') ?? 340),
+      materials: Number(q.get('materials') ?? 45),
+      relics: Number(q.get('relics') ?? 1),
+    },
   };
 }
 
@@ -100,6 +119,7 @@ export function buildFixture(p: {
   garrison: number;
   party: number;
   waves?: number;
+  carried?: CarriedFigures;
 }): InkFixture {
   const floors: Record<number, TowerFloor> = {};
   for (let n = 1; n <= p.floors; n++) {
@@ -125,6 +145,13 @@ export function buildFixture(p: {
     party[t].push(member(i + 1, t));
   }
   return {
+    carried: p.carried ?? {
+      supplies: 120,
+      maxSupplies: 200,
+      credits: 340,
+      materials: 45,
+      relics: 1,
+    },
     tower: {
       currentFloor: p.current,
       maxFloor: 100,

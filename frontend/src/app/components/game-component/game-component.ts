@@ -27,7 +27,6 @@ import { DecimalPipe } from '@angular/common';
 import { GameAction } from '../../interfaces/game-action.enum';
 import { Unit, UnitStats } from '../../interfaces/unit.enum';
 import { Army } from '../army/army';
-import { ExpeditionHud } from '../expedition-hud/expedition-hud';
 import { TowerDisplay } from '../tower/tower-display.component';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { UnitStatsService } from '../../services/unit-stats.service';
@@ -44,7 +43,6 @@ import { ListView } from '../list-view/list-view';
     DecimalPipe,
     Army,
     TowerDisplay,
-    ExpeditionHud,
     VillageManagement,
     ShortcutCard,
     RunSummaryCard,
