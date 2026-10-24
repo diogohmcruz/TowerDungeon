@@ -1,7 +1,8 @@
 /**
  * The Expedition HUD as objects (architecture doc 5.6): Supplies is a gauge post
- * beside the recall lamp, Credits, Materials and Relics carried are crates on the
- * back wall behind the Party, and the Party and each enemy group answer a hover with their exact
+ * beside the recall lamp, Credits, Materials and Relics carried are three treasures on the
+ * back wall behind the Party (coin stacks, a heap of quarried blocks, a reliquary with a lit slit),
+ * and the Party and each enemy group answer a hover with their exact
  * figures. Built from the same box kit and gauge kit as the Village. Pure layout and
  * pure captions, no three.js and no Angular.
  *
@@ -13,6 +14,7 @@ import type { GameState, Squad } from '../../interfaces/game-state';
 import type { Member } from '../../interfaces/member';
 import { formatFigure } from '../village/building-registry';
 import { slitGauge } from '../village/gauge-kit';
+import { VILLAGE_TONE } from '../village/village-layout';
 import type { Volume } from '../village/village-layout';
 import { outlineVolumes } from '../village/village-subjects';
 import type { VillageSubject } from '../village/village-subjects';
@@ -37,24 +39,48 @@ export const SUPPLIES_POST = { h: 1.5 } as const;
 /** Depth of the crates: the rear of the Floor, in front of the strip's lip and well behind the rear rank of the Party and the garrison (#127). */
 export const CRATE_Z = 0.35;
 /**
- * How far above the figures' feet line the crates' shelf stands. The crates read
- * as stored goods on the back wall; high enough that no figure's hit area
- * (a figure's drawn rectangle grown to 22 px and a margin) reaches them.
+ * How far above the figures' feet line the treasures' shelf stands. They read as stored goods on
+ * the back wall; high enough that no figure's hit area (a figure's drawn rectangle grown to 22 px
+ * and a margin) reaches them, and the tallest pile (0.17) still stops under the Floor's ceiling.
  */
-export const CRATE_RISE = 0.6;
-/** Gap between crates along x. */
-const CRATE_STEP = 0.26;
-const CRATE = { w: 0.17, h: 0.1, d: 0.12 } as const;
-const TONE = { lit: 1, bone: 0.9, dark: 0.12, timber: 0.55, stone: 0.72 } as const;
+export const CRATE_RISE = 0.66;
+/** Gap between the three treasures along x: each has room for its widest pile and a margin. */
+const CRATE_STEP = 0.36;
+/** Width of a treasure's shelf and the most its pile ever spans. */
+const SHELF_W = 0.34;
+const SHELF_H = 0.03;
+const SHELF_D = 0.1;
+/**
+ * The ink densities of the treasures, all from the Village's own tokens. The shader turns a density
+ * into one of four ramp slots, dithering the levels in between, so a tone that lands between two
+ * slots (the old crates' 0.72 on a front face) is drawn as a muddy checker. Each part here is
+ * chosen to land on a slot: a front face at `salt` (0.95) is flat slot 2, at `timber` (0.55) is
+ * slot 1 with a little grain, and a top face at either is a step brighter. By day the same densities
+ * draw dark ink on the pale ground, like every other part of the scene.
+ *  - Credits are bone coins (`salt`) with a duller coin (`timber`) between each two.
+ *  - Materials are flat stone blocks (`salt`) under a lit top course (`lit`).
+ *  - A Relic is a dull casket (`timber`) with a bone lid (`salt`) and one lit slit (`lit`).
+ */
+const TONE = {
+  coin: VILLAGE_TONE.salt,
+  coinEdge: VILLAGE_TONE.timber,
+  block: VILLAGE_TONE.salt,
+  cap: VILLAGE_TONE.lit,
+  shelf: VILLAGE_TONE.timber,
+  casket: VILLAGE_TONE.timber,
+  lid: VILLAGE_TONE.salt,
+  slit: VILLAGE_TONE.lit,
+  dark: VILLAGE_TONE.dark,
+} as const;
 
-/** One crate stands for 1, 2 or 3 stacked: a larger load, a taller stack. Never colour alone. */
+/** A treasure grows through 1, 2 and 3 tiers at these amounts: a larger load, a larger pile. Never colour alone. */
 export const CRATE_TIERS: Record<CrateKind, readonly [number, number]> = {
   CREDITS: [100, 1000],
   MATERIALS: [20, 200],
   RELICS: [2, 5],
 };
 
-/** How many crates stack for an amount: none for nothing, then 1, 2 or 3. */
+/** The tier of a treasure for an amount: none for nothing, then 1, 2 or 3. */
 export function crateCount(kind: CrateKind, amount: number): number {
   if (!(amount > 0)) return 0;
   const [two, three] = CRATE_TIERS[kind];
@@ -113,9 +139,9 @@ export function suppliesPost(
   const h = SUPPLIES_POST.h;
   const x = SUPPLIES_X;
   const z = 0.5;
-  box(out, 'supplies-foot', x, surfaceY, z, 0.3, 0.1, 0.2, TONE.stone);
-  box(out, 'supplies-post', x, surfaceY + 0.1, z, 0.22, h - 0.14, 0.12, TONE.timber);
-  box(out, 'supplies-cap', x, surfaceY + h - 0.04, z, 0.3, 0.04, 0.16, TONE.timber);
+  box(out, 'supplies-foot', x, surfaceY, z, 0.3, 0.1, 0.2, VILLAGE_TONE.stone);
+  box(out, 'supplies-post', x, surfaceY + 0.1, z, 0.22, h - 0.14, 0.12, VILLAGE_TONE.timber);
+  box(out, 'supplies-cap', x, surfaceY + h - 0.04, z, 0.3, 0.04, 0.16, VILLAGE_TONE.timber);
   slitGauge(out, 'supplies-gauge', {
     x,
     bottom: surfaceY + 0.2,
@@ -124,47 +150,112 @@ export function suppliesPost(
     fill: suppliesFill(supplies, max),
     width: 0.1,
   });
-  box(out, 'supplies-hit', x, surfaceY, z, 0.5, h, 0.3, TONE.dark, 0);
+  box(out, 'supplies-hit', x, surfaceY, z, 0.5, h, 0.3, VILLAGE_TONE.dark, 0);
+}
+
+/** Coins in each column of the Credits pile, left to right, by tier: 3; 4, 3; 4, 4, 3. */
+export function coinColumns(tier: number): number[] {
+  return [[], [3], [4, 3], [4, 4, 3]][Math.min(3, Math.max(0, tier))];
+}
+
+/** Blocks in each course of the Materials heap, from the bottom, by tier: 2, 1; 3, 2; 3, 2, 1. */
+export function heapCourses(tier: number): number[] {
+  return [[], [2, 1], [3, 2], [3, 2, 1]][Math.min(3, Math.max(0, tier))];
+}
+
+/** Caskets in the Relics group: the reliquary alone, then one small casket beside it, then two. */
+export function casketCount(tier: number): number {
+  return Math.min(3, Math.max(0, tier));
+}
+
+const COIN = { w: 0.1, h: 0.04, d: 0.07, step: 0.11 } as const;
+const BLOCK = { w: 0.09, h: 0.055, d: 0.07, gap: 0.01 } as const;
+
+/** Coin stacks: flat bone discs piled in columns, a duller coin between every two so each shows as a coin. */
+function coinPile(out: Volume[], id: string, x: number, bottom: number, tier: number): void {
+  const columns = coinColumns(tier);
+  columns.forEach((coins, c) => {
+    const cx = x + (c - (columns.length - 1) / 2) * COIN.step;
+    for (let i = 0; i < coins; i++) {
+      // A coin sits a hair off its neighbour, so a column leans like a hand-stacked one.
+      const lean = ((i * 5 + c * 3) % 3 - 1) * 0.008;
+      box(
+        out,
+        `${id}-coin-${c}-${i}`,
+        cx + lean,
+        bottom + i * COIN.h,
+        CRATE_Z,
+        COIN.w,
+        COIN.h,
+        COIN.d,
+        i % 2 === 0 ? TONE.coin : TONE.coinEdge,
+      );
+    }
+  });
+}
+
+/** A heap of dressed blocks in running bond, narrowing upward, the top course in lighter stone. */
+function blockHeap(out: Volume[], id: string, x: number, bottom: number, tier: number): void {
+  const courses = heapCourses(tier);
+  courses.forEach((blocks, r) => {
+    for (let k = 0; k < blocks; k++) {
+      const bx = x + (k - (blocks - 1) / 2) * (BLOCK.w + BLOCK.gap);
+      box(
+        out,
+        `${id}-block-${r}-${k}`,
+        bx,
+        bottom + r * BLOCK.h,
+        CRATE_Z,
+        BLOCK.w,
+        BLOCK.h,
+        BLOCK.d,
+        r === courses.length - 1 ? TONE.cap : TONE.block,
+      );
+    }
+  });
 }
 
 /**
- * One crate place: a flat dark slab always (so an empty place is still a place), and
- * above it a stack of one to three crates, each with `index + 1` bone slats on its
- * front so the three kinds differ by shape as well as by caption. Ids begin
- * `carried-<kind>-`.
+ * A reliquary: a dark casket with a stone lid and ridge and one lit slit in its front, and for a
+ * larger load a smaller casket on each side of it.
+ */
+function reliquaries(out: Volume[], id: string, x: number, bottom: number, tier: number): void {
+  const casket = (name: string, cx: number, w: number, h: number, slitW: number, slitH: number) => {
+    box(out, `${id}-${name}`, cx, bottom, CRATE_Z, w, h, 0.07, TONE.casket);
+    box(out, `${id}-${name}-lid`, cx, bottom + h, CRATE_Z, w + 0.01, 0.025, 0.08, TONE.lid);
+    box(out, `${id}-${name}-ridge`, cx, bottom + h + 0.025, CRATE_Z, w - 0.04, 0.025, 0.05, TONE.lid);
+    // The slit is cut in the front: a decal, thin, drawn just proud of the casket's face.
+    box(out, `${id}-${name}-slit`, cx, bottom + (h - slitH) / 2, CRATE_Z + 0.036, slitW, slitH, 0.02, TONE.slit);
+  };
+  const n = casketCount(tier);
+  if (n === 0) return;
+  casket('casket-0', x, 0.12, 0.09, 0.035, 0.06);
+  if (n >= 2) casket('casket-1', x + 0.115, 0.075, 0.06, 0.025, 0.035);
+  if (n >= 3) casket('casket-2', x - 0.115, 0.075, 0.06, 0.025, 0.035);
+}
+
+/**
+ * One treasure place: a shelf always (so an empty place is still a place), and on it, by kind,
+ * a pile of coins (Credits), a heap of blocks (Materials) or reliquaries (Relics), growing
+ * through three tiers with the load. Ids begin `carried-<kind>-`.
  */
 export function crateStack(
   out: Volume[],
   kind: CrateKind,
-  index: number,
+  _index: number,
   x: number,
   surfaceY: number,
   amount: number,
 ): void {
   const id = `${CRATE_ID}${kind.toLowerCase()}`;
   surfaceY += CRATE_RISE;
-  const n = crateCount(kind, amount);
-  box(out, `${id}-base`, x, surfaceY, CRATE_Z, CRATE.w + 0.06, 0.03, CRATE.d + 0.06, TONE.dark);
-  for (let i = 0; i < n; i++) {
-    const bottom = surfaceY + 0.03 + i * CRATE.h;
-    box(out, `${id}-box-${i}`, x, bottom, CRATE_Z, CRATE.w, CRATE.h, CRATE.d, TONE.stone);
-    for (let s = 0; s <= index; s++) {
-      const dx = (s - index / 2) * 0.04;
-      box(out, `${id}-slat-${i}-${s}`, x + dx, bottom + 0.02, CRATE_Z + CRATE.d / 2 + 0.005, 0.02, CRATE.h - 0.04, 0.02, TONE.bone);
-    }
-  }
-  box(
-    out,
-    `${id}-hit`,
-    x,
-    surfaceY,
-    CRATE_Z,
-    CRATE.w + 0.1,
-    Math.max(0.2, 0.03 + n * CRATE.h),
-    CRATE.d + 0.1,
-    TONE.dark,
-    0,
-  );
+  const tier = crateCount(kind, amount);
+  box(out, `${id}-base`, x, surfaceY, CRATE_Z, SHELF_W, SHELF_H, SHELF_D, TONE.shelf);
+  const top = surfaceY + SHELF_H;
+  if (kind === 'CREDITS') coinPile(out, id, x, top, tier);
+  else if (kind === 'MATERIALS') blockHeap(out, id, x, top, tier);
+  else reliquaries(out, id, x, top, tier);
+  box(out, `${id}-hit`, x, surfaceY, CRATE_Z, SHELF_W + 0.04, 0.3, SHELF_D + 0.1, TONE.dark, 0);
 }
 
 /** The post, the crates, and a line on whichever is hovered. */
