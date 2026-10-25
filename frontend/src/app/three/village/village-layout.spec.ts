@@ -1064,6 +1064,7 @@ describe('village layout', () => {
     });
 
     it('stays clear of every other volume, the road, the Gate and the stair included', () => {
+      const meeting: string[] = [];
       for (const [name, input] of SCENES) {
         for (const tick of [0, 5]) {
           const v = buildVillage({ ...input, tick, still: false });
@@ -1075,11 +1076,12 @@ describe('village layout', () => {
                 Math.abs(f.x - o.x) < (f.w + o.w) / 2 - 1e-6 &&
                 Math.abs(f.y - o.y) < (f.h + o.h) / 2 - 1e-6 &&
                 Math.abs(f.z - o.z) < (f.d + o.d) / 2 - 1e-6;
-              expect(meet).withContext(`${name}: ${f.id} meets ${o.id}`).toBeFalse();
+              if (meet) meeting.push(`${name}: ${f.id} meets ${o.id}`);
             }
           }
         }
       }
+      expect(meeting.slice(0, 5)).toEqual([]);
     });
 
     describe('the cliff', () => {
@@ -1173,9 +1175,9 @@ describe('village layout', () => {
           const f = foliage(buildVillage(input));
           expect(Math.max(...f.map((x) => x.tone))).withContext(name).toBeLessThanOrEqual(0.06);
           expect(f.every((x) => x.alpha === 1)).withContext(name).toBeTrue();
-          // Black in both themes: flagged for the darkest ink, and nothing else is.
+          // Black in both themes: flagged for the darkest ink, and nothing else is but the landmarks' roofs (#150).
           expect(f.every((x) => x.black === true)).withContext(name).toBeTrue();
-          expect(buildVillage(input).filter((x) => x.black).length).withContext(name).toBe(f.length);
+          expect(buildVillage(input).filter((x) => x.black && x.group !== 'landmark').length).withContext(name).toBe(f.length);
           expect(Math.max(...f.map((x) => x.y + x.h / 2))).withContext(name).toBeLessThanOrEqual(1.8);
           expect(Math.min(...f.map((x) => x.y - x.h / 2))).withContext(name).toBeGreaterThanOrEqual(-0.5);
           // Ragged: many distinct top heights and widths.
@@ -1266,6 +1268,334 @@ describe('village layout', () => {
       for (const [name, input] of SCENES) {
         expect(buildVillage(input).length).withContext(name).toBeLessThanOrEqual(VILLAGE_CAPACITY);
       }
+    });
+  });
+
+  describe('the landmarks (#150): Yuva\'s house and the fortress with its aqueduct', () => {
+    const isLandmark = (v: Volume) => v.group === 'landmark';
+    const yuva = (v: Volume[]) => v.filter((x) => x.id.startsWith('landmark-yuva-'));
+    const fortress = (v: Volume[]) => v.filter((x) => x.id.startsWith('landmark-fortress-'));
+    const aqueduct = (v: Volume[]) => v.filter((x) => x.id.startsWith('landmark-aqueduct-'));
+    const FULL = Object.fromEntries(Object.entries(UPGRADE_MODULES).map(([id, m]) => [id, m.cap]));
+    const SCENES: Array<[string, VillageInput]> = [
+      ['an empty Village', EMPTY_VILLAGE],
+      ['Tier I', { ...BUSY, villageTierLevel: 1, upgrades: FULL, saltPansOpen: false }],
+      ['Tier II', { ...BUSY, villageTierLevel: 2, upgrades: FULL }],
+      ['Tier III', { ...BUSY, villageTierLevel: 3, upgrades: FULL, sporeCellarOpen: true, spores: 7 }],
+      ['Tier IV with the Port', { ...BUSY, upgrades: FULL, sporeCellarOpen: true, spores: 7, port: 'BUILT', boatDocked: true, offer: true }],
+      ['Tier IV with a footing', { ...BUSY, port: 'FOOTING' }],
+    ];
+    const meets = (a: Volume, b: Volume) =>
+      Math.abs(a.x - b.x) < (a.w + b.w) / 2 - 1e-6 &&
+      Math.abs(a.y - b.y) < (a.h + b.h) / 2 - 1e-6 &&
+      Math.abs(a.z - b.z) < (a.d + b.d) / 2 - 1e-6;
+    const left = (x: Volume) => x.x - x.w / 2;
+    const right = (x: Volume) => x.x + x.w / 2;
+    const top = (x: Volume) => x.y + x.h / 2;
+    const bottom = (x: Volume) => x.y - x.h / 2;
+
+    it('is scenery of its own group in every scene, with three parts and unique ids', () => {
+      for (const [name, input] of SCENES) {
+        const v = buildVillage(input);
+        const marks = v.filter(isLandmark);
+        expect(yuva(v).length).withContext(name).toBeGreaterThan(18);
+        expect(fortress(v).length).withContext(name).toBeGreaterThan(25);
+        expect(aqueduct(v).length).withContext(name).toBeGreaterThan(20);
+        expect(marks.length).withContext(name).toBe(yuva(v).length + fortress(v).length + aqueduct(v).length);
+        expect(new Set(ids(v)).size).withContext(name).toBe(v.length);
+        // Scenery: nothing the player can point at, so no subject and no hit region, hover or popover.
+        for (const m of marks) {
+          expect(subjectOfVolume(m.id)).withContext(m.id).toBeNull();
+          expect(m.alpha).withContext(m.id).toBe(1);
+        }
+      }
+    });
+
+    it('leaves the Village bounds and the closeup frame as they were', () => {
+      for (const [name, input] of SCENES) {
+        const all = buildVillage(input);
+        const without = all.filter((x) => !isLandmark(x));
+        expect(villageBounds(all)).withContext(name).toEqual(villageBounds(without));
+        expect(closeupFrame(all)).withContext(name).toEqual(closeupFrame(without));
+      }
+    });
+
+    it('holds still: no landmark moves with the clock, the tick or reduced motion', () => {
+      const at = (flicker: number, tick: number, still: boolean) =>
+        buildVillage({ ...BUSY, port: 'BUILT', flicker, tick, still }).filter(isLandmark);
+      expect(at(40, 7, false)).toEqual(at(0, 3, true));
+    });
+
+    it('never meets a Village, Port or frame volume (the sea is the water they stand in)', () => {
+      for (const [name, input] of SCENES) {
+        const v = buildVillage({ ...input, tick: 5, still: false });
+        const others = v.filter(
+          (x) => !isLandmark(x) && x.group !== 'sea' && x.id !== 'ground' && !x.id.startsWith('outline-') && x.alpha > 0,
+        );
+        for (const m of v.filter(isLandmark)) {
+          for (const o of others) expect(meets(m, o)).withContext(`${name}: ${m.id} meets ${o.id}`).toBeFalse();
+        }
+      }
+    });
+
+    it('never stands in front of a building, a hit region or the road on screen, in the far view or the closeup', () => {
+      const nearer: string[] = [];
+      for (const [name, input] of SCENES) {
+        const v = buildVillage(input);
+        const targets = v.filter(
+          (x) => (x.group === 'village' || x.group === 'port') && x.id !== 'ground' && !x.id.startsWith('outline-'),
+        );
+        for (const [w, h] of [[1440, 900], [1920, 1080], [900, 1000]] as const) {
+          for (const closeness of [0, 1]) {
+            const cam = new THREE.PerspectiveCamera();
+            applyStageView(cam, w, h, w < 1100, closeness);
+            fitVillageCamera(cam, closeness, closeupFrame(v));
+            cam.updateMatrixWorld();
+            const rect = (x: Volume) => {
+              let l = Infinity, r = -Infinity, t = Infinity, b = -Infinity;
+              for (const sx of [-1, 1]) for (const sy of [-1, 1]) for (const sz of [-1, 1]) {
+                const p = new THREE.Vector3(x.x + (sx * x.w) / 2, x.y + (sy * x.h) / 2, x.z + (sz * x.d) / 2).project(cam);
+                l = Math.min(l, p.x); r = Math.max(r, p.x); t = Math.min(t, p.y); b = Math.max(b, p.y);
+              }
+              return { l, r, t, b };
+            };
+            const dist = (x: Volume) => cam.position.distanceTo(new THREE.Vector3(x.x, x.y, x.z));
+            const boxes = targets.map((o) => ({ o, or: rect(o), od: dist(o) }));
+            for (const m of v.filter(isLandmark)) {
+              const mr = rect(m);
+              const md = dist(m);
+              for (const { o, or, od } of boxes) {
+                if (mr.l < or.r && mr.r > or.l && mr.t < or.b && mr.b > or.t && !(md > od)) {
+                  nearer.push(`${name} ${w}x${h} closeness ${closeness}: ${m.id} over ${o.id}`);
+                }
+              }
+            }
+          }
+        }
+      }
+      expect(nearer.slice(0, 5)).toEqual([]);
+    });
+
+    it('stays inside the instance capacity with every Upgrade and the Port', () => {
+      for (const [name, input] of SCENES) {
+        expect(buildVillage(input).length).withContext(name).toBeLessThanOrEqual(VILLAGE_CAPACITY);
+      }
+    });
+
+    describe('Yuva\'s house', () => {
+      it('stands at the left edge, outside the Village bounds and the closeup frame', () => {
+        for (const [name, input] of SCENES) {
+          const v = buildVillage(input);
+          const frame = closeupFrame(v);
+          const lo = frame.centerX - frame.span / 2;
+          const b = villageBounds(v);
+          for (const h of yuva(v)) {
+            expect(right(h)).withContext(`${name} ${h.id}`).toBeLessThanOrEqual(Math.min(lo, b.minX) + 1e-9);
+          }
+          // At the left edge of the world the player sees, not far across the plain.
+          expect(Math.min(...yuva(v).map(left))).withContext(name).toBeGreaterThan(-12);
+        }
+      });
+
+      it('stands behind the foliage, so the foliage still frames the Village from the front', () => {
+        for (const [name, input] of SCENES) {
+          const v = buildVillage(input);
+          const foliageBack = Math.min(...v.filter((x) => x.id.startsWith('foliage-w-')).map((x) => x.z - x.d / 2));
+          for (const h of yuva(v)) expect(h.z + h.d / 2).withContext(`${name} ${h.id}`).toBeLessThanOrEqual(foliageBack + 1e-9);
+        }
+      });
+
+      it('is vertical: tall and narrow, taller than the Village and the foliage', () => {
+        const v = buildVillage(BUSY);
+        const house = yuva(v);
+        const walls = house.filter((x) => x.id.startsWith('landmark-yuva-wall-'));
+        const width = Math.max(...walls.map((x) => x.w));
+        expect(width).toBeLessThanOrEqual(1.6);
+        expect(Math.max(...house.map(top)) - Math.min(...house.map(bottom))).toBeGreaterThanOrEqual(4.5);
+        expect(Math.max(...walls.map(top)) - Math.min(...walls.map(bottom))).toBeGreaterThan(2.5 * width);
+        expect(Math.max(...house.map(top))).toBeGreaterThan(MAX_VILLAGE_HEIGHT * 2);
+        const foliageTop = Math.max(...v.filter((x) => x.id.startsWith('foliage-')).map(top));
+        expect(Math.max(...house.map(top))).toBeGreaterThan(foliageTop + 2);
+        // It stands on the ground, not in the air.
+        expect(Math.min(...house.map(bottom))).toBeLessThanOrEqual(0.001);
+      });
+
+      it('has a stepped outer stair on its side: treads rising one above the other to a landing and a door', () => {
+        const house = yuva(buildVillage(BUSY));
+        const stair = house.filter((x) => x.id.startsWith('landmark-yuva-step-'));
+        expect(stair.length).toBeGreaterThanOrEqual(5);
+        // Each tread is higher than the last and nearer the house.
+        const byX = [...stair].sort((a, b) => b.x - a.x);
+        for (let i = 1; i < byX.length; i++) {
+          expect(top(byX[i])).toBeGreaterThan(top(byX[i - 1]));
+          expect(byX[i].x).toBeLessThan(byX[i - 1].x);
+        }
+        // It stands out from the house's side (the right), not through it.
+        const walls = house.filter((x) => x.id.startsWith('landmark-yuva-wall-'));
+        expect(Math.max(...stair.map(right))).toBeGreaterThan(Math.max(...walls.map(right)) + 0.8);
+        expect(house.some((x) => x.id === 'landmark-yuva-door')).toBeTrue();
+      });
+
+      it('has a steep dark roof: a stepped point of black boxes, taller than it is wide', () => {
+        const roof = yuva(buildVillage(BUSY)).filter((x) => x.id.startsWith('landmark-yuva-roof-'));
+        expect(roof.length).toBeGreaterThanOrEqual(5);
+        for (const r of roof) {
+          expect(r.black).withContext(r.id).toBeTrue();
+          expect(r.tone).withContext(r.id).toBeLessThanOrEqual(VILLAGE_TONE.foliage + 1e-9);
+        }
+        const up = [...roof].sort((a, b) => bottom(a) - bottom(b));
+        for (let i = 1; i < up.length; i++) expect(up[i].w).toBeLessThan(up[i - 1].w);
+        expect(top(up[up.length - 1]) - bottom(up[0])).toBeGreaterThan(up[0].w);
+      });
+
+      it('has exactly one window, shuttered: a dark opening with two closed leaves in front of it', () => {
+        const house = yuva(buildVillage(BUSY));
+        const windows = house.filter((x) => x.id === 'landmark-yuva-window');
+        expect(windows.length).toBe(1);
+        const win = windows[0];
+        const shutters = house.filter((x) => x.id.startsWith('landmark-yuva-shutter-'));
+        expect(shutters.length).toBe(2);
+        for (const s of shutters) {
+          expect(s.z + s.d / 2).toBeGreaterThanOrEqual(win.z + win.d / 2 - 1e-9);
+          expect(Math.abs(s.y - win.y)).toBeLessThan(win.h / 2);
+        }
+        expect(Math.sign(shutters[0].x - win.x)).not.toBe(Math.sign(shutters[1].x - win.x));
+        // No light in it: it is shut.
+        expect(house.filter((x) => /window|shutter/.test(x.id) && x.tone >= VILLAGE_TONE.lit).length).toBe(0);
+      });
+    });
+
+    describe('the fortress', () => {
+      it('stands far behind the Village on the sea side, beside the Tower\'s base, past anything the player uses', () => {
+        for (const [name, input] of SCENES) {
+          const v = buildVillage(input);
+          for (const f of [...fortress(v), ...aqueduct(v)]) {
+            // Far back, in the landscape's depth, between the Village and the horizon.
+            expect(f.z + f.d / 2).withContext(`${name} ${f.id}`).toBeLessThanOrEqual(-12);
+            expect(f.z - f.d / 2).withContext(`${name} ${f.id}`).toBeGreaterThan(-46);
+          }
+          for (const f of fortress(v)) expect(left(f)).withContext(`${name} ${f.id}`).toBeGreaterThan(3);
+        }
+      });
+
+      it('stands on a crag of stone that narrows as it rises, with the walls and towers on its top', () => {
+        const v = buildVillage(BUSY);
+        const crag = fortress(v).filter((x) => x.id.startsWith('landmark-fortress-crag-'));
+        expect(crag.length).toBeGreaterThanOrEqual(4);
+        const sorted = [...crag].sort((a, b) => bottom(a) - bottom(b));
+        expect(sorted[sorted.length - 1].w).toBeLessThan(sorted[0].w);
+        const built = fortress(v).filter((x) => x.id.startsWith('landmark-fortress-wall-') || x.id.startsWith('landmark-fortress-tower-'));
+        expect(built.length).toBeGreaterThanOrEqual(4);
+        expect(Math.min(...built.map(bottom))).toBeGreaterThanOrEqual(Math.max(...crag.map(top)) - 0.3);
+      });
+
+      it('has several pointed black roofs: each a stepped stack that narrows to a point', () => {
+        const roofs = fortress(buildVillage(BUSY)).filter((x) => x.id.startsWith('landmark-fortress-roof-'));
+        const stacks = new Map<string, Volume[]>();
+        for (const r of roofs) {
+          const key = r.id.split('-')[3];
+          stacks.set(key, [...(stacks.get(key) ?? []), r]);
+        }
+        expect(stacks.size).toBeGreaterThanOrEqual(3);
+        for (const [key, stack] of stacks) {
+          expect(stack.length).withContext(key).toBeGreaterThanOrEqual(4);
+          const up = [...stack].sort((a, b) => bottom(a) - bottom(b));
+          for (let i = 1; i < up.length; i++) expect(up[i].w).withContext(key).toBeLessThan(up[i - 1].w);
+          expect(up[up.length - 1].w).withContext(key).toBeLessThan(up[0].w * 0.3);
+          // Steep: the point is taller than the roof is wide.
+          expect(top(up[up.length - 1]) - bottom(up[0])).withContext(key).toBeGreaterThan(up[0].w);
+          for (const r of stack) {
+            expect(r.black).withContext(r.id).toBeTrue();
+            expect(r.tone).withContext(r.id).toBeLessThanOrEqual(VILLAGE_TONE.foliage + 1e-9);
+          }
+        }
+      });
+
+      it('shows a few lit windows, each set on the front face of a wall or a tower', () => {
+        const v = buildVillage(BUSY);
+        const lit = fortress(v).filter((x) => x.id.startsWith('landmark-fortress-lit-'));
+        expect(lit.length).toBeGreaterThanOrEqual(3);
+        expect(lit.length).toBeLessThanOrEqual(10);
+        const hosts = fortress(v).filter((x) => x.id.startsWith('landmark-fortress-wall-') || x.id.startsWith('landmark-fortress-tower-'));
+        for (const l of lit) {
+          expect(l.tone).toBe(VILLAGE_TONE.lit);
+          expect(l.black).toBeFalsy();
+          const host = hosts.filter(
+            (h) =>
+              left(h) <= l.x && right(h) >= l.x && bottom(h) <= bottom(l) && top(h) >= top(l) &&
+              Math.abs(l.z - l.d / 2 - (h.z + h.d / 2)) < 0.06,
+          );
+          expect(host.length).withContext(l.id).toBeGreaterThan(0);
+        }
+      });
+    });
+
+    describe('the aqueduct', () => {
+      const piers = (v: Volume[], tier: number) =>
+        aqueduct(v).filter((x) => x.id.startsWith(`landmark-aqueduct-pier-${tier}-`)).sort((a, b) => a.x - b.x);
+
+      it('repeats the arch: two tiers of evenly spaced piers with open arches between them, and a deck over both', () => {
+        for (const [name, input] of SCENES) {
+          const v = buildVillage(input);
+          const lower = piers(v, 0);
+          const upper = piers(v, 1);
+          expect(lower.length).withContext(name).toBeGreaterThanOrEqual(4);
+          expect(upper.length).withContext(name).toBeGreaterThanOrEqual(lower.length + 3);
+          for (const row of [lower, upper]) {
+            const gaps = row.slice(1).map((p, i) => p.x - row[i].x);
+            for (const g of gaps) expect(g).withContext(name).toBeCloseTo(gaps[0], 6);
+            // The openings are open: between two piers, below the springing, nothing stands.
+            const rowBottom = Math.min(...row.map(bottom));
+            const spring = Math.min(...row.map(top)) - 0.45;
+            row.slice(1).forEach((p, i) => {
+              const mid = (p.x + row[i].x) / 2;
+              const inside = aqueduct(v).filter((x) => !x.id.includes('hollow') && left(x) < mid && right(x) > mid && bottom(x) < spring && top(x) > rowBottom + 0.05);
+              expect(inside.length).withContext(`${name} ${p.id}`).toBe(0);
+            });
+          }
+          expect(aqueduct(v).some((x) => x.id === 'landmark-aqueduct-deck')).withContext(name).toBeTrue();
+        }
+      });
+
+      it('joins the crag to the land: it starts at the fortress and runs left, past the shore, toward the Tower\'s column', () => {
+        for (const [name, input] of SCENES) {
+          const v = buildVillage(input);
+          const a = aqueduct(v);
+          const crag = fortress(v).filter((x) => x.id.startsWith('landmark-fortress-crag-'));
+          expect(Math.max(...a.map(right))).withContext(name).toBeGreaterThanOrEqual(Math.min(...crag.map(left)) - 1e-9);
+          expect(Math.min(...a.map(left))).withContext(name).toBeLessThan(shoreX(-1.5));
+          expect(Math.max(...a.map(top))).withContext(name).toBeLessThanOrEqual(Math.max(...crag.map(top)) + 1e-9);
+        }
+        // With a Port, at least two piers stand in the water.
+        const v = buildVillage({ ...BUSY, port: 'BUILT' });
+        const water = v.find((x) => x.id === 'sea-body')!;
+        expect(piers(v, 0).filter((p) => left(p) > left(water)).length).toBeGreaterThanOrEqual(2);
+      });
+
+      it('shows each arch as a black hollow behind its opening, in the blackest ink, one per opening', () => {
+        for (const [name, input] of SCENES) {
+          const v = buildVillage(input);
+          const hollows = aqueduct(v).filter((x) => x.id.includes('-hollow-'));
+          expect(hollows.length).withContext(name).toBeGreaterThanOrEqual(15);
+          for (const h of hollows) {
+            expect(h.black).withContext(h.id).toBeTrue();
+            expect(h.tone).withContext(h.id).toBeLessThanOrEqual(VILLAGE_TONE.foliage + 1e-9);
+            // Between two piers of its tier, never over one.
+            const tier = Number(h.id.split('-')[3]);
+            const row = piers(v, tier);
+            expect(row.some((p) => right(p) <= left(h) + 1e-9)).withContext(h.id).toBeTrue();
+            expect(row.some((p) => left(p) >= right(h) - 1e-9)).withContext(h.id).toBeTrue();
+            // Behind the masonry's front face, so it is an opening's shadow, not a slab over the arch.
+            expect(h.z + h.d / 2).withContext(h.id).toBeLessThanOrEqual(row[0].z + row[0].d / 2 - 0.1);
+          }
+        }
+      });
+
+      it('is stone: lighter than the sea, no light in it', () => {
+        const a = aqueduct(buildVillage(BUSY));
+        for (const x of a) expect(x.tone).toBeLessThan(VILLAGE_TONE.lit);
+        expect(a.filter((x) => x.id.startsWith('landmark-aqueduct-pier-')).every((x) => x.tone >= 0.4)).toBeTrue();
+      });
     });
   });
 });

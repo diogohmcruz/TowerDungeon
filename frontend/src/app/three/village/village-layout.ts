@@ -89,9 +89,11 @@ export const SHORTCUT_DOOR = {
  * the screen's edge and stand for nothing the player can point at or the closeup frames. `frame` is
  * scenery too (#149): the cliff face under the ground, the ground fog on it and the black foliage
  * at the edges. It has no subject, no hit region, and neither the Village bounds nor the closeup
- * frame count it.
+ * frame count it. `landmark` is scenery as well (#150): Yuva's house at the left edge and the
+ * fortress with its aqueduct far behind on the sea side. Same rules: no subject, no hit region, not
+ * in the Village bounds, the closeup frame or the ray-visibility helper's occluders.
  */
-export type VolumeGroup = 'village' | 'tower' | 'port' | 'sea' | 'frame';
+export type VolumeGroup = 'village' | 'tower' | 'port' | 'sea' | 'frame' | 'landmark';
 
 /** A box: `x`, `y`, `z` are the centre; `y` is the centre height above the ground top. */
 export interface Volume {
@@ -1590,6 +1592,200 @@ function frame(out: Volume[], bay: boolean, flicker: number): void {
   foliage(out, bay);
 }
 
+/** A landmark box (#150): scenery of its own group; `black` draws it in the theme's blackest ink. */
+function mark(
+  out: Volume[],
+  id: string,
+  x: number,
+  bottom: number,
+  z: number,
+  w: number,
+  h: number,
+  d: number,
+  tone: number,
+  black = false,
+): void {
+  box(out, id, 'landmark', x, bottom, z, w, h, d, tone);
+  if (black) out[out.length - 1].black = true;
+}
+
+/** Yuva's house stands at the left edge, behind the foliage; its right side faces the Village. */
+const YUVA = { x: -7.6, z: -4.6, w: 1.2, d: 1.0 } as const;
+
+/**
+ * Yuva's house (#150): a tall narrow stone house for the left edge of the skyline, scenery only.
+ * Four courses of stone on a plinth with dark string courses, one shuttered window on the front, a
+ * door on the side at the top of a stepped outer stair, and a steep roof of black boxes, each one
+ * narrower than the one below, so it ends in a point. It stands behind the foliage, outside the
+ * Village's x range, and its stair runs out toward the Village, never over it.
+ */
+function yuvaHouse(out: Volume[]): void {
+  const { x, z, w, d } = YUVA;
+  const front = z + d / 2;
+  const right = x + w / 2;
+  // The walls, by course: a plinth a little wider, then three courses of the same width.
+  const courses: ReadonlyArray<readonly [number, number, number]> = [
+    [0.95, w + 0.04, 0.5],
+    [0.95, w, 0.56],
+    [0.95, w, 0.53],
+    [0.9, w, 0.58],
+  ];
+  let y = 0;
+  courses.forEach(([h, cw, tone], k) => {
+    mark(out, `landmark-yuva-wall-${k}`, x, y, z, cw, h, d + (k === 0 ? 0.04 : 0), tone);
+    y += h;
+    if (k < courses.length - 1) mark(out, `landmark-yuva-band-${k}`, x, y - 0.025, front + 0.008, w + 0.02, 0.05, 0.02, VILLAGE_TONE.dark);
+  });
+  const wallTop = y;
+  // The one window: a dark opening, a lintel and sill, two closed shutter leaves and their slats.
+  const wx = x - 0.1;
+  const wy = 2.35;
+  mark(out, 'landmark-yuva-window', wx, wy, front, 0.46, 0.62, 0.04, VILLAGE_TONE.dark);
+  mark(out, 'landmark-yuva-lintel', wx, wy + 0.62, front + 0.01, 0.58, 0.08, 0.05, VILLAGE_TONE.kerb);
+  mark(out, 'landmark-yuva-sill', wx, wy - 0.07, front + 0.01, 0.56, 0.07, 0.08, VILLAGE_TONE.kerb);
+  for (const side of [-1, 1]) {
+    mark(out, `landmark-yuva-shutter-${side < 0 ? 'w' : 'e'}`, wx + side * 0.105, wy + 0.02, front + 0.03, 0.2, 0.58, 0.06, 0.3);
+  }
+  for (let k = 0; k < 2; k++) mark(out, `landmark-yuva-slat-${k}`, wx, wy + 0.2 + 0.2 * k, front + 0.065, 0.42, 0.02, 0.01, VILLAGE_TONE.dark);
+  // The outer stair on the right side: a landing at the door's height, then treads falling away.
+  const landing = 1.65;
+  const stairD = 0.55;
+  const stairZ = front - stairD / 2;
+  mark(out, 'landmark-yuva-landing', right + 0.175, 0, stairZ, 0.35, landing, stairD, 0.52);
+  for (let i = 0; i < 5; i++) {
+    const h = landing - 0.275 * (i + 1);
+    mark(out, `landmark-yuva-step-${i}`, right + 0.35 + 0.15 + 0.3 * i, 0, stairZ, 0.3, h, stairD, 0.5 - 0.02 * i);
+  }
+  mark(out, 'landmark-yuva-door', right + 0.005, landing, stairZ - 0.02, 0.02, 0.8, 0.34, VILLAGE_TONE.dark);
+  mark(out, 'landmark-yuva-door-lintel', right + 0.01, landing + 0.8, stairZ - 0.02, 0.04, 0.07, 0.42, VILLAGE_TONE.kerb);
+  // The steep roof: six boxes narrowing to a point, in the blackest ink; a chimney by its side.
+  const widths = [1.55, 1.25, 0.95, 0.65, 0.4, 0.2];
+  const rise = 0.34;
+  widths.forEach((rw, k) => {
+    mark(out, `landmark-yuva-roof-${k}`, x, wallTop + rise * k, z, rw, rise, d + 0.3, VILLAGE_TONE.foliage, true);
+  });
+  mark(out, 'landmark-yuva-chimney', x - 0.4, wallTop + 0.2, z - 0.1, 0.2, 1.25, 0.3, 0.46);
+}
+
+/** The fortress's crag stands in the sea far behind the Village, beside the Tower's base. */
+const FORTRESS = { x: 7.2, z: -26 } as const;
+
+/**
+ * A pointed roof of stepped black boxes: each course narrower than the one under it, in the ink's
+ * darkest, a point rather than a slab. `base` is the width of the lowest course.
+ */
+function pointedRoof(out: Volume[], id: string, x: number, bottom: number, z: number, base: number, rise: number): void {
+  const widths = [1, 0.8, 0.6, 0.42, 0.26, 0.14];
+  widths.forEach((s, k) => {
+    mark(out, `${id}-${k}`, x, bottom + rise * k, z, base * s, rise, base * s, VILLAGE_TONE.foliage, true);
+  });
+}
+
+/**
+ * The fortress (#150), a background landmark: a crag of four stepped courses with a toe in the water,
+ * a curtain wall with merlons and four towers under pointed black roofs, a few lit windows (the
+ * ink's lightest, so they are the brightest points at night). Fixed art; it stands for nothing the
+ * player has built and nothing in it can be pointed at.
+ */
+function fortress(out: Volume[]): void {
+  const { x, z } = FORTRESS;
+  const crag: ReadonlyArray<readonly [number, number, number, number, number, number]> = [
+    // [x, bottom, height, width, depth, tone]: darkest where it stands against the far ridges, lighter above them.
+    [x, -0.5, 2.4, 3.2, 4.4, 0.16],
+    [x + 0.1, 1.9, 2.0, 2.8, 3.8, 0.2],
+    [x, 3.9, 1.7, 2.4, 3.2, 0.24],
+    [x + 0.05, 5.6, 1.2, 2.0, 2.8, 0.3],
+  ];
+  crag.forEach(([cx, b, h, w, d, tone], k) => mark(out, `landmark-fortress-crag-${k}`, cx, b, z, w, h, d, tone));
+  mark(out, 'landmark-fortress-crag-4', x - 1.5, -0.4, z, 1.0, 1.9, 2.6, 0.14);
+  mark(out, 'landmark-fortress-crag-5', x - 1.1, 1.9, z + 0.4, 0.9, 0.9, 1.6, 0.2);
+  const base = 6.8;
+  // The curtain wall, its merlons and the four towers on the crown: pale enough to stand against the sky.
+  mark(out, 'landmark-fortress-wall-0', x + 0.05, base, z, 2.0, 1.0, 1.8, 0.62);
+  for (let k = 0; k < 4; k++) mark(out, `landmark-fortress-merlon-${k}`, x - 0.6 + 0.4 * k, base + 1.0, z + 0.7, 0.25, 0.3, 0.4, 0.62);
+  const towers: ReadonlyArray<readonly [number, number, number, number, number, number]> = [
+    // [x, bottom, height, width, z shift, tone]
+    [x + 0.1, base + 1.0, 3.2, 1.1, -0.2, 0.72],
+    [x - 1.0, base, 2.6, 0.8, 0, 0.66],
+    [x + 1.2, base, 2.0, 0.7, 0, 0.64],
+    [x - 0.4, base + 1.0, 1.9, 0.55, -0.9, 0.6],
+  ];
+  towers.forEach(([tx, b, h, w, dz, tone], k) => {
+    mark(out, `landmark-fortress-tower-${k}`, tx, b, z + dz, w, h, w, tone);
+    pointedRoof(out, `landmark-fortress-roof-${k}`, tx, b + h, z + dz, w * 1.4, k === 0 ? 0.36 : 0.32);
+  });
+  // Lit windows on the faces that look at the Village, and a few dark slits.
+  const litAt = (id: string, wx: number, wy: number, face: number) =>
+    mark(out, `landmark-fortress-lit-${id}`, wx, wy, face + 0.01, 0.22, 0.4, 0.02, VILLAGE_TONE.lit);
+  const frontOf = (k: number) => z + towers[k][4] + towers[k][3] / 2;
+  litAt('0', x + 0.1, base + 2.4, frontOf(0));
+  litAt('1', x - 0.15, base + 3.3, frontOf(0));
+  litAt('2', x - 1.0, base + 1.7, frontOf(1));
+  litAt('3', x + 1.2, base + 1.0, frontOf(2));
+  litAt('4', x - 0.35, base + 0.3, z + 0.9);
+  for (const [k, sx, sy, face] of [[0, x + 0.4, base + 1.8, frontOf(0)], [1, x - 1.0, base + 0.7, frontOf(1)], [2, x + 1.2, base + 0.5, frontOf(2)]] as const) {
+    mark(out, `landmark-fortress-slit-${k}`, sx, sy, face + 0.01, 0.07, 0.3, 0.02, VILLAGE_TONE.dark);
+  }
+}
+
+/** The aqueduct's tiers: pier pitch, pier width, how many piers, and where the lower tier's piers begin. */
+const AQUEDUCT = { z: -26.5, d: 1.0, x0: 6.3, pitch: [0.9, 0.45], pier: [0.24, 0.13], count: [5, 9] } as const;
+
+/**
+ * The aqueduct (#150): the world's signature shape, the arch, repeated. Two tiers of piers at an
+ * even pitch, standing in the sea on tall legs, each pier carrying stepped corbels that narrow the
+ * opening on its way to a close, so every arch is a stepped box-kit arch; a course over each tier,
+ * a deck and a parapet on top. It runs from the crag to the left, over the water, behind the Tower
+ * toward the land, high enough to clear the Village's roofs.
+ */
+function aqueduct(out: Volume[]): void {
+  const { z, d, x0, pitch, pier, count } = AQUEDUCT;
+  const tone = 0.6;
+  const tiers: ReadonlyArray<{ height: number; steps: ReadonlyArray<number>; stepH: number; course: number; shift: number }> = [
+    { height: 4.3, steps: [0.1, 0.19], stepH: 0.2, course: 0.3, shift: 0 },
+    { height: 0.7, steps: [0.1], stepH: 0.15, course: 0.15, shift: 0.1 },
+  ];
+  let y = -0.5;
+  tiers.forEach((t, k) => {
+    const first = x0 - t.shift;
+    const last = first - pitch[k] * (count[k] - 1);
+    for (let i = 0; i < count[k]; i++) {
+      const px = first - pitch[k] * i;
+      mark(out, `landmark-aqueduct-pier-${k}-${i}`, px, y, z, pier[k], t.height, d, tone);
+      // The opening to the next pier: a black hollow behind it, in the blackest ink, so each arch is
+      // a dark stepped shape in the stone by day and by night.
+      if (i < count[k] - 1) {
+        const open = pitch[k] - pier[k];
+        const hx = px - pitch[k] / 2;
+        mark(out, `landmark-aqueduct-hollow-${k}-${i}-0`, hx, y, z - d / 2 + 0.06, open, t.height, 0.1, VILLAGE_TONE.foliage, true);
+        if (k === 0) mark(out, `landmark-aqueduct-hollow-${k}-${i}-1`, hx, y + t.height, z - d / 2 + 0.06, open - 2 * t.steps[0], t.stepH, 0.1, VILLAGE_TONE.foliage, true);
+      }
+      t.steps.forEach((s, j) => {
+        mark(out, `landmark-aqueduct-corbel-${k}-${i}-${j}`, px, y + t.height + t.stepH * j, z, pier[k] + 2 * s, t.stepH, d, tone - 0.02 * (j + 1));
+      });
+    }
+    y += t.height + t.stepH * t.steps.length;
+    mark(out, `landmark-aqueduct-course-${k}`, (first + last) / 2, y, z, first - last + pier[k] + 0.2, t.course, d, tone + 0.04);
+    y += t.course;
+  });
+  const first = x0 - tiers[1].shift;
+  const last = first - pitch[1] * (count[1] - 1);
+  mark(out, 'landmark-aqueduct-deck', (first + last) / 2, y, z, first - last + 0.4, 0.15, d + 0.1, tone + 0.06);
+  mark(out, 'landmark-aqueduct-rail', (first + last) / 2, y + 0.15, z + d / 2, first - last + 0.4, 0.15, 0.12, tone + 0.06);
+}
+
+/**
+ * The landmarks (#150): Yuva's house at the left edge and the fortress with its aqueduct far behind
+ * on the sea side. Scenery of its own group, so the Village bounds, the closeup frame and the
+ * ray-visibility helper do not count it; no subject, so no hit region. Fixed art: it never moves,
+ * not with the clock, the tick or reduced motion.
+ */
+function landmarks(out: Volume[]): void {
+  yuvaHouse(out);
+  fortress(out);
+  aqueduct(out);
+}
+
 /**
  * What each Quarter does to the picture, all through the ink ramp (tone and
  * dither only, no new colour). `ground` is the ground's ink density, `rows` the
@@ -1763,6 +1959,7 @@ export function buildVillage(input: VillageInput): Volume[] {
   reserves(out, input.reserves);
   villagers(out, input.hands, input.tick, input.still);
   frame(out, (input.port ?? 'HIDDEN') !== 'HIDDEN', input.still ? 0 : input.flicker);
+  landmarks(out);
   // The chosen Start Floor wears the bone outline: the Base door by default.
   const start = input.startFloor ?? 0;
   if (start <= 0) {
