@@ -99,7 +99,7 @@ describe('the Tower entrance', () => {
   it('stays inside the Village bounds and height, and well under the instance budget', () => {
     const bounds = villageBounds(village);
     expect(bounds.maxY).toBeLessThan(MAX_VILLAGE_HEIGHT);
-    // The frame's (#149) and the landmarks' (#150) scenery have their own budget (the capacity test in village-layout.spec).
-    expect(village.filter((v) => v.group !== 'frame' && v.group !== 'landmark').length).toBeLessThan(400);
+    // The frame's (#149), the landmarks' (#150) and the zones' (#151) scenery have their own budget (the capacity tests in village-layout.spec).
+    expect(village.filter((v) => v.group !== 'frame' && v.group !== 'landmark' && !v.id.startsWith('zone-')).length).toBeLessThan(400);
   });
 });

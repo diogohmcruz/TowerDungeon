@@ -60,6 +60,11 @@ export const VILLAGE_TONE = {
   joint: 0.1,
   foliage: 0.03,
   fog: 0.5,
+  /**
+   * The light wall of a building (#151): paler than stone, so the black roofs and the lit windows
+   * stand against it, and clear of the figures' ash (1) in front of it.
+   */
+  wall: 0.7,
 } as const;
 
 /** Floors the Tower's drawn height stands for, so a Floor maps to a relative height. */
@@ -249,6 +254,9 @@ export const LANES: Record<
 
 /** The silo stands behind the stair's foot, so the two never share a plan. */
 const SILO_Z = -0.3;
+/** The top of the silo's shaft, where its black cap begins, and the cap's own top (#151). */
+const SILO_TOP = 1.7;
+const SILO_CAP_TOP = SILO_TOP + 0.14;
 /**
  * The open ground in front of the lanes, where the Cellar and the Pans already stand: the supply
  * store stands here, not behind the stair and the Tower's base, which hid it (#134).
@@ -372,15 +380,57 @@ function pace(tick: number, seed: number): number {
   return (p < period / 2 ? p : period - p) - period / 4; // -2..+2
 }
 
+/**
+ * A pointed roof of stepped black boxes standing on a wall (#151), in the Village's own group: each
+ * course narrower than the one under it, drawn in the theme's blackest ink (`black`), so it is a
+ * black mass at night and by day. `width` and `depth` are the lowest course's.
+ */
+function blackRoof(
+  out: Volume[],
+  id: string,
+  x: number,
+  bottom: number,
+  z: number,
+  width: number,
+  depth: number,
+  rise: number,
+  scales: readonly number[],
+): void {
+  scales.forEach((s, k) => {
+    box(out, `${id}-${k}`, 'village', x, bottom + rise * k, z, width * s, rise, depth * s, VILLAGE_TONE.foliage);
+    out[out.length - 1].black = true;
+  });
+}
+
+/** The top of the Fort's keep, where its merlons and its two turrets stand (#151). */
+const FORT_KEEP_TOP = 1.15;
+const FORT_MERLON_TOP = FORT_KEEP_TOP + 0.14;
+
 function fort(out: Volume[], reserveCount: number, wounded: number): void {
   const x = mid(ANNEX_X.fort);
   const w = span(ANNEX_X.fort);
-  // Timber-framed keep on a stone plinth with a stepped parapet.
+  // A light keep on a stone plinth with a stepped parapet, the tallest and widest mass of the
+  // Village's left, with two turrets under black pointed roofs and a few lit windows (#151).
   box(out, 'fort-plinth', 'village', x, 0, 0.05, w, 0.3, 1.0, VILLAGE_TONE.stone);
-  box(out, 'fort-keep', 'village', x, 0.3, 0, w - 0.3, 0.55, 0.8, VILLAGE_TONE.timber);
+  box(out, 'fort-keep', 'village', x, 0.3, 0, w - 0.3, FORT_KEEP_TOP - 0.3, 0.8, VILLAGE_TONE.wall);
   for (let i = 0; i < 4; i++) {
     const mx = ANNEX_X.fort[0] + 0.27 + (i * (w - 0.54)) / 3;
-    box(out, `fort-merlon-${i}`, 'village', mx, 0.85, 0.35, 0.16, 0.14, 0.12, VILLAGE_TONE.stone);
+    box(out, `fort-merlon-${i}`, 'village', mx, FORT_KEEP_TOP, 0.35, 0.16, FORT_MERLON_TOP - FORT_KEEP_TOP, 0.12, VILLAGE_TONE.stone);
+  }
+  // The tall turret at the keep's left end and a lower one at its right, both behind the parapet.
+  const turrets = [
+    { id: 'a', x: x - 0.33, w: 0.36, h: 0.35 },
+    { id: 'b', x: x + 0.35, w: 0.28, h: 0.2 },
+  ] as const;
+  for (const t of turrets) {
+    box(out, `fort-tower-${t.id}`, 'village', t.x, FORT_KEEP_TOP, -0.02, t.w, t.h, t.w, VILLAGE_TONE.wall);
+    blackRoof(out, `fort-roof-${t.id}`, t.x, FORT_KEEP_TOP + t.h, -0.02, t.w * 1.45, t.w * 1.45, t.w * 0.22, [1, 0.72, 0.46, 0.22]);
+    // One lit window on the turret's front.
+    box(out, `fort-window-${t.id}`, 'village', t.x, FORT_KEEP_TOP + t.h * 0.3, -0.02 + t.w / 2 + 0.01, 0.08, t.h * 0.5, 0.02, VILLAGE_TONE.lit);
+  }
+  // Two on the keep's front above the gauges, left of the door.
+  for (let i = 0; i < 2; i++) {
+    box(out, `fort-window-${i + 2}`, 'village', x - 0.15 + i * 0.3, 0.86, 0.41, 0.1, 0.18, 0.02, VILLAGE_TONE.lit);
   }
   box(out, 'fort-door', 'village', x + 0.2, 0.3, 0.41, 0.18, 0.3, 0.02, VILLAGE_TONE.dark);
   // Two gauges on the keep's front, left of the door: Reserves held, and the share of them wounded.
@@ -401,13 +451,18 @@ function fort(out: Volume[], reserveCount: number, wounded: number): void {
   });
   // The near-miss pad: an invisible box around the keep and its plinth, so a click just
   // beside the Fort still lands on it. It stops short of the yard, whose figures are the Fort too.
-  box(out, 'fort-hit', 'village', x, 0, 0.1, w + 0.1, 1.05, 0.9, VILLAGE_TONE.dark, 0);
+  // It rises to the turrets' roofs, so a click on one lands on the Fort too.
+  box(out, 'fort-hit', 'village', x, 0, 0.1, w + 0.1, 1.9, 0.9, VILLAGE_TONE.dark, 0);
 }
 
 function silo(out: Volume[], food: number): void {
   const x = mid(ANNEX_X.silo);
   const w = span(ANNEX_X.silo);
-  box(out, 'silo', 'village', x, 0, SILO_Z, w, 1.7, 0.3, VILLAGE_TONE.silo);
+  box(out, 'silo', 'village', x, 0, SILO_Z, w, SILO_TOP, 0.3, VILLAGE_TONE.wall);
+  // One lit window above the slit, where the shaft stands clear of the Gate and the stair (#151).
+  box(out, 'silo-window-0', 'village', x, 1.5, SILO_Z + 0.16, 0.08, 0.14, 0.02, VILLAGE_TONE.lit);
+  // A black cap of two courses, wider than the shaft (#151).
+  blackRoof(out, 'silo-roof', x, SILO_TOP, SILO_Z, w + 0.1, 0.4, 0.07, [1, 0.65]);
   // The slit is a dark channel; the bone fill rises inside it with the food.
   slitGauge(out, 'silo', {
     x,
@@ -629,6 +684,9 @@ function quarry(out: Volume[], heap: number, heapCap: number): void {
   box(out, 'gantry-pier-a', 'village', x0 + 0.1, 0, 0.5, 0.05, 1.0, 0.05, VILLAGE_TONE.timber);
   box(out, 'gantry-pier-b', 'village', x0 + 0.6, 0, 0.5, 0.05, 1.0, 0.05, VILLAGE_TONE.timber);
   box(out, 'gantry-beam', 'village', x0 + 0.35, 1.0, 0.5, 0.6, 0.05, 0.05, VILLAGE_TONE.timber);
+  // A black hood over the beam, the Quarry's one dark mass (#151).
+  box(out, 'gantry-roof', 'village', x0 + 0.35, 1.05, 0.5, 0.76, 0.05, 0.22, VILLAGE_TONE.foliage);
+  out[out.length - 1].black = true;
   box(out, 'gantry-rope', 'village', x0 + 0.35, 0.55, 0.5, 0.012, 0.45, 0.012, 0.9);
   // The Heap: a pile of small blocks at the foot, in the dull Quarry brown.
   const n = heapBlocks(heap, heapCap);
@@ -659,7 +717,9 @@ function study(out: Volume[], hands: number, posts: number | null | undefined): 
     const sz = i < 2 ? 0.2 : 0.7;
     box(out, `stilt-${i}`, 'village', sx, 0, sz, 0.05, 0.4, 0.05, VILLAGE_TONE.timber);
   }
-  box(out, 'study-cell', 'village', x, 0.4, 0.45, w, 0.45, 0.6, VILLAGE_TONE.timber);
+  box(out, 'study-cell', 'village', x, 0.4, 0.45, w, 0.45, 0.6, VILLAGE_TONE.wall);
+  // Under a black roof of three courses, wider than the cell (#151); the lit slits are its windows.
+  blackRoof(out, 'study-cell-roof', x, 0.85, 0.45, w + 0.12, 0.72, 0.07, [1, 0.72, 0.42]);
   const lit = litSlits(hands, posts);
   for (let i = 0; i < 3; i++) {
     box(
@@ -677,19 +737,36 @@ function study(out: Volume[], hands: number, posts: number | null | undefined): 
   }
 }
 
+/** The Vault's walls rise to here, and its black roof (two courses, 0.15 high) above them (#151). */
+const VAULT_TOP = 1.25;
+const VAULT_ROOF_H = 0.15;
+
+/** From Tier IV the Vault's two blocks stand at their own heights, the Strongbox the taller (#151). */
+const STRONGBOX_TOP = 1.1;
+const RELIQUARY_TOP = 1.0;
+
+/** A black roof of two courses over a block: the lower overhangs it, the upper is set in. */
+function vaultRoof(out: Volume[], id: string, x: number, w: number, top: number, overhang = 0.1): void {
+  box(out, `${id}-roof-0`, 'village', x, top, 0.35, w + overhang, 0.08, 0.9, VILLAGE_TONE.foliage);
+  out[out.length - 1].black = true;
+  box(out, `${id}-roof-1`, 'village', x, top + 0.08, 0.35, Math.max(0.2, w - 0.2), 0.07, 0.6, VILLAGE_TONE.foliage);
+  out[out.length - 1].black = true;
+}
+
 function vault(out: Volume[], materials: number, relics: number, credits: number): void {
   const x = mid(ANNEX_X.vault);
   const w = span(ANNEX_X.vault);
   // A squat monolithic block corbelled off the Base: one door slab, no windows.
-  box(out, 'vault', 'village', x, 0, 0.35, w, 0.9, 0.8, VILLAGE_TONE.stone);
-  box(out, 'vault-corbel', 'village', x - 0.2, 0.9, 0.35, w - 0.4, 0.08, 0.7, VILLAGE_TONE.stone);
+  // It is the tallest of the Village's right: a light block under a black roof of two courses (#151).
+  box(out, 'vault', 'village', x, 0, 0.35, w, VAULT_TOP, 0.8, VILLAGE_TONE.wall);
+  vaultRoof(out, 'vault', x, w, VAULT_TOP);
   box(out, 'vault-door', 'village', x, 0, 0.76, 0.24, 0.5, 0.02, VILLAGE_TONE.dark);
   // Crates on the roof: log2 of what the Vault holds, stacked in two rows.
   const crates = vaultCrates(materials, relics);
   for (let i = 0; i < crates; i++) {
     const row = i < 6 ? 0 : 1;
     const col = row === 0 ? i : i - 6;
-    box(out, `crate-${i}`, 'village', x - 0.4 + col * 0.15, 0.98 + row * 0.1, 0.35, 0.12, 0.1, 0.12, VILLAGE_TONE.timber);
+    box(out, `crate-${i}`, 'village', x - 0.4 + col * 0.15, VAULT_TOP + 0.15 + row * 0.1, 0.35, 0.12, 0.1, 0.12, VILLAGE_TONE.timber);
   }
   // Credits have no form of their own: a bar across the wall's head. Relics are few: a row of
   // notches above the door, one lit for each. Materials are the crates, so they need no more.
@@ -708,7 +785,7 @@ function vault(out: Volume[], materials: number, relics: number, credits: number
     lit: litRelicNotches(relics),
   });
   // The near-miss pad around the block and its roof crates.
-  box(out, 'vault-hit', 'village', x, 0, 0.35, w + 0.1, 1.2, 0.8, VILLAGE_TONE.dark, 0);
+  box(out, 'vault-hit', 'village', x, 0, 0.35, w + 0.1, VAULT_TOP + VAULT_ROOF_H + 0.3, 0.9, VILLAGE_TONE.dark, 0);
 }
 
 /** The Village Tier at which the Vault splits (IV). */
@@ -727,11 +804,11 @@ function footing(out: Volume[], id: string, range: readonly [number, number], z:
 }
 
 /** One of the two blocks the Vault splits into: a stone block, one door slab. Returns its centre x. */
-function vaultBlock(out: Volume[], id: string, range: readonly [number, number]): number {
+function vaultBlock(out: Volume[], id: string, range: readonly [number, number], height: number): number {
   const x = mid(range);
   const w = span(range);
-  box(out, id, 'village', x, 0, 0.35, w, 0.9, 0.8, VILLAGE_TONE.stone);
-  box(out, `${id}-corbel`, 'village', x, 0.9, 0.35, w - 0.1, 0.08, 0.7, VILLAGE_TONE.stone);
+  box(out, id, 'village', x, 0, 0.35, w, height, 0.8, VILLAGE_TONE.wall);
+  vaultRoof(out, id, x, w, height, 0.04);
   box(out, `${id}-door`, 'village', x, 0, 0.76, 0.2, 0.5, 0.02, VILLAGE_TONE.dark);
   return x;
 }
@@ -755,7 +832,7 @@ function splitVault(
     footing(out, 'stack', ANNEX_X.stack, -0.55, 0.4);
     return;
   }
-  const sx = vaultBlock(out, 'strongbox', ANNEX_X.strongbox);
+  const sx = vaultBlock(out, 'strongbox', ANNEX_X.strongbox, STRONGBOX_TOP);
   barGauge(out, 'strongbox-credits', {
     x: sx,
     bottom: 0.76,
@@ -763,9 +840,9 @@ function splitVault(
     length: 0.4,
     fill: creditsFill(credits),
   });
-  box(out, 'strongbox-hit', 'village', sx, 0, 0.35, span(ANNEX_X.strongbox) + 0.05, 1.0, 0.8, VILLAGE_TONE.dark, 0);
+  box(out, 'strongbox-hit', 'village', sx, 0, 0.35, span(ANNEX_X.strongbox) + 0.05, STRONGBOX_TOP + VAULT_ROOF_H + 0.1, 0.9, VILLAGE_TONE.dark, 0);
 
-  const rx = vaultBlock(out, 'reliquary', ANNEX_X.reliquary);
+  const rx = vaultBlock(out, 'reliquary', ANNEX_X.reliquary, RELIQUARY_TOP);
   // Five notches are wider than this block, so they stand in two rows: three, then two above.
   const litRelics = litRelicNotches(relics);
   notchGauge(out, 'reliquary-relics', { x: rx, bottom: 0.76, z: 0.76, count: 3, lit: Math.min(3, litRelics) });
@@ -776,7 +853,7 @@ function splitVault(
     count: RELIC_NOTCHES - 3,
     lit: Math.max(0, litRelics - 3),
   });
-  box(out, 'reliquary-hit', 'village', rx, 0, 0.35, span(ANNEX_X.reliquary) + 0.05, 1.0, 0.8, VILLAGE_TONE.dark, 0);
+  box(out, 'reliquary-hit', 'village', rx, 0, 0.35, span(ANNEX_X.reliquary) + 0.05, RELIQUARY_TOP + VAULT_ROOF_H + 0.1, 0.9, VILLAGE_TONE.dark, 0);
 
   // The Quarry's Heap building: the Materials the Vault held, as crates stacked in two rows
   // on a low plinth, and a bar on the ground before them.
@@ -842,10 +919,13 @@ function cellar(out: Volume[], spores: number): void {
   const x = mid(ANNEX_X.cellar);
   const w = span(ANNEX_X.cellar);
   const z = 2.0;
-  box(out, 'cellar', 'village', x, 0, z, w, 0.3, 0.5, VILLAGE_TONE.timber);
+  box(out, 'cellar', 'village', x, 0, z, w, 0.3, 0.5, VILLAGE_TONE.wall);
   // A corbelled ceiling: two narrower courses, never a curve.
-  box(out, 'cellar-corbel-0', 'village', x, 0.3, z, w - 0.2, 0.05, 0.4, VILLAGE_TONE.timber);
-  box(out, 'cellar-corbel-1', 'village', x, 0.35, z, w - 0.5, 0.05, 0.3, VILLAGE_TONE.timber);
+  // The ceiling is the cellar's black roof (#151), the lower course wider than the walls under it.
+  box(out, 'cellar-corbel-0', 'village', x, 0.3, z, w + 0.06, 0.05, 0.56, VILLAGE_TONE.foliage);
+  out[out.length - 1].black = true;
+  box(out, 'cellar-corbel-1', 'village', x, 0.35, z, w - 0.4, 0.05, 0.3, VILLAGE_TONE.foliage);
+  out[out.length - 1].black = true;
   // The stair down: three dark treads in front, each lower than the last.
   for (let i = 0; i < 3; i++) {
     box(out, `cellar-stair-${i}`, 'village', x - 0.3 + i * 0.1, 0, z + 0.3 + i * 0.05, 0.1, 0.2 - i * 0.05, 0.05, VILLAGE_TONE.dark);
@@ -1849,10 +1929,64 @@ function quarterMarks(out: Volume[], quarter: Quarter | null): void {
       }
       for (let i = 0; i < 4; i++) {
         const mx = ANNEX_X.fort[0] + 0.27 + (i * (span(ANNEX_X.fort) - 0.54)) / 3;
-        box(out, id(`cap-${i}`), 'village', mx, 0.99, 0.35, 0.18, 0.02, 0.14, VILLAGE_TONE.salt);
+        box(out, id(`cap-${i}`), 'village', mx, FORT_MERLON_TOP, 0.35, 0.18, 0.02, 0.14, VILLAGE_TONE.salt);
       }
-      box(out, id('cap-silo'), 'village', mid(ANNEX_X.silo), 1.7, SILO_Z, span(ANNEX_X.silo), 0.02, 0.3, VILLAGE_TONE.salt);
+      box(out, id('cap-silo'), 'village', mid(ANNEX_X.silo), SILO_CAP_TOP, SILO_Z, span(ANNEX_X.silo) - 0.1, 0.02, 0.2, VILLAGE_TONE.salt);
       break;
+  }
+}
+
+/** A zone's ground patch lies this high: under the road, the footings and the seasons' marks. */
+const ZONE_PATCH_H = 0.006;
+
+/**
+ * Zones (#151): the buildings stand where their hit pads and lanes pin them, so what groups them by
+ * function is their surroundings. The Fort's yard (paved, walled, with two black-capped posts) lies
+ * on the left; the farmland (dark tilled earth with a hedge) round the Fields and the Silo; a patch
+ * of grit under the Quarry and the Study; the quay (pale paving, a kerb, bollards and crates) on
+ * the right, where the Vault faces the harbour. Every patch is a step of ink off the ground's tone,
+ * whatever the Quarter. No box meets a building, the road or a lane, none is pointed at, and the
+ * extent of the Village is as it was.
+ */
+function zones(out: Volume[], quarter: Quarter | null, bay: boolean): void {
+  const ground = quarter ? QUARTER_LOOK[quarter].ground : VILLAGE_TONE.ground;
+  const patch = (id: string, x0: number, x1: number, z0: number, z1: number, tone: number) =>
+    box(out, id, 'village', (x0 + x1) / 2, 0, (z0 + z1) / 2, x1 - x0, ZONE_PATCH_H, z1 - z0, tone);
+  const wall = (id: string, x0: number, x1: number, z0: number, z1: number) =>
+    box(out, id, 'village', (x0 + x1) / 2, 0, (z0 + z1) / 2, x1 - x0, ROAD_WALL_H, z1 - z0, VILLAGE_TONE.kerb);
+
+  // The Fort's yard, on the left: paved, walled on its left and front (the front broken for a way in), a post at each front corner.
+  patch('zone-yard-paving', -3.24, -2.05, 0.6, 2.5, ground + 0.3);
+  wall('zone-yard-wall-w', -3.225, -3.175, 0.6, 2.495);
+  // The front wall is broken in the middle, where the yard is entered.
+  wall('zone-yard-wall-s0', -3.225, -2.9, 2.445, 2.495);
+  wall('zone-yard-wall-s1', -2.26, -2.075, 2.445, 2.495);
+  [-3.2, -2.1].forEach((px, i) => {
+    box(out, `zone-yard-post-${i}`, 'village', px, 0, 2.47, 0.07, 0.3, 0.07, VILLAGE_TONE.kerb);
+    box(out, `zone-yard-cap-${i}`, 'village', px, 0.3, 2.47, 0.08, 0.05, 0.08, VILLAGE_TONE.foliage);
+    out[out.length - 1].black = true;
+  });
+
+  // The farmland, round the Fields: dark tilled earth, and a low black hedge along its front.
+  patch('zone-farm-tilth', -1.34, -0.06, 0.41, 1.76, Math.max(0.08, ground - 0.18));
+  for (let k = 0; k < 4; k++) {
+    box(out, `zone-farm-hedge-${k}`, 'village', -1.2 + k * 0.34, 0, 1.8, 0.28, 0.1, 0.07, VILLAGE_TONE.foliage);
+    out[out.length - 1].black = true;
+  }
+
+  // The works, under the Quarry and the Study: pale grit.
+  patch('zone-works-grit', 0.02, 1.9, -0.2, 1.05, ground + 0.18);
+
+  // The quay, on the right, before the Vault: pale paving, and with a bay its kerb and bollards.
+  patch('zone-quay-paving', 1.95, 3.22, 0.85, 2.05, ground + 0.3);
+  box(out, 'zone-quay-crate-0', 'village', 2.95, 0, 1.9, 0.2, 0.16, 0.16, VILLAGE_TONE.timber);
+  box(out, 'zone-quay-crate-1', 'village', 3.12, 0, 1.9, 0.18, 0.12, 0.16, VILLAGE_TONE.timber);
+  box(out, 'zone-quay-crate-2', 'village', 3.0, 0.16, 1.9, 0.14, 0.12, 0.14, VILLAGE_TONE.timber);
+  if (bay) {
+    wall('zone-quay-kerb', 3.165, 3.215, 0.95, 2.05);
+    for (const [i, bz] of [1.0, 1.7].entries()) {
+      box(out, `zone-quay-bollard-${i}`, 'village', 3.1, 0, bz, 0.07, 0.12, 0.07, VILLAGE_TONE.kerb);
+    }
   }
 }
 
@@ -1925,6 +2059,7 @@ export function buildVillage(input: VillageInput): Volume[] {
   const quarter = input.quarter ?? null;
   ground(out, quarter, (input.port ?? 'HIDDEN') !== 'HIDDEN');
   quarterMarks(out, quarter);
+  zones(out, quarter, (input.port ?? 'HIDDEN') !== 'HIDDEN');
   road(out);
   tower(out);
   shaft(out);

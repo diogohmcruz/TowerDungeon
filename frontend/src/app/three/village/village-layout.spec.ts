@@ -1175,9 +1175,9 @@ describe('village layout', () => {
           const f = foliage(buildVillage(input));
           expect(Math.max(...f.map((x) => x.tone))).withContext(name).toBeLessThanOrEqual(0.06);
           expect(f.every((x) => x.alpha === 1)).withContext(name).toBeTrue();
-          // Black in both themes: flagged for the darkest ink, and nothing else is but the landmarks' roofs (#150).
+          // Black in both themes: flagged for the darkest ink, and nothing else in the frame is; the landmarks' and the buildings' black roofs have their own groups (#150, #151).
           expect(f.every((x) => x.black === true)).withContext(name).toBeTrue();
-          expect(buildVillage(input).filter((x) => x.black && x.group !== 'landmark').length).withContext(name).toBe(f.length);
+          expect(buildVillage(input).filter((x) => x.black && x.group === 'frame').length).withContext(name).toBe(f.length);
           expect(Math.max(...f.map((x) => x.y + x.h / 2))).withContext(name).toBeLessThanOrEqual(1.8);
           expect(Math.min(...f.map((x) => x.y - x.h / 2))).withContext(name).toBeGreaterThanOrEqual(-0.5);
           // Ragged: many distinct top heights and widths.
@@ -1595,6 +1595,251 @@ describe('village layout', () => {
         const a = aqueduct(buildVillage(BUSY));
         for (const x of a) expect(x.tone).toBeLessThan(VILLAGE_TONE.lit);
         expect(a.filter((x) => x.id.startsWith('landmark-aqueduct-pier-')).every((x) => x.tone >= 0.4)).toBeTrue();
+      });
+    });
+  });
+
+  describe('zones and light (#151)', () => {
+    const FULL = Object.fromEntries(Object.entries(UPGRADE_MODULES).map(([id, m]) => [id, m.cap]));
+    const SCENES: Array<[string, VillageInput]> = [
+      ['an empty Village', EMPTY_VILLAGE],
+      ['Tier I', { ...BUSY, villageTierLevel: 1, upgrades: FULL, saltPansOpen: false }],
+      ['Tier II', { ...BUSY, villageTierLevel: 2, upgrades: FULL }],
+      ['Tier III', { ...BUSY, villageTierLevel: 3, upgrades: FULL, sporeCellarOpen: true, spores: 7 }],
+      ['Tier IV with the Port', { ...BUSY, upgrades: FULL, sporeCellarOpen: true, spores: 7, port: 'BUILT', boatDocked: true, offer: true }],
+      ['Tier IV with a footing', { ...BUSY, port: 'FOOTING' }],
+    ];
+    const QUARTERS = [null, 'SPRING', 'SUMMER', 'AUTUMN', 'WINTER'] as const;
+    const isZone = (v: Volume) => v.id.startsWith('zone-');
+    const flat = (v: Volume) => v.id.endsWith('-paving') || v.id.endsWith('-grit') || v.id.endsWith('-tilth');
+    const left = (x: Volume) => x.x - x.w / 2;
+    const right = (x: Volume) => x.x + x.w / 2;
+    const top = (x: Volume) => x.y + x.h / 2;
+    const bottom = (x: Volume) => x.y - x.h / 2;
+    const meets = (a: Volume, b: Volume) =>
+      Math.abs(a.x - b.x) < (a.w + b.w) / 2 - 1e-6 &&
+      Math.abs(a.y - b.y) < (a.h + b.h) / 2 - 1e-6 &&
+      Math.abs(a.z - b.z) < (a.d + b.d) / 2 - 1e-6;
+    const topOf = (v: Volume[], prefix: string) =>
+      Math.max(...v.filter((x) => x.id.startsWith(prefix) && x.alpha > 0).map(top));
+
+    describe('the zones', () => {
+      it('dresses the ground in three zones: the Fort\'s yard on the left, the farmland, the quay on the right', () => {
+        for (const [name, input] of SCENES) {
+          const v = buildVillage(input);
+          const zone = v.filter(isZone);
+          const centre = (kind: string) => {
+            const part = zone.filter((x) => x.id.startsWith(`zone-${kind}-`));
+            expect(part.length).withContext(`${name} ${kind}`).toBeGreaterThanOrEqual(3);
+            return (Math.min(...part.map(left)) + Math.max(...part.map(right))) / 2;
+          };
+          const yard = centre('yard');
+          const farm = centre('farm');
+          const quay = centre('quay');
+          expect(yard).withContext(name).toBeLessThan(farm);
+          expect(farm).withContext(name).toBeLessThan(quay);
+          // The yard lies at the Fort, the farmland at the Fields, the quay past the Study.
+          expect(yard).withContext(name).toBeLessThan(ANNEX_X.fort[1]);
+          expect(farm).withContext(name).toBeGreaterThan(ANNEX_X.fort[1]);
+          expect(farm).withContext(name).toBeLessThan(ANNEX_X.quarry[0]);
+          expect(quay).withContext(name).toBeGreaterThan(ANNEX_X.study[1]);
+        }
+      });
+
+      it('is scenery of the Village: no subject, no hit region, unique ids, and a ground tone of its own', () => {
+        for (const [name, input] of SCENES) {
+          const v = buildVillage(input);
+          const zone = v.filter(isZone);
+          expect(zone.length).withContext(name).toBeGreaterThan(12);
+          expect(new Set(ids(v)).size).withContext(name).toBe(v.length);
+          for (const z of zone) {
+            expect(z.group).withContext(z.id).toBe('village');
+            expect(subjectOfVolume(z.id)).withContext(z.id).toBeNull();
+            expect(z.alpha).withContext(z.id).toBe(1);
+          }
+          // Each zone's ground patch differs from the ground by a clear step in ink.
+          const patches = zone.filter(flat);
+          expect(patches.length).withContext(name).toBeGreaterThanOrEqual(3);
+          for (const p of patches) {
+            expect(Math.abs(p.tone - VILLAGE_TONE.ground)).withContext(p.id).toBeGreaterThanOrEqual(0.1);
+            expect(top(p)).withContext(p.id).toBeLessThanOrEqual(0.01);
+          }
+        }
+      });
+
+      it('leaves the Village bounds and the closeup frame as they were', () => {
+        for (const [name, input] of SCENES) {
+          const all = buildVillage(input);
+          const without = all.filter((x) => !isZone(x));
+          expect(villageBounds(all)).withContext(name).toEqual(villageBounds(without));
+          expect(closeupFrame(all)).withContext(name).toEqual(closeupFrame(without));
+        }
+      });
+
+      it('keeps its walls, posts and props clear of every building, the road, the lanes and the seasons\' marks', () => {
+        const meeting: string[] = [];
+        for (const [name, input] of SCENES) {
+          for (const quarter of QUARTERS) {
+            const v = buildVillage({ ...input, quarter, tick: 5, still: false });
+            const others = v.filter((x) => !isZone(x) && x.id !== 'ground' && x.alpha > 0 && (x.group === 'village' || x.group === 'port'));
+            for (const z of v.filter((x) => isZone(x) && !flat(x))) {
+              for (const o of others) if (meets(z, o)) meeting.push(`${name} ${quarter}: ${z.id} meets ${o.id}`);
+            }
+          }
+        }
+        expect(meeting.slice(0, 5)).toEqual([]);
+      });
+
+      it('lies flat under the road, the figures and the footings: nothing hides behind a ground patch', () => {
+        for (const [name, input] of SCENES) {
+          const v = buildVillage(input);
+          for (const p of v.filter(flat)) {
+            for (const o of v.filter((x) => x.id.startsWith('road-') || x.id.startsWith('footing-'))) {
+              expect(top(p)).withContext(`${name} ${p.id} under ${o.id}`).toBeLessThanOrEqual(top(o) - 1e-6);
+            }
+          }
+        }
+      });
+    });
+
+    describe('the hierarchy of scale', () => {
+      it('has the Fort, the Silo and the Vault stand large, the Study and the Quarry medium, the rest low', () => {
+        const v = buildVillage({ ...BUSY, villageTierLevel: 3, upgrades: {}, sporeCellarOpen: true, spores: 3 });
+        const height = {
+          fort: topOf(v, 'fort-'),
+          silo: topOf(v, 'silo'),
+          vault: topOf(v, 'vault'),
+          study: topOf(v, 'study-cell'),
+          quarry: Math.max(topOf(v, 'quarry-cut-'), topOf(v, 'gantry-')),
+          cellar: topOf(v, 'cellar'),
+          pans: topOf(v, 'pan-'),
+          fields: topOf(v, 'field-'),
+        };
+        expect(height.fort).toBeGreaterThanOrEqual(1.5);
+        expect(height.silo).toBeGreaterThanOrEqual(1.7);
+        expect(height.vault).toBeGreaterThanOrEqual(1.25);
+        for (const mid of [height.study, height.quarry]) {
+          expect(mid).toBeGreaterThanOrEqual(0.8);
+          expect(mid).toBeLessThanOrEqual(1.15);
+        }
+        for (const low of [height.cellar, height.pans, height.fields]) expect(low).toBeLessThanOrEqual(0.65);
+        // Not all one size: at least four distinct steps, the tallest more than three times the lowest.
+        const steps = new Set(Object.values(height).map((h) => Math.round(h * 4)));
+        expect(steps.size).toBeGreaterThanOrEqual(4);
+        expect(Math.max(...Object.values(height)) / Math.min(...Object.values(height))).toBeGreaterThan(3);
+      });
+
+      it('has the Fort\'s keep the most massive body among the buildings it stands with', () => {
+        const v = buildVillage(BUSY);
+        const vol = (id: string) => {
+          const b = v.find((x) => x.id === id)!;
+          return b.w * b.h * b.d;
+        };
+        expect(vol('fort-keep')).toBeGreaterThan(vol('study-cell'));
+        expect(v.find((x) => x.id === 'fort-keep')!.h).toBeGreaterThan(v.find((x) => x.id === 'study-cell')!.h * 1.5);
+      });
+
+      it('keeps every building where it was: the Annex spans are untouched and every hit pad still covers its building', () => {
+        expect(ANNEX_X.fort).toEqual([-3.2, -1.9]);
+        expect(ANNEX_X.silo).toEqual([-1.75, -1.45]);
+        expect(ANNEX_X.fields).toEqual([-1.3, -0.1]);
+        expect(ANNEX_X.vault).toEqual([2.0, 3.2]);
+        const pads: Array<[string, string, number]> = [
+          ['fort-', 'fort-hit', 3],
+          ['silo', 'silo-hit', 3],
+          ['vault', 'vault-hit', 3],
+          ['cellar', 'cellar-hit', 3],
+          ['strongbox', 'strongbox-hit', 4],
+          ['reliquary', 'reliquary-hit', 4],
+        ];
+        for (const [prefix, pad, tier] of pads) {
+          const w = buildVillage({ ...BUSY, villageTierLevel: tier, sporeCellarOpen: true, spores: 3, upgrades: {} });
+          const hit = w.find((x) => x.id === pad)!;
+          expect(hit).withContext(pad).toBeDefined();
+          for (const part of w.filter((x) => x.id.startsWith(prefix) && x.id !== pad && x.alpha > 0)) {
+            expect(left(part)).withContext(part.id).toBeGreaterThanOrEqual(left(hit) - 1e-6);
+            expect(right(part)).withContext(part.id).toBeLessThanOrEqual(right(hit) + 1e-6);
+            expect(top(part)).withContext(part.id).toBeLessThanOrEqual(top(hit) + 1e-6);
+          }
+        }
+      });
+    });
+
+    describe('light and dark masses', () => {
+      const WALL_MIN = 0.6;
+      const buildingsAt = (tier: number): Array<[string, string]> => [
+        ['fort', 'fort-'],
+        ['silo', 'silo'],
+        ['study', 'study-cell'],
+        ['quarry', 'gantry-'],
+        ...(tier >= 3 ? [['cellar', 'cellar'] as [string, string]] : []),
+        ...(tier >= 4
+          ? [['strongbox', 'strongbox'] as [string, string], ['reliquary', 'reliquary'] as [string, string]]
+          : [['vault', 'vault'] as [string, string]]),
+      ];
+
+      it('gives every building a black roof in the blackest ink, standing on its walls', () => {
+        for (const tier of [1, 2, 3, 4]) {
+          const v = buildVillage({ ...BUSY, villageTierLevel: tier, sporeCellarOpen: tier >= 3, spores: 3, upgrades: {} });
+          for (const [name, prefix] of buildingsAt(tier)) {
+            const roof = v.filter((x) => x.id.startsWith(prefix) && x.black);
+            expect(roof.length).withContext(`tier ${tier} ${name}`).toBeGreaterThanOrEqual(1);
+            for (const r of roof) {
+              expect(r.tone).withContext(r.id).toBeLessThanOrEqual(VILLAGE_TONE.foliage + 1e-9);
+              expect(r.group).withContext(r.id).toBe('village');
+              expect(r.alpha).withContext(r.id).toBe(1);
+            }
+            if (name === 'quarry') continue;
+            // The walls under it are light, and the roof's lowest course rests on them.
+            const walls = v.filter(
+              (x) => x.id.startsWith(prefix) && !x.black && x.alpha > 0 && x.tone >= WALL_MIN && x.tone < 0.95 && x.d >= 0.2 && !/-(hit|merlon|stilt)/.test(x.id),
+            );
+            expect(walls.length).withContext(`tier ${tier} ${name} walls`).toBeGreaterThanOrEqual(1);
+            const roofBase = Math.min(...roof.map(bottom));
+            expect(Math.max(...walls.map(top))).withContext(`tier ${tier} ${name}`).toBeGreaterThan(roofBase - 0.4);
+          }
+        }
+      });
+
+      it('lights a few windows by night: a fixed few, pale against a lighter wall, never on a roof', () => {
+        for (const [name, input] of SCENES) {
+          const v = buildVillage(input);
+          const windows = v.filter((x) => x.group === 'village' && x.id.includes('-window-'));
+          expect(windows.length).withContext(name).toBeGreaterThanOrEqual(3);
+          expect(windows.length).withContext(name).toBeLessThanOrEqual(8);
+          for (const w of windows) {
+            expect(w.tone).withContext(w.id).toBe(VILLAGE_TONE.lit);
+            expect(w.black).withContext(w.id).toBeFalsy();
+            const prefix = w.id.split('-window-')[0];
+            const wall = v.find(
+              (x) => x.id.startsWith(prefix) && !x.black && x.id !== w.id && x.tone >= WALL_MIN && x.tone < 0.95 && x.alpha > 0 &&
+                left(x) <= left(w) + 1e-6 && right(x) >= right(w) - 1e-6 && bottom(x) <= bottom(w) + 1e-6 && top(x) >= top(w) - 1e-6 &&
+                Math.abs(x.z + x.d / 2 - (w.z - w.d / 2)) <= 0.03,
+            );
+            expect(wall).withContext(`${name} ${w.id} on a wall`).toBeDefined();
+            // The ink flips by day, so the step between window and wall is what reads, in both themes.
+            expect(w.tone - wall!.tone).withContext(w.id).toBeGreaterThanOrEqual(0.25);
+          }
+        }
+      });
+
+      it('holds still: the zones, roofs and windows do not move with the clock, the tick or reduced motion', () => {
+        const at = (flicker: number, tick: number, still: boolean) =>
+          buildVillage({ ...BUSY, port: 'BUILT', flicker, tick, still }).filter((x) => isZone(x) || x.black || x.id.includes('-window-'));
+        expect(at(40, 7, false)).toEqual(at(0, 3, true));
+        expect(at(0, 3, true).length).toBeGreaterThan(30);
+      });
+    });
+
+    describe('budgets', () => {
+      it('stays inside the instance capacity and adds a bounded number of boxes', () => {
+        for (const [name, input] of SCENES) {
+          const v = buildVillage(input);
+          expect(v.length).withContext(name).toBeLessThanOrEqual(VILLAGE_CAPACITY);
+          expect(v.filter(isZone).length).withContext(name).toBeLessThanOrEqual(40);
+        }
+        const busiest = buildVillage({ ...BUSY, upgrades: FULL, sporeCellarOpen: true, spores: 7, port: 'BUILT', boatDocked: true, offer: true, quarter: 'WINTER', still: false });
+        expect(busiest.length).toBeLessThanOrEqual(VILLAGE_CAPACITY - 30);
       });
     });
   });

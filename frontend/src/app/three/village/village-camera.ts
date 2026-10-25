@@ -39,7 +39,7 @@ export const FAR_FRAME: CloseupFrame = { centerX: 0, span: FRAME_WIDTH };
 
 /**
  * The extent of what is built, from its volumes: every Village and Port volume but the ground,
- * the outlines and the Shortcut marks on the Tower's flank. The frame is that extent and a margin,
+ * the outlines, the zones' ground dressing and the Shortcut marks on the Tower's flank. The frame is that extent and a margin,
  * so each Tier is framed by what it has (the Port's sea, the Strongbox and Reliquary, the Wall and
  * the Stone at Tier IV), not by a fixed rectangle.
  */
@@ -49,7 +49,9 @@ export function closeupFrame(volumes: readonly Volume[]): CloseupFrame {
       (v.group === 'village' || v.group === 'port') &&
       v.id !== 'ground' &&
       !v.id.startsWith('outline-') &&
-      !v.id.startsWith('shortcut-'),
+      !v.id.startsWith('shortcut-') &&
+      // The zones' ground dressing (#151) is ground, not a building: it never widens the frame.
+      !v.id.startsWith('zone-'),
   );
   const extent = (reach: (v: Volume) => [number, number]): [number, number] => {
     let min = Infinity;
