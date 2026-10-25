@@ -29,12 +29,14 @@ import {
   STAIR,
   UPGRADE_MODULES,
   VILLAGE_CAPACITY,
+  VILLAGE_TONE,
   VillageInput,
   villageBounds,
   vaultCrates,
   Volume,
 } from './village-layout';
-import { closeupFrame, VILLAGE_FOV, villagePose } from './village-camera';
+import { applyStageView } from '../stage-view';
+import { closeupFrame, fitVillageCamera, VILLAGE_FOV, villagePose } from './village-camera';
 import { subjectOfVolume } from './village-subjects';
 
 const BUSY: VillageInput = {
@@ -1019,6 +1021,251 @@ describe('village layout', () => {
       const v = buildVillage(BUSY);
       expect(new Set(ids(v)).size).toBe(v.length);
       for (const r of [...paving(v), ...walls(v)]) expect(r.y - r.h / 2).toBeCloseTo(0, 9);
+    });
+  });
+
+  describe('framing and the cliff (#149)', () => {
+    const isFrame = (v: Volume) => v.group === 'frame';
+    const cliff = (v: Volume[]) => v.filter((x) => x.id.startsWith('cliff-'));
+    const fog = (v: Volume[]) => v.filter((x) => x.id.startsWith('fog-'));
+    const foliage = (v: Volume[]) => v.filter((x) => x.id.startsWith('foliage-'));
+    const FULL = Object.fromEntries(Object.entries(UPGRADE_MODULES).map(([id, m]) => [id, m.cap]));
+    const SCENES: Array<[string, VillageInput]> = [
+      ['an empty Village', EMPTY_VILLAGE],
+      ['Tier I', { ...BUSY, villageTierLevel: 1, upgrades: FULL, saltPansOpen: false }],
+      ['Tier II', { ...BUSY, villageTierLevel: 2, upgrades: FULL }],
+      ['Tier III', { ...BUSY, villageTierLevel: 3, upgrades: FULL, sporeCellarOpen: true, spores: 7 }],
+      ['Tier IV with the Port', { ...BUSY, upgrades: FULL, sporeCellarOpen: true, spores: 7, port: 'BUILT', boatDocked: true, offer: true }],
+      ['Tier IV with a footing', { ...BUSY, port: 'FOOTING' }],
+    ];
+    const hasBay = (input: VillageInput) => (input.port ?? 'HIDDEN') !== 'HIDDEN';
+
+    it('is scenery of its own group, in every scene, and no id is shared', () => {
+      for (const [name, input] of SCENES) {
+        const v = buildVillage(input);
+        const frame = v.filter(isFrame);
+        expect(cliff(v).length).withContext(name).toBeGreaterThan(20);
+        expect(fog(v).length).withContext(name).toBeGreaterThan(5);
+        expect(foliage(v).length).withContext(name).toBeGreaterThan(10);
+        expect(frame.length).withContext(name).toBe(cliff(v).length + fog(v).length + foliage(v).length);
+        expect(new Set(ids(v)).size).withContext(name).toBe(v.length);
+        // No frame volume stands for anything the player can point at.
+        for (const f of frame) expect(subjectOfVolume(f.id)).withContext(f.id).toBeNull();
+      }
+    });
+
+    it('leaves the Village bounds and the closeup frame as they were', () => {
+      for (const [name, input] of SCENES) {
+        const all = buildVillage(input);
+        const without = all.filter((x) => !isFrame(x));
+        expect(villageBounds(all)).withContext(name).toEqual(villageBounds(without));
+        expect(closeupFrame(all)).withContext(name).toEqual(closeupFrame(without));
+      }
+    });
+
+    it('stays clear of every other volume, the road, the Gate and the stair included', () => {
+      for (const [name, input] of SCENES) {
+        for (const tick of [0, 5]) {
+          const v = buildVillage({ ...input, tick, still: false });
+          const frame = v.filter(isFrame);
+          const others = v.filter((x) => !isFrame(x) && !x.id.startsWith('outline-'));
+          for (const f of frame) {
+            for (const o of others) {
+              const meet =
+                Math.abs(f.x - o.x) < (f.w + o.w) / 2 - 1e-6 &&
+                Math.abs(f.y - o.y) < (f.h + o.h) / 2 - 1e-6 &&
+                Math.abs(f.z - o.z) < (f.d + o.d) / 2 - 1e-6;
+              expect(meet).withContext(`${name}: ${f.id} meets ${o.id}`).toBeFalse();
+            }
+          }
+        }
+      }
+    });
+
+    describe('the cliff', () => {
+      it('is a stone face under the ground, in courses, from the ground top down into the dark', () => {
+        for (const [name, input] of SCENES) {
+          const c = cliff(buildVillage(input));
+          // Under the ground's top, in front of its edge.
+          expect(Math.max(...c.map((x) => x.y + x.h / 2))).withContext(name).toBeLessThanOrEqual(1e-9);
+          expect(Math.min(...c.map((x) => x.y - x.h / 2))).withContext(name).toBeLessThanOrEqual(-4);
+          expect(Math.min(...c.map((x) => x.z - x.d / 2))).withContext(name).toBeGreaterThanOrEqual(3.5 - 1e-9);
+          // Courses: blocks of a few distinct bottoms, many of them stone, not one slab.
+          const bottoms = new Set(c.filter((x) => x.id.startsWith('cliff-block-')).map((x) => (x.y - x.h / 2).toFixed(3)));
+          expect(bottoms.size).withContext(name).toBeGreaterThanOrEqual(4);
+          // Lighter than the ground at the top, fading to dark with depth.
+          const tone = (x: Volume) => x.tone;
+          const top = c.filter((x) => x.id.startsWith('cliff-block-') && x.y + x.h / 2 > -0.45);
+          const low = c.filter((x) => x.id.startsWith('cliff-block-') && x.y + x.h / 2 < -1.5);
+          const mean = (a: Volume[]) => a.map(tone).reduce((s, t) => s + t, 0) / a.length;
+          expect(mean(top)).withContext(name).toBeGreaterThan(VILLAGE_TONE.ground);
+          expect(mean(low)).withContext(name).toBeLessThan(mean(top));
+        }
+      });
+
+      it('runs along the whole bottom of the view, from far left to the sea or the far right', () => {
+        for (const [name, input] of SCENES) {
+          const c = cliff(buildVillage(input));
+          const left = Math.min(...c.map((x) => x.x - x.w / 2));
+          const right = Math.max(...c.map((x) => x.x + x.w / 2));
+          expect(left).withContext(name).toBeLessThanOrEqual(-36);
+          if (hasBay(input)) {
+            // The land ends at the shore; the sea is not under a cliff.
+            expect(right).withContext(name).toBeLessThanOrEqual(shoreX(3.5) + 1e-9);
+            expect(right).withContext(name).toBeGreaterThanOrEqual(shoreX(3.5) - 0.3);
+          } else {
+            expect(right).withContext(name).toBeGreaterThanOrEqual(FRAME_WIDTH);
+          }
+        }
+      });
+
+      it('lets the road go on down the face, in three paler steps at its own x', () => {
+        const c = cliff(buildVillage(BUSY));
+        const steps = c.filter((x) => x.id.startsWith('cliff-road-'));
+        expect(steps.length).toBe(3);
+        const road = buildVillage(BUSY).find((x) => x.id === 'road-paving-0')!;
+        for (const s of steps) {
+          expect(Math.abs(s.x - road.x)).toBeLessThanOrEqual(0.1);
+          expect(s.tone).toBeGreaterThan(0.5);
+        }
+        // No block of the face stands over the steps.
+        const blocks = c.filter((x) => x.id.startsWith('cliff-block-'));
+        for (const s of steps) {
+          for (const b of blocks) {
+            const meet =
+              Math.abs(b.x - s.x) < (b.w + s.w) / 2 - 1e-6 &&
+              Math.abs(b.y - s.y) < (b.h + s.h) / 2 - 1e-6 &&
+              Math.abs(b.z - s.z) < (b.d + s.d) / 2 - 1e-6;
+            expect(meet).withContext(`${s.id} meets ${b.id}`).toBeFalse();
+          }
+        }
+      });
+    });
+
+    describe('the ground fog', () => {
+      it('is dithered translucency, light, in banks of nested slabs along the cliff, under the ground top', () => {
+        const f = fog(buildVillage(BUSY));
+        expect(f.every((x) => x.alpha > 0 && x.alpha < 0.6)).toBeTrue();
+        expect(f.every((x) => x.tone >= 0.4)).toBeTrue();
+        // Never above the ground, so it cannot veil the road's front or a building.
+        expect(Math.max(...f.map((x) => x.y + x.h / 2))).toBeLessThanOrEqual(-0.04);
+        // A bank thins out in steps: more than one alpha in use.
+        expect(new Set(f.map((x) => x.alpha.toFixed(3))).size).toBeGreaterThanOrEqual(3);
+        expect(Math.min(...f.map((x) => x.z - x.d / 2))).toBeGreaterThanOrEqual(3.5 - 1e-9);
+      });
+
+      it('drifts slowly with the clock and holds still under reduced motion', () => {
+        const at = (flicker: number, still: boolean) =>
+          fog(buildVillage({ ...BUSY, flicker, still })).map((x) => x.x);
+        expect(at(0, false)).not.toEqual(at(30, false));
+        expect(at(30, true)).toEqual(at(0, true));
+        expect(at(30, true)).toEqual(at(0, false));
+        const a = at(0, false);
+        const b = at(2, false);
+        // Slow: two ticks move a bank by well under a tenth of a unit.
+        a.forEach((x, i) => expect(Math.abs(b[i] - x)).toBeLessThan(0.1));
+      });
+    });
+
+    describe('the foliage', () => {
+      it('is low, black, stepped masses: silhouette only', () => {
+        for (const [name, input] of SCENES) {
+          const f = foliage(buildVillage(input));
+          expect(Math.max(...f.map((x) => x.tone))).withContext(name).toBeLessThanOrEqual(0.06);
+          expect(f.every((x) => x.alpha === 1)).withContext(name).toBeTrue();
+          // Black in both themes: flagged for the darkest ink, and nothing else is.
+          expect(f.every((x) => x.black === true)).withContext(name).toBeTrue();
+          expect(buildVillage(input).filter((x) => x.black).length).withContext(name).toBe(f.length);
+          expect(Math.max(...f.map((x) => x.y + x.h / 2))).withContext(name).toBeLessThanOrEqual(1.8);
+          expect(Math.min(...f.map((x) => x.y - x.h / 2))).withContext(name).toBeGreaterThanOrEqual(-0.5);
+          // Ragged: many distinct top heights and widths.
+          expect(new Set(f.map((x) => (x.y + x.h / 2).toFixed(2))).size).withContext(name).toBeGreaterThan(5);
+          expect(new Set(f.map((x) => x.w.toFixed(2))).size).withContext(name).toBeGreaterThan(5);
+        }
+      });
+
+      it('stands outside the Village bounds and the closeup frame, to the left, and to the right when landlocked', () => {
+        for (const [name, input] of SCENES) {
+          const v = buildVillage(input);
+          const frame = closeupFrame(v);
+          const lo = frame.centerX - frame.span / 2;
+          const hi = frame.centerX + frame.span / 2;
+          const b = villageBounds(v);
+          const f = foliage(v);
+          const left = f.filter((x) => x.x < 0);
+          const right = f.filter((x) => x.x >= 0);
+          expect(left.length).withContext(name).toBeGreaterThan(5);
+          for (const x of left) {
+            expect(x.x + x.w / 2).withContext(`${name} ${x.id}`).toBeLessThanOrEqual(Math.min(lo, b.minX) + 1e-9);
+          }
+          if (hasBay(input)) {
+            // The sea is the right-hand edge: no black trees on it.
+            expect(right.length).withContext(name).toBe(0);
+          } else {
+            expect(right.length).withContext(name).toBeGreaterThan(5);
+            for (const x of right) {
+              expect(x.x - x.w / 2).withContext(`${name} ${x.id}`).toBeGreaterThanOrEqual(Math.max(hi, b.maxX) - 1e-9);
+            }
+          }
+        }
+      });
+
+      it('is behind the Village, so it never stands in front of a building, a pad or the road', () => {
+        for (const [name, input] of SCENES) {
+          const v = buildVillage(input);
+          for (const f of foliage(v)) {
+            // Behind the Village's middle, outside its x range, so it only ever frames it from behind.
+            expect(f.z + f.d / 2).withContext(`${name} ${f.id}`).toBeLessThanOrEqual(0.6 + 1e-9);
+          }
+        }
+      });
+
+      it('holds still: no volume of the frame moves with the clock but the fog', () => {
+        const at = (flicker: number) => buildVillage({ ...BUSY, flicker, still: false }).filter((x) => isFrame(x) && !x.id.startsWith('fog-'));
+        expect(at(40)).toEqual(at(0));
+      });
+    });
+
+    it('does not take the pointer or the sight from any building: no frame volume is nearer the camera than a building it overlaps on screen', () => {
+      for (const [name, input] of SCENES) {
+        const v = buildVillage(input);
+        const targets = v.filter(
+          (x) => (x.group === 'village' || x.group === 'port') && x.id !== 'ground' && !x.id.startsWith('outline-'),
+        );
+        for (const [w, h] of [[1440, 900], [1920, 1080]] as const) {
+          for (const closeness of [0, 1]) {
+            const cam = new THREE.PerspectiveCamera();
+            applyStageView(cam, w, h, false, closeness);
+            fitVillageCamera(cam, closeness, closeupFrame(v));
+            cam.updateMatrixWorld();
+            const rect = (x: Volume) => {
+              let l = Infinity, r = -Infinity, t = Infinity, b = -Infinity;
+              for (const sx of [-1, 1]) for (const sy of [-1, 1]) for (const sz of [-1, 1]) {
+                const p = new THREE.Vector3(x.x + (sx * x.w) / 2, x.y + (sy * x.h) / 2, x.z + (sz * x.d) / 2).project(cam);
+                l = Math.min(l, p.x); r = Math.max(r, p.x); t = Math.min(t, p.y); b = Math.max(b, p.y);
+              }
+              return { l, r, t, b };
+            };
+            const dist = (x: Volume) => cam.position.distanceTo(new THREE.Vector3(x.x, x.y, x.z));
+            for (const f of v.filter((x) => x.id.startsWith('foliage-'))) {
+              const fr = rect(f);
+              for (const o of targets) {
+                const or = rect(o);
+                const overlap = fr.l < or.r && fr.r > or.l && fr.t < or.b && fr.b > or.t;
+                if (overlap) {
+                  expect(dist(f)).withContext(`${name} ${w}x${h} closeness ${closeness}: ${f.id} over ${o.id}`).toBeGreaterThan(dist(o));
+                }
+              }
+            }
+          }
+        }
+      }
+    });
+
+    it('stays inside the instance capacity, unique, with every Upgrade and the Port', () => {
+      for (const [name, input] of SCENES) {
+        expect(buildVillage(input).length).withContext(name).toBeLessThanOrEqual(VILLAGE_CAPACITY);
+      }
     });
   });
 });

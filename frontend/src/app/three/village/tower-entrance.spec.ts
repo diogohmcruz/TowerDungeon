@@ -99,6 +99,7 @@ describe('the Tower entrance', () => {
   it('stays inside the Village bounds and height, and well under the instance budget', () => {
     const bounds = villageBounds(village);
     expect(bounds.maxY).toBeLessThan(MAX_VILLAGE_HEIGHT);
-    expect(village.length).toBeLessThan(400);
+    // The frame's scenery (#149) has its own budget (the capacity test in village-layout.spec).
+    expect(village.filter((v) => v.group !== 'frame').length).toBeLessThan(400);
   });
 });

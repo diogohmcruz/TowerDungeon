@@ -52,7 +52,11 @@ function boxOf(v: Volume): THREE.Box3 {
   );
 }
 
-/** Share of rays that reach the store but meet another opaque volume first, and the rays tried. */
+/**
+ * Share of rays that reach the store but meet another opaque volume first, and the rays tried. The
+ * sea and the frame (the cliff, the fog and the foliage, #149) are scenery that stands behind or
+ * below every building, so they are left out; the layout spec holds the frame behind them.
+ */
 export function covered(
   volumes: Volume[],
   isTarget: (v: Volume) => boolean,
@@ -66,7 +70,7 @@ export function covered(
   fitVillageCamera(cam, closeness, closeupFrame(volumes));
   cam.updateMatrixWorld();
   const store = volumes.filter(isTarget);
-  const others = volumes.filter((v) => !isTarget(v) && v.alpha > 0.5 && v.id !== 'ground' && v.group !== 'sea');
+  const others = volumes.filter((v) => !isTarget(v) && v.alpha > 0.5 && v.id !== 'ground' && v.group !== 'sea' && v.group !== 'frame');
   const storeBoxes = store.map(boxOf);
   const otherBoxes = others.map(boxOf);
   const hit = new THREE.Vector3();

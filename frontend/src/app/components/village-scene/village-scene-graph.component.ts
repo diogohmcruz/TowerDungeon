@@ -471,6 +471,8 @@ export class VillageSceneGraph {
     const tone = overlay ? this.overlayTone : this.tone;
     const alpha = overlay ? this.overlayAlpha : this.alpha;
     const role = overlay ? this.overlayRole : this.role;
+    // Black foliage is the ramp's darkest ink: slot 0 at night, the line slot by day (#149).
+    const day = this.theme() === 'day';
     const n = Math.min(
       volumes.length,
       overlay ? VILLAGE_OVERLAY_CAPACITY : VILLAGE_CAPACITY,
@@ -483,7 +485,7 @@ export class VillageSceneGraph {
         overlay ? this.thin(v) : this.scale.set(v.w, v.h, v.d),
       );
       mesh.setMatrixAt(i, this.matrix);
-      tone[i] = overlay ? OVERLAY_TONE : v.tone;
+      tone[i] = overlay ? OVERLAY_TONE : v.black && day ? 1 : v.tone;
       alpha[i] = v.alpha;
       role[i] = 0;
     }

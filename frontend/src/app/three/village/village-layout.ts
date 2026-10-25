@@ -55,6 +55,11 @@ export const VILLAGE_TONE = {
   /** The road's paving, paler than the ground, and its low walls, paler still (#148). */
   paving: 0.6,
   kerb: 0.78,
+  /** The cliff's stone at the ground's edge, its joints, the black foliage and the fog (#149). */
+  cliff: 0.62,
+  joint: 0.1,
+  foliage: 0.03,
+  fog: 0.5,
 } as const;
 
 /** Floors the Tower's drawn height stands for, so a Floor maps to a relative height. */
@@ -81,9 +86,12 @@ export const SHORTCUT_DOOR = {
 /**
  * `port` is the shore's building: footing, pier and Boat, drawn in the outer right-hand 20% of the
  * frame. `sea` is scenery: the water, the shore's land and the horizon, which run past the frame to
- * the screen's edge and stand for nothing the player can point at or the closeup frames.
+ * the screen's edge and stand for nothing the player can point at or the closeup frames. `frame` is
+ * scenery too (#149): the cliff face under the ground, the ground fog on it and the black foliage
+ * at the edges. It has no subject, no hit region, and neither the Village bounds nor the closeup
+ * frame count it.
  */
-export type VolumeGroup = 'village' | 'tower' | 'port' | 'sea';
+export type VolumeGroup = 'village' | 'tower' | 'port' | 'sea' | 'frame';
 
 /** A box: `x`, `y`, `z` are the centre; `y` is the centre height above the ground top. */
 export interface Volume {
@@ -97,6 +105,11 @@ export interface Volume {
   d: number;
   tone: number;
   alpha: number;
+  /**
+   * Drawn in the theme's blackest ink (#149): the ramp's slot 0 at night, where the ink is the
+   * darkest, and its slot 3 by day, where it is the line colour. `tone` is the night value.
+   */
+  black?: boolean;
 }
 
 /** An open Shortcut as the Village sees it: no name, no numeral. */
@@ -1251,10 +1264,11 @@ function baseDoor(out: Volume[]): void {
 /**
  * Instances the Village mesh holds: one draw call whatever the count. Raised from 512 to 640 for the
  * sea's strips, dashes and the larger Boat (#147), then to 768 for the road, its walls and its
- * courses (#148, about 55 instances): the busiest Village with every Upgrade built, the Port and the
- * Boat uses about 645.
+ * courses (#148, about 55 instances), then to 1024 for the cliff's courses, the ground fog and the
+ * foliage (#149, about 150 to 200 instances): the busiest Village with every Upgrade built, the
+ * Port and the Boat uses about 850.
  */
-export const VILLAGE_CAPACITY = 768;
+export const VILLAGE_CAPACITY = 1024;
 
 /** The Port's land ends here at the bay's deepest: the right-hand 20% of the frame, beyond the Village's 60%. */
 export const SHORE_X0 = FRAME_WIDTH * 0.3;
@@ -1437,6 +1451,145 @@ function ground(out: Volume[], quarter: Quarter | null, bay: boolean): void {
   box(out, 'ground', 'village', (x0 + SHORE_X0) / 2, -0.2, 1, SHORE_X0 - x0, 0.2, 5, tone);
 }
 
+/** The cliff face: how far the land runs to the left of the Village, and to the right when landlocked. */
+const CLIFF_LEFT = -40;
+const CLIFF_RIGHT = 14;
+/** The cliff's core stands against the ground's front edge; stone blocks stand on it. */
+const CLIFF_CORE_D = 0.12;
+const CLIFF_COURSES = 6;
+const CLIFF_COURSE_H = 0.4;
+const CLIFF_BLOCK_H = 0.37;
+const CLIFF_GAP = 0.04;
+/** The road goes on down the face, in the notch the blocks leave around its own x. */
+const CLIFF_NOTCH = 0.22;
+const CLIFF_ROAD_STEPS = 3;
+
+/**
+ * The cliff the Village stands on (#149), in place of a flat dark band below the ground's front
+ * edge: a dark core against the edge, and on it courses of stone blocks, as wide as the land and
+ * paler at the top, fading into the dark with depth, each block set a little out or in so the
+ * face is ragged. The road goes on down it in three paler steps.
+ */
+function cliff(out: Volume[], bay: boolean): void {
+  const left = CLIFF_LEFT;
+  const right = bay ? shoreX(GROUND_Z1) : CLIFF_RIGHT;
+  const face = GROUND_Z1 + CLIFF_CORE_D;
+  box(out, 'cliff-core', 'frame', (left + right) / 2, -9, GROUND_Z1 + CLIFF_CORE_D / 2, right - left, 9, CLIFF_CORE_D, VILLAGE_TONE.joint);
+  const rand = lcg(149);
+  const segments: Array<[number, number]> = [
+    [left, ROAD_FRONT_X - CLIFF_NOTCH],
+    [ROAD_FRONT_X + CLIFF_NOTCH, right],
+  ];
+  for (let k = 0; k < CLIFF_COURSES; k++) {
+    const bottom = -k * CLIFF_COURSE_H - CLIFF_BLOCK_H;
+    const base = VILLAGE_TONE.cliff - 0.06 * k;
+    let n = 0;
+    for (const [from, to] of segments) {
+      // Running bond: each course starts at its own offset, so the joints do not line up.
+      let x = from - rand() * 0.8;
+      while (x < to - 1e-6) {
+        const width = 1.3 + 0.05 * Math.abs(x) + rand() * 0.9;
+        const a = Math.max(from, x);
+        const b = Math.min(to, x + width);
+        x += width;
+        if (b - a < 0.2) continue;
+        const front = face + 0.1 + rand() * 0.12;
+        const tone = Math.max(0.12, base - rand() * 0.07);
+        box(out, `cliff-block-${k}-${n++}`, 'frame', (a + b) / 2, bottom, (face + front) / 2, b - a - CLIFF_GAP, CLIFF_BLOCK_H, front - face, tone);
+      }
+    }
+  }
+  for (let k = 0; k < CLIFF_ROAD_STEPS; k++) {
+    box(out, `cliff-road-${k}`, 'frame', ROAD_FRONT_X, -k * CLIFF_COURSE_H - CLIFF_BLOCK_H, face + 0.1, 2 * ROAD_HALF + 0.04, CLIFF_BLOCK_H, 0.2, VILLAGE_TONE.paving - 0.04 * k);
+  }
+}
+
+/** Banks of ground fog along the cliff's face: `[x, bottom, width]`. */
+const FOG_BANKS: ReadonlyArray<readonly [number, number, number]> = [
+  [-33, -1.5, 12],
+  [-24, -1.8, 10],
+  [-16, -1.3, 11],
+  [-9, -1.7, 9],
+  [-4, -1.4, 8],
+  [1.5, -1.9, 9],
+  [6.5, -1.5, 8],
+];
+/** Width and height scale and share of the bank's density of each nested fog slab, as the haze's. */
+const FOG_LAYERS: ReadonlyArray<readonly [number, number]> = [
+  [1, 0.4],
+  [0.7, 0.7],
+  [0.42, 1],
+];
+const FOG_ALPHA = 0.45;
+
+/**
+ * The ground fog (#149): banks of dithered translucency lying on the cliff's face, in front of
+ * it and under the ground's top, so it never veils the road's front or a building. Each bank is
+ * three nested slabs so its edge thins in steps; the banks drift very slowly with the clock (still
+ * under reduced motion, where the clock is held at 0).
+ */
+function groundFog(out: Volume[], bay: boolean, flicker: number): void {
+  const right = bay ? shoreX(GROUND_Z1) : CLIFF_RIGHT;
+  const rand = lcg(1490);
+  FOG_BANKS.forEach(([cx, bottom, width], i) => {
+    const h = 0.5 + 0.4 * rand();
+    const sway = 0.5 + 0.9 * rand();
+    const phase = rand();
+    if (cx - width / 2 > right) return;
+    const x = cx + sway * Math.sin(flicker * 0.03 + phase * 2 * Math.PI);
+    FOG_LAYERS.forEach(([scale, share], k) => {
+      box(out, `fog-${i}-${k}`, 'frame', x, bottom + (1 - scale) * h * 0.5, GROUND_Z1 + CLIFF_CORE_D + 0.55, width * scale, h * scale, 0.5, VILLAGE_TONE.fog, FOG_ALPHA * share);
+    });
+  });
+}
+
+/** Clusters of foliage on each side: how many, how far apart, and the gap kept from the Village. */
+const FOLIAGE_CLUSTERS = 9;
+const FOLIAGE_STEP = 0.7;
+const FOLIAGE_GAP = 1.0;
+/** The widths of a cluster's stepped layers, as shares of its base. */
+const FOLIAGE_STEPS = [1, 0.78, 0.55, 0.3] as const;
+
+/**
+ * Black foliage at the Village's edges (#149): low masses of stacked boxes, each layer narrower
+ * than the one below and nudged off its middle, so the outline is stepped and ragged, in the
+ * ink's darkest tone, no texture. They stand outside the Village's x range and behind it (so they
+ * frame it from the back and never stand in front of a building, a hit region or the road), to
+ * its left, and to its right too unless the sea is there, which is its own edge.
+ */
+function foliage(out: Volume[], bay: boolean): void {
+  const bounds = villageBounds(out);
+  const rand = lcg(14900);
+  const side = (dir: -1 | 1, edge: number): void => {
+    for (let i = 0; i < FOLIAGE_CLUSTERS; i++) {
+      const base = 0.9 + 0.7 * rand();
+      const x = edge + dir * (base * 0.65 + i * FOLIAGE_STEP + 0.25 * rand());
+      const z = -2.8 + 2.6 * rand();
+      const d = 0.5 + 0.5 * rand();
+      // The further back a mass stands, the taller it is, so the row is a ragged skyline.
+      const layers = 2 + Math.round(rand() + (-z - 0.1) / 2.7);
+      let y = 0;
+      for (let k = 0; k < Math.min(layers, FOLIAGE_STEPS.length); k++) {
+        const w = base * FOLIAGE_STEPS[k];
+        const h = 0.2 + 0.18 * rand();
+        const dx = (rand() - 0.5) * 0.25 * base;
+        box(out, `foliage-${dir < 0 ? 'w' : 'e'}-${i}-${k}`, 'frame', x + dx, y, z, w, h, d, VILLAGE_TONE.foliage);
+        out[out.length - 1].black = true;
+        y += h;
+      }
+    }
+  };
+  side(-1, bounds.minX - FOLIAGE_GAP);
+  if (!bay) side(1, bounds.maxX + FOLIAGE_GAP);
+}
+
+/** The frame (#149): the cliff the Village stands on, the fog on it and the foliage at its edges. */
+function frame(out: Volume[], bay: boolean, flicker: number): void {
+  cliff(out, bay);
+  groundFog(out, bay, flicker);
+  foliage(out, bay);
+}
+
 /**
  * What each Quarter does to the picture, all through the ink ramp (tone and
  * dither only, no new colour). `ground` is the ground's ink density, `rows` the
@@ -1609,6 +1762,7 @@ export function buildVillage(input: VillageInput): Volume[] {
   growth(out, input.upgrades ?? {});
   reserves(out, input.reserves);
   villagers(out, input.hands, input.tick, input.still);
+  frame(out, (input.port ?? 'HIDDEN') !== 'HIDDEN', input.still ? 0 : input.flicker);
   // The chosen Start Floor wears the bone outline: the Base door by default.
   const start = input.startFloor ?? 0;
   if (start <= 0) {
