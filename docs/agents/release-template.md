@@ -6,7 +6,7 @@ A release is a tag, a closed milestone and a GitHub release whose notes follow t
 
 - **Tag**: `MAJOR.MINOR.PATCH`, unprefixed (`2.2.0`, not `v2.2.0`), lightweight, on the last commit of the release on `main`. Push it with `git push origin <tag>` only when the release is meant to be public.
 - **Milestone**: named after the tag it ships in (`2.2.0`). A milestone with open issues is not a release yet: move the unfinished issues to the next milestone or finish them first.
-- **Version numbers**: `backend/pom.xml` and `frontend/package.json` carry the version and should equal the tag. Both are bumped in the commit the release is tagged on (they read `2.0.0` through 2.2.0 and `3.1.0` from 3.1.0).
+- **Version numbers**: `backend/pom.xml` and `frontend/package.json` carry the version and should equal the tag. Both are bumped in the commit the release is tagged on (they read `2.0.0` through 2.2.0, then the tag's own version from 3.1.0).
 - **History**: never rewrite `main` after a tag is pushed. A tag is moved only on the owner's explicit request.
 
 ## Before tagging

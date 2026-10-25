@@ -444,6 +444,8 @@ A control that cannot be used is dark and unlit, with a dashed outline and a cap
 
 ### 5.7 The Village as a place (3.2.0)
 
+Shipped in 3.2.0; where the build differs from this design, `roadmap.md` section 11 says how (an L-shaped road, zones through surroundings only, the fortress always drawn). The sea, the foliage and the two landmarks sit in their own volume groups (`sea`, `frame`, `landmark`) and are kept out of the Village bounds, the closeup frame and the ray-visibility occluders.
+
 The 3.0.0 to 3.1.0 work made the Tower and its landscape. The Village itself still reads as a shelf: every building on one line, the same scale and tone, evenly spaced, with the Port a dark box and a flat band of void below. 3.2.0 makes it a place, using the owner's references (the manga's road to the Tower, Yuva's house, the fortress at the Tower's base with its aqueduct arches, the boat on black water). The manga is inspiration, not canon.
 
 - **The sea reaches the right edge of the screen.** Black water with short light dashes, a curved shore and a horizon line; the Boat is drawn larger. The sea is scenery and does not count towards the Village bounds, so the closeup frame still fits the built Village.

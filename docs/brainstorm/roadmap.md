@@ -133,7 +133,7 @@ A batch grouped in the "2.2.0" milestone: the scene becomes a fixed full-screen 
 | Where actions live | Launching moved into the scene in 2.2.0; every other action follows in 3.0.0 (section 8), and every in-scene action keeps a route in the list view |
 | Stopping time on a zoom | It reuses the Held Party: a new `HOLD` action, released by `RESUME`. A Trial's clock stops with it, so a hold costs no race time. Agents have no zoom, so the MCP surface gains no tool |
 | Translucent panels against verified contrast | 88% opacity plus a dither scrim, and a test that fails below 7:1 on the worst-case backdrop |
-| The Port's sea sits at the right edge | The Tower keeps its position on the right, so the sea stays where it is |
+| The Port's sea sits at the right edge | The Tower keeps its position on the right, so the sea stays where it is. Superseded in 3.2.0: the sea now runs to the screen's edge (section 10) |
 | Full-screen pixel cost | The pixel scale is chosen automatically for about 250k virtual pixels |
 
 ## 8. Added later: 3.0.0 (the in-world interface)
@@ -171,3 +171,9 @@ After 3.1.0 the Tower and its landscape read well but the Village is still a she
 | The road | Winds, with low walls, ending at the stair |
 | Order | Sea, then road, then framing, then landmarks, then zones and light; each step reworks `village-layout.ts`, so they run one after another |
 
+## 11. What shipped: 3.0.1, 3.1.0 and 3.2.0
+
+- **3.0.1** (fixes after playing 3.0.0): clickable menus, steady hover, the Village closeup with a cube focus, a revamped loot treasure, closer closeups, popovers kept on screen, the Party readable by day. The 2.2.1 fixes shipped inside 3.0.0 with no tag of their own.
+- **3.1.0** (the Tower in the manga's manner): the entrance stair and doorway, the fluted colonnade shaft, the landscape with cliffs, a river that follows the Quarter, and the Tower's broken crown; the Party loses its dark border. Same-release art fixes: the Tower Beast is a stag and a Guardian keeps its slot-1 lines.
+- **3.2.0** (the Village as a place): as designed in section 10, with these differences. The road is L-shaped, not winding, because the corridor between the Upgrade footings is about 0.44 wide and no building moved. The fortress and its aqueduct always draw, so without a Port the arches cross dry ground. Zones are shown through ground patches, walls and props, because building positions are pinned by hit regions and visibility tests, so left to right the order is still Fort, Silo and Fields, Quarry and Study, Vault, Port. In the far view the road, the cliff and the aqueduct are small and low in contrast.
+- **Still open**: #72 (the Undertow response corruption), with the upstream fix written up in `docs/research/undertow-upstream-fix.md`.
