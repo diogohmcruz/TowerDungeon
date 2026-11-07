@@ -85,7 +85,7 @@ The highest floor any party has reached during the campaign; it drives floor-bas
 _Avoid_: Deepest floor, max depth, record
 
 **Floor Difficulty**:
-How many enemy types are allowed to appear on a floor; it rises with height and drops as guardians above are slain. Planned: the floors below the first guardian are deliberately gentle so a thin party can climb far, and each slain guardian raises the difficulty of the floors above it.
+How many enemy types are allowed to appear on a floor; it rises with height and drops as guardians above are slain. Once enemy types have Debut Floors, it is which types have debuted, thinned by Easing. Planned: the floors below the first guardian are deliberately gentle so a thin party can climb far, and each slain guardian raises the difficulty of the floors above it.
 _Avoid_: Tier (on its own, which means village tier), threat level
 
 **Architecture**:
@@ -182,6 +182,42 @@ _Avoid_: Run summary, post-run summary, post-run report, debrief
 The steady loss of health every unit in the party suffers just by being on the tower, regardless of combat.
 _Avoid_: Passing time, decay, tower damage
 
+**Dread**:
+A gauge of the party's expedition that rises with depth, with time and with the clock band of a floor's draw, in four named steps. Each step worsens what the floors can bring. It is not food, cannot be stocked, drains no Supplies, is eased by a Camp or by light, and resets at Extraction. Planned.
+_Avoid_: Fear (a unit's Phobia), stress, danger level, panic
+
+**Hungry**:
+The first stage of running out of Supplies on the tower: the unit's Sanity falls steadily and a Camp cannot heal it. After a set time it becomes starving, which is when it takes damage. Planned.
+_Avoid_: Starving (the later stage), famished
+
+**Deck**:
+The seeded tarot deck every draw comes from: the major arcana set an event's severity, the minor arcana and the Fool decide tests. The save keeps its seed and how many cards have been drawn. Fights never use it. Planned.
+_Avoid_: Table, dice, random roll, seed (which is the Deck's start)
+
+**Test of Fate**:
+A named moment resolved by one card plus an attribute, succeeding at 14 or more, with one push after a failure. Planned.
+_Avoid_: Skill check, roll, saving throw
+
+**Risen**:
+A unit that died on the tower and rose as a Dead Soldier on that floor, likelier with Dread and Tower Memory. An Old Hand rises named and tougher, and its gear becomes the floor's bundle. Planned.
+_Avoid_: Zombie, ghost, revenant
+
+**Stance**:
+How a wanderer meets the party, one of seven (anger, distaste, sadness, joy, surprise, trust, fear), each mild, basic or intense, set by its Theme and Threat and moved one step by a Like or a Hate. Fixes whether it fights, flees, parleys or joins. Planned.
+_Avoid_: Disposition, mood, attitude
+
+**Affliction**:
+A lasting ailment a unit picks up from a hazard, in stages. It advances one stage each time a Camp ends unless cured; cures are hidden charges burned at Camp, the worst stage first. Some have a good early stage. Not Hungry, which is a lack of Supplies. Planned.
+_Avoid_: Disease, status effect, debuff, condition
+
+**Marching Order**:
+Where each unit stands in the party: the front is hit first and meets hazards first, the rear handles ambushes. Planned.
+_Avoid_: Formation, line-up, stance
+
+**Camp**:
+A priced option at a Halt on a cleared floor: it costs Supplies and risks one draw from the floor's table, and it restores Sanity first and then heals and recharges the party. Not the Village's Recovery. Planned.
+_Avoid_: Rest, bivouac, break
+
 **Reinforcement Wave**:
 A group of reserve units sent up during an expedition, carrying its own supplies and climbing from the base until it reaches the party's floor and merges into it.
 _Avoid_: Reinforcements, follow-up wave, relief, backup
@@ -203,6 +239,27 @@ _Avoid_: Soldier, character, member, troop, recruit, delver
 **Unit Type**:
 The kind of unit (Warrior, Archer, Porter, Mage, Healer, Captain, Tank, Rogue, Necromancer, Draco-Metamorph), defining its health, damage, attack type, weaknesses, and recruit cost.
 _Avoid_: Class, unit stats, archetype, role
+
+**Origin**:
+The people a unit comes from, drawn from the manga's lands and groups and rolled when the unit is recruited. It gives a unit an origin talent, mastered from the start, and three arête deeds. A unit has both an Origin and a Unit Type. Planned.
+_Avoid_: Race, kith, nationality, faction, background
+
+**Arête**:
+What a unit gains by doing each of its Origin's three different deeds once: the first time each is done it is checked off, and when all three are, the unit gains its Origin's arête talent, which experience cannot buy. Planned.
+_Avoid_: Achievement, quest, milestone (which is the campaign's)
+
+**Old Hand**:
+A named veteran, tracked as an individual: a survivor of a near-death Expedition, or of three Expeditions. It holds up to three abilities and an experience pool. At most twelve at once; every other unit stays interchangeable. Planned.
+_Avoid_: Veteran, hero, elite
+
+**Ability**:
+A rule or action an Old Hand has, from its Unit Type's pool or its Origin. Not mastered, it costs 1 experience each time it fires; after 7 experience spent it is mastered and free. Planned.
+_Avoid_: Skill, talent, perk, spell (which is a Cast)
+
+**Experience**:
+What an Old Hand earns at Extraction (more for deeper floors and Guardians) and spends to fire an ability it has not mastered. It can be bought with Credits at a Training Yard.
+_Avoid_: XP, level, score
+Planned.
 
 **Roster**:
 The unit types the player has unlocked and can recruit; it starts with Warrior, Archer, and Porter and grows through upgrades and milestones.
@@ -233,8 +290,25 @@ A single tower-dwelling foe, either part of a floor's garrison or a guardian.
 _Avoid_: Monster, mob, creature, defender
 
 **Enemy Type**:
-The kind of enemy, drawn from the manga's bestiary and ordered from weakest to strongest: Slime, Dead Soldiers, Tower Beast, Chimera, Chymus Insect, Stone Golem, Necromancer, Dead Dragon, Dragon.
+The kind of enemy, drawn from the manga's bestiary: Slime, Dead Soldiers, Tower Beast, Chimera, Chymus Insect, Stone Golem, Necromancer, Dead Dragon, Dragon. Each is one named cell of the Theme-and-Threat matrix and has a Debut Floor. Until the matrix is built the types are still ordered from weakest to strongest.
 _Avoid_: Enemy stats, archetype, species
+
+**Theme**:
+What an enemy type is made of, one of Beast, Undead, Elemental, Sorcerous or Man. It sets what the enemy is immune or vulnerable to and what it Hates. Planned.
+_Avoid_: Element, family, race, species
+
+**Threat**:
+How an enemy type fights, one of Minion, Brute, Strategist, Elite or Lord. It sets its toughness and behaviour: a Brute is tough and slow to be outwitted, a Strategist is weak and withdraws, an Elite shrugs off ordinary harm, and a Lord is a single enemy with several body-part pools, each carrying its own abilities. Planned.
+_Avoid_: Danger level, threat level, tier, rank
+
+**Debut Floor**:
+The lowest floor on which an enemy type can appear. Some types debut only well past the early floors. Planned.
+_Avoid_: Spawn floor, unlock floor, minimum depth
+
+**Hate**:
+Something an enemy type cannot abide (fire, light, sound, salt). A counter packed in the Loadout that uses it works against that enemy. Not a Phobia, which belongs to a unit.
+_Avoid_: Weakness (which is per attack type), phobia, vulnerability
+Planned.
 
 **Necromancer**:
 A rare figure in the world of Tower Dungeon: the manga's main villain, but also a unit type the player can recruit and an enemy type found in the tower. The three uses are deliberate.
@@ -246,6 +320,14 @@ _Avoid_: Damage type, element
 **Weakness**:
 A per-attack-type multiplier on how much a unit or enemy is affected by incoming hits; a negative value means that attack type restores health instead.
 _Avoid_: Resistance, vulnerability, modifier
+
+**Morale**:
+How long a garrison holds under loss, set by its enemy types' Threat: Minions break and flee when the garrison falls below half (and pay part of their loot), Strategists withdraw and return later, and Brutes, Elites and Lords never break. Planned.
+_Avoid_: Courage, bravery, flee chance
+
+**Mob Rule**:
+The bonus a garrison of one enemy type gains from its size: it grows at 2 or more, 4 or more and 8 or more of them. Planned.
+_Avoid_: Swarm bonus, pack bonus, crowd
 
 **Heal**:
 The attack type that restores health to party members instead of harming them.
@@ -290,6 +372,10 @@ _Avoid_: Morale, stress, fear
 **Phobia**:
 A fear of one enemy type that a unit is recruited with and does not know of until it first meets that enemy: it deals less to that enemy and suffers more from it, the more so the lower its sanity.
 _Avoid_: Fear (on its own), weakness (which is per attack type)
+
+**Motif**:
+One of three short tags on an Old Hand ("Penitent grave robber") that give an edge on a matching floor and a hint of what it knows. Planned.
+_Avoid_: Trait (rolled traits are Phobia and Affinity), background, perk
 
 **Affinity**:
 A unit's gift for one category of item: such items are better for it, and it is likelier to find them.
@@ -371,6 +457,22 @@ _Avoid_: Max supplies, supply cap, carry
 Running out of food: on the tower, units take damage each moment their supplies are empty; in the village, a villager and a random reserve unit die when the pantry is empty.
 _Avoid_: Hunger, famine
 
+**Village Event**:
+One happening drawn when an expedition ends, from a small table: a famine, a coronation, a closed Work. A rare slot, the Portent, has lasting effects. Planned.
+_Avoid_: Random event, news, Halt (which is on the tower)
+
+**Contract**:
+A job on the Scribe's Study board, four to six at a time, paying Credits and Experience; some need a creature brought back alive. Planned.
+_Avoid_: Quest, bounty, order (which is a Halt choice)
+
+**Reagent**:
+What a fresh kill of one enemy type yields, brewed in the Spore Cellar into a potion, bomb or oil. Which substance a type yields is not known until it is first brewed. Planned.
+_Avoid_: Ingredient, drop, loot (which is reserved)
+
+**Quarters**:
+How well the reserves are kept after an Extraction, paid in Credits: cold (free, slow Recovery, no Sanity restored), common, or full (quick Recovery, Sanity restored, the Loadout restocked). Cost scales with the number of reserves. Not Upkeep, which is the food they eat. Planned.
+_Avoid_: Upkeep tier, lodging, care level
+
 **Recovery**:
 Wounded reserves regaining health over time in the village, paid for with pantry food.
 _Avoid_: Home healing, food healing, resting
@@ -390,6 +492,14 @@ _Avoid_: Treasure
 **Loot**:
 The credits, materials, and relics a party gathers while clearing floors; it is carried until extraction banks it and lost on a wipe.
 _Avoid_: Haul, expedition loot, carried loot, rewards, drops
+
+**Tithe**:
+The small share of carried credits and materials the tower keeps at Extraction. Relics are exempt and a summit victory pays none. Its size is one number in configuration. Planned.
+_Avoid_: Tax, toll (which is legacy), fee
+
+**Works**:
+A village project built in steps, each paid in installments after an expedition. The Port is one; the existing buildings are being recast as Works. Planned.
+_Avoid_: Construction, build queue, upgrade (which is bought from the vault)
 
 **Vault**:
 The village's permanent store of banked credits, materials, and relics, which only extraction can add loot to.
