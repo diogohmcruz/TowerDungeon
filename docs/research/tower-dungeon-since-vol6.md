@@ -2,6 +2,8 @@
 
 Research snapshot as of **2026-10-10**. Extends `docs/towe_dungeon_manga.md` (written at volume 6, March 2026) and corrects it where sources disagree. Gathered by a research workflow whose reports were each re-checked by an independent skeptical pass.
 
+**Update 2026-11-07:** section 13 adds chapter 32, volume 7 and the groups (the Eastern Lands, Parliament, the Excavators, the Barbitos, the Monarchy).
+
 **Read this first.** No source available to the research (publisher pages, reviews, wikis) describes the *content* of chapters 24-31. Official pages carry titles, dates and short editor teasers; the chapters themselves are paywalled and no scanlations were read. The Fandom wiki's last real chapter page is ch.20 and its summary is still "TBA". Treat anything about ch.25-31 beyond the items marked **[official]** as unknown.
 
 Confidence labels used throughout:
@@ -225,3 +227,121 @@ Nothing readable by automated tools describes ch.24-31. The options are:
 - Read the chapters. K MANGA sells ch.24-31 in English at about 99 points per half-chapter (ch.1-4 are free), and Magapoke and Comic DAYS in Japanese. You or I could then write a prose summary into this file.
 - Let a research agent read X, pixiv Encyclopedia and Nico Nico Daihyakka through the Claude in Chrome extension in your browser, where those sites don't block as bots. I'd want your go-ahead before browsing logged-in pages.
 - Ask a Japanese reader community (e.g. Booklive spoiler-tagged reviews, 5ch threads) for per-chapter notes, which is what a person would do.
+
+## 13. Update, 2026-11-07: chapter 32, volume 7 and the groups
+
+Added for GitHub issue #160. It adds only what a second pass found and does not repeat sections 1 to 12. The web still has almost no prose about the content of chapters 24-32: what exists is official blurbs for vols 6 and 7, official chapter titles, a few Japanese reader reviews and two Japanese blogs. The Fandom wiki could not be opened (HTTP 402) and is cited only through search snippets. Scan sites were not read, and nothing here comes from the chapters themselves. Claims resting on one source are tagged **[single]**; use the same labels as at the top, plus **[single]** for a claim seen in exactly one source. Design ideas for the game built on these groups are in `docs/brainstorm/worm-inspiration.md` (Origins, section 4.1 and 4.6); they are not canon.
+
+### 13.1 What changed
+
+- **Ch.32 exists.** Official title (Japanese): 「たった一度の奇跡と永らえる悲劇」, about "The One Miracle and the Lingering Tragedy" (Comic DAYS machine translation; the wording is mine). It is listed as **【第32話(1)】**, so the chapter is split in parts [official]. It ran in the **Dec 2026 issue, released 2026-10-26** [official: Comic DAYS episode page; Sirius issue page]. No teaser text was found. The K MANGA English title was not found; the K MANGA series page only showed ch.1 to this tool.
+- **No chapter after 32 exists** as of 2026-11-07 (next issue would be late November, unconfirmed).
+- **Vol 7 is out** (Japan, 2026-09-09) with an official blurb (below). Vol 6 English print is 2026-11-24, vol 7 English print 2027-03-23 [official: PRH, Kodansha US].
+- **Do not trust the PRH vol 7 page text.** Its blurb repeats the level-25 deserters ambush, which sections 1 to 12 attributes to PRH's vol 3 blurb; one summary of it also called vol 7 the "final volume". The latter is **not** supported by any other source (Booklive readers only guess the story may end in "about two more volumes", which is opinion). Ignore both until PRH is checked in a browser.
+- **Wikipedia** lists only vols 6-7 dates, over 1 million copies by Aug 2026, and nominations (Next Manga Award 2024, Daruma at Japan Expo Awards 2026). Nothing on the Eastern Lands, Parliament or Excavators [secondary].
+
+#### Official blurbs (paraphrased, not quoted)
+
+| Volume | What the publisher says | Source |
+|---|---|---|
+| 6 (JP 2026-03-09; US 2026-11-24) | The tower's gatekeepers close in on the new Seventh Squad. The Excavation Alliance is back at the foothill fort; the Parliament guards who run that fort and Funapa all change. A far country that heard of the kingdom's crisis begins to move. The US blurb adds: Reformed Unit Seven with Iscale and the Anti-Nausea Alliance faces two tower guardians, and news of the tower and the old king's death reaches the **Eastern Lands across the sea**. | [official] Kodansha JP (via search), PRH vol 6 |
+| 7 (JP 2026-09-09) | Funapa follows her brother's new Seventh Squad into the Dragon Tower with the **excavation alliance** and the **Parliament guards**. **Princesses from a distant eastern country** also arrive, each with her own motives. The tower's cursed residents block the way, the joint front falls into chaos, and as they survive together **trust deepens and the Thought-Binding Ring reaches a new stage**. | [official] Sirius vol 7 page, Booklive, cmoa |
+
+### 13.2 Groups and what is actually known
+
+#### 13.2.1 Eastern Lands
+
+- **Fact base.** A far eastern country across the sea. It hears of the kingdom's crisis after the old king's death, then sends **princesses** (plural) to climb the tower, each with her own motives [official, vol 6-7 blurbs]. Reviewers say the new people look "completely Japanese" [review: Booklive vol 6 readers] and TV Tropes says ch.23 introduces a Japan-like land with a giant samurai armour used like a mini-mecha [fan, from earlier note].
+- **Names.** One Japanese blog (何しよう？, 2026-09-13) names **Suzuri-hime 砥姫** (romanised "Tohime" by the blog's translation) and her companion **Sakumaru 朔丸**, joining **Funapa's** party in vol 6, and says her ability **祓人 (Harasane, "purifier")** instantly beheaded the sealed "ancient rite king" **Luognam** (古儀王) [single: blog; same two names came from one reviewer in sections 1 to 12, so there are two blogs, possibly the same writer's lineage; not independent proof]. The ch.23 title "Exorcist God from a Distant Land" (遠国の祓い神) [official] is consistent with a purifier/exorcist role.
+- **Culture, wants.** Official text says only "each has her own motives". **Not found:** the country's name, politics, whether it wants the tower, the king's kingdom, or the relic. A blog's guesses (diplomacy, strategic use of the tower) are speculation and should be ignored.
+- **Unverified:** that Suzuri-hime is "a giant samurai-like exoskeleton of blood and flesh" (earlier note, a reviewer's own question mark).
+
+#### 13.2.2 Parliament and its guards (議会衛士, "Defenders")
+
+- Run the foothill fort and "undergo big changes" in vol 6, then enter the tower in vol 7 beside the excavators and Funapa [official].
+- The only named member is **Garamna** (Nyabilian, cat person), Funapa's mentor [review: Anime UK News; Booklive]. Readers praise Funapa and Garamna's development.
+- The ch.24 title includes 衛士の盾 ("shield of the guard") [official title]; its meaning is unknown.
+- **Not found:** structure, ranks, equipment, relation to Miligore (sections 1 to 12's chancellor, [wiki]).
+
+#### 13.2.3 Excavators Guild / Excavation Alliance (掘削連合, 新掘削連合)
+
+- Official blurbs use "Excavation Alliance" (US blurbs say Excavators Guild). It returned to the fort in vol 6 and climbs with Funapa in vol 7 [official].
+- Its leader wears a **thought-linking ring**, which let the group share Aridellia's backstory; the blog says the leader loved the kingdom [single: blog]. This agrees with sections 1 to 12's claim that the rings moved the Alliance from treasure hunting to necromancer subjugation [review].
+- Funapa's group defeats the boss of the **elevator** and rejoins Yuva's line [single: blog]. This is the only concrete tower obstacle for the fortress party.
+
+#### 13.2.4 Barbitos, Drakmetamorph / Dracomorph
+
+- **Barbitos** [wiki]: human-like, with innate **pyromancy**. Lilicen (fire barbitos) and the old mage Sargan are the examples; Sargan keeps the crow-goat Krogi. Lilicen's fire killed Karash, surprising a reviewer because dragons are assumed fire-immune [review: Anime Fire vol 5].
+- **Drakmetamorph / Dracomorph** [wiki]: human-like with **dragon-morphing**; the blog calls them "the top tier of the Barbitos", most able to become dragons. In vol 7 the blog says **most Drakmetamorphs are hostile to the heroes, except Iscale and the king** [single: blog]. Yuva's strength and dexterity are explained by his Dracomorph power, with no visible dragon form [review: Anime Fire].
+- **Vol 7 reveal [single: Booklive reader, spoiler-tagged; also the blog]:** Sargan and Karash are brothers, and their mother is blamed for Karash's madness. The earlier note had this as "wiki plus one reader review"; it now has a second, still weak, source.
+- A vol 7 reader mentions a flashback about **Lilicen** that may be foreshadowing (sections 1 to 12: ch.29 teaser says her vow goes back nine years) [review, official teaser].
+
+#### 13.2.5 Monarchy and royal blood
+
+- Yuva and Funapa are "allegedly" of royal blood, as Ignelia revealed in vol 3 [review: Anime Fire vol 5]. Funapa follows "since Yuva is royalty" [single: blog].
+- **What it does:** opens a **door that only royal blood can unlock** (floor with guardians hunting the party, vol 5) [review]; the tower fairy Dorias seems to **communicate telepathically with royal blood** [review]; Funapa's blood freed Luognam from a seal [wiki, section 6]. Gatekeepers can lock even against it [wiki]. These three effects are all that has been confirmed; nothing new in vol 6-7 was found.
+- The Dracomorph kingdom and why the royals carry that blood remain unexplained [review].
+
+#### 13.2.6 Anti-Nausea (Anti-Nausea Medicine) Alliance
+
+- Led by **Iscale** (one-winged Drakmetamorph) with mute partner Ryxul; joins Reformed Unit Seven to face two tower guardians [official: PRH vol 6]. Vol 7: **Rixul's backstory is expanded and he is revived** [single: blog], which means he dies.
+- Why "anti-nausea" is not explained anywhere found.
+
+### 13.3 Mechanics seen in the sources
+
+| Mechanic | Detail | Tag |
+|---|---|---|
+| Thought-Binding Ring (思念結びの指輪) | Links minds; the vol 7 blurb says its power "deepens" the more the group survives together. The Alliance leader's ring shares memories. Reader says "many drawbacks" earlier (sections 1 to 12). Exact effect unknown. | [official] blurb, [single] ring effect |
+| Azza-lugh-Novael | Relic. Found inside the floor-50 Chymus Insect; the Necromancer offers Ignelia for it on floor 100. Aridellia's transformation into a drakmetamorph came from bonding with a fragment; a section exists on Karash's page. The healing / one-use resurrection claim in sections 1 to 12 is not re-confirmed here. | [wiki] via search snippet |
+| "Dragonbane" relic | PRH vol 7 page says deserters demand Eliquo surrender a legendary "Dragonbane". Likely the dragon-slaying arrowhead; the page text itself is suspect (section 1). | [official but suspect] |
+| Death revival and lethal poison | Vol 7 "introduces" death revival and deadly poison; the first is tied to Rixul's return. Details unknown. | [single: blog] |
+| Ch.30 title | 蘇生の祭殿 "Sanctuary of Resurrection": a place of revival. Content unknown. | [official title] |
+| Ch.29 title | 生命の器 "Vessels of Life". Unknown. | [official title] |
+| Ch.26 title | 命を繋ぐ石 "Stone that connects lives" plus the ring. A second link item exists; unknown. | [official title] |
+| Party splitting | Vol 7 has the party split to take on floor 80. | [single: blog] |
+
+### 13.4 New floors, guardians, enemies
+
+| Name | Where | What is known | Tag |
+|---|---|---|---|
+| Two tower guardians (gatekeepers) | Vol 6, around the floors above 60 (exact floor unknown) | The Seventh Squad and the Anti-Nausea Alliance face two of them; "the tower's gatekeepers close in" | [official] |
+| Elevator boss | Fortress party, vol 6 | Funapa's group beats the boss of the "elevator" (昇降機) and begins to climb. Nature and floor unknown. | [single: blog] |
+| Luognam, ancient rite king 古儀王 | Sealed, ch.22-23 | Freed by Funapa's blood, killed in one stroke by Suzuri-hime's Harasane. | [single: blog], [wiki] |
+| "Great Pillar Maze" 柱の大迷宮 | Ch.28 | A maze of pillars with a "triangular march" 三角の進軍. A floor type: pillar forest labyrinth. | [official title], [wiki] Funapa gathering effect |
+| Floor 80 | Ch.30 and vol 7 end | Dragon Tower floor 80; the Necromancer appears before Yuva; the vol 7 volume ends with the meeting with necromancers. Party splits there. | [official teaser], [single: blog] |
+| Elder dragon 禍なる古竜 | Ch.24 | Title only. | [official title] |
+| Dragon-form Drakmetamorphs, hostile | Vol 7 | Most are hostile, per the blog. | [single] |
+| Tower residents 禍なる塔の住人 | Vol 7 | They block the joint force; "grotesque creature designs" praised by a reader. No names. | [official], [review] |
+| Undead horde | Ch.29 | Lilicen stands against it. | [official teaser] |
+| Floor progress | | The party had passed floor 75 around April 2026 [fan site, earlier note]. | [fan] |
+
+Still nothing found on: new named monsters beyond the above, any floor between 61 and 79, or floors above 80.
+
+### 13.5 Still unverified
+
+- Everything about ch.24-32 beyond titles and the three official teasers (ch.29, ch.30, ch.31).
+- The Eastern Land's name, goals and number of princesses; names Suzuri-hime and Sakumaru and the Luognam kill (blogs only; Fandom wiki closed to this tool).
+- Parliament structure, Excavator leader's name, the "Alliance" (Anti-Nausea) meaning.
+- Royal blood beyond doors, telepathy and seals; the ring's exact mechanics; relic powers.
+- The Booklive reader item that Sargan and Karash are brothers.
+- "Final volume" for vol 7 (PRH): unsupported.
+- The TV Tropes ch.30 cluster (Abara, satellite) is still unchecked and should stay out of the design.
+- Ch.32's contents and K MANGA English title.
+
+### 13.6 Sources added
+
+- Comic DAYS ch.32: https://comic-days.com/episode/12207421984415834918
+- Sirius Dec 2026 issue: https://shonen-sirius.com/sirius/2026/12.html
+- Sirius vol 7 page: https://shonen-sirius.com/comics/2026/9_01/0000430480.html
+- Kodansha JP vol 7 (blocked, via search): https://www.kodansha.co.jp/comic/products/0000430480
+- Kodansha JP vol 6 (via search): https://www.kodansha.co.jp/comic/products/0000424691
+- Booklive vol 7 (reviews): https://booklive.jp/product/index/title_id/1459380/vol_no/007
+- Booklive vol 6 (reviews): https://booklive.jp/product/index/title_id/1459380/vol_no/006
+- PRH vol 6: https://www.penguinrandomhouse.com/books/834131/tower-dungeon-6-by-tsutomu-nihei/
+- PRH vol 7 (suspect text): https://www.penguinrandomhouse.com/books/852308/tower-dungeon-7-by-tsutomu-nihei/9781647297091/
+- Blog, vols 6-7 spoilers: https://xn--p8j7a4jn57j.com/entry/20260913/1789285919
+- Blog, vol 6: https://gasemedaka.com/tower-dungeon-6/
+- Anime Fire vol 5: https://animefire.com/2026/08/07/tower-dungeon-vol-5-official-review/
+- Fandom wiki (blocked, snippets only): https://tower-dungeon.fandom.com/wiki/Funapa , /Species , /Aridellia , /Karash
+- Wikipedia: https://en.wikipedia.org/wiki/Tower_Dungeon
+- TV Tropes (blocked this pass): https://tvtropes.org/pmwiki/pmwiki.php/Manga/TowerDungeon
