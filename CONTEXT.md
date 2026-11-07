@@ -207,7 +207,7 @@ How a wanderer meets the party, one of seven (anger, distaste, sadness, joy, sur
 _Avoid_: Disposition, mood, attitude
 
 **Affliction**:
-A lasting ailment a unit picks up from a hazard, in stages. It advances one stage each time a Camp ends unless cured; cures are hidden charges burned at Camp, the worst stage first. Some have a good early stage. Not Hungry, which is a lack of Supplies. Planned.
+A lasting ailment a unit picks up from a hazard, in stages. It advances one stage each time a Camp ends unless cured; cures are hidden charges burned at Camp, the worst stage first. Some have a good early stage. Examples: Cursed (health halved until lifted), Poisoned (damage each tick that bypasses defence), larval infection (the unit rises as a Risen if it dies infected), spore trance. Not Hungry, which is a lack of Supplies. Planned.
 _Avoid_: Disease, status effect, debuff, condition
 
 **Marching Order**:
@@ -374,7 +374,7 @@ A fear of one enemy type that a unit is recruited with and does not know of unti
 _Avoid_: Fear (on its own), weakness (which is per attack type)
 
 **Motif**:
-One of three short tags on an Old Hand ("Penitent grave robber") that give an edge on a matching floor and a hint of what it knows. Planned.
+Three tags on an Old Hand: a Virtue (an edge on matching floors), a Vice (a risk it triggers) and a Profession ("Penitent grave robber" reads as a Vice, a Profession and a Virtue elsewhere). Planned.
 _Avoid_: Trait (rolled traits are Phobia and Affinity), background, perk
 
 **Affinity**:
@@ -382,7 +382,7 @@ A unit's gift for one category of item: such items are better for it, and it is 
 _Avoid_: Proficiency, specialty
 
 **Item**:
-Something a unit carries in a slot, bound to the unit that found it; there are three tiers (leftover, talisman, artifact) and any slot can hold an item with a special effect.
+Something a unit carries in a slot, bound to the unit that found it; there are three tiers (leftover, talisman, artifact) and any slot can hold an item with a special effect. Planned: an item carries one ability that any unit can use while it holds it, and, in about 3 items in 100, a trade-off (a gain and a cost).
 _Avoid_: Equipment, gear (as a noun for a single piece), loot (which is reserved)
 
 **Slot**:
